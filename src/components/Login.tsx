@@ -8,55 +8,55 @@ const Login: React.FC = () => {
     const { t } = useSettings();
 
     return (
-        <div className="h-full w-full bg-[#F5F7FA] flex flex-col items-center justify-center p-8">
-            <div className="max-w-xs w-full p-10 bg-white border border-slate-200 rounded-[40px] shadow-2xl space-y-12 relative overflow-hidden">
+        <div className="h-full w-full bg-[#F5F7FA] flex flex-col items-center justify-center p-4 md:p-8">
+            <div className="w-full max-w-[400px] p-6 md:p-10 bg-white border border-slate-200 rounded-[32px] md:rounded-[40px] shadow-xl md:shadow-2xl space-y-8 md:space-y-12 relative overflow-hidden">
                 {/* Visual Flair */}
                 <div className="absolute top-0 left-0 w-full h-2 bg-[#0047AB]"></div>
 
-                <div className="space-y-8 text-center pt-4">
-                    <div className="w-24 h-24 bg-[#0047AB] text-white rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-blue-900/20 rotate-3">
-                        <Briefcase size={48} strokeWidth={2.5} />
+                <div className="space-y-6 md:space-y-8 text-center pt-2 md:pt-4">
+                    <div className="w-20 h-20 md:w-24 md:h-24 bg-[#0047AB] text-white rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-blue-900/20 rotate-3">
+                        <Briefcase className="w-10 h-10 md:w-12 md:h-12" strokeWidth={2.5} />
                     </div>
                     <div>
-                        <h1 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none">{t('title') || 'SWA TAXI'}</h1>
+                        <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight uppercase leading-none">{t('title') || 'SWA TAXI'}</h1>
                         <p className="text-[10px] text-[#0047AB] font-black tracking-[0.4em] uppercase mt-4 opacity-70">CABIN LOGISTICS SYSTEM</p>
                     </div>
                 </div>
 
-                <div className="space-y-6 text-left border-y border-slate-100 py-10 px-2">
-                    <div className="flex items-center gap-5">
-                        <div className="w-10 h-10 bg-blue-50 text-[#0047AB] rounded-xl flex items-center justify-center border border-blue-100">
+                <div className="space-y-5 md:space-y-6 text-left border-y border-slate-100 py-8 md:py-10 px-2">
+                    <div className="flex items-center gap-4 md:gap-5">
+                        <div className="w-10 h-10 bg-blue-50 text-[#0047AB] rounded-xl flex items-center justify-center border border-blue-100 shrink-0">
                             <ShieldCheck size={20} />
                         </div>
                         <div>
                             <span className="text-xs font-black text-slate-900 uppercase tracking-wide block">GST Compliance</span>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">AUTOMATED TAX FILINGS</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 md:mt-1 block">AUTOMATED TAX FILINGS</span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-5">
-                        <div className="w-10 h-10 bg-blue-50 text-[#0047AB] rounded-xl flex items-center justify-center border border-blue-100">
+                    <div className="flex items-center gap-4 md:gap-5">
+                        <div className="w-10 h-10 bg-blue-50 text-[#0047AB] rounded-xl flex items-center justify-center border border-blue-100 shrink-0">
                             <FileText size={20} />
                         </div>
                         <div>
                             <span className="text-xs font-black text-slate-900 uppercase tracking-wide block">Smart Trip Sheets</span>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">DIGITAL LOG ARCHIVE</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 md:mt-1 block">DIGITAL LOG ARCHIVE</span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-5">
-                        <div className="w-10 h-10 bg-blue-50 text-[#0047AB] rounded-xl flex items-center justify-center border border-blue-100">
+                    <div className="flex items-center gap-4 md:gap-5">
+                        <div className="w-10 h-10 bg-blue-50 text-[#0047AB] rounded-xl flex items-center justify-center border border-blue-100 shrink-0">
                             <Smartphone size={20} />
                         </div>
                         <div>
                             <span className="text-xs font-black text-slate-900 uppercase tracking-wide block">Mobile Control</span>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">OFFICIAL OPERATOR PORTAL</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 md:mt-1 block">OFFICIAL OPERATOR PORTAL</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="space-y-8 text-center pb-4">
+                <div className="space-y-6 md:space-y-8 text-center pb-2 md:pb-4">
                     <button
                         onClick={signInWithGoogle}
-                        className="w-full bg-[#0047AB] text-white font-black py-6 rounded-3xl flex items-center justify-center gap-4 active:scale-95 transition-all uppercase tracking-widest text-[11px] shadow-xl shadow-blue-900/20"
+                        className="w-full bg-[#0047AB] text-white font-black py-4 md:py-6 rounded-2xl md:rounded-3xl flex items-center justify-center gap-3 md:gap-4 active:scale-95 transition-all uppercase tracking-widest text-[11px] shadow-xl shadow-blue-900/20"
                     >
                         <img src="https://www.google.com/favicon.ico" alt="G" className="w-5 h-5 bg-white rounded-lg p-0.5" />
                         OPEN WORKPLACE
@@ -69,7 +69,7 @@ const Login: React.FC = () => {
             </div>
 
             {/* Version Badge */}
-            <div className="mt-12 px-5 py-2 bg-white border border-slate-200 rounded-full flex items-center gap-3">
+            <div className="mt-8 md:mt-12 px-5 py-2 bg-white border border-slate-200 rounded-full flex items-center gap-3 shadow-sm">
                 <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">v2.4.0 • STABLE RELEASE</span>
             </div>
