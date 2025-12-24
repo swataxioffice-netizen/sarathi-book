@@ -1,0 +1,96 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+:root {
+  /* Clean Professional Palette */
+  --bg-app: #F5F7FA;
+  --bg-card: #FFFFFF;
+
+  --primary: #0047AB;
+  /* Taxi Blue */
+  --primary-soft: #EBF2FF;
+
+  --text-main: #1A1C1E;
+  --text-sub: #64748B;
+
+  --border-light: #E2E8F0;
+  --border-primary: #0047AB;
+
+  --status-success: #10B981;
+  --status-error: #EF4444;
+
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.5;
+  color-scheme: light;
+  color: var(--text-main);
+  background-color: var(--bg-app);
+}
+
+.dark {
+  /* Solid Dark Mode */
+  --bg-app: #0F172A;
+  --bg-card: #1E293B;
+  --text-main: #F8FAFC;
+  --text-sub: #94A3B8;
+  --border-light: #334155;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  background-color: var(--bg-app);
+}
+
+@layer components {
+
+  /* Professional Solid Card */
+  .tn-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    @apply p-5;
+  }
+
+  /* Solid Action Button */
+  .tn-button-primary {
+    background-color: var(--primary);
+    color: white;
+    border-radius: 10px;
+    @apply font-bold px-6 py-4 flex items-center justify-center gap-2 active:scale-[0.98] transition-all uppercase tracking-wide text-[15px];
+  }
+
+  /* Clean Input */
+  .tn-input {
+    width: 100%;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-light);
+    color: var(--text-main);
+    border-radius: 10px;
+    @apply py-3 px-4 font-semibold text-[15px] outline-none transition-all h-11;
+  }
+
+  .tn-input:focus {
+    border-color: var(--primary);
+    @apply ring-4 ring-blue-500/10;
+  }
+
+  /* Section Header Labels like the screenshot */
+  .tn-label {
+    color: var(--text-main);
+    @apply text-[11px] font-black uppercase tracking-wider mb-2 block opacity-80;
+  }
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
