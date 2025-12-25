@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Wallet, ShieldCheck, User, Calculator } from 'lucide-react';
+import { LayoutDashboard, FileText, Wallet, User, Calculator } from 'lucide-react';
 
 interface BottomNavProps {
     activeTab: string;

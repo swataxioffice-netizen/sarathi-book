@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { safeJSONParse } from './utils/storage';
-import { SettingsProvider, useSettings } from './contexts/SettingsContext';
-import { ShieldCheck, X } from 'lucide-react';
+import { SettingsProvider } from './contexts/SettingsContext';
+import { X } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Header from './components/Header';
 import TripForm from './components/TripForm';
@@ -11,7 +11,7 @@ import BottomNav from './components/BottomNav';
 import Dashboard from './components/Dashboard';
 import ExpenseTracker from './components/ExpenseTracker';
 import Calculator from './components/Calculator';
-import Login from './components/Login';
+
 import type { Trip } from './utils/fare';
 import QuotationForm from './components/QuotationForm';
 
@@ -20,7 +20,7 @@ import SideNav from './components/SideNav';
 function AppContent() {
   /* Guest Roaming Logic */
   const { user, loading, signInWithGoogle } = useAuth();
-  const { settings } = useSettings();
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [trips, setTrips] = useState<Trip[]>(() => safeJSONParse<Trip[]>('namma-cab-trips', []));
   const [showLoginNudge, setShowLoginNudge] = useState(false);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Wallet, ShieldCheck, User, LogOut, Calculator } from 'lucide-react';
+import { LayoutDashboard, FileText, Wallet, User, LogOut, Calculator } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SideNavProps {

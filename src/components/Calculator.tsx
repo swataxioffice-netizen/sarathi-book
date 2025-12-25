@@ -139,7 +139,7 @@ const ActingDriverCalculator: React.FC = () => {
     const [bata, setBata] = useState(1000);
     const [returnCharge, setReturnCharge] = useState(500);
     const [stayProvided, setStayProvided] = useState(false);
-    const [allowance, setAllowance] = useState(300);
+    const [allowance] = useState(300);
     const [result, setResult] = useState<any>(null);
 
     const calculate = () => {
