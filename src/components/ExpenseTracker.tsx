@@ -31,10 +31,10 @@ const ExpenseTracker: React.FC = () => {
 
     const getIcon = (cat: string) => {
         switch (cat) {
-            case 'fuel': return <Fuel size={20} />;
-            case 'food': return <Coffee size={20} />;
-            case 'maintenance': return <Settings size={20} />;
-            default: return <ShoppingBag size={20} />;
+            case 'fuel': return <Fuel size={16} />;
+            case 'food': return <Coffee size={16} />;
+            case 'maintenance': return <Settings size={16} />;
+            default: return <ShoppingBag size={16} />;
         }
     }
 
@@ -48,53 +48,50 @@ const ExpenseTracker: React.FC = () => {
     }
 
     return (
-        <div className="space-y-6 pb-24">
-            {/* Cash Flow Summary */}
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16"></div>
-                <div className="relative z-10 flex justify-between items-end">
-                    <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4">TOTAL SPENT TODAY</p>
-                        <h2 className="text-5xl font-black tabular-nums tracking-tight">₹{totalSpent.toLocaleString()}</h2>
-                    </div>
-                    <div className="p-4 bg-white/10 rounded-2xl border border-white/10">
-                        <PieChart size={28} />
-                    </div>
+        <div className="space-y-4 pb-24">
+            {/* Cash Flow Summary - Compacter */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex items-center justify-between">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-8 -mt-8"></div>
+                <div className="relative z-10">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">TOTAL SPENT TODAY</p>
+                    <h2 className="text-3xl font-black tabular-nums tracking-tight text-white">₹{totalSpent.toLocaleString()}</h2>
+                </div>
+                <div className="relative z-10 p-3 bg-white/10 rounded-xl border border-white/10">
+                    <PieChart size={20} />
                 </div>
             </div>
 
-            {/* Expense Entry Card */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-7 shadow-sm space-y-8">
-                <div className="flex flex-col items-center justify-center border-b border-slate-100 pb-5 text-center">
-                    <div className="p-3 bg-blue-50 text-[#0047AB] rounded-xl flex items-center justify-center mb-3">
-                        <Plus size={24} strokeWidth={3} />
+            {/* Expense Entry Card - Compacter */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4">
+                <div className="flex items-center gap-3 border-b border-slate-50 pb-3">
+                    <div className="p-2 bg-blue-50 text-[#0047AB] rounded-lg">
+                        <Plus size={16} strokeWidth={3} />
                     </div>
                     <div>
-                        <h3 className="text-[13px] font-black text-slate-900 uppercase tracking-tight">New Expenditure</h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">RECORD DAILY OUTFLOW</p>
+                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight">New Expenditure</h3>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <label className="text-[11px] font-black text-slate-900 uppercase tracking-tight ml-1">AMOUNT</label>
+                <div className="grid grid-cols-[1fr,1.5fr] gap-3">
+                    <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-tight ml-1">AMOUNT</label>
                         <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">₹</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
                             <input
                                 type="number"
                                 value={amount}
                                 onChange={(_) => setAmount(_.target.value)}
-                                className="tn-input h-14 pl-10 bg-slate-50 border-slate-200 font-black text-2xl"
+                                className="tn-input h-10 pl-7 bg-slate-50 border-slate-200 font-black text-base w-full"
                                 placeholder="0"
                             />
                         </div>
                     </div>
-                    <div className="space-y-2">
-                        <label className="text-[11px] font-black text-slate-900 uppercase tracking-tight ml-1">CATEGORY</label>
+                    <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-tight ml-1">CATEGORY</label>
                         <select
                             value={category}
                             onChange={(_) => setCategory(_.target.value as any)}
-                            className="tn-input h-14 bg-slate-50 border-slate-200 font-black text-xs uppercase"
+                            className="tn-input h-10 bg-slate-50 border-slate-200 font-bold text-[10px] uppercase w-full"
                         >
                             {['fuel', 'maintenance', 'food', 'other'].map(c => <option key={c} value={c}>{t(c)}</option>)}
                         </select>
@@ -103,50 +100,50 @@ const ExpenseTracker: React.FC = () => {
 
                 <button
                     onClick={addExpense}
-                    className="w-full bg-[#0047AB] text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-blue-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                    className="w-full bg-[#0047AB] text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
-                    <Wallet size={18} /> REGISTER EXPENSE
+                    <Wallet size={14} /> REGISTER EXPENSE
                 </button>
             </div>
 
-            {/* Transaction Feed */}
-            <div className="space-y-4">
-                <div className="flex flex-col items-center gap-2 px-1 pb-4">
-                    <h3 className="text-[13px] font-black text-slate-800 uppercase tracking-widest border-b-2 border-slate-100 pb-2 px-8">Transaction Feed</h3>
-                    <span className="text-[9px] font-black text-[#0047AB] bg-blue-50 px-3 py-1 rounded-full">{todaysExpenses.length} ENTRIES TODAY</span>
+            {/* Transaction Feed - Condensed List */}
+            <div className="space-y-2">
+                <div className="flex items-center justify-between px-2 pt-2">
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recent Activity</h3>
+                    <span className="text-[9px] font-bold text-[#0047AB] bg-blue-50 px-2 py-0.5 rounded-md">{todaysExpenses.length} Today</span>
                 </div>
 
                 {expenses.length === 0 ? (
-                    <div className="bg-white border border-slate-200 border-dashed rounded-3xl py-16 flex flex-col items-center justify-center text-center opacity-60">
-                        <Calculator size={48} className="text-slate-200 mb-4" />
-                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Ledger is empty for today</p>
+                    <div className="bg-white border border-slate-200 border-dashed rounded-2xl py-8 flex flex-col items-center justify-center text-center opacity-60">
+                        <Calculator size={32} className="text-slate-200 mb-2" />
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">No expenses recorded</p>
                     </div>
                 ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                         {expenses.map(e => {
                             const isToday = e.date.startsWith(today);
                             return (
-                                <div key={e.id} className={`bg-white border rounded-2xl p-5 flex justify-between items-center shadow-sm transition-all ${isToday ? 'border-slate-200' : 'border-slate-100 opacity-60'}`}>
-                                    <div className="flex items-center gap-5">
-                                        <div className={`p-3 rounded-xl border transition-all ${getCategoryColor(e.category)}`}>
+                                <div key={e.id} className={`bg-white border rounded-xl p-3 flex justify-between items-center shadow-sm ${isToday ? 'border-slate-200' : 'border-slate-100 opacity-60'}`}>
+                                    <div className="flex items-center gap-3">
+                                        <div className={`p-2 rounded-lg border ${getCategoryColor(e.category)}`}>
                                             {getIcon(e.category)}
                                         </div>
                                         <div>
-                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">{t(e.category)}</h4>
-                                            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">
+                                            <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight">{t(e.category)}</h4>
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase">
                                                 {new Date(e.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-5">
+                                    <div className="flex items-center gap-3">
                                         <div className="text-right">
-                                            <p className="text-lg font-black text-slate-900 tabular-nums">₹{e.amount}</p>
+                                            <p className="text-sm font-black text-slate-900 tabular-nums">₹{e.amount}</p>
                                         </div>
                                         <button
                                             onClick={() => deleteExpense(e.id)}
-                                            className="p-3 text-slate-300 hover:text-red-500 active:scale-90 transition-all"
+                                            className="p-1.5 text-slate-300 hover:text-red-500 transition-all"
                                         >
-                                            <Trash2 size={20} />
+                                            <Trash2 size={14} />
                                         </button>
                                     </div>
                                 </div>
