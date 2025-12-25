@@ -7,6 +7,9 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Korkai', 'Inter', 'system-ui', 'sans-serif'],
+      },
       colors: {
         'brand': {
           50: '#f0f4fa',
