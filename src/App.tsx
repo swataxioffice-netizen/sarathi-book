@@ -15,10 +15,9 @@ import type { Trip } from './utils/fare';
 import QuotationForm from './components/QuotationForm';
 
 import SideNav from './components/SideNav';
-import { LogOut } from 'lucide-react';
 
 function AppContent() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [trips, setTrips] = useState<Trip[]>(() => safeJSONParse<Trip[]>('namma-cab-trips', []));
 
