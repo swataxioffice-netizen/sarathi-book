@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { User as UserIcon, Car, Trash2, ShieldCheck, ChevronRight, Globe, Search, Mail, Phone, MapPin } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
+import DocumentVault from './DocumentVault';
 
 const Profile: React.FC = () => {
     const { user, signOut } = useAuth();
@@ -159,6 +160,9 @@ const Profile: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Document Vault Section */}
+            <DocumentVault />
 
             {/* Localization Controls */}
             <div className="space-y-3 pb-8">

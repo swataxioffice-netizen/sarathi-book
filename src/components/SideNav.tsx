@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Wallet, ShieldCheck, User, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, Wallet, ShieldCheck, User, LogOut, Calculator } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SideNavProps {
@@ -14,7 +14,7 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
         { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
         { id: 'trips', icon: <FileText size={20} />, label: 'Invoices' },
         { id: 'expenses', icon: <Wallet size={20} />, label: 'Expenses' },
-        { id: 'docs', icon: <ShieldCheck size={20} />, label: 'Documents' },
+        { id: 'calculator', icon: <Calculator size={20} />, label: 'Calculator' },
         { id: 'profile', icon: <User size={20} />, label: 'Profile' },
     ];
 
@@ -40,8 +40,8 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                         key={item.id}
                         onClick={() => setActiveTab(item.id)}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm ${activeTab === item.id
-                                ? 'bg-blue-50 text-[#0047AB] shadow-sm ring-1 ring-blue-100'
-                                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                            ? 'bg-blue-50 text-[#0047AB] shadow-sm ring-1 ring-blue-100'
+                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                             }`}
                     >
                         {item.icon}

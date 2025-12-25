@@ -10,7 +10,7 @@ import Profile from './components/Profile';
 import BottomNav from './components/BottomNav';
 import Dashboard from './components/Dashboard';
 import ExpenseTracker from './components/ExpenseTracker';
-import DocumentVault from './components/DocumentVault';
+import Calculator from './components/Calculator';
 import Login from './components/Login';
 import type { Trip } from './utils/fare';
 import QuotationForm from './components/QuotationForm';
@@ -69,8 +69,8 @@ function AppContent() {
         );
       case 'expenses':
         return <ExpenseTracker />;
-      case 'docs':
-        return <DocumentVault />;
+      case 'calculator':
+        return <Calculator />;
       case 'profile':
         return <Profile />;
       default:

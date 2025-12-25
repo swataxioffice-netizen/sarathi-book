@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Wallet, ShieldCheck, User } from 'lucide-react';
+import { LayoutDashboard, FileText, Wallet, ShieldCheck, User, Calculator } from 'lucide-react';
 
 interface BottomNavProps {
     activeTab: string;
@@ -11,7 +11,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
         { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'DASHBOARD' },
         { id: 'trips', icon: <FileText size={20} />, label: 'INVOICES' },
         { id: 'expenses', icon: <Wallet size={20} />, label: 'EXPENSES' },
-        { id: 'docs', icon: <ShieldCheck size={20} />, label: 'DOCUMENTS' },
+        { id: 'calculator', icon: <Calculator size={20} />, label: 'CALCULATOR' },
         { id: 'profile', icon: <User size={20} />, label: 'PROFILE' },
     ];
 
