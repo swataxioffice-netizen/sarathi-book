@@ -27,8 +27,8 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="h-screen w-full bg-[var(--bg-paper)] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[var(--border-ink)] border-t-transparent rounded-full animate-spin"></div>
+      <div className="h-screen w-full bg-[var(--bg-app)] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-[#0047AB] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
