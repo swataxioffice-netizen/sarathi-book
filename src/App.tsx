@@ -22,6 +22,7 @@ function AppContent() {
   const { user, loading, signInWithGoogle } = useAuth();
 
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [invoiceQuotationToggle, setInvoiceQuotationToggle] = useState<'invoice' | 'quotation'>('invoice');
   const [trips, setTrips] = useState<Trip[]>(() => safeJSONParse<Trip[]>('namma-cab-trips', []));
   const [showLoginNudge, setShowLoginNudge] = useState(false);
 
@@ -51,7 +52,6 @@ function AppContent() {
 
   const handleSaveTrip = (trip: Trip) => {
     setTrips(prev => [trip, ...prev]);
-    setActiveTab('trips');
   };
 
   const renderContent = () => {
@@ -60,11 +60,38 @@ function AppContent() {
         return <Dashboard trips={trips} />;
       case 'trips':
         return (
-          <div className="space-y-8">
-            <TripForm onSaveTrip={handleSaveTrip} />
-            <History trips={trips} />
-            <div className="h-px bg-slate-200 mx-4" />
-            <QuotationForm />
+          <div className="space-y-2">
+            {/* Toggle between Invoice and Quotation */}
+            <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex gap-1">
+              <button
+                onClick={() => setInvoiceQuotationToggle('invoice')}
+                className={`flex-1 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${invoiceQuotationToggle === 'invoice'
+                  ? 'bg-[#0047AB] text-white shadow-md'
+                  : 'text-slate-400 hover:bg-slate-50'
+                  }`}
+              >
+                Invoice
+              </button>
+              <button
+                onClick={() => setInvoiceQuotationToggle('quotation')}
+                className={`flex-1 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${invoiceQuotationToggle === 'quotation'
+                  ? 'bg-[#0047AB] text-white shadow-md'
+                  : 'text-slate-400 hover:bg-slate-50'
+                  }`}
+              >
+                Quotation
+              </button>
+            </div>
+
+            {/* Show Invoice or Quotation based on toggle */}
+            {invoiceQuotationToggle === 'invoice' ? (
+              <div className="space-y-2">
+                <TripForm onSaveTrip={handleSaveTrip} />
+                <History trips={trips} />
+              </div>
+            ) : (
+              <QuotationForm />
+            )}
           </div>
         );
       case 'expenses':

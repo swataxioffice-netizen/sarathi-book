@@ -16,9 +16,9 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
     const profit = income - spending;
 
     return (
-        <div className="space-y-4 pb-24">
+        <div className="space-y-2 pb-24">
             {/* Professional Summary Dashboard - Compact */}
-            <div className="bg-[#0047AB] rounded-2xl p-5 text-white shadow-xl shadow-blue-900/20 relative overflow-hidden">
+            <div className="bg-[#0047AB] rounded-2xl p-4 text-white shadow-xl shadow-blue-900/20 relative overflow-hidden">
                 {/* Decorative Pattern */}
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-10 -mt-10"></div>
                 <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full -ml-10 -mb-10"></div>
@@ -35,7 +35,7 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                     </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-white/10 flex justify-between items-center relative z-10">
+                <div className="mt-4 pt-3 border-t border-white/10 flex justify-between items-center relative z-10">
                     <div className="text-left">
                         <p className="text-[9px] font-black uppercase tracking-widest opacity-60">PROFIT MARGIN</p>
                         <p className="text-sm font-black mt-0.5">{income > 0 ? Math.round((profit / income) * 100) : 0}%</p>
@@ -50,8 +50,8 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
             </div>
 
             {/* Split Record Blocks - Compact */}
-            <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+            <div className="grid grid-cols-2 gap-2">
+                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
                     <div className="flex items-center gap-2 mb-2">
                         <div className="p-1.5 bg-green-50 text-[#00965E] rounded-lg">
                             <TrendingUp size={14} />
@@ -66,7 +66,7 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                         </div>
                     </div>
                 </div>
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
                     <div className="flex items-center gap-2 mb-2">
                         <div className="p-1.5 bg-red-50 text-red-500 rounded-lg">
                             <Wallet size={14} />
