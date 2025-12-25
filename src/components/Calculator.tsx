@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
-import { Calculator as CalcIcon, MapPin, Calendar, Users, Car, Clock, CheckCircle2, MessageCircle, AlertCircle } from 'lucide-react';
+import { Calculator as CalcIcon, MapPin, Calendar, Users, Car, Clock, CheckCircle2, MessageCircle, AlertCircle, Hash } from 'lucide-react';
 
 type TripType = 'oneway' | 'roundtrip' | 'airport';
 
@@ -31,6 +31,7 @@ const Calculator: React.FC = () => {
     const [distance, setDistance] = useState<string>('');
     const [passengers, setPassengers] = useState<number>(4);
     const [selectedVehicle, setSelectedVehicle] = useState<string>('swift');
+    const [customRate, setCustomRate] = useState<number>(14);
     const [date, setDate] = useState('');
     const [days, setDays] = useState<string>('1');
     const [result, setResult] = useState<{
@@ -45,6 +46,15 @@ const Calculator: React.FC = () => {
         if (passengers > 7) setSelectedVehicle('tempo');
         else if (passengers > 4 && selectedVehicle !== 'innova' && selectedVehicle !== 'crysta') setSelectedVehicle('innova');
     }, [passengers]);
+
+    // Update rate when vehicle or trip type changes
+    useEffect(() => {
+        const vehicle = VEHICLES.find(v => v.id === selectedVehicle);
+        if (vehicle) {
+            const rate = (tripType === 'oneway' || tripType === 'airport') ? vehicle.dropRate : vehicle.roundRate;
+            setCustomRate(rate);
+        }
+    }, [selectedVehicle, tripType]);
 
     const calculateFare = () => {
         const inputDist = parseFloat(distance);
@@ -61,7 +71,7 @@ const Calculator: React.FC = () => {
             // DROP TRIP LOGIC (Per Tariff Chart & Invoice Logic)
             // Min Chargeable Distance: 130 KM
             const effectiveDist = Math.max(130, inputDist);
-            const rate = vehicle.dropRate;
+            const rate = customRate;
 
             // Driver Bata: ₹400 standard, ₹600 if > 400km
             const bata = inputDist > 400 ? 600 : 400;
@@ -79,10 +89,9 @@ const Calculator: React.FC = () => {
             const minKm = dayCount * 250;
             const chargeableKm = Math.max(actualRoundTripKm, minKm);
 
-            const rate = vehicle.roundRate;
+            const rate = customRate;
 
             // Driver Bata: ₹300 per day (Standard for Round Trip)
-            // Note: Chart mentions ₹600 if > 500km single day, but simple calc uses daily rate
             const bata = dayCount * 300;
 
             totalFare = (chargeableKm * rate) + bata;
@@ -112,6 +121,7 @@ const Calculator: React.FC = () => {
             `Route: ${pickup} to ${drop}%0A` +
             `Date: ${date}%0A` +
             `Distance: ${distance} km (${tripType === 'oneway' ? 'One way input' : 'One way input'})%0A` +
+            `Rate Applied: ₹${customRate}/km%0A` +
             `Est. Fare: ₹${result.fare}`;
 
         const phone = settings.driverPhone.replace(/[^0-9]/g, '');
@@ -183,15 +193,21 @@ const Calculator: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 uppercase ml-1 flex items-center gap-1.5"><Car size={10} /> Preferred Vehicle</label>
-                            <select value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="tn-input w-full bg-slate-50 border-slate-200">
-                                {VEHICLES.map(v => (
-                                    <option key={v.id} value={v.id}>
-                                        {v.name} ({tripType === 'roundtrip' ? `₹${v.roundRate}` : `₹${v.dropRate}`}/km)
-                                    </option>
-                                ))}
-                            </select>
+                        <div className="grid grid-cols-[2fr,1fr] gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase ml-1 flex items-center gap-1.5"><Car size={10} /> Preferred Vehicle</label>
+                                <select value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="tn-input w-full bg-slate-50 border-slate-200">
+                                    {VEHICLES.map(v => (
+                                        <option key={v.id} value={v.id}>
+                                            {v.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase ml-1 flex items-center gap-1.5"><Hash size={10} /> Rate/Km</label>
+                                <input type="number" value={customRate} onChange={e => setCustomRate(Number(e.target.value))} className="tn-input w-full bg-slate-50 border-slate-200 font-bold text-[#0047AB]" />
+                            </div>
                         </div>
 
                         {tripType === 'roundtrip' && (
