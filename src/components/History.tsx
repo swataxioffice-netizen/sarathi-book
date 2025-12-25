@@ -17,58 +17,60 @@ const History: React.FC<HistoryProps> = ({ trips }) => {
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-center items-center px-1 pb-2">
-                <h3 className="text-[13px] font-black text-slate-800 uppercase tracking-widest border-b-2 border-slate-100 pb-2 px-8">Saved Invoices</h3>
+            <div className="flex justify-center items-center px-1 pb-1">
+                <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-1.5 px-6">Saved Invoices</h3>
             </div>
-            <div className="flex justify-end -mt-10 mb-4 px-1">
-                <button
-                    onClick={() => setShowAll(!showAll)}
-                    className="text-[10px] font-black uppercase tracking-tight text-[#0047AB] flex items-center gap-1 group bg-blue-50 px-3 py-1.5 rounded-full"
-                >
-                    {showAll ? 'Show Recent' : 'View All'}
-                    <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
-                </button>
-            </div>
+            {trips.length > 5 && (
+                <div className="flex justify-end -mt-9 mb-3 px-1">
+                    <button
+                        onClick={() => setShowAll(!showAll)}
+                        className="text-[9px] font-black uppercase tracking-tight text-[#0047AB] flex items-center gap-1 group bg-blue-50 px-2 py-1 rounded-full border border-blue-100"
+                    >
+                        {showAll ? 'Show Recent' : 'View All'}
+                        <ChevronRight size={10} className="group-hover:translate-x-1 transition-transform" />
+                    </button>
+                </div>
+            )}
 
             {sortedTrips.length === 0 ? (
-                <div className="bg-white border border-slate-200 border-dashed rounded-xl py-12 flex flex-col items-center justify-center text-center">
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">No invoices recorded yet</p>
+                <div className="bg-white border border-slate-200 border-dashed rounded-xl py-8 flex flex-col items-center justify-center text-center">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No invoices recorded yet</p>
                 </div>
             ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                     {displayTrips.map((trip) => (
-                        <div key={trip.id} className="bg-white border border-slate-200 rounded-xl p-5 flex items-center justify-between shadow-sm relative overflow-hidden">
+                        <div key={trip.id} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-sm relative overflow-hidden">
                             {/* Blue Accent Line */}
                             <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0047AB]/20"></div>
 
-                            <div className="flex items-center gap-4 pl-1">
-                                <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg text-slate-400">
-                                    <FileText size={20} />
+                            <div className="flex items-center gap-3 pl-1">
+                                <div className="p-2 bg-slate-50 border border-slate-100 rounded-lg text-slate-400">
+                                    <FileText size={16} />
                                 </div>
                                 <div className="leading-tight">
-                                    <h4 className="text-sm font-black text-slate-900">{trip.customerName}</h4>
-                                    <div className="flex items-center gap-2 mt-1.5">
-                                        <span className="text-[10px] font-bold text-slate-400">
+                                    <h4 className="text-xs font-black text-slate-900">{trip.customerName}</h4>
+                                    <div className="flex items-center gap-1.5 mt-1">
+                                        <span className="text-[9px] font-bold text-slate-400">
                                             {new Date(trip.date).toLocaleDateString()}
                                         </span>
-                                        <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                                        <span className="text-[9px] font-black text-[#0047AB] uppercase">
+                                        <span className="w-0.5 h-0.5 rounded-full bg-slate-300"></span>
+                                        <span className="text-[8px] font-black text-[#0047AB] uppercase">
                                             {trip.mode}
                                         </span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-5">
+                            <div className="flex items-center gap-4">
                                 <div className="text-right">
-                                    <p className="text-lg font-black text-slate-900">₹{Math.round(trip.totalFare).toLocaleString()}</p>
+                                    <p className="text-sm font-black text-slate-900">₹{Math.round(trip.totalFare).toLocaleString()}</p>
                                 </div>
                                 <button
                                     onClick={() => shareReceipt(trip, { ...settings, vehicleNumber: currentVehicle?.number || 'N/A' })}
-                                    className="p-3 bg-white border border-slate-200 rounded-lg text-[#0047AB] hover:bg-slate-50 active:scale-95 transition-all flex items-center gap-2 group"
+                                    className="p-2 bg-white border border-slate-200 rounded-lg text-[#0047AB] hover:bg-slate-50 active:scale-95 transition-all flex items-center gap-1.5 group"
                                 >
-                                    <Share2 size={16} />
-                                    <span className="text-[9px] font-black uppercase tracking-widest">SHARE</span>
+                                    <Share2 size={14} />
+                                    <span className="text-[8px] font-black uppercase tracking-widest">PDF</span>
                                 </button>
                             </div>
                         </div>
