@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { loadGoogleMaps } from '../utils/googleMaps';
 import { Map } from 'lucide-react';
 
@@ -25,7 +25,6 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
 }) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-    const [isLoaded, setIsLoaded] = useState(false);
 
     useEffect(() => {
         const initAutocomplete = async () => {
@@ -57,7 +56,6 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                     }
                 });
 
-                setIsLoaded(true);
             } catch (error) {
                 console.error('Failed to initialize Places Autocomplete:', error);
             }

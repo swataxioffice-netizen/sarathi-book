@@ -62,7 +62,7 @@ const History: React.FC<HistoryProps> = ({ trips }) => {
                             </div>
 
                             <button
-                                onClick={() => shareReceipt(trip, settings)}
+                                onClick={() => shareReceipt(trip, { ...settings, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A' })}
                                 className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-[#0047AB] hover:text-white transition-colors"
                             >
                                 <Share2 size={14} />

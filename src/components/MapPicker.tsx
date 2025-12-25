@@ -121,7 +121,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
 
             // Reverse geocode to get address
             const geocoder = new google.maps.Geocoder();
-            geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+            geocoder.geocode({ location: { lat, lng } }, (results: google.maps.GeocoderResult[] | null, status: google.maps.GeocoderStatus) => {
                 if (status === 'OK' && results && results[0]) {
                     const address = results[0].formatted_address;
 
@@ -201,7 +201,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
                                 destination: { lat: dropLocation.lat, lng: dropLocation.lng },
                                 travelMode: google.maps.TravelMode.DRIVING,
                             },
-                            (result, status) => {
+                            (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
                                 if (status === 'OK' && result) {
                                     directionsRenderer.setDirections(result);
                                 }

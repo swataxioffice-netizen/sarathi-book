@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
-import { MapPin, Users, Car, Clock, CheckCircle2, MessageCircle, AlertCircle, UserCheck, Truck, Hash, Map } from 'lucide-react';
+import { MapPin, Users, Car, Clock, CheckCircle2, MessageCircle, AlertCircle, UserCheck, Truck, Hash } from 'lucide-react';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
 import { calculateDistance } from '../utils/googleMaps';
@@ -38,7 +38,6 @@ const CabCalculator: React.FC = () => {
     const [result, setResult] = useState<any>(null);
     const [calculatingDistance, setCalculatingDistance] = useState(false);
     const [showMap, setShowMap] = useState(false);
-    const [mapMode, setMapMode] = useState<'pickup' | 'drop' | null>(null);
 
     const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number) => {
         setPickup(pickupAddr);
@@ -46,10 +45,7 @@ const CabCalculator: React.FC = () => {
         setDistance(dist.toString());
     };
 
-    const openMapForField = (field: 'pickup' | 'drop') => {
-        setMapMode(field);
-        setShowMap(true);
-    };
+
 
     // Auto-calculate distance when both locations are selected via autocomplete
     useEffect(() => {
@@ -212,7 +208,7 @@ const CabCalculator: React.FC = () => {
                             setPickup(place.address);
                             setPickupCoords({ lat: place.lat, lng: place.lng });
                         }}
-                        onMapClick={() => openMapForField('pickup')}
+                        onMapClick={() => setShowMap(true)}
                         placeholder="Start typing..."
                     />
                     <PlacesAutocomplete
@@ -224,7 +220,7 @@ const CabCalculator: React.FC = () => {
                             setDrop(place.address);
                             setDropCoords({ lat: place.lat, lng: place.lng });
                         }}
-                        onMapClick={() => openMapForField('drop')}
+                        onMapClick={() => setShowMap(true)}
                         placeholder="Start typing..."
                     />
                 </div>

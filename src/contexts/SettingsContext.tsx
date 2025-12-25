@@ -24,6 +24,7 @@ interface Settings {
     vehicles: Vehicle[];
     currentVehicleId: string;
     theme: 'light' | 'dark';
+    websiteUrl?: string;
 }
 
 interface SettingsContextType {
@@ -189,6 +190,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             vehicles: [{ id: 'v1', number: 'TN-00-AA-0000', model: 'Your Vehicle' }],
             currentVehicleId: 'v1',
             theme: 'light',
+            websiteUrl: '',
         };
     });
 

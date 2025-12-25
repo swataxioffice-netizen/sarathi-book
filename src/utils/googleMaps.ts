@@ -15,7 +15,7 @@ export const initGoogleMaps = (): Loader => {
         googleMapsLoader = new Loader({
             apiKey: API_KEY,
             version: 'weekly',
-            libraries: ['places', 'geometry', 'directions']
+            libraries: ['places', 'geometry']
         });
         console.log('[GoogleMaps] Loader created successfully');
     }
@@ -57,7 +57,7 @@ export const calculateDistance = async (
                     travelMode: google.maps.TravelMode.DRIVING,
                     unitSystem: google.maps.UnitSystem.METRIC,
                 },
-                (response, status) => {
+                (response: google.maps.DistanceMatrixResponse | null, status: google.maps.DistanceMatrixStatus) => {
                     if (status === 'OK' && response) {
                         const result = response.rows[0]?.elements[0];
                         if (result && result.status === 'OK') {
@@ -100,7 +100,7 @@ export const getDirections = async (
                     destination,
                     travelMode: google.maps.TravelMode.DRIVING,
                 },
-                (result, status) => {
+                (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
                     if (status === 'OK' && result) {
                         resolve(result);
                     } else {
@@ -124,7 +124,7 @@ export const geocodeAddress = async (address: string): Promise<google.maps.LatLn
         const geocoder = new google.maps.Geocoder();
 
         return new Promise((resolve, reject) => {
-            geocoder.geocode({ address }, (results, status) => {
+            geocoder.geocode({ address }, (results: google.maps.GeocoderResult[] | null, status: google.maps.GeocoderStatus) => {
                 if (status === 'OK' && results && results[0]) {
                     const location = results[0].geometry.location;
                     resolve({
