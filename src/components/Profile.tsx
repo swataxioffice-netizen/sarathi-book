@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { User as UserIcon, Car, Trash2, ShieldCheck, ChevronRight, Globe, Search, Mail, Phone, MapPin, Camera, LogOut, LogIn, FileText } from 'lucide-react';
+import { User as UserIcon, Car, Trash2, ShieldCheck, Globe, Phone, MapPin, Camera, LogOut, LogIn } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
 import DocumentVault from './DocumentVault';
 
@@ -39,7 +39,7 @@ const Profile: React.FC = () => {
     const operatorId = user ? `OP-${user.id.slice(0, 6).toUpperCase()}-${new Date().getFullYear()}` : 'GUEST-DRIVER';
 
     return (
-        <div className="space-y-6 pb-24">
+        <div key={user?.id || 'guest'} className="space-y-6 pb-24">
 
             {/* 1. Driver Card & Authentication */}
             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xl relative overflow-hidden">
@@ -49,9 +49,15 @@ const Profile: React.FC = () => {
                     {/* Profile Photo */}
                     <div className="relative group">
                         <div className="w-24 h-24 rounded-full border-4 border-white shadow-lg overflow-hidden bg-slate-100 flex items-center justify-center">
-                            {customPhotoUrl || user?.user_metadata?.avatar_url ? (
-                                <img src={customPhotoUrl || user?.user_metadata?.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-                            ) : (
+                            {(customPhotoUrl || user?.user_metadata?.avatar_url) ? (
+                                <img
+                                    src={customPhotoUrl || user?.user_metadata?.avatar_url}
+                                    alt="Profile"
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                />
+                            ) : null}
+                            {(!customPhotoUrl && !user?.user_metadata?.avatar_url) && (
                                 <UserIcon size={40} className="text-slate-300" />
                             )}
                         </div>
@@ -91,7 +97,7 @@ const Profile: React.FC = () => {
                                 onClick={signOut}
                                 className="w-full py-3 bg-red-50 text-red-500 font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-red-100 transition-all flex items-center justify-center gap-2"
                             >
-                                <LogOut size={16} /> Sign Out
+                                <LogOut size={16} /> Sign Out {user.email?.split('@')[0]}
                             </button>
                         ) : (
                             <button
