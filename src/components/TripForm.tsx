@@ -3,7 +3,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { calculateFare } from '../utils/fare';
 import type { Trip } from '../utils/fare';
 import { shareReceipt } from '../utils/pdf';
-import { Clock, Navigation, Save, Share2, ChevronDown, ChevronUp, MapPin, Hash, FileText } from 'lucide-react';
+import { Clock, Navigation, Save, Share2, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
 
 interface TripFormProps {
