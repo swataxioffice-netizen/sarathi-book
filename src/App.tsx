@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { safeJSONParse } from './utils/storage';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, X } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Header from './components/Header';
 import TripForm from './components/TripForm';
@@ -18,10 +18,22 @@ import QuotationForm from './components/QuotationForm';
 import SideNav from './components/SideNav';
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  /* Guest Roaming Logic */
+  const { user, loading, signInWithGoogle } = useAuth();
   const { settings } = useSettings();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [trips, setTrips] = useState<Trip[]>(() => safeJSONParse<Trip[]>('namma-cab-trips', []));
+  const [showLoginNudge, setShowLoginNudge] = useState(false);
+
+  // Trigger login nudge after 2 minutes of roaming
+  useEffect(() => {
+    if (!user) {
+      const timer = setTimeout(() => setShowLoginNudge(true), 120000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowLoginNudge(false);
+    }
+  }, [user]);
 
   useEffect(() => {
     localStorage.setItem('namma-cab-trips', JSON.stringify(trips));
@@ -43,39 +55,9 @@ function AppContent() {
   };
 
   const renderContent = () => {
-    // Public Access
-    if (activeTab === 'dashboard') {
-      return <Dashboard trips={trips} />;
-    }
-
-    // Auth Gate
-    if (!user) {
-      return <Login />;
-    }
-
-    // Profile Completion Gate
-    const isProfileIncomplete = settings.companyName === 'SWA TAXI SERVICES';
-    if (['trips', 'expenses', 'docs'].includes(activeTab) && isProfileIncomplete) {
-      return (
-        <div className="space-y-6">
-          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 text-amber-700 rounded-lg">
-                <ShieldCheck size={20} />
-              </div>
-              <div>
-                <p className="font-black text-amber-900 uppercase text-xs tracking-wider">Setup Required</p>
-                <p className="text-[11px] font-bold text-amber-700/80 uppercase tracking-wide">Please complete your business profile to unlock this feature.</p>
-              </div>
-            </div>
-          </div>
-          {/* Render Profile for them to fix it */}
-          <Profile />
-        </div>
-      );
-    }
-
     switch (activeTab) {
+      case 'dashboard':
+        return <Dashboard trips={trips} />;
       case 'trips':
         return (
           <div className="space-y-8">
@@ -131,6 +113,41 @@ function AppContent() {
         </main>
         <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
       </div>
+
+      {/* Guest Login Nudge */}
+      {showLoginNudge && !user && (
+        <div className="fixed bottom-24 right-4 left-4 md:left-auto md:right-8 md:bottom-8 z-50 animate-slide-up">
+          <div className="bg-[#1e293b] text-white p-5 rounded-2xl shadow-2xl border border-slate-700 max-w-sm relative overflow-hidden">
+            {/* Gloss Effect */}
+            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/20 blur-2xl rounded-full -mr-10 -mt-10"></div>
+
+            <div className="relative z-10">
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="font-black text-lg">Enjoying Sarathi?</h3>
+                <button onClick={() => setShowLoginNudge(false)} className="text-slate-400 hover:text-white transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <p className="text-sm text-slate-300 font-medium mb-4">
+                Sign in to sync your trips, expenses, and invoices across all your devices securely.
+              </p>
+              <button
+                onClick={() => signInWithGoogle()}
+                className="w-full bg-white text-[#0f172a] font-black py-3 rounded-xl uppercase tracking-wider text-xs hover:bg-blue-50 transition-colors"
+              >
+                Connect Google Account
+              </button>
+              <button
+                onClick={() => setShowLoginNudge(false)}
+                className="w-full mt-3 text-slate-400 font-bold text-[10px] uppercase tracking-widest hover:text-white"
+                style={{ fontFamily: 'Korkai' }}
+              >
+                Continue as Guest
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
