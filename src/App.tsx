@@ -114,6 +114,7 @@ function AppContent() {
           <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10">
             <h2 className="text-xl font-bold text-slate-800 capitalize tracking-wide">{activeTab === 'trips' ? 'Invoices & Trips' : activeTab}</h2>
             <div className="flex items-center gap-4">
+              <Notifications />
               <div className="text-right hidden lg:block">
                 <p className="text-sm font-bold text-slate-900">{user?.user_metadata?.full_name || 'Guest User'}</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Driver Account</p>
@@ -180,14 +181,18 @@ function AppContent() {
 }
 
 import ReloadPrompt from './components/ReloadPrompt';
+import { NotificationProvider } from './contexts/NotificationContext';
+import Notifications from './components/Notifications';
 
 function App() {
   return (
     <AuthProvider>
-      <SettingsProvider>
-        <AppContent />
-        <ReloadPrompt />
-      </SettingsProvider>
+      <NotificationProvider>
+        <SettingsProvider>
+          <AppContent />
+          <ReloadPrompt />
+        </SettingsProvider>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

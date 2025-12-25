@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { safeJSONParse } from '../utils/storage';
 
-type Language = 'en' | 'ta';
+type Language = 'en';
 
 interface Vehicle {
     id: string;
@@ -20,11 +20,15 @@ interface Settings {
     companyAddress: string;
     driverPhone: string;
     gstin: string;
-    pan: string;
     vehicles: Vehicle[];
     currentVehicleId: string;
     theme: 'light' | 'dark';
     websiteUrl?: string;
+    bankName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
+    branchName?: string;
+    holderName?: string;
 }
 
 interface SettingsContextType {
@@ -65,7 +69,6 @@ const translations = {
         companyName: 'Company Name',
         companyAddress: 'Address',
         gstin: 'GSTIN (Optional)',
-        pan: 'PAN Number',
         vehicleNumber: 'Vehicle Number',
         phone: 'Phone Number',
         addExpense: 'Add Expense',
@@ -95,67 +98,6 @@ const translations = {
         packageName: 'Package Name',
         numPersons: 'No. of Persons',
         packageRate: 'Package Rate'
-    },
-    ta: {
-        title: 'ஸ்வா டாக்ஸி ஆபீஸ்',
-        dashboard: 'டாஷ்போர்டு',
-        trips: 'இன்வாய்ஸ்கள்',
-        expenses: 'செலவுகள்',
-        docs: 'ஆவணங்கள்',
-        profile: 'சுயவிவரம்',
-        partner: 'பார்ட்னர்',
-        startTrip: 'பயணத்தைத் தொடங்கு',
-        endTrip: 'பயணத்தை முடி',
-        customer: 'வாடிக்கையாளர் பெயர்',
-        startKm: 'ஆரம்ப கி.மீ',
-        endKm: 'முடிவு கி.மீ',
-        startTime: 'தொடங்கும் நேரம்',
-        endTime: 'முடியும் நேரம்',
-        toll: 'டோல்',
-        parking: 'பார்க்கிங்',
-        nightBata: 'டிரைவர் பட்டா',
-        calculate: 'கட்டணம் கணக்கிடு',
-        saveTrip: 'இன்வாய்ஸ் சேமி',
-        total: 'மொத்தம்',
-        receipt: 'ரசீது',
-        share: 'இன்வாய்ஸ் பகிர்',
-        dailySummary: 'தினசரி சுருக்கம்',
-        dailyProfit: 'தினசரி லாபம்',
-        income: 'மொத்த வருமானம்',
-        spending: 'மொத்த செலவு',
-        gst: 'ஜிஎஸ்டி (5%)',
-        companyName: 'நிறுவனம் பெயர்',
-        companyAddress: 'முகவரி',
-        gstin: 'ஜிஎஸ்டி எண்',
-        pan: 'பான் எண்',
-        vehicleNumber: 'வண்டி எண்',
-        phone: 'தொலைபேசி எண்',
-        addExpense: 'செலவைச் சேர்',
-        fuel: 'எரிபொருள்',
-        maintenance: 'பராமரிப்பு',
-        food: 'உணவு',
-        other: 'மற்றவை',
-        docVault: 'ஆவணக் காப்பகம்',
-        expiring: 'நாட்கள் மீதமுள்ளன',
-        qrTitle: 'புக்கிங் என்ஜின்',
-        qrSub: 'புக்கிங் போர்டல் மூலம் நிர்வகிக்கவும்',
-        voiceNotes: 'குரல் குறிப்பு',
-        outstation: 'இருவழி பயணம்',
-        hourly: 'மணிநேர வாடகை',
-        distance: 'உள்ளூர் பயணம்',
-        drop: 'ஒருவழி பயணம்',
-        addVehicle: 'வண்டியைச் சேர்',
-        vehicles: 'எனது வண்டிகள்',
-        selectVehicle: 'வண்டியைத் தேர்ந்தெடு',
-        carModel: 'வண்டி வகை (எ.கா: ஸ்விஃப்ட்)',
-        waitingHours: 'காத்திருப்பு நேரம் (மணி)',
-        hillStation: 'மலைப்பயணம் / ஹில்ஸ்',
-        petCharge: 'செல்லப்பிராணிகள் / பெட்',
-        billingAddress: 'பில்லிங் முகவரி (தேவைப்பட்டால்)',
-        package: 'சுற்றுலா பேக்கேஜ்',
-        packageName: 'பேக்கேஜ் பெயர்',
-        numPersons: 'நபர்களின் எண்ணிக்கை',
-        packageRate: 'பேக்கேஜ் விலை'
     }
 };
 
@@ -173,10 +115,12 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             if (!parsed.theme) {
                 parsed.theme = 'light';
             }
+            // Force English to fix corrupted state
+            parsed.language = 'en';
             return parsed;
         }
         return {
-            language: 'ta',
+            language: 'en',
             gstEnabled: false,
             baseFare: 150,
             ratePerKm: 18,
@@ -186,11 +130,15 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             companyAddress: '',
             driverPhone: '',
             gstin: '',
-            pan: '',
-            vehicles: [{ id: 'v1', number: 'TN-00-AA-0000', model: 'Your Vehicle' }],
-            currentVehicleId: 'v1',
+            vehicles: [],
+            currentVehicleId: '',
             theme: 'light',
             websiteUrl: '',
+            bankName: '',
+            accountNumber: '',
+            ifscCode: '',
+            branchName: '',
+            holderName: ''
         };
     });
 
@@ -210,7 +158,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const currentVehicle = settings.vehicles.find(v => v.id === settings.currentVehicleId);
 
     const t = (key: string) => {
-        return (translations[settings.language] as any)[key] || (translations['en'] as any)[key] || key;
+        const langData = (translations as any)[settings.language];
+        if (!langData) return (translations['en'] as any)[key] || key;
+        return langData[key] || (translations['en'] as any)[key] || key;
     };
 
     return (

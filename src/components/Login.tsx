@@ -2,6 +2,7 @@ import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Briefcase, Smartphone, ShieldCheck, FileText, ArrowRight } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
+import GoogleSignInButton from './GoogleSignInButton';
 
 const Login: React.FC = () => {
     const { signInWithGoogle } = useAuth();
@@ -54,14 +55,7 @@ const Login: React.FC = () => {
                 </div>
 
                 <div className="space-y-6 md:space-y-8 text-center pb-2 md:pb-4">
-                    <button
-                        onClick={signInWithGoogle}
-                        className="w-full bg-[#0047AB] text-white font-black py-4 md:py-6 rounded-2xl md:rounded-3xl flex items-center justify-center gap-3 md:gap-4 active:scale-95 transition-all uppercase tracking-widest text-[11px] shadow-xl shadow-blue-900/20"
-                    >
-                        <img src="https://www.google.com/favicon.ico" alt="G" className="w-5 h-5 bg-white rounded-lg p-0.5" />
-                        OPEN WORKPLACE
-                        <ArrowRight size={18} />
-                    </button>
+                    <GoogleSignInButton size="large" className="w-full shadow-lg" />
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
                         OFFICIAL SOFTWARE FOR<br />THE TRANSPORT GUILD
                     </p>

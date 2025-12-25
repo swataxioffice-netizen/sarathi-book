@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { User as UserIcon, Trash2, Camera, LogOut, LogIn, Globe, Plus } from 'lucide-react';
+import { User as UserIcon, Trash2, Camera, LogOut, LogIn, Globe, Plus, Info, Landmark, CheckCircle, Circle, AlertCircle } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
 import DocumentVault from './DocumentVault';
+import GoogleSignInButton from './GoogleSignInButton';
 
 const Profile: React.FC = () => {
     const { user, signInWithGoogle, signOut } = useAuth();
@@ -12,6 +13,9 @@ const Profile: React.FC = () => {
     const [newVehicleModel, setNewVehicleModel] = useState('');
     const [isEditingPhoto, setIsEditingPhoto] = useState(false);
     const [customPhotoUrl, setCustomPhotoUrl] = useState('');
+
+    // Stats for Completion
+    const [docStats, setDocStats] = useState({ hasFullVehicle: false, hasFullDriver: false });
 
     const addVehicle = () => {
         if (!newVehicleNumber || !newVehicleModel) return;
@@ -31,22 +35,65 @@ const Profile: React.FC = () => {
         const file = e.target.files?.[0];
         if (file) {
             const url = URL.createObjectURL(file);
-            setCustomPhotoUrl(url); // Locally preview. In real app, upload to storage.
+            setCustomPhotoUrl(url);
             setIsEditingPhoto(false);
         }
     };
 
     const operatorId = user ? `OP-${user.id.slice(0, 6).toUpperCase()}-${new Date().getFullYear()}` : 'GUEST-DRIVER';
 
+    // -- Completion Logic --
+    const getCompletion = () => {
+        let score = 0;
+        const totalSteps = 5;
+
+        // 1. Business Profile
+        if (settings.companyName && settings.companyAddress && settings.driverPhone) score++;
+
+        // 2. Legal & Banking (Bank Details)
+        if (settings.bankName && settings.accountNumber && settings.ifscCode && settings.holderName) score++;
+
+        // 3. Fleet Manager (At least 1 vehicle)
+        if (settings.vehicles.length > 0) score++;
+
+        // 4. Vehicle Docs
+        if (docStats.hasFullVehicle) score++;
+
+        // 5. Driver Docs
+        if (docStats.hasFullDriver) score++;
+
+        return Math.min(100, Math.round((score / totalSteps) * 100));
+    };
+
+    const completion = getCompletion();
+
     return (
         <div key={user?.id || 'guest'} className="space-y-4 pb-24">
 
-            {/* 1. Driver Card & Authentication */}
+            {/* Profile Header Card */}
             <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#0047AB]/5 rounded-full -mr-16 -mt-16"></div>
                 <div className="relative z-10 flex flex-col items-center text-center">
 
-                    {/* Profile Photo */}
+                    {/* Completion Bar */}
+                    <div className="w-full mb-4">
+                        <div className="flex justify-between items-end mb-1 px-1">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Profile Completion</span>
+                            <span className={`text-xs font-black ${completion === 100 ? 'text-green-500' : 'text-[#0047AB]'}`}>{completion}%</span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                                className={`h-full rounded-full transition-all duration-1000 ease-out ${completion === 100 ? 'bg-green-500' : 'bg-[#0047AB]'}`}
+                                style={{ width: `${completion}%` }}
+                            ></div>
+                        </div>
+                        {completion < 100 && (
+                            <p className="text-[9px] text-slate-400 mt-1 text-left font-bold">
+                                Finish your profile to unlock full potential!
+                            </p>
+                        )}
+                    </div>
+
                     <div className="relative group">
                         <div className="w-20 h-20 rounded-full border-4 border-white shadow-md overflow-hidden bg-slate-50 flex items-center justify-center">
                             {(customPhotoUrl || user?.user_metadata?.avatar_url) ? (
@@ -85,13 +132,13 @@ const Profile: React.FC = () => {
                         {user?.user_metadata?.full_name || 'Guest Driver'}
                     </h2>
 
-                    <div className="mt-1 px-3 py-1 bg-slate-50 rounded-full border border-slate-100">
+                    <div className="mt-1 px-3 py-1 bg-slate-50 rounded-full border border-slate-100 mb-3">
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                             ID: <span className="text-[#0047AB]">{operatorId}</span>
                         </p>
                     </div>
 
-                    <div className="mt-4 w-full px-2">
+                    <div className="w-full px-2">
                         {user ? (
                             <button
                                 onClick={signOut}
@@ -100,20 +147,16 @@ const Profile: React.FC = () => {
                                 <LogOut size={14} /> Sign Out {user.email?.split('@')[0]}
                             </button>
                         ) : (
-                            <button
-                                onClick={signInWithGoogle}
-                                className="w-full py-2.5 bg-[#0047AB] text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-900/10"
-                            >
-                                <LogIn size={14} /> Sign In with Google
-                            </button>
+                            <GoogleSignInButton className="w-full shadow-md" />
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* 2. Business Details */}
+            {/* Business Profile */}
             <div className="space-y-2">
                 <div className="flex items-center gap-2 px-1">
+                    {settings.companyName && settings.companyAddress && settings.driverPhone ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
                     <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Business Profile</h3>
                 </div>
 
@@ -140,7 +183,7 @@ const Profile: React.FC = () => {
                             />
                         </div>
                         <div>
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Address / Location</label>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Address <span className="text-red-500">*</span></label>
                             <input
                                 type="text"
                                 value={settings.companyAddress}
@@ -153,13 +196,15 @@ const Profile: React.FC = () => {
                 </div>
             </div>
 
-            {/* 3. GST & Bank */}
+            {/* Legal & Banking */}
             <div className="space-y-2">
                 <div className="flex items-center gap-2 px-1">
+                    {settings.bankName && settings.accountNumber && settings.ifscCode ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
                     <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-green-500 underline-offset-4">Legal & Banking</h3>
                 </div>
 
                 <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
+                    {/* GST Toggle */}
                     <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl border border-slate-100">
                         <span className="text-[10px] font-black text-slate-600 uppercase tracking-wide">Enable GST Invoice</span>
                         <div
@@ -171,7 +216,7 @@ const Profile: React.FC = () => {
                     </div>
 
                     {settings.gstEnabled && (
-                        <div className="space-y-2 animate-fade-in">
+                        <div className="space-y-2 animate-fade-in pl-1">
                             <div>
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">GST Number</label>
                                 <input
@@ -182,29 +227,68 @@ const Profile: React.FC = () => {
                                     placeholder="22AAAAA0000A1Z5"
                                     maxLength={15}
                                 />
-                                {settings.gstin && !validateGSTIN(settings.gstin) && (
-                                    <p className="text-[8px] text-red-500 font-bold mt-1 ml-1">Invalid GST Format</p>
-                                )}
-                            </div>
-                            <div>
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">PAN Number</label>
-                                <input
-                                    type="text"
-                                    value={settings.pan}
-                                    onChange={(_) => updateSettings({ pan: _.target.value.toUpperCase() })}
-                                    className="tn-input h-10 text-xs font-bold"
-                                    placeholder="ABCDE1234F"
-                                    maxLength={10}
-                                />
                             </div>
                         </div>
                     )}
+
+                    {/* Bank Details */}
+                    <div className="pt-2 border-t border-slate-100 space-y-2">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Landmark size={14} className="text-slate-400" />
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Bank Details</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Account Name</label>
+                                <input
+                                    type="text"
+                                    value={settings.holderName || ''}
+                                    onChange={(_) => updateSettings({ holderName: _.target.value })}
+                                    className="tn-input h-9 text-xs font-bold"
+                                    placeholder="Name on Passbook"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Bank Name</label>
+                                <input
+                                    type="text"
+                                    value={settings.bankName || ''}
+                                    onChange={(_) => updateSettings({ bankName: _.target.value })}
+                                    className="tn-input h-9 text-xs font-bold"
+                                    placeholder="e.g. SBI"
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Account No.</label>
+                                <input
+                                    type="text"
+                                    value={settings.accountNumber || ''}
+                                    onChange={(_) => updateSettings({ accountNumber: _.target.value })}
+                                    className="tn-input h-9 text-xs font-bold"
+                                    placeholder="XXXX XXXX"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">IFSC Code</label>
+                                <input
+                                    type="text"
+                                    value={settings.ifscCode || ''}
+                                    onChange={(_) => updateSettings({ ifscCode: _.target.value.toUpperCase() })}
+                                    className="tn-input h-9 text-xs font-bold uppercase"
+                                    placeholder="SBIN000...."
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* 4. Fleet Management */}
+            {/* Fleet Management */}
             <div className="space-y-2">
                 <div className="flex items-center gap-2 px-1">
+                    {settings.vehicles.length > 0 ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
                     <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-purple-500 underline-offset-4">Fleet Manager</h3>
                 </div>
 
@@ -292,7 +376,32 @@ const Profile: React.FC = () => {
             )}
 
             {/* 6. Documents */}
-            <DocumentVault />
+            <div className="space-y-2 pt-2">
+                <div className="flex items-center gap-2 px-1 mb-2">
+                    {docStats.hasFullVehicle && docStats.hasFullDriver ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
+                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Documents Status</h3>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className={`p-3 rounded-xl border ${docStats.hasFullVehicle ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'} flex items-center gap-3`}>
+                        {docStats.hasFullVehicle ? <CheckCircle size={16} className="text-green-600" /> : <AlertCircle size={16} className="text-slate-400" />}
+                        <div>
+                            <p className="text-[10px] font-black uppercase text-slate-700">Vehicle Docs</p>
+                            <p className="text-[9px] font-bold text-slate-500">{docStats.hasFullVehicle ? 'Complete' : 'Pending Uploads'}</p>
+                        </div>
+                    </div>
+                    <div className={`p-3 rounded-xl border ${docStats.hasFullDriver ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'} flex items-center gap-3`}>
+                        {docStats.hasFullDriver ? <CheckCircle size={16} className="text-green-600" /> : <AlertCircle size={16} className="text-slate-400" />}
+                        <div>
+                            <p className="text-[10px] font-black uppercase text-slate-700">Driver Docs</p>
+                            <p className="text-[9px] font-bold text-slate-500">{docStats.hasFullDriver ? 'Complete' : 'Pending Uploads'}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <DocumentVault onStatsUpdate={setDocStats} />
+            </div>
+
         </div>
     );
 };

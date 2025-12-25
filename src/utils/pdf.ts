@@ -7,7 +7,6 @@ export interface PDFSettings {
     companyAddress: string;
     driverPhone: string;
     gstin: string;
-    pan: string;
     vehicleNumber: string;
     gstEnabled: boolean;
 }
@@ -57,9 +56,6 @@ export const generateReceiptPDF = (trip: Trip, settings: PDFSettings, isQuotatio
     doc.text(`Phone: ${driverPhone}`, margin, 38);
     if (gstin) {
         doc.text(`GSTIN: ${gstin}`, 80, 38);
-    }
-    if (settings?.pan) {
-        doc.text(`PAN: ${settings.pan}`, 145, 38);
     }
 
     // --- ZONE 2: INVOICE INFO ---

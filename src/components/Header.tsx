@@ -1,4 +1,5 @@
 import React from 'react';
+import Notifications from './Notifications';
 
 const Header: React.FC = () => {
 
@@ -22,6 +23,7 @@ const Header: React.FC = () => {
                         </p>
                     </div>
                 </div>
+                <Notifications />
             </div>
         </header>
     );
