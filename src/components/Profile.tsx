@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { User as UserIcon, Trash2, Camera, LogOut, LogIn, Globe, Plus, Info, Landmark, CheckCircle, Circle, AlertCircle } from 'lucide-react';
+import { User as UserIcon, Trash2, Camera, LogOut, Globe, Plus, Landmark, CheckCircle, Circle, AlertCircle } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
 import DocumentVault from './DocumentVault';
 import GoogleSignInButton from './GoogleSignInButton';
 
 const Profile: React.FC = () => {
-    const { user, signInWithGoogle, signOut } = useAuth();
+    const { user, signOut } = useAuth();
     const { settings, updateSettings } = useSettings();
     const [newVehicleNumber, setNewVehicleNumber] = useState('');
     const [newVehicleModel, setNewVehicleModel] = useState('');

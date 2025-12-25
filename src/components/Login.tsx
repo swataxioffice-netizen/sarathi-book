@@ -1,11 +1,9 @@
 import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { Briefcase, Smartphone, ShieldCheck, FileText, ArrowRight } from 'lucide-react';
+import { Briefcase, Smartphone, ShieldCheck, FileText } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import GoogleSignInButton from './GoogleSignInButton';
 
 const Login: React.FC = () => {
-    const { signInWithGoogle } = useAuth();
     const { t } = useSettings();
 
     return (
