@@ -7,18 +7,20 @@ type TripType = 'oneway' | 'roundtrip' | 'airport';
 interface Vehicle {
     id: string;
     name: string;
-    rate: number;
+    dropRate: number;
+    roundRate: number;
     seats: number;
     type: 'Sedan' | 'SUV' | 'Van';
     image?: string;
 }
 
+// Rates as per Tariff Chart
 const VEHICLES: Vehicle[] = [
-    { id: 'swift', name: 'Swift Dzire', rate: 11, seats: 4, type: 'Sedan' },
-    { id: 'etios', name: 'Toyota Etios', rate: 12, seats: 4, type: 'Sedan' },
-    { id: 'innova', name: 'Innova', rate: 15, seats: 7, type: 'SUV' },
-    { id: 'crysta', name: 'Innova Crysta', rate: 18, seats: 7, type: 'SUV' },
-    { id: 'tempo', name: 'Tempo Traveller', rate: 21, seats: 12, type: 'Van' }
+    { id: 'swift', name: 'Swift Dzire', dropRate: 14, roundRate: 13, seats: 4, type: 'Sedan' },
+    { id: 'etios', name: 'Toyota Etios', dropRate: 14, roundRate: 13, seats: 4, type: 'Sedan' },
+    { id: 'innova', name: 'Innova', dropRate: 19, roundRate: 18, seats: 7, type: 'SUV' },
+    { id: 'crysta', name: 'Innova Crysta', dropRate: 22, roundRate: 20, seats: 7, type: 'SUV' }, // Assumed slight premium
+    { id: 'tempo', name: 'Tempo Traveller', dropRate: 28, roundRate: 28, seats: 12, type: 'Van' }
 ];
 
 const Calculator: React.FC = () => {
@@ -45,29 +47,48 @@ const Calculator: React.FC = () => {
     }, [passengers]);
 
     const calculateFare = () => {
-        const dist = parseFloat(distance);
+        const inputDist = parseFloat(distance);
         const dayCount = parseInt(days) || 1;
         const vehicle = VEHICLES.find(v => v.id === selectedVehicle);
 
-        if (!dist || !vehicle) return;
+        if (!inputDist || !vehicle) return;
 
         let totalFare = 0;
-        let totalDist = dist;
+        let totalDist = 0;
         let details = '';
 
         if (tripType === 'oneway' || tripType === 'airport') {
-            totalFare = dist * vehicle.rate;
-            details = `Base Fare: ₹${vehicle.rate}/km × ${dist} km`;
+            // DROP TRIP LOGIC (Per Tariff Chart & Invoice Logic)
+            // Min Chargeable Distance: 130 KM
+            const effectiveDist = Math.max(130, inputDist);
+            const rate = vehicle.dropRate;
+
+            // Driver Bata: ₹400 standard, ₹600 if > 400km
+            const bata = inputDist > 400 ? 600 : 400;
+
+            totalFare = (effectiveDist * rate) + bata;
+            totalDist = effectiveDist;
+
+            details = `Base Rate: ₹${rate}/km\nMin. Km: 130 | Actual: ${inputDist} | Charged: ${effectiveDist}\nDriver Bata: ₹${bata}`;
         } else {
-            // Round Trip Logic
-            const actualRoundTripKm = dist * 2;
+            // ROUND TRIP LOGIC
+            // Distance: Input is One Way, so Actual = Input * 2
+            const actualRoundTripKm = inputDist * 2;
+
+            // Min Chargeable: 250 KM per Day
             const minKm = dayCount * 250;
             const chargeableKm = Math.max(actualRoundTripKm, minKm);
-            const driverBata = dayCount * 300;
 
-            totalFare = (chargeableKm * vehicle.rate) + driverBata;
-            totalDist = actualRoundTripKm;
-            details = `Min. Km: ${minKm} | Actual: ${actualRoundTripKm} | Chargeable: ${chargeableKm}\nBata: ₹300 × ${dayCount} days`;
+            const rate = vehicle.roundRate;
+
+            // Driver Bata: ₹300 per day (Standard for Round Trip)
+            // Note: Chart mentions ₹600 if > 500km single day, but simple calc uses daily rate
+            const bata = dayCount * 300;
+
+            totalFare = (chargeableKm * rate) + bata;
+            totalDist = chargeableKm; // Showing chargeable distance as primary
+
+            details = `Base Rate: ₹${rate}/km\nMin. Km: ${minKm} (${dayCount} days × 250)\nActual: ${actualRoundTripKm} | Charged: ${chargeableKm}\nDriver Bata: ₹300 × ${dayCount} = ₹${bata}`;
         }
 
         // Round to nearest 10
@@ -76,7 +97,7 @@ const Calculator: React.FC = () => {
         setResult({
             fare: totalFare,
             distance: totalDist,
-            duration: tripType === 'roundtrip' ? `${dayCount} Days` : `${(dist / 40).toFixed(1)} hrs approx`,
+            duration: tripType === 'roundtrip' ? `${dayCount} Days` : `${(inputDist / 50).toFixed(1)} hrs approx`,
             details
         });
     };
@@ -90,7 +111,7 @@ const Calculator: React.FC = () => {
             `Vehicle: ${vehicle?.name}%0A` +
             `Route: ${pickup} to ${drop}%0A` +
             `Date: ${date}%0A` +
-            `Distance: ${distance} km (${tripType === 'oneway' ? 'One way' : 'One way input'})%0A` +
+            `Distance: ${distance} km (${tripType === 'oneway' ? 'One way input' : 'One way input'})%0A` +
             `Est. Fare: ₹${result.fare}`;
 
         const phone = settings.driverPhone.replace(/[^0-9]/g, '');
@@ -104,7 +125,7 @@ const Calculator: React.FC = () => {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
                 <div className="relative z-10">
                     <h2 className="text-2xl font-black uppercase tracking-wide">Fare Calculator</h2>
-                    <p className="text-blue-100 text-xs font-medium mt-1">Get accurate estimates for your journey</p>
+                    <p className="text-blue-100 text-xs font-medium mt-1">Updates Rates & Rules Applied</p>
                 </div>
             </div>
 
@@ -166,7 +187,9 @@ const Calculator: React.FC = () => {
                             <label className="text-[10px] font-black text-slate-400 uppercase ml-1 flex items-center gap-1.5"><Car size={10} /> Preferred Vehicle</label>
                             <select value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="tn-input w-full bg-slate-50 border-slate-200">
                                 {VEHICLES.map(v => (
-                                    <option key={v.id} value={v.id}>{v.name} (₹{v.rate}/km)</option>
+                                    <option key={v.id} value={v.id}>
+                                        {v.name} ({tripType === 'roundtrip' ? `₹${v.roundRate}` : `₹${v.dropRate}`}/km)
+                                    </option>
                                 ))}
                             </select>
                         </div>
@@ -203,9 +226,16 @@ const Calculator: React.FC = () => {
                                 <h3 className="text-4xl font-black mt-2 text-[#4ade80]">₹{result.fare.toLocaleString()}</h3>
                             </div>
                             <div className="text-right">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Trip Distance</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Billed Distance</p>
                                 <p className="text-xl font-bold mt-1">{result.distance} km</p>
                             </div>
+                        </div>
+
+                        <div className="bg-white/5 rounded-xl p-4 border border-white/5 mb-6">
+                            <p className="text-[10px] text-slate-400 uppercase tracking-wide flex items-center gap-2">
+                                <CheckCircle2 size={12} /> Rate Calculation Breakdown
+                            </p>
+                            <pre className="mt-3 font-mono text-[10px] leading-relaxed text-slate-300 whitespace-pre-wrap">{result.details}</pre>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 mb-8">
@@ -221,7 +251,7 @@ const Calculator: React.FC = () => {
 
                         <div className="flex items-center gap-3 mb-8 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-500">
                             <AlertCircle size={16} />
-                            <p className="text-[10px] font-bold uppercase tracking-wide">Excludes Toll & Parking Charges</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wide">Excludes Toll, Parking & Permit Charges</p>
                         </div>
 
                         <button
