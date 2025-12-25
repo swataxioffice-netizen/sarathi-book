@@ -22,14 +22,20 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
         <aside className="h-full bg-white border-r border-slate-200 flex flex-col w-64">
             <div className="p-6 border-b border-slate-100">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#0047AB] rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-900/20">
-                        <BriefcaseIcon />
+                    <div className="w-12 h-12 flex-shrink-0">
+                        <img
+                            src="/favicon-158x158.svg?v=2024"
+                            alt="Sarathi Book"
+                            className="w-full h-full object-contain"
+                        />
                     </div>
                     <div>
-                        <h1 className="text-lg font-black text-slate-900 leading-none tracking-tight">
-                            SARATHI
+                        <h1 className="text-xl font-black text-[#0047AB] leading-none tracking-tight mb-0.5" style={{ fontFamily: 'Korkai', letterSpacing: '-0.02em' }}>
+                            SARATHI BOOK
                         </h1>
-                        <span className="text-[10px] font-bold text-slate-400 tracking-wider">PRO MANAGER</span>
+                        <p className="text-[10px] font-semibold text-slate-500 leading-none tracking-wide" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+                            Your digital office on car
+                        </p>
                     </div>
                 </div>
             </div>
@@ -79,13 +85,6 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
     );
 };
 
-function BriefcaseIcon() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
-            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-        </svg>
-    );
-}
+
 
 export default SideNav;
