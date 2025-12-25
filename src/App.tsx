@@ -14,12 +14,13 @@ import Calculator from './components/Calculator';
 
 import type { Trip } from './utils/fare';
 import QuotationForm from './components/QuotationForm';
+import AdminPanel from './components/AdminPanel';
 
 import SideNav from './components/SideNav';
 
 function AppContent() {
   /* Guest Roaming Logic */
-  const { user, loading, signInWithGoogle } = useAuth();
+  const { user, loading, signInWithGoogle, isAdmin } = useAuth();
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [invoiceQuotationToggle, setInvoiceQuotationToggle] = useState<'invoice' | 'quotation'>('invoice');
@@ -100,6 +101,8 @@ function AppContent() {
         return <Calculator />;
       case 'profile':
         return <Profile />;
+      case 'admin':
+        return isAdmin ? <AdminPanel /> : <Dashboard trips={trips} />;
       default:
         return <Dashboard trips={trips} />;
     }

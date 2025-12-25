@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Wallet, User, LogOut, Calculator } from 'lucide-react';
+import { LayoutDashboard, FileText, Wallet, User, LogOut, Calculator, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SideNavProps {
@@ -8,7 +8,7 @@ interface SideNavProps {
 }
 
 const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
-    const { user, signOut, signInWithGoogle } = useAuth();
+    const { user, signOut, signInWithGoogle, isAdmin } = useAuth();
 
     const navItems = [
         { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
@@ -17,6 +17,10 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
         { id: 'calculator', icon: <Calculator size={20} />, label: 'Calculator' },
         { id: 'profile', icon: <User size={20} />, label: 'Profile' },
     ];
+
+    if (isAdmin) {
+        navItems.push({ id: 'admin', icon: <ShieldCheck size={20} className="text-blue-600" />, label: 'Admin' });
+    }
 
     return (
         <aside className="h-full bg-white border-r border-slate-200 flex flex-col w-64">
@@ -84,7 +88,5 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
         </aside>
     );
 };
-
-
 
 export default SideNav;

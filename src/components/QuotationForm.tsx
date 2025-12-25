@@ -19,11 +19,7 @@ const QuotationForm: React.FC = () => {
     const [customerName, setCustomerName] = useState('');
     const [subject, setSubject] = useState('');
     const [vehicleType, setVehicleType] = useState('Sedan');
-    const [items, setItems] = useState<QuotationItem[]>([
-        { description: 'Airport Transfer', package: 'Minimum 20 Km', vehicleType: 'Sedan', rate: '700', amount: '700.00' },
-        { description: 'One Way', package: 'Minimum 130 Km', vehicleType: 'Sedan', rate: '15 / km', amount: '2250.00' },
-        { description: 'Round Trip', package: 'Minimum 250 Km', vehicleType: 'Sedan', rate: '12 / km', amount: '3400.00' }
-    ]);
+    const [items, setItems] = useState<QuotationItem[]>([]);
     const [showItems, setShowItems] = useState(false);
     const [quotations, setQuotations] = useState<SavedQuotation[]>(() => safeJSONParse('saved-quotations', []));
     const [showAllHistory, setShowAllHistory] = useState(false);

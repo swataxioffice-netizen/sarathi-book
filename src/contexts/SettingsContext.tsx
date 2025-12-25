@@ -108,7 +108,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const parsed = safeJSONParse<Settings | null>('namma-cab-settings', null);
         if (parsed) {
             if (!parsed.vehicles) {
-                parsed.vehicles = [{ id: 'v1', number: (parsed as any).vehicleNumber || 'TN-01-AB-1234', model: 'Standard Sedan' }];
+                parsed.vehicles = [{ id: 'v1', number: (parsed as any).vehicleNumber || '', model: '' }];
                 parsed.currentVehicleId = 'v1';
                 delete (parsed as any).vehicleNumber;
             }

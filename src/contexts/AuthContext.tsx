@@ -7,6 +7,7 @@ interface AuthContextType {
     loading: boolean;
     signInWithGoogle: () => Promise<void>;
     signOut: () => Promise<void>;
+    isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,8 +48,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await supabase.auth.signOut();
     };
 
+    const isAdmin = user?.email ? [
+        'swa.taxioffice@gmail.com'
+    ].includes(user.email) : false;
+
     return (
-        <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut }}>
+        <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut, isAdmin }}>
             {children}
         </AuthContext.Provider>
     );
