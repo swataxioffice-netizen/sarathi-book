@@ -106,7 +106,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                 alert('Contact picker not supported on this device');
             }
         } catch (error) {
-            console.log('Contact selection cancelled or failed', error);
+            // Contact selection cancelled or failed
         }
     };
 

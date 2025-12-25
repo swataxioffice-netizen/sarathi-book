@@ -1,8 +1,7 @@
 import { Loader } from '@googlemaps/js-api-loader';
 
-// Google Maps API Key - Temporarily hardcoded for testing
-// TODO: Move back to environment variable once Vite config is fixed
-const API_KEY = 'AIzaSyCs_maV6b68Ll_y5ysqtjtk0yisM6SFo4Q';
+// Google Maps API Key
+const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 let googleMapsLoader: Loader | null = null;
 
@@ -10,14 +9,12 @@ let googleMapsLoader: Loader | null = null;
  * Initialize Google Maps Loader
  */
 export const initGoogleMaps = (): Loader => {
-    console.log('[GoogleMaps] Initializing with API key:', API_KEY ? 'Present' : 'Missing');
     if (!googleMapsLoader) {
         googleMapsLoader = new Loader({
             apiKey: API_KEY,
             version: 'weekly',
             libraries: ['places', 'geometry']
         });
-        console.log('[GoogleMaps] Loader created successfully');
     }
     return googleMapsLoader;
 };
@@ -26,11 +23,9 @@ export const initGoogleMaps = (): Loader => {
  * Load Google Maps API
  */
 export const loadGoogleMaps = async (): Promise<typeof google> => {
-    console.log('[GoogleMaps] Starting to load Google Maps...');
     try {
         const loader = initGoogleMaps();
         const google = await loader.load();
-        console.log('[GoogleMaps] Google Maps loaded successfully!', google);
         return google;
     } catch (error) {
         console.error('[GoogleMaps] Failed to load Google Maps:', error);

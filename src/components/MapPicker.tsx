@@ -25,11 +25,8 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
         let isMounted = true;
 
         const initMap = async () => {
-            console.log('[MapPicker] Starting map initialization...');
-
             // Check if mapRef is available before proceeding
             if (!mapRef.current) {
-                console.log('[MapPicker] mapRef.current is null at start, waiting...');
                 // Try again after a short delay
                 setTimeout(() => {
                     if (isMounted && mapRef.current) {
@@ -40,29 +37,18 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
             }
 
             try {
-                console.log('[MapPicker] Calling loadGoogleMaps...');
                 const google = await loadGoogleMaps();
-                console.log('[MapPicker] loadGoogleMaps returned:', google);
 
-                if (!isMounted) {
-                    console.log('[MapPicker] Component unmounted, aborting');
-                    return;
-                }
+                if (!isMounted) return;
 
-                if (!mapRef.current) {
-                    console.log('[MapPicker] mapRef.current is null after load, aborting');
-                    return;
-                }
-
-                console.log('[MapPicker] mapRef.current exists, creating map...');
+                if (!mapRef.current) return;
 
                 // Get current location or default to India center
                 let center = { lat: 20.5937, lng: 78.9629 }; // India center
                 try {
                     center = await getCurrentLocation();
-                    console.log('[MapPicker] Got current location:', center);
                 } catch (e) {
-                    console.log('[MapPicker] Using default location');
+                    // Ignore error and use default
                 }
 
                 const mapInstance = new google.maps.Map(mapRef.current, {
@@ -72,8 +58,6 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
                     streetViewControl: false,
                     fullscreenControl: false,
                 });
-
-                console.log('[MapPicker] Map instance created:', mapInstance);
 
                 if (!isMounted) return;
                 setMap(mapInstance);
@@ -91,11 +75,9 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
                 if (!isMounted) return;
                 setDirectionsRenderer(renderer);
 
-                console.log('[MapPicker] Setting loading to false');
                 if (!isMounted) return;
                 setLoading(false);
             } catch (err) {
-                console.error('[MapPicker] Error during initialization:', err);
                 if (!isMounted) return;
                 setError('Failed to load Google Maps. Please check your API key.');
                 setLoading(false);
