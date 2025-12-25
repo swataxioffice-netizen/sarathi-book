@@ -7,24 +7,28 @@
   font-weight: 400;
   font-style: normal;
 }
+
 @font-face {
   font-family: 'Korkai';
   src: url('./assets/fonts/Korkai-Medium.otf') format('opentype');
   font-weight: 500;
   font-style: normal;
 }
+
 @font-face {
   font-family: 'Korkai';
   src: url('./assets/fonts/Korkai-Bold.otf') format('opentype');
   font-weight: 700;
   font-style: normal;
 }
+
 @font-face {
   font-family: 'Korkai';
   src: url('./assets/fonts/Korkai-Light.otf') format('opentype');
   font-weight: 300;
   font-style: normal;
 }
+
 @font-face {
   font-family: 'Korkai';
   src: url('./assets/fonts/Korkai-Black.otf') format('opentype');
@@ -128,8 +132,15 @@ body,
 
 /* Animations */
 @keyframes slide-up {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .animate-slide-up {
@@ -137,8 +148,13 @@ body,
 }
 
 @keyframes progress {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
 }
 
 .animate-progress {
@@ -147,4 +163,45 @@ body,
 
 .glass-panel {
   @apply bg-slate-900/90 backdrop-blur-xl border border-white/10 shadow-xl;
+}
+
+/* Google Maps Autocomplete Polish */
+.pac-container {
+  z-index: 9999 !important;
+  border-radius: 12px;
+  border: none;
+  margin-top: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  font-family: inherit;
+  padding: 8px 0;
+}
+
+.pac-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid #f1f5f9;
+}
+
+.pac-item:first-child {
+  border-top: none;
+}
+
+.pac-item:hover {
+  background-color: #f8fafc;
+}
+
+.pac-icon {
+  margin-top: 2px;
+}
+
+.pac-item-query {
+  font-size: 14px;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.pac-matched {
+  color: #0047AB;
 }

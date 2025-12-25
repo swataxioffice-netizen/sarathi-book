@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { loadGoogleMaps, calculateDistance, getCurrentLocation } from '../utils/googleMaps';
-import { MapPin, Navigation as NavigationIcon, X } from 'lucide-react';
+import { MapPin, Navigation as NavigationIcon, X, Search, Locate } from 'lucide-react';
 
 interface MapPickerProps {
     onLocationSelect: (pickup: string, drop: string, distance: number) => void;
@@ -9,6 +9,8 @@ interface MapPickerProps {
 
 const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
     const mapRef = useRef<HTMLDivElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const [pickupMarker, setPickupMarker] = useState<google.maps.Marker | null>(null);
     const [dropMarker, setDropMarker] = useState<google.maps.Marker | null>(null);
@@ -53,10 +55,12 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
 
                 const mapInstance = new google.maps.Map(mapRef.current, {
                     center,
-                    zoom: 12,
+                    zoom: 15, // Closer zoom for better precision
                     mapTypeControl: false,
                     streetViewControl: false,
                     fullscreenControl: false,
+                    zoomControl: false, // Cleaner UI
+                    clickableIcons: false, // Prevent POI clicks
                 });
 
                 if (!isMounted) return;
@@ -91,74 +95,154 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
         };
     }, []);
 
-    // Handle map click
+    // Initialize Autocomplete
+    useEffect(() => {
+        if (!map || !searchInputRef.current) return;
+
+        const initAutocomplete = async () => {
+            const google = await loadGoogleMaps();
+            const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current!, {
+                fields: ['geometry', 'formatted_address'],
+            });
+            autocomplete.bindTo('bounds', map);
+
+            autocomplete.addListener('place_changed', () => {
+                const place = autocomplete.getPlace();
+                if (!place.geometry || !place.geometry.location) return;
+
+                if (place.geometry.viewport) {
+                    map.fitBounds(place.geometry.viewport);
+                } else {
+                    map.setCenter(place.geometry.location);
+                    map.setZoom(17);
+                }
+            });
+        };
+
+        initAutocomplete();
+    }, [map]);
+
+    // Handle Map Events (Center Pin Logic)
     useEffect(() => {
         if (!map) return;
 
-        const clickListener = map.addListener('click', async (e: google.maps.MapMouseEvent) => {
-            if (!e.latLng) return;
+        const handleCenterChanged = () => {
+            setIsDragging(true);
+            // Clear current selection state while dragging to indicate liveness? 
+            // Better to keep previous until settled to avoid flickering text.
+        };
 
-            const lat = e.latLng.lat();
-            const lng = e.latLng.lng();
+        const handleIdle = async () => {
+            setIsDragging(false);
+            const center = map.getCenter();
+            if (!center) return;
 
-            // Reverse geocode to get address
-            const geocoder = new google.maps.Geocoder();
-            geocoder.geocode({ location: { lat, lng } }, (results: google.maps.GeocoderResult[] | null, status: google.maps.GeocoderStatus) => {
-                if (status === 'OK' && results && results[0]) {
-                    const address = results[0].formatted_address;
+            const lat = center.lat();
+            const lng = center.lng();
 
-                    if (mode === 'pickup') {
-                        // Remove old pickup marker
-                        if (pickupMarker) pickupMarker.setMap(null);
+            // Reverse geocode
+            try {
+                const google = await loadGoogleMaps();
+                const geocoder = new google.maps.Geocoder();
 
-                        // Create new pickup marker (green)
-                        const marker = new google.maps.Marker({
-                            position: { lat, lng },
-                            map,
-                            icon: {
-                                path: google.maps.SymbolPath.CIRCLE,
-                                scale: 10,
-                                fillColor: '#00965E',
-                                fillOpacity: 1,
-                                strokeColor: '#ffffff',
-                                strokeWeight: 2,
-                            },
-                            draggable: true,
-                        });
+                geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                    if (status === 'OK' && results && results[0]) {
+                        const address = results[0].formatted_address;
+                        const locationData = { lat, lng, address };
 
-                        setPickupMarker(marker);
-                        setPickupLocation({ lat, lng, address });
-                        setMode('drop'); // Switch to drop mode
-                    } else {
-                        // Remove old drop marker
-                        if (dropMarker) dropMarker.setMap(null);
-
-                        // Create new drop marker (red)
-                        const marker = new google.maps.Marker({
-                            position: { lat, lng },
-                            map,
-                            icon: {
-                                path: google.maps.SymbolPath.CIRCLE,
-                                scale: 10,
-                                fillColor: '#DC2626',
-                                fillOpacity: 1,
-                                strokeColor: '#ffffff',
-                                strokeWeight: 2,
-                            },
-                            draggable: true,
-                        });
-
-                        setDropMarker(marker);
-                        setDropLocation({ lat, lng, address });
+                        if (mode === 'pickup') {
+                            setPickupLocation(locationData);
+                        } else {
+                            setDropLocation(locationData);
+                        }
                     }
-                }
-            });
-        });
+                });
+            } catch (err) {
+                console.error('Geocoding error:', err);
+            }
+        };
+
+        const centerChangedListener = map.addListener('center_changed', handleCenterChanged);
+        const idleListener = map.addListener('idle', handleIdle);
 
         return () => {
-            google.maps.event.removeListener(clickListener);
+            google.maps.event.removeListener(centerChangedListener);
+            google.maps.event.removeListener(idleListener);
         };
-    }, [map, mode, pickupMarker, dropMarker]);
+    }, [map, mode]);
+
+    // Manage Markers (Only show static markers for inactive modes)
+    useEffect(() => {
+        if (!map) return;
+
+        const updateMarkers = async () => {
+            const google = await loadGoogleMaps();
+
+            // Handle Pickup Marker
+            if (pickupLocation && mode === 'drop') {
+                if (!pickupMarker) {
+                    const marker = new google.maps.Marker({
+                        position: pickupLocation,
+                        map,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 8,
+                            fillColor: '#00965E',
+                            fillOpacity: 1,
+                            strokeColor: '#ffffff',
+                            strokeWeight: 2,
+                        },
+                    });
+                    setPickupMarker(marker);
+                } else {
+                    pickupMarker.setPosition(pickupLocation);
+                    pickupMarker.setMap(map);
+                }
+            } else {
+                // If in pickup mode, hide the static marker (we use center pin)
+                if (pickupMarker) pickupMarker.setMap(null);
+            }
+
+            // Handle Drop Marker
+            // We usually don't need a static drop marker until confirmation, 
+            // but if we were to switch back to pickup, we might want to see where drop was LEFT.
+            if (dropLocation && mode === 'pickup') {
+                if (!dropMarker) {
+                    const marker = new google.maps.Marker({
+                        position: dropLocation,
+                        map,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 8,
+                            fillColor: '#DC2626',
+                            fillOpacity: 1,
+                            strokeColor: '#ffffff',
+                            strokeWeight: 2,
+                        },
+                    });
+                    setDropMarker(marker);
+                } else {
+                    dropMarker.setPosition(dropLocation);
+                    dropMarker.setMap(map);
+                }
+            } else {
+                if (dropMarker) dropMarker.setMap(null);
+            }
+        };
+
+        updateMarkers();
+    }, [map, mode, pickupLocation, dropLocation]);
+
+    const handleMyLocation = async () => {
+        if (!map) return;
+        try {
+            const location = await getCurrentLocation();
+            map.setCenter(location);
+            map.setZoom(17);
+        } catch (e) {
+            console.error('Error getting location', e);
+        }
+    };
 
     // Calculate distance when both locations are set
     useEffect(() => {
@@ -239,7 +323,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
                 <div>
                     <h3 className="text-lg font-black text-slate-900">Select Locations</h3>
                     <p className="text-xs text-slate-500 mt-0.5">
-                        {mode === 'pickup' ? '📍 Tap to set pickup location' : '🎯 Tap to set drop location'}
+                        {mode === 'pickup' ? '📍 Drag map to set pickup location' : '🎯 Drag map to set drop location'}
                     </p>
                 </div>
                 <button
@@ -250,8 +334,50 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
                 </button>
             </div>
 
-            {/* Map Container */}
-            <div ref={mapRef} className="flex-1" />
+            {/* Map Container with Overlays */}
+            <div className="flex-1 relative">
+                {/* Search Bar */}
+                <div className="absolute top-4 left-4 right-4 z-10">
+                    <div className="bg-white rounded-xl shadow-lg flex items-center p-3 animate-in fade-in slide-in-from-top-4 duration-300">
+                        <Search className="text-slate-400 w-5 h-5 mr-3" />
+                        <input
+                            ref={searchInputRef}
+                            type="text"
+                            placeholder="Search places..."
+                            className="flex-1 outline-none text-slate-700 placeholder:text-slate-400 text-sm font-medium"
+                        />
+                    </div>
+                </div>
+
+                {/* Map Div */}
+                <div ref={mapRef} className="absolute inset-0 w-full h-full" />
+
+                {/* Center Pin Overlay */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-20 -mt-[35px]">
+                    <div className={`relative flex flex-col items-center transition-transform duration-200 ${isDragging ? '-translate-y-2' : ''}`}>
+                        {/* Floating Label */}
+                        <div className={`mb-1 px-3 py-1.5 rounded-full shadow-md text-xs font-bold text-white whitespace-nowrap
+                           ${mode === 'pickup' ? 'bg-green-600' : 'bg-red-600'}`}>
+                            {isDragging ? 'Moving...' : (mode === 'pickup' ? 'Set Pickup' : 'Set Drop')}
+                        </div>
+                        {/* Pin Icon */}
+                        <MapPin
+                            size={40}
+                            className={`drop-shadow-xl ${mode === 'pickup' ? 'text-green-600 fill-green-600' : 'text-red-600 fill-red-600'}`}
+                        />
+                        {/* Pin Shadow Dot */}
+                        <div className="w-1.5 h-1.5 bg-black/20 rounded-full mt-[-2px] blur-[1px]"></div>
+                    </div>
+                </div>
+
+                {/* My Location Button */}
+                <button
+                    onClick={handleMyLocation}
+                    className="absolute bottom-4 right-4 bg-white p-3 rounded-full shadow-lg hover:bg-slate-50 active:scale-95 transition-all z-10"
+                >
+                    <Locate size={24} className="text-slate-700" />
+                </button>
+            </div>
 
             {/* Location Info */}
             <div className="bg-white border-t border-slate-200 p-4 space-y-3">
