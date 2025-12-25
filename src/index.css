@@ -125,3 +125,26 @@ body,
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Animations */
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.animate-progress {
+  animation: progress 5s linear forwards;
+}
+
+.glass-panel {
+  @apply bg-slate-900/90 backdrop-blur-xl border border-white/10 shadow-xl;
+}

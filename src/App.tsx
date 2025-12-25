@@ -179,11 +179,14 @@ function AppContent() {
   );
 }
 
+import ReloadPrompt from './components/ReloadPrompt';
+
 function App() {
   return (
     <AuthProvider>
       <SettingsProvider>
         <AppContent />
+        <ReloadPrompt />
       </SettingsProvider>
     </AuthProvider>
   );
