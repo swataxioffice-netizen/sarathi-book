@@ -21,7 +21,7 @@ import SideNav from './components/SideNav';
 
 function AppContent() {
   /* Guest Roaming Logic */
-  const { user, loading, isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('nav-active-tab') || 'dashboard');
 
