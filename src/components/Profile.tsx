@@ -5,6 +5,7 @@ import { User as UserIcon, Trash2, Camera, LogOut, Globe, Plus, Landmark, CheckC
 import { validateGSTIN } from '../utils/validation';
 import DocumentVault from './DocumentVault';
 import GoogleSignInButton from './GoogleSignInButton';
+import { supabase } from '../utils/supabase';
 
 const Profile: React.FC = () => {
     const { user, signOut } = useAuth();
@@ -39,6 +40,18 @@ const Profile: React.FC = () => {
             setIsEditingPhoto(false);
         }
     };
+
+    // Fetch existing profile data (phone) on load
+    React.useEffect(() => {
+        if (user) {
+            supabase.from('profiles').select('phone').eq('id', user.id).single()
+                .then(({ data }) => {
+                    if (data?.phone && !settings.driverPhone) {
+                        updateSettings({ driverPhone: data.phone });
+                    }
+                });
+        }
+    }, [user]);
 
     const operatorId = user ? `OP-${user.id.slice(0, 6).toUpperCase()}-${new Date().getFullYear()}` : 'GUEST-DRIVER';
 
@@ -177,7 +190,15 @@ const Profile: React.FC = () => {
                             <input
                                 type="text"
                                 value={settings.driverPhone}
-                                onChange={(_) => updateSettings({ driverPhone: _.target.value })}
+                                onChange={(_) => {
+                                    updateSettings({ driverPhone: _.target.value });
+                                    if (user) {
+                                        // Auto-sync phone to Supabase profile
+                                        supabase.from('profiles').update({ phone: _.target.value }).eq('id', user.id).then(({ error }) => {
+                                            if (error) console.error('Failed to sync phone', error);
+                                        });
+                                    }
+                                }}
                                 className="tn-input h-10 text-xs font-bold"
                                 placeholder="+91 99999 88888"
                             />

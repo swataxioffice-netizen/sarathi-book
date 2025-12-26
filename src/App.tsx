@@ -47,13 +47,7 @@ function AppContent() {
     localStorage.setItem('namma-cab-trips', JSON.stringify(trips));
   }, [trips]);
 
-  if (loading) {
-    return (
-      <div className="h-screen w-full bg-[var(--bg-app)] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#0047AB] border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+
 
   /* Guest Access Enabled - Login handled per tab */
 

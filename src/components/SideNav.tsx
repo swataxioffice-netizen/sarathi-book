@@ -28,7 +28,7 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                 <div className="flex items-center gap-3">
                     <div className="w-12 h-12 flex-shrink-0">
                         <img
-                            src="/favicon-158x158.svg?v=2024"
+                            src="/logo.png"
                             alt="Sarathi Book"
                             className="w-full h-full object-contain"
                         />

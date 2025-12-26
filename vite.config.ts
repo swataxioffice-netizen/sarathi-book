@@ -16,7 +16,9 @@ export default defineConfig({
                 description: 'Your Digital Office on Car',
                 theme_color: '#ffffff',
                 background_color: '#ffffff',
-                display: 'minimal-ui',
+                display: 'standalone',
+                start_url: '/',
+                scope: '/',
                 icons: [
                     {
                         src: 'logo.png',
