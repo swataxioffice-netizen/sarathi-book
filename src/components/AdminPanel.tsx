@@ -10,11 +10,17 @@ import {
     Activity,
     Bell,
     Send,
-    HardDrive
+    HardDrive,
+    Bug,
+    RefreshCw
 } from 'lucide-react';
+import { useUpdate } from '../contexts/UpdateContext';
+import { useNotifications } from '../contexts/NotificationContext';
 
 const AdminPanel: React.FC = () => {
-    const [subTab, setSubTab] = useState<'stats' | 'users' | 'documents' | 'settings'>('stats');
+    const [subTab, setSubTab] = useState<'stats' | 'users' | 'documents' | 'settings' | 'debug'>('stats');
+    const { needRefresh, setNeedRefresh } = useUpdate();
+    const { addNotification } = useNotifications();
     const [notifyingUser, setNotifyingUser] = useState<any | null>(null);
     const [notificationText, setNotificationText] = useState('');
     const [isSending, setIsSending] = useState(false);
@@ -247,6 +253,50 @@ const AdminPanel: React.FC = () => {
         </div>
     );
 
+    const DebugView = () => (
+        <div className="max-w-2xl bg-white rounded-2xl border border-slate-200 shadow-sm animate-in fade-in duration-500 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 bg-red-50/30">
+                <h3 className="font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                    <Bug size={20} className="text-red-500" />
+                    System Debug & QA
+                </h3>
+            </div>
+            <div className="p-6 space-y-6">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">PWA Update Simulator</h4>
+                    <p className="text-xs text-slate-600 mb-4 font-bold">This will manually trigger the "Update Available" state to test notifications and header behavior.</p>
+
+                    <button
+                        onClick={() => setNeedRefresh(!needRefresh)}
+                        className={`w-full py-3 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all shadow-md
+                            ${needRefresh ? 'bg-red-500 text-white shadow-red-500/20' : 'bg-slate-900 text-white shadow-slate-900/20'}`}
+                    >
+                        {needRefresh ? 'Deactivate Update State' : 'Simulate New Update'}
+                        <RefreshCw size={14} className={needRefresh ? 'animate-spin' : ''} />
+                    </button>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Instant Notification Test</h4>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => addNotification('Test Successful!', 'The notification system is working perfectly.', 'success')}
+                            className="flex-1 bg-green-600 text-white py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest"
+                        >
+                            Test Success
+                        </button>
+                        <button
+                            onClick={() => addNotification('Database Alert', 'High latency detected in Supabase region.', 'warning')}
+                            className="flex-1 bg-amber-500 text-white py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest"
+                        >
+                            Test Warning
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
     return (
         <div className="min-h-full space-y-6 pb-20">
             {/* Admin Header */}
@@ -266,6 +316,7 @@ const AdminPanel: React.FC = () => {
                         { id: 'users', label: 'Users', icon: Users },
                         { id: 'documents', label: 'Docs', icon: FileCheck },
                         { id: 'settings', label: 'Setup', icon: Settings },
+                        { id: 'debug', label: 'Debug', icon: Bug },
                     ].map((tab) => (
                         <button
                             key={tab.id}
@@ -285,6 +336,7 @@ const AdminPanel: React.FC = () => {
             {subTab === 'users' && <UsersView />}
             {subTab === 'documents' && <DocumentsView />}
             {subTab === 'settings' && <SettingsView />}
+            {subTab === 'debug' && <DebugView />}
 
             {/* Notification Modal */}
             {notifyingUser && (

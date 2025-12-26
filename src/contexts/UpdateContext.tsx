@@ -3,6 +3,7 @@ import { useRegisterSW } from 'virtual:pwa-register/react';
 
 interface UpdateContextType {
     needRefresh: boolean;
+    setNeedRefresh: (val: boolean) => void;
     updateServiceWorker: (reloadPage?: boolean) => Promise<void>;
     offlineReady: boolean;
 }
@@ -12,7 +13,7 @@ const UpdateContext = createContext<UpdateContextType | undefined>(undefined);
 export const UpdateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const {
         offlineReady: [offlineReady, _setOfflineReady],
-        needRefresh: [needRefresh, _setNeedRefresh],
+        needRefresh: [needRefresh, setNeedRefresh],
         updateServiceWorker,
     } = useRegisterSW({
         onRegistered(r) {
@@ -27,7 +28,7 @@ export const UpdateProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
 
     return (
-        <UpdateContext.Provider value={{ needRefresh, updateServiceWorker, offlineReady }}>
+        <UpdateContext.Provider value={{ needRefresh, setNeedRefresh, updateServiceWorker, offlineReady }}>
             {children}
         </UpdateContext.Provider>
     );
