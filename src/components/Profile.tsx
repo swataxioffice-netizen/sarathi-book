@@ -9,11 +9,12 @@ import { supabase } from '../utils/supabase';
 
 const Profile: React.FC = () => {
     const { user, signOut } = useAuth();
-    const { settings, updateSettings } = useSettings();
+    const { settings, updateSettings, saveSettings } = useSettings();
     const [newVehicleNumber, setNewVehicleNumber] = useState('');
     const [newVehicleModel, setNewVehicleModel] = useState('');
     const [isEditingPhoto, setIsEditingPhoto] = useState(false);
     const [customPhotoUrl, setCustomPhotoUrl] = useState('');
+    const [savingSection, setSavingSection] = useState<'business' | 'banking' | null>(null);
 
     // Stats for Completion
     const [docStats, setDocStats] = useState({ hasFullVehicle: false, hasFullDriver: false });
@@ -213,12 +214,36 @@ const Profile: React.FC = () => {
                                 placeholder="State, City"
                             />
                         </div>
+                        <div className="pt-2">
+                            <button
+                                onClick={async () => {
+                                    setSavingSection('business');
+                                    await saveSettings();
+                                    await new Promise(r => setTimeout(r, 500)); // Fake delay for feel
+                                    setSavingSection(null);
+                                }}
+                                className="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+                            >
+                                {savingSection === 'business' ? (
+                                    <>
+                                        <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle size={14} /> Save Details
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
+        </div>
+            </div >
 
-            {/* Legal & Banking */}
-            <div className="space-y-2">
+    {/* Legal & Banking */ }
+    < div className = "space-y-2" >
                 <div className="flex items-center gap-2 px-1">
                     {settings.bankName && settings.accountNumber && settings.ifscCode ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
                     <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-green-500 underline-offset-4">Legal & Banking</h3>
@@ -303,128 +328,151 @@ const Profile: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            {/* Fleet Management */}
-            <div className="space-y-2">
-                <div className="flex items-center gap-2 px-1">
-                    {settings.vehicles.length > 0 ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
-                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-purple-500 underline-offset-4">Fleet Manager</h3>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
-                    <div className="space-y-2">
-                        {settings.vehicles.map((v) => (
-                            <div key={v.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-xl group relative overflow-hidden">
-                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${settings.currentVehicleId === v.id ? 'bg-[#0047AB]' : 'bg-slate-300'}`}></div>
-                                <div
-                                    className="flex-1 pl-2 cursor-pointer"
-                                    onClick={() => updateSettings({ currentVehicleId: v.id })}
-                                >
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-black text-slate-900">{v.number}</span>
-                                        <span className="text-[9px] font-bold text-slate-500 uppercase">{v.model}</span>
-                                    </div>
-                                </div>
-
-                                {settings.vehicles.length > 1 && (
-                                    <button
-                                        onClick={() => deleteVehicle(v.id)}
-                                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
-                                )}
-
-                                {settings.currentVehicleId === v.id && (
-                                    <div className="mr-2 px-2 py-0.5 bg-[#0047AB] text-white text-[8px] font-black uppercase rounded-full tracking-widest">
-                                        Active
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="flex gap-2 pt-1 border-t border-slate-100 mt-2">
-                        <input
-                            type="text"
-                            value={newVehicleNumber}
-                            onChange={(e) => setNewVehicleNumber(e.target.value.toUpperCase())}
-                            className="flex-[2] tn-input h-9 text-[10px] font-bold uppercase"
-                            placeholder="TN-00-AA-0000"
-                        />
-                        <input
-                            type="text"
-                            value={newVehicleModel}
-                            onChange={(e) => setNewVehicleModel(e.target.value)}
-                            className="flex-1 tn-input h-9 text-[10px] font-bold"
-                            placeholder="Model"
-                        />
+                    <div className="pt-2">
                         <button
-                            onClick={addVehicle}
-                            disabled={!newVehicleNumber || !newVehicleModel}
-                            className="w-9 h-9 flex items-center justify-center bg-slate-900 text-white rounded-xl shadow-md disabled:opacity-50 active:scale-95 transition-all"
+                            onClick={async () => {
+                                setSavingSection('banking');
+                                await saveSettings();
+                                await new Promise(r => setTimeout(r, 500));
+                                setSavingSection(null);
+                            }}
+                            className="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
                         >
-                            <Plus size={16} />
+                            {savingSection === 'banking' ? (
+                                <>
+                                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircle size={14} /> Save Bank Details
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>
-            </div>
+            </div >
+        </div >
 
-            {settings.websiteUrl && (
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2 px-1">
-                        <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-orange-500 underline-offset-4">Website</h3>
-                    </div>
-                    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                        <div className="flex items-center justify-between p-2 bg-orange-50 border border-orange-100 rounded-xl">
-                            <div className="flex items-center gap-2">
-                                <Globe size={14} className="text-orange-500" />
-                                <span className="text-[10px] font-bold text-slate-700 truncate max-w-[150px]">{settings.websiteUrl}</span>
-                            </div>
-                            <a
-                                href={`https://${settings.websiteUrl}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[9px] font-black text-orange-600 uppercase tracking-widest hover:underline"
-                            >
-                                Visit
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* 6. Documents */}
-            <div className="space-y-2 pt-2">
-                <div className="flex items-center gap-2 px-1 mb-2">
-                    {docStats.hasFullVehicle && docStats.hasFullDriver ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
-                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Documents Status</h3>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className={`p-3 rounded-xl border ${docStats.hasFullVehicle ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'} flex items-center gap-3`}>
-                        {docStats.hasFullVehicle ? <CheckCircle size={16} className="text-green-600" /> : <AlertCircle size={16} className="text-slate-400" />}
-                        <div>
-                            <p className="text-[10px] font-black uppercase text-slate-700">Vehicle Docs</p>
-                            <p className="text-[9px] font-bold text-slate-500">{docStats.hasFullVehicle ? 'Complete' : 'Pending Uploads'}</p>
-                        </div>
-                    </div>
-                    <div className={`p-3 rounded-xl border ${docStats.hasFullDriver ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'} flex items-center gap-3`}>
-                        {docStats.hasFullDriver ? <CheckCircle size={16} className="text-green-600" /> : <AlertCircle size={16} className="text-slate-400" />}
-                        <div>
-                            <p className="text-[10px] font-black uppercase text-slate-700">Driver Docs</p>
-                            <p className="text-[9px] font-bold text-slate-500">{docStats.hasFullDriver ? 'Complete' : 'Pending Uploads'}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <DocumentVault onStatsUpdate={setDocStats} />
-            </div>
-
+    {/* Fleet Management */ }
+    < div className = "space-y-2" >
+        <div className="flex items-center gap-2 px-1">
+            {settings.vehicles.length > 0 ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
+            <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-purple-500 underline-offset-4">Fleet Manager</h3>
         </div>
-    );
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
+            <div className="space-y-2">
+                {settings.vehicles.map((v) => (
+                    <div key={v.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-xl group relative overflow-hidden">
+                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${settings.currentVehicleId === v.id ? 'bg-[#0047AB]' : 'bg-slate-300'}`}></div>
+                        <div
+                            className="flex-1 pl-2 cursor-pointer"
+                            onClick={() => updateSettings({ currentVehicleId: v.id })}
+                        >
+                            <div className="flex flex-col">
+                                <span className="text-xs font-black text-slate-900">{v.number}</span>
+                                <span className="text-[9px] font-bold text-slate-500 uppercase">{v.model}</span>
+                            </div>
+                        </div>
+
+                        {settings.vehicles.length > 1 && (
+                            <button
+                                onClick={() => deleteVehicle(v.id)}
+                                className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        )}
+
+                        {settings.currentVehicleId === v.id && (
+                            <div className="mr-2 px-2 py-0.5 bg-[#0047AB] text-white text-[8px] font-black uppercase rounded-full tracking-widest">
+                                Active
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            <div className="flex gap-2 pt-1 border-t border-slate-100 mt-2">
+                <input
+                    type="text"
+                    value={newVehicleNumber}
+                    onChange={(e) => setNewVehicleNumber(e.target.value.toUpperCase())}
+                    className="flex-[2] tn-input h-9 text-[10px] font-bold uppercase"
+                    placeholder="TN-00-AA-0000"
+                />
+                <input
+                    type="text"
+                    value={newVehicleModel}
+                    onChange={(e) => setNewVehicleModel(e.target.value)}
+                    className="flex-1 tn-input h-9 text-[10px] font-bold"
+                    placeholder="Model"
+                />
+                <button
+                    onClick={addVehicle}
+                    disabled={!newVehicleNumber || !newVehicleModel}
+                    className="w-9 h-9 flex items-center justify-center bg-slate-900 text-white rounded-xl shadow-md disabled:opacity-50 active:scale-95 transition-all"
+                >
+                    <Plus size={16} />
+                </button>
+            </div>
+        </div>
+    </div >
+
+{
+    settings.websiteUrl && (
+        <div className="space-y-2">
+            <div className="flex items-center gap-2 px-1">
+                <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-orange-500 underline-offset-4">Website</h3>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+                <div className="flex items-center justify-between p-2 bg-orange-50 border border-orange-100 rounded-xl">
+                    <div className="flex items-center gap-2">
+                        <Globe size={14} className="text-orange-500" />
+                        <span className="text-[10px] font-bold text-slate-700 truncate max-w-[150px]">{settings.websiteUrl}</span>
+                    </div>
+                    <a
+                        href={`https://${settings.websiteUrl}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[9px] font-black text-orange-600 uppercase tracking-widest hover:underline"
+                    >
+                        Visit
+                    </a>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+{/* 6. Documents */ }
+<div className="space-y-2 pt-2">
+    <div className="flex items-center gap-2 px-1 mb-2">
+        {docStats.hasFullVehicle && docStats.hasFullDriver ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
+        <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Documents Status</h3>
+    </div>
+
+    <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className={`p-3 rounded-xl border ${docStats.hasFullVehicle ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'} flex items-center gap-3`}>
+            {docStats.hasFullVehicle ? <CheckCircle size={16} className="text-green-600" /> : <AlertCircle size={16} className="text-slate-400" />}
+            <div>
+                <p className="text-[10px] font-black uppercase text-slate-700">Vehicle Docs</p>
+                <p className="text-[9px] font-bold text-slate-500">{docStats.hasFullVehicle ? 'Complete' : 'Pending Uploads'}</p>
+            </div>
+        </div>
+        <div className={`p-3 rounded-xl border ${docStats.hasFullDriver ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'} flex items-center gap-3`}>
+            {docStats.hasFullDriver ? <CheckCircle size={16} className="text-green-600" /> : <AlertCircle size={16} className="text-slate-400" />}
+            <div>
+                <p className="text-[10px] font-black uppercase text-slate-700">Driver Docs</p>
+                <p className="text-[9px] font-bold text-slate-500">{docStats.hasFullDriver ? 'Complete' : 'Pending Uploads'}</p>
+            </div>
+        </div>
+    </div>
+
+    <DocumentVault onStatsUpdate={setDocStats} />
+</div>
+);
 };
 
 export default Profile;

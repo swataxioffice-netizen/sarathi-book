@@ -37,6 +37,7 @@ interface SettingsContextType {
     updateSettings: (newSettings: Partial<Settings>) => void;
     currentVehicle: Vehicle | undefined;
     t: (key: string) => string;
+    saveSettings: () => Promise<boolean>;
 }
 
 const translations = {
@@ -173,6 +174,17 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, []);
 
     // Save to Cloud on Change (Debounced)
+    // Manual Save Function
+    const saveSettings = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+            await supabase.from('profiles').update({ settings: settings }).eq('id', session.user.id);
+            return true;
+        }
+        return false;
+    };
+
+    // Save to Cloud on Change (Debounced)
     useEffect(() => {
         localStorage.setItem('namma-cab-settings', JSON.stringify(settings));
         if (settings.theme === 'dark') {
@@ -183,10 +195,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         // Debounced Cloud Save
         const saveToCloud = setTimeout(async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-                await supabase.from('profiles').update({ settings: settings }).eq('id', session.user.id);
-            }
+            await saveSettings();
         }, 2000);
 
         return () => clearTimeout(saveToCloud);
@@ -205,7 +214,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     return (
-        <SettingsContext.Provider value={{ settings, updateSettings, currentVehicle, t }}>
+        <SettingsContext.Provider value={{ settings, updateSettings, currentVehicle, t, saveSettings }}>
             {children}
         </SettingsContext.Provider>
     );
