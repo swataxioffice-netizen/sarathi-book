@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { safeJSONParse } from './utils/storage';
 import { supabase } from './utils/supabase';
 import UpdateWatcher from './components/UpdateWatcher';
@@ -9,18 +9,27 @@ import { useUpdate } from './contexts/UpdateContext';
 import Header from './components/Header';
 import TripForm from './components/TripForm';
 import History from './components/History';
-import Profile from './components/Profile';
 import BottomNav from './components/BottomNav';
 import Dashboard from './components/Dashboard';
-import ExpenseTracker from './components/ExpenseTracker';
-import Calculator from './components/Calculator';
 import GoogleSignInButton from './components/GoogleSignInButton';
 
 import type { Trip } from './utils/fare';
-import QuotationForm from './components/QuotationForm';
-import AdminPanel from './components/AdminPanel';
 
 import SideNav from './components/SideNav';
+
+// Lazy load heavy components to reduce initial bundle size
+const Profile = lazy(() => import('./components/Profile'));
+const ExpenseTracker = lazy(() => import('./components/ExpenseTracker'));
+const Calculator = lazy(() => import('./components/Calculator'));
+const QuotationForm = lazy(() => import('./components/QuotationForm'));
+const AdminPanel = lazy(() => import('./components/AdminPanel'));
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center h-64">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0047AB]"></div>
+  </div>
+);
 
 function AppContent() {
   /* Guest Roaming Logic */
@@ -144,18 +153,36 @@ function AppContent() {
                 <History trips={trips} />
               </div>
             ) : (
-              <QuotationForm />
+              <Suspense fallback={<LoadingFallback />}>
+                <QuotationForm />
+              </Suspense>
             )}
           </div>
         );
       case 'expenses':
-        return <ExpenseTracker />;
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <ExpenseTracker />
+          </Suspense>
+        );
       case 'calculator':
-        return <Calculator />;
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <Calculator />
+          </Suspense>
+        );
       case 'profile':
-        return <Profile />;
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <Profile />
+          </Suspense>
+        );
       case 'admin':
-        return isAdmin ? <AdminPanel /> : <Dashboard trips={trips} />;
+        return isAdmin ? (
+          <Suspense fallback={<LoadingFallback />}>
+            <AdminPanel />
+          </Suspense>
+        ) : <Dashboard trips={trips} />;
       default:
         return <Dashboard trips={trips} />;
     }
