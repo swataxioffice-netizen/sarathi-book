@@ -4,26 +4,9 @@ import { MapPin, Users, Car, Clock, CheckCircle2, MessageCircle, AlertCircle, Us
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
 import { calculateDistance } from '../utils/googleMaps';
+import { calculateFare, VEHICLES, FareMode } from '../utils/fare';
 
-// --- Shared Types & Constants ---
-interface Vehicle {
-    id: string;
-    name: string;
-    dropRate: number;
-    roundRate: number;
-    seats: number;
-    type: 'Sedan' | 'SUV' | 'Van';
-    minKm: number;    // Market Standard Minimum KM per day
-    batta: number;    // Market Standard Driver Batta per day
-}
-
-const VEHICLES: Vehicle[] = [
-    { id: 'swift', name: 'Swift Dzire', dropRate: 14, roundRate: 13, seats: 4, type: 'Sedan', minKm: 300, batta: 400 },
-    { id: 'etios', name: 'Toyota Etios', dropRate: 14, roundRate: 13, seats: 4, type: 'Sedan', minKm: 300, batta: 400 },
-    { id: 'innova', name: 'Innova', dropRate: 19, roundRate: 18, seats: 7, type: 'SUV', minKm: 300, batta: 500 },
-    { id: 'crysta', name: 'Innova Crysta', dropRate: 22, roundRate: 20, seats: 7, type: 'SUV', minKm: 300, batta: 600 },
-    { id: 'tempo', name: 'Tempo Traveller', dropRate: 28, roundRate: 28, seats: 12, type: 'Van', minKm: 300, batta: 600 }
-];
+// Using central VEHICLES from fare.ts
 
 // --- 1. Cab Calculator Component ---
 const CabCalculator: React.FC = () => {
@@ -46,9 +29,8 @@ const CabCalculator: React.FC = () => {
         setPickup(pickupAddr);
         setDrop(dropAddr);
         setDistance(dist.toString());
+        setShowMap(false);
     };
-
-
 
     // Auto-calculate distance when both locations are selected via autocomplete
     useEffect(() => {
@@ -95,103 +77,58 @@ const CabCalculator: React.FC = () => {
         // Detect inter-state travel for permit charges
         const pickupLower = pickup.toLowerCase();
         const dropLower = drop.toLowerCase();
-        const isKarnataka = pickupLower.includes('karnataka') || dropLower.includes('karnataka') ||
-            pickupLower.includes('bangalore') || dropLower.includes('bangalore') ||
-            pickupLower.includes('bengaluru') || dropLower.includes('bengaluru') ||
-            pickupLower.includes('mysore') || dropLower.includes('mysore');
-        const isKerala = pickupLower.includes('kerala') || dropLower.includes('kerala') ||
-            pickupLower.includes('kochi') || dropLower.includes('kochi') ||
-            pickupLower.includes('trivandrum') || dropLower.includes('trivandrum');
-        const isAndhra = pickupLower.includes('andhra') || dropLower.includes('andhra') ||
-            pickupLower.includes('hyderabad') || dropLower.includes('hyderabad') ||
-            pickupLower.includes('tirupati') || dropLower.includes('tirupati');
-        const isPondicherry = pickupLower.includes('puducherry') || dropLower.includes('puducherry') ||
-            pickupLower.includes('pondicherry') || dropLower.includes('pondicherry');
+        const interstateStates = ['karnataka', 'bangalore', 'bengaluru', 'mysore', 'kerala', 'kochi', 'trivandrum', 'andhra', 'hyderabad', 'tirupati', 'puducherry', 'pondicherry'];
 
-        const isTamilNadu = pickupLower.includes('tamil nadu') || dropLower.includes('tamil nadu') ||
-            pickupLower.includes('chennai') || dropLower.includes('chennai') ||
-            pickupLower.includes('madurai') || dropLower.includes('madurai') ||
-            pickupLower.includes('coimbatore') || dropLower.includes('coimbatore');
+        const isInterstate = interstateStates.some(s => pickupLower.includes(s) || dropLower.includes(s));
+        const permitCharge = isInterstate ? 800 : 0;
 
-        // Determine if inter-state permit needed
-        const needsPermit = (isTamilNadu && (isKarnataka || isKerala || isAndhra)) ||
-            (isPondicherry && !isTamilNadu);
-        const permitCharge = needsPermit ? 800 : 0;
-        const permitState = isKarnataka ? 'Karnataka' : isKerala ? 'Kerala' : isAndhra ? 'Andhra Pradesh' : '';
-
-        // Estimate tolls (rough estimate: ₹2-3 per 100 KM)
+        // Estimate tolls (rough estimate: ₹250 per 100 KM)
         const estimatedTolls = Math.ceil(dist / 100) * 250;
 
-        if (tripType === 'roundtrip') {
-            // Market Logic: Use vehicle-specific standards
-            const vehicle = VEHICLES.find(v => v.id === selectedVehicle) || VEHICLES[0];
-            const roundTripDistance = dist * 2;
-            const minKmPerDay = vehicle.minKm;
-            const inputDays = parseInt(days) || 1;
+        const mode: FareMode = tripType === 'roundtrip' ? 'outstation' : 'drop';
+        const tripDays = parseInt(days) || 1;
 
-            // Market Logic: Days are determined by either user input OR distance (whichever is higher)
-            const minDaysByDist = Math.ceil(roundTripDistance / minKmPerDay);
-            const actualDays = Math.max(inputDays, minDaysByDist);
+        const fareParams = {
+            startKm: 0,
+            endKm: mode === 'outstation' ? dist * 2 : dist,
+            baseFare: 0,
+            ratePerKm: customRate,
+            toll: estimatedTolls,
+            parking: 0,
+            gstEnabled: false, // Calculator usually shows base estimate
+            mode: mode,
+            vehicleId: selectedVehicle,
+            days: tripDays,
+            nightBata: 0 // Will use vehicle default since it's 0
+        };
 
-            const minChargeableKm = actualDays * minKmPerDay;
-            const chargedKm = Math.max(roundTripDistance, minChargeableKm);
-            const driverBataPerDay = vehicle.batta;
-            const totalBata = actualDays * driverBataPerDay;
+        const res = calculateFare(fareParams);
+        const totalWithPermit = res.total + permitCharge;
 
-            const kmCharge = chargedKm * customRate;
-            const tollsRoundTrip = estimatedTolls * 2;
-            const subtotal = kmCharge + totalBata + permitCharge;
-            const totalFare = subtotal + tollsRoundTrip;
+        const vehicle = VEHICLES.find(v => v.id === selectedVehicle) || VEHICLES[0];
+        const activeMinKm = vehicle.minKm;
+        const chargedDist = mode === 'outstation' ? Math.max(dist * 2, activeMinKm * tripDays) : Math.max(100, dist);
 
-            const details = [
-                `Round Trip: ${dist} KM × 2 = ${roundTripDistance} KM`,
-                `Duration: ${actualDays} day(s) (Min ${minKmPerDay} KM/day)`,
-                `Minimum Chargeable: ${minChargeableKm} KM`,
-                `Distance Charge: ${chargedKm} KM × ₹${customRate}/KM = ₹${kmCharge.toFixed(0)}`,
-                `Driver Bata: ${actualDays} day(s) × ₹${driverBataPerDay} = ₹${totalBata}`,
-                needsPermit ? `${permitState} Permit: ₹${permitCharge}` : '',
-                `Toll Estimate (approx): ₹${tollsRoundTrip}`,
-                ``,
-                `TOTAL FARE: ₹${totalFare.toFixed(0)}`
-            ].filter(Boolean);
+        const details = [
+            `${tripType === 'oneway' ? 'One-Way / Drop' : 'Round Trip'} Trip: ${dist} KM`,
+            mode === 'outstation' ? `Duration: ${tripDays} Day(s) (Min ${activeMinKm} KM/Day)` : `Minimum 100 KM Chargeable`,
+            `Chargeable Distance: ${chargedDist} KM`,
+            `Distance Charge: ${chargedDist} KM × ₹${customRate}/KM = ₹${(chargedDist * customRate).toFixed(0)}`,
+            `Driver Batta: ₹${res.fare - (chargedDist * customRate) - estimatedTolls - (res.gst || 0)}`,
+            isInterstate ? `Inter-state Permit: ₹${permitCharge}` : '',
+            `Toll Estimate: ₹${estimatedTolls}`,
+            ``,
+            `TOTAL ESTIMATED FARE: ₹${Math.round(totalWithPermit)}`
+        ].filter(Boolean);
 
-            setResult({
-                fare: totalFare,
-                details,
-                breakdown: {
-                    kmCharge,
-                    bata: totalBata,
-                    permit: permitCharge,
-                    tolls: tollsRoundTrip,
-                    days: actualDays,
-                    chargedKm
-                }
-            });
-        } else {
-            // One-Way Trip Logic
-            const baseFare = dist * customRate;
-            const subtotal = baseFare + permitCharge;
-            const totalFare = subtotal + estimatedTolls;
-
-            const details = [
-                `One-Way Trip: ${dist} KM`,
-                `Distance Charge: ${dist} KM × ₹${customRate}/KM = ₹${baseFare.toFixed(0)}`,
-                needsPermit ? `${permitState} Permit: ₹${permitCharge}` : '',
-                `Toll Estimate (approx): ₹${estimatedTolls}`,
-                ``,
-                `TOTAL FARE: ₹${totalFare.toFixed(0)}`
-            ].filter(Boolean);
-
-            setResult({
-                fare: totalFare,
-                details,
-                breakdown: {
-                    kmCharge: baseFare,
-                    permit: permitCharge,
-                    tolls: estimatedTolls
-                }
-            });
-        }
+        setResult({
+            fare: Math.round(totalWithPermit),
+            details,
+            breakdown: {
+                ...res,
+                total: totalWithPermit
+            }
+        });
     };
 
     const book = () => {
@@ -213,9 +150,15 @@ const CabCalculator: React.FC = () => {
 
     return (
         <div className="space-y-4">
-            <div className="flex p-1 bg-slate-50 rounded-xl">
+            <div className="flex p-1 bg-slate-50 rounded-xl" role="group" aria-label="Trip type selection">
                 {['oneway', 'roundtrip'].map((t: any) => (
-                    <button key={t} onClick={() => setTripType(t)} className={`flex-1 py-3 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider ${tripType === t ? 'bg-white text-[#0047AB] shadow-sm' : 'text-slate-400'}`}>
+                    <button
+                        key={t}
+                        onClick={() => setTripType(t)}
+                        aria-pressed={tripType === t}
+                        aria-label={t === 'oneway' ? 'One Way or Drop Trip' : 'Round Trip'}
+                        className={`flex-1 py-3 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${tripType === t ? 'bg-white text-[#0047AB] shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                    >
                         {t === 'oneway' ? 'One Way / Drop' : 'Round Trip'}
                     </button>
                 ))}
@@ -225,7 +168,7 @@ const CabCalculator: React.FC = () => {
                 <div className="grid grid-cols-2 gap-3">
                     <PlacesAutocomplete
                         label="Pickup"
-                        icon={<MapPin size={10} />}
+                        icon={<MapPin size={10} aria-hidden="true" />}
                         value={pickup}
                         onChange={setPickup}
                         onPlaceSelected={(place) => {
@@ -237,7 +180,7 @@ const CabCalculator: React.FC = () => {
                     />
                     <PlacesAutocomplete
                         label="Drop"
-                        icon={<MapPin size={10} />}
+                        icon={<MapPin size={10} aria-hidden="true" />}
                         value={drop}
                         onChange={setDrop}
                         onPlaceSelected={(place) => {
@@ -249,12 +192,11 @@ const CabCalculator: React.FC = () => {
                     />
                 </div>
 
-
-
                 <div className="space-y-1">
-                    <Label icon={<AlertCircle size={10} />} text="Distance (Km)" />
+                    <Label icon={<AlertCircle size={10} aria-hidden="true" />} text="Distance (Km)" htmlFor="cab-distance" />
                     <div className="relative">
                         <input
+                            id="cab-distance"
                             type="number"
                             value={distance}
                             onChange={(e) => setDistance(e.target.value)}
@@ -264,7 +206,7 @@ const CabCalculator: React.FC = () => {
                         />
                         {calculatingDistance && (
                             <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                                <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" aria-hidden="true"></div>
                             </div>
                         )}
                     </div>
@@ -272,15 +214,15 @@ const CabCalculator: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                        <Label icon={<Users size={10} />} text="Passengers" />
-                        <select value={passengers} onChange={e => setPassengers(Number(e.target.value))} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
+                        <Label icon={<Users size={10} aria-hidden="true" />} text="Passengers" htmlFor="cab-passengers" />
+                        <select id="cab-passengers" value={passengers} onChange={e => setPassengers(Number(e.target.value))} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
                             {[4, 7, 12].map(n => <option key={n} value={n}>{n} Seats</option>)}
                         </select>
                     </div>
                     {tripType === 'roundtrip' && (
                         <div className="space-y-1">
-                            <Label icon={<Clock size={10} />} text="Trip Duration" />
-                            <select value={days} onChange={e => setDays(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
+                            <Label icon={<Clock size={10} aria-hidden="true" />} text="Trip Duration" htmlFor="cab-days" />
+                            <select id="cab-days" value={days} onChange={e => setDays(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
                                 {[1, 2, 3, 4, 5, 6, 7, 10, 15].map(n => <option key={n} value={n}>{n} {n === 1 ? 'Day' : 'Days'}</option>)}
                             </select>
                         </div>
@@ -289,8 +231,8 @@ const CabCalculator: React.FC = () => {
 
                 <div className="grid grid-cols-[2fr,1fr] gap-3">
                     <div className="space-y-1">
-                        <Label icon={<Car size={10} />} text="Vehicle" />
-                        <select value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
+                        <Label icon={<Car size={10} aria-hidden="true" />} text="Vehicle" htmlFor="cab-vehicle" />
+                        <select id="cab-vehicle" value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
                             {VEHICLES.filter(v => {
                                 if (passengers > 7) return v.id === 'tempo';
                                 if (passengers > 4) return v.seats >= 7;
@@ -298,14 +240,13 @@ const CabCalculator: React.FC = () => {
                             }).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                         </select>
                     </div>
-                    <Input label="Rate/Km" icon={<Hash size={10} />} value={customRate} onChange={setCustomRate} type="number" highlight />
+                    <Input label="Rate/Km" icon={<Hash size={10} aria-hidden="true" />} value={customRate} onChange={setCustomRate} type="number" highlight />
                 </div>
             </div>
 
-            <Button onClick={calculate} disabled={!distance} text="Calculate" />
+            <Button onClick={calculate} disabled={!distance} text="Calculate Fare" ariaLabel="Calculate Cab Fare" />
             {result && <ResultCard title="Cab Fare" amount={result.fare} details={result.details} sub="Tolls & Permits Included (Approx)" onBook={book} />}
 
-            {/* Map Picker Modal - for precise location selection */}
             {showMap && (
                 <MapPicker
                     onLocationSelect={handleMapSelect}
@@ -329,29 +270,22 @@ const ActingDriverCalculator: React.FC = () => {
     const calculate = () => {
         const numDays = parseInt(days) || 1;
 
-        // Base rates (Tamil Nadu market rates)
         const rates = {
-            local8: 800,   // 8 hours / 80 KM per day
-            local12: 1200, // 12 hours / 120 KM per day
-            outstation: 1200 // Per day (2025 Market Rate)
+            local8: 800,
+            local12: 1200,
+            outstation: 1200
         };
 
         const baseRate = rates[serviceType];
         const driverCharge = baseRate * numDays;
 
-        // Additional charges for outstation
         let bataCharge = 0;
         let accommodationCharge = 0;
         let returnCharge = 0;
 
         if (serviceType === 'outstation') {
-            // Driver bata (food allowance)
             bataCharge = foodProvided ? 0 : (400 * numDays);
-
-            // Accommodation
             accommodationCharge = stayProvided ? 0 : (500 * numDays);
-
-            // Return charges (driver's return journey)
             returnCharge = 500;
         }
 
@@ -400,12 +334,12 @@ const ActingDriverCalculator: React.FC = () => {
 
     return (
         <div className="space-y-4">
-            {/* Service Type Selection */}
             <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 pl-3 border-l-4 border-blue-500">Service Type</label>
-                <div className="grid grid-cols-3 gap-2">
+                <p className="text-xs font-bold text-slate-700 pl-3 border-l-4 border-blue-500">Service Type</p>
+                <div className="grid grid-cols-3 gap-2" role="group" aria-label="Acting driver service type">
                     <button
                         onClick={() => setServiceType('local8')}
+                        aria-pressed={serviceType === 'local8'}
                         className={`py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${serviceType === 'local8'
                             ? 'bg-[#0047AB] text-white shadow-lg'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -415,6 +349,7 @@ const ActingDriverCalculator: React.FC = () => {
                     </button>
                     <button
                         onClick={() => setServiceType('local12')}
+                        aria-pressed={serviceType === 'local12'}
                         className={`py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${serviceType === 'local12'
                             ? 'bg-[#0047AB] text-white shadow-lg'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -424,6 +359,7 @@ const ActingDriverCalculator: React.FC = () => {
                     </button>
                     <button
                         onClick={() => setServiceType('outstation')}
+                        aria-pressed={serviceType === 'outstation'}
                         className={`py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${serviceType === 'outstation'
                             ? 'bg-[#0047AB] text-white shadow-lg'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -435,37 +371,36 @@ const ActingDriverCalculator: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-                <Input label="Duration (Days)" icon={<Clock size={10} />} value={days} onChange={setDays} type="number" />
+                <Input label="Duration (Days)" icon={<Clock size={10} aria-hidden="true" />} value={days} onChange={setDays} type="number" />
 
-                {/* Outstation Options */}
                 {serviceType === 'outstation' && (
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                         <p className="text-[10px] font-black text-slate-600 uppercase tracking-wider mb-2">Driver Provisions</p>
 
-                        <label className="flex items-center gap-3 cursor-pointer">
-                            <div onClick={() => setFoodProvided(!foodProvided)} className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${foodProvided ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
-                                {foodProvided && <CheckCircle2 size={14} className="text-white" />}
+                        <button onClick={() => setFoodProvided(!foodProvided)} aria-pressed={foodProvided} className="flex items-center gap-3 w-full text-left">
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${foodProvided ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
+                                {foodProvided && <CheckCircle2 size={14} className="text-white" aria-hidden="true" />}
                             </div>
                             <div>
                                 <span className="text-xs font-bold text-slate-700">Food Provided by Customer</span>
                                 <p className="text-[9px] text-slate-500">If not, ₹400/day bata will be charged</p>
                             </div>
-                        </label>
+                        </button>
 
-                        <label className="flex items-center gap-3 cursor-pointer">
-                            <div onClick={() => setStayProvided(!stayProvided)} className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${stayProvided ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
-                                {stayProvided && <CheckCircle2 size={14} className="text-white" />}
+                        <button onClick={() => setStayProvided(!stayProvided)} aria-pressed={stayProvided} className="flex items-center gap-3 w-full text-left">
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${stayProvided ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
+                                {stayProvided && <CheckCircle2 size={14} className="text-white" aria-hidden="true" />}
                             </div>
                             <div>
                                 <span className="text-xs font-bold text-slate-700">Accommodation Provided by Customer</span>
                                 <p className="text-[9px] text-slate-500">If not, ₹500/day will be charged</p>
                             </div>
-                        </label>
+                        </button>
                     </div>
                 )}
             </div>
 
-            <Button onClick={calculate} disabled={!days} text="Calculate Driver Cost" />
+            <Button onClick={calculate} disabled={!days} text="Calculate Driver Cost" ariaLabel="Calculate Acting Driver Cost" />
             {result && <ResultCard title="Acting Driver Cost" amount={result.fare} details={result.details} sub={serviceType === 'outstation' ? 'Fuel & Vehicle by Customer' : 'Extra hours/Night charges (₹200) extra'} onBook={book} />}
         </div>
     );
@@ -484,7 +419,6 @@ const RelocationCalculator: React.FC = () => {
     const [calculatingDistance, setCalculatingDistance] = useState(false);
     const [showMap, setShowMap] = useState(false);
 
-    // Driver-Driven options (only for driver service)
     const [fuelIncluded, setFuelIncluded] = useState(false);
     const [tollsIncluded, setTollsIncluded] = useState(false);
     const [driverReturnIncluded, setDriverReturnIncluded] = useState(false);
@@ -522,7 +456,6 @@ const RelocationCalculator: React.FC = () => {
         const dist = parseFloat(distance);
         if (!dist) return;
 
-        // Detect inter-state for permit
         const pickupLower = pickup.toLowerCase();
         const dropLower = drop.toLowerCase();
         const isKarnataka = pickupLower.includes('karnataka') || dropLower.includes('karnataka') ||
@@ -540,8 +473,6 @@ const RelocationCalculator: React.FC = () => {
         const details: string[] = [];
 
         if (serviceType === 'carrier') {
-            // Professional Carrier Service (All-Inclusive)
-            // Rates based on vehicle type and distance
             const baseRates = {
                 car: dist <= 500 ? 6000 : dist <= 1000 ? 10000 : dist <= 1500 ? 14000 : 18000,
                 van: dist <= 500 ? 8000 : dist <= 1000 ? 13000 : dist <= 1500 ? 18000 : 24000,
@@ -564,9 +495,8 @@ const RelocationCalculator: React.FC = () => {
                 `TOTAL COST: ₹${totalFare.toFixed(0)}`
             );
         } else {
-            // Driver-Driven Service (Customer Controls Costs)
             const driverCharges = {
-                car: 1000, // Base driver charge per trip
+                car: 1000,
                 van: 1500,
                 bus: 2500
             };
@@ -577,7 +507,6 @@ const RelocationCalculator: React.FC = () => {
             let returnCharge = 0;
 
             if (!fuelIncluded) {
-                // Fuel estimates (₹/KM)
                 const fuelRates = { car: 7, van: 9, bus: 12 };
                 fuelCharge = dist * fuelRates[vehicleType];
             }
@@ -638,12 +567,12 @@ const RelocationCalculator: React.FC = () => {
 
     return (
         <div className="space-y-4">
-            {/* Service Type Selection */}
             <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 pl-3 border-l-4 border-blue-500">Service Type</label>
-                <div className="grid grid-cols-2 gap-2">
+                <p className="text-xs font-bold text-slate-700 pl-3 border-l-4 border-blue-500">Service Type</p>
+                <div className="grid grid-cols-2 gap-2" role="group" aria-label="Relocation service type">
                     <button
                         onClick={() => setServiceType('carrier')}
+                        aria-pressed={serviceType === 'carrier'}
                         className={`py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${serviceType === 'carrier'
                             ? 'bg-[#0047AB] text-white shadow-lg'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -653,6 +582,7 @@ const RelocationCalculator: React.FC = () => {
                     </button>
                     <button
                         onClick={() => setServiceType('driver')}
+                        aria-pressed={serviceType === 'driver'}
                         className={`py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${serviceType === 'driver'
                             ? 'bg-[#0047AB] text-white shadow-lg'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -663,10 +593,9 @@ const RelocationCalculator: React.FC = () => {
                 </div>
             </div>
 
-            {/* Vehicle Type Selection */}
             <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 pl-3 border-l-4 border-blue-500">Vehicle Type</label>
-                <div className="grid grid-cols-3 gap-2">
+                <p className="text-xs font-bold text-slate-700 pl-3 border-l-4 border-blue-500">Vehicle Type</p>
+                <div className="grid grid-cols-3 gap-2" role="group" aria-label="Relocation vehicle type">
                     {[
                         { id: 'car', label: 'Car/Sedan', icon: '🚗' },
                         { id: 'van', label: 'Van/SUV', icon: '🚐' },
@@ -675,12 +604,13 @@ const RelocationCalculator: React.FC = () => {
                         <button
                             key={v.id}
                             onClick={() => setVehicleType(v.id)}
+                            aria-pressed={vehicleType === v.id}
                             className={`py-2 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${vehicleType === v.id
                                 ? 'bg-[#0047AB] text-white shadow-lg'
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                 }`}
                         >
-                            {v.icon}<br />{v.label}
+                            <span role="img" aria-label={v.label}>{v.icon}</span><br />{v.label}
                         </button>
                     ))}
                 </div>
@@ -690,7 +620,7 @@ const RelocationCalculator: React.FC = () => {
                 <div className="grid grid-cols-2 gap-3">
                     <PlacesAutocomplete
                         label="Pickup Location"
-                        icon={<MapPin size={10} />}
+                        icon={<MapPin size={10} aria-hidden="true" />}
                         value={pickup}
                         onChange={setPickup}
                         onPlaceSelected={(place) => {
@@ -702,7 +632,7 @@ const RelocationCalculator: React.FC = () => {
                     />
                     <PlacesAutocomplete
                         label="Drop Location"
-                        icon={<MapPin size={10} />}
+                        icon={<MapPin size={10} aria-hidden="true" />}
                         value={drop}
                         onChange={setDrop}
                         onPlaceSelected={(place) => {
@@ -715,9 +645,10 @@ const RelocationCalculator: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                    <Label icon={<AlertCircle size={10} />} text="Distance (Km)" />
+                    <Label icon={<AlertCircle size={10} aria-hidden="true" />} text="Distance (Km)" htmlFor="relocation-distance" />
                     <div className="relative">
                         <input
+                            id="relocation-distance"
                             type="number"
                             value={distance}
                             onChange={(e) => setDistance(e.target.value)}
@@ -727,54 +658,52 @@ const RelocationCalculator: React.FC = () => {
                         />
                         {calculatingDistance && (
                             <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                                <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" aria-hidden="true"></div>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Driver-Driven Options */}
                 {serviceType === 'driver' && (
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                         <p className="text-[10px] font-black text-slate-600 uppercase tracking-wider mb-2">Customer Provides</p>
 
-                        <label className="flex items-center gap-3 cursor-pointer">
-                            <div onClick={() => setFuelIncluded(!fuelIncluded)} className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${fuelIncluded ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
-                                {fuelIncluded && <CheckCircle2 size={14} className="text-white" />}
+                        <button onClick={() => setFuelIncluded(!fuelIncluded)} aria-pressed={fuelIncluded} className="flex items-center gap-3 w-full text-left">
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${fuelIncluded ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
+                                {fuelIncluded && <CheckCircle2 size={14} className="text-white" aria-hidden="true" />}
                             </div>
                             <div>
                                 <span className="text-xs font-bold text-slate-700">Fuel Provided by Customer</span>
                                 <p className="text-[9px] text-slate-500">If not, estimated fuel cost will be charged</p>
                             </div>
-                        </label>
+                        </button>
 
-                        <label className="flex items-center gap-3 cursor-pointer">
-                            <div onClick={() => setTollsIncluded(!tollsIncluded)} className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${tollsIncluded ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
-                                {tollsIncluded && <CheckCircle2 size={14} className="text-white" />}
+                        <button onClick={() => setTollsIncluded(!tollsIncluded)} aria-pressed={tollsIncluded} className="flex items-center gap-3 w-full text-left">
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${tollsIncluded ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
+                                {tollsIncluded && <CheckCircle2 size={14} className="text-white" aria-hidden="true" />}
                             </div>
                             <div>
                                 <span className="text-xs font-bold text-slate-700">Tolls Paid by Customer</span>
                                 <p className="text-[9px] text-slate-500">If not, estimated toll charges will be added</p>
                             </div>
-                        </label>
+                        </button>
 
-                        <label className="flex items-center gap-3 cursor-pointer">
-                            <div onClick={() => setDriverReturnIncluded(!driverReturnIncluded)} className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${driverReturnIncluded ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
-                                {driverReturnIncluded && <CheckCircle2 size={14} className="text-white" />}
+                        <button onClick={() => setDriverReturnIncluded(!driverReturnIncluded)} aria-pressed={driverReturnIncluded} className="flex items-center gap-3 w-full text-left">
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${driverReturnIncluded ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
+                                {driverReturnIncluded && <CheckCircle2 size={14} className="text-white" aria-hidden="true" />}
                             </div>
                             <div>
                                 <span className="text-xs font-bold text-slate-700">Driver Return Arranged by Customer</span>
                                 <p className="text-[9px] text-slate-500">If not, ₹500 return ticket will be charged</p>
                             </div>
-                        </label>
+                        </button>
                     </div>
                 )}
             </div>
 
-            <Button onClick={calculate} disabled={!distance} text="Calculate Relocation Cost" />
+            <Button onClick={calculate} disabled={!distance} text="Calculate Relocation Cost" ariaLabel="Calculate Vehicle Relocation Cost" />
             {result && <ResultCard title="Vehicle Relocation" amount={result.fare} details={result.details} sub={serviceType === 'carrier' ? 'Fully Insured Transport' : 'Safe & Professional Driver'} onBook={book} />}
 
-            {/* Map Picker Modal */}
             {showMap && (
                 <MapPicker
                     onLocationSelect={handleMapSelect}
@@ -786,19 +715,22 @@ const RelocationCalculator: React.FC = () => {
 };
 
 // --- Helper Components ---
-const Input = ({ label, icon, value, onChange, type = 'text', highlight = false }: any) => (
-    <div className="space-y-1 w-full">
-        <Label icon={icon} text={label} />
-        <input type={type} value={value} onChange={e => onChange(e.target.value)} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs ${highlight ? 'font-black text-[#0047AB]' : ''}`} />
-    </div>
+const Input = ({ label, icon, value, onChange, type = 'text', highlight = false }: any) => {
+    const id = React.useId();
+    return (
+        <div className="space-y-1 w-full">
+            <Label icon={icon} text={label} htmlFor={id} />
+            <input id={id} type={type} value={value} onChange={e => onChange(e.target.value)} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs ${highlight ? 'font-black text-[#0047AB]' : ''}`} />
+        </div>
+    );
+};
+
+const Label = ({ icon, text, htmlFor }: any) => (
+    <label htmlFor={htmlFor} className="text-[9px] font-black text-slate-500 uppercase ml-1 flex items-center gap-1.5">{icon} {text}</label>
 );
 
-const Label = ({ icon, text }: any) => (
-    <label className="text-[9px] font-black text-slate-400 uppercase ml-1 flex items-center gap-1.5">{icon} {text}</label>
-);
-
-const Button = ({ onClick, disabled, text }: any) => (
-    <button onClick={onClick} disabled={disabled} className="w-full py-4 bg-[#0047AB] text-white font-black uppercase tracking-widest rounded-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 text-[10px]">
+const Button = ({ onClick, disabled, text, ariaLabel }: any) => (
+    <button onClick={onClick} disabled={disabled} aria-label={ariaLabel || text} className="w-full py-4 bg-[#0047AB] text-white font-black uppercase tracking-widest rounded-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 text-[10px]">
         {text}
     </button>
 );
@@ -815,13 +747,13 @@ const ResultCard = ({ title, amount, details, sub, onBook }: any) => {
 
     return (
         <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-xl animate-fade-in relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/20 rounded-full blur-2xl -mr-8 -mt-8"></div>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/20 rounded-full blur-2xl -mr-8 -mt-8" aria-hidden="true"></div>
             <div className="relative z-10 space-y-3">
                 <div className="flex justify-between items-center border-b border-white/10 pb-2">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{title}</span>
                     <span className="text-xl font-black text-[#4ade80]">₹{amount.toLocaleString()}</span>
                 </div>
-                <pre className="font-mono text-[10px] text-slate-300 whitespace-pre-wrap leading-relaxed bg-white/5 p-2.5 rounded-xl">
+                <div className="font-mono text-[10px] text-slate-300 whitespace-pre-wrap leading-relaxed bg-white/5 p-2.5 rounded-xl">
                     {Array.isArray(details) ? (
                         details.map((line: string, i: number) => {
                             let emoji = '🔹';
@@ -833,23 +765,25 @@ const ResultCard = ({ title, amount, details, sub, onBook }: any) => {
                             return <div key={i} className="flex gap-2 mb-1"><span>{emoji}</span><span>{line}</span></div>;
                         })
                     ) : details}
-                </pre>
+                </div>
                 <div className="flex items-center gap-2 text-amber-500 bg-amber-500/10 p-2 rounded-lg">
-                    <AlertCircle size={12} /> <span className="text-[9px] font-bold uppercase">{sub}</span>
+                    <AlertCircle size={12} aria-hidden="true" /> <span className="text-[9px] font-bold uppercase">{sub}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                     <button
                         onClick={copyToClipboard}
+                        aria-label={copied ? "Copied to clipboard" : "Copy to clipboard"}
                         className="py-3 bg-slate-700 hover:bg-slate-600 text-white font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-lg text-[10px]"
                     >
-                        {copied ? <CheckCircle2 size={16} /> : <MessageCircle size={16} />}
+                        {copied ? <CheckCircle2 size={16} aria-hidden="true" /> : <MessageCircle size={16} aria-hidden="true" />}
                         {copied ? 'Copied' : 'Copy'}
                     </button>
                     <button
                         onClick={onBook}
+                        aria-label="Contact us on WhatsApp"
                         className="py-3 bg-[#25D366] hover:bg-[#128c7e] text-white font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-lg text-[10px]"
                     >
-                        <MessageCircle size={16} /> WhatsApp
+                        <MessageCircle size={16} aria-hidden="true" /> WhatsApp
                     </button>
                 </div>
             </div>
@@ -864,11 +798,11 @@ const Calculator: React.FC = () => {
     return (
         <div className="max-w-3xl mx-auto pb-24 space-y-2">
             <div className="px-2 py-1 text-center">
-                <h2 className="text-lg font-black uppercase tracking-wide text-slate-800 underline decoration-4 decoration-blue-500 underline-offset-4">FARE CALCULATOR</h2>
+                <h1 className="text-lg font-black uppercase tracking-wide text-slate-800 underline decoration-4 decoration-blue-500 underline-offset-4">FARE CALCULATOR</h1>
                 <p className="text-slate-600 text-[10px] font-medium mt-0.5">Select a service to calculate cost</p>
             </div>
 
-            <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex gap-1 overflow-x-auto">
+            <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex gap-1 overflow-x-auto" role="tablist" aria-label="Calculator Mode">
                 {[
                     { id: 'cab', label: 'Cab Booking', icon: Car },
                     { id: 'driver', label: 'Acting Driver', icon: UserCheck },
@@ -876,16 +810,20 @@ const Calculator: React.FC = () => {
                 ].map((m: any) => (
                     <button
                         key={m.id}
+                        role="tab"
+                        aria-selected={mode === m.id}
+                        aria-controls={`${m.id}-panel`}
+                        id={`${m.id}-tab`}
                         onClick={() => setMode(m.id)}
-                        className={`flex-1 min-w-[90px] py-3 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all ${mode === m.id ? 'bg-[#0047AB] text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+                        className={`flex-1 min-w-[90px] py-3 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all ${mode === m.id ? 'bg-[#0047AB] text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
                     >
-                        <m.icon size={18} />
+                        <m.icon size={18} aria-hidden="true" />
                         <span className="text-[9px] font-black uppercase tracking-wider">{m.label}</span>
                     </button>
                 ))}
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm" role="tabpanel" id={`${mode}-panel`} aria-labelledby={`${mode}-tab`}>
                 {mode === 'cab' && <CabCalculator />}
                 {mode === 'driver' && <ActingDriverCalculator />}
                 {mode === 'relocation' && <RelocationCalculator />}

@@ -110,11 +110,17 @@ export const calculateFare = (
     let taxableFare = 0;
     const waitingChargeRate = 150; // Standard TN industry rate
 
-    // Use vehicle-specific rates if available
+    // Use vehicle-specific rates if available, but prioritize manual overrides from params
     const vehicle = VEHICLES.find(v => v.id === vehicleId);
-    const activeRate = vehicle ? (mode === 'outstation' ? vehicle.roundRate : vehicle.dropRate) : ratePerKm;
-    const activeBatta = vehicle ? vehicle.batta : (nightBata || 400);
-    const activeMinKm = vehicle ? vehicle.minKm : (mode === 'outstation' ? 250 : 100);
+
+    // If ratePerKm is provided (non-zero), use it. Otherwise use vehicle default.
+    const activeRate = ratePerKm > 0 ? ratePerKm : (vehicle ? (mode === 'outstation' ? vehicle.roundRate : vehicle.dropRate) : 13);
+
+    // If nightBata is provided (non-zero), use it. Otherwise use vehicle default.
+    const activeBatta = nightBata > 0 ? nightBata : (vehicle ? vehicle.batta : 400);
+
+    // Min KM logic
+    const activeMinKm = vehicle ? vehicle.minKm : (mode === 'outstation' ? 300 : 100);
 
     // TN Drop/Outstation Logic
     if (mode === 'drop') {

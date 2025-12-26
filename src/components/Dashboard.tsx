@@ -116,8 +116,8 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                 <div className="absolute top-0 right-0 w-24 h-24 bg-[#0047AB]/10 rounded-full -mr-12 -mt-12"></div>
                 <div className="relative z-10 flex justify-between items-start">
                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 flex items-center gap-1.5 text-slate-400">
-                            <TrendingUp size={12} /> {stats.label}
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-1.5 text-slate-300">
+                            <TrendingUp size={12} aria-hidden="true" /> {stats.label}
                         </p>
                         <h2 className={`text-3xl font-black mt-2 tabular-nums transition-colors duration-500 ${stats.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                             ₹{stats.profit.toLocaleString()}
@@ -130,18 +130,18 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
 
                 <div className="mt-5 flex gap-3">
                     <div className="flex-1 bg-slate-800/50 rounded-xl p-2.5 border border-slate-700/50">
-                        <p className="text-[8px] font-black uppercase tracking-widest opacity-60 text-slate-400">TOTAL INCOME</p>
+                        <p className="text-[8px] font-black uppercase tracking-widest text-slate-300">TOTAL INCOME</p>
                         <p className="text-sm font-black mt-1">₹{stats.income.toLocaleString()}</p>
                     </div>
                     <div className="flex-1 bg-slate-800/50 rounded-xl p-2.5 border border-slate-700/50">
-                        <p className="text-[8px] font-black uppercase tracking-widest opacity-60 text-slate-400">TOTAL SPENT</p>
+                        <p className="text-[8px] font-black uppercase tracking-widest text-slate-300">TOTAL SPENT</p>
                         <p className="text-sm font-black mt-1">₹{stats.spending.toLocaleString()}</p>
                     </div>
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center relative z-10">
                     <div className="text-left">
-                        <p className="text-[9px] font-black uppercase tracking-widest opacity-60 text-slate-400">PROFIT MARGIN</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">PROFIT MARGIN</p>
                         <p className={`text-base font-black mt-0.5 ${stats.income > 0 && stats.profit >= 0 ? 'text-green-400' : stats.profit < 0 ? 'text-red-400' : 'text-slate-400'}`}>
                             {stats.income > 0 ? Math.round((stats.profit / stats.income) * 100) : 0}%
                         </p>
@@ -161,9 +161,11 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                     <button
                         key={r}
                         onClick={() => setRange(r)}
+                        aria-label={`Show stats for ${r}`}
+                        aria-pressed={range === r}
                         className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${range === r
                             ? 'bg-[#0047AB] text-white shadow-md'
-                            : 'text-slate-400 hover:bg-slate-50'
+                            : 'text-slate-600 hover:bg-slate-50'
                             }`}
                     >
                         {r}
@@ -182,19 +184,19 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                 <div className="space-y-2">
                     <div className="flex items-start gap-3">
                         <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1"></div>
-                        <p className="text-[10px] font-bold text-slate-600 uppercase leading-relaxed">
+                        <p className="text-[10px] font-bold text-slate-700 uppercase leading-relaxed">
                             <span className="text-slate-900">INCOME:</span> Money from all saved <span className="text-green-600">Invoices</span>.
                         </p>
                     </div>
                     <div className="flex items-start gap-3">
                         <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1"></div>
-                        <p className="text-[10px] font-bold text-slate-600 uppercase leading-relaxed">
+                        <p className="text-[10px] font-bold text-slate-700 uppercase leading-relaxed">
                             <span className="text-slate-900">SPENT:</span> Money logged in the <span className="text-red-500">Expenses</span> page.
                         </p>
                     </div>
                     <div className="flex items-start gap-3">
                         <div className="w-1.5 h-1.5 rounded-full bg-[#0047AB] mt-1"></div>
-                        <p className="text-[10px] font-bold text-slate-600 uppercase leading-relaxed">
+                        <p className="text-[10px] font-bold text-slate-700 uppercase leading-relaxed">
                             <span className="text-slate-900">CASH FLOW:</span> Remaining profit (<span className="text-[#0047AB]">Income - Spent</span>).
                         </p>
                     </div>
@@ -253,13 +255,15 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                                     onClick={() => deleteNote(note.id)}
                                     className="absolute top-2 right-2 p-1.5 bg-red-100 text-red-600 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-200 transition-all active:scale-90"
                                     title="Delete note"
+                                    aria-label="Delete note"
                                 >
-                                    <Trash2 size={12} />
+                                    <Trash2 size={12} aria-hidden="true" />
                                 </button>
                                 <textarea
                                     value={note.content}
                                     onChange={(e) => updateNote(note.id, e.target.value)}
                                     placeholder="📝 Start KM: ___&#10;Start Time: ___&#10;End KM: ___&#10;End Time: ___&#10;Notes..."
+                                    aria-label="Note content"
                                     className="w-full bg-white/50 border border-yellow-300 rounded-lg p-2.5 text-sm text-slate-800 placeholder:text-slate-400 font-medium resize-none focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all mt-1"
                                     rows={5}
                                     style={{ fontFamily: 'Noto Sans, sans-serif' }}

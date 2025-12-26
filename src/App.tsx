@@ -182,9 +182,10 @@ function AppContent() {
               ) : (
                 <button
                   onClick={() => window.location.reload()}
+                  aria-label="Refresh page"
                   className="p-2 bg-slate-50 text-slate-400 rounded-full border border-slate-100 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                 >
-                  <RefreshCw size={14} />
+                  <RefreshCw size={14} aria-hidden="true" />
                 </button>
               )}
               <Notifications />

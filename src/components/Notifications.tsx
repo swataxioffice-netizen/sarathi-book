@@ -58,9 +58,12 @@ const Notifications: React.FC = () => {
             {/* Bell Icon */}
             <button
                 onClick={handleToggle}
+                aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+                aria-expanded={isOpen}
+                aria-haspopup="true"
                 className="relative p-2 rounded-full hover:bg-slate-100 transition-colors focus:outline-none"
             >
-                <Bell size={22} className="text-slate-600" />
+                <Bell size={22} className="text-slate-600" aria-hidden="true" />
                 {unreadCount > 0 && (
                     <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white border-2 border-white">
                         {unreadCount > 9 ? '9+' : unreadCount}
@@ -134,9 +137,10 @@ const Notifications: React.FC = () => {
                                                     e.stopPropagation();
                                                     removeNotification(notification.id);
                                                 }}
+                                                aria-label="Remove notification"
                                                 className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all rounded-full hover:bg-slate-100"
                                             >
-                                                <X size={12} />
+                                                <X size={12} aria-hidden="true" />
                                             </button>
                                         </div>
                                         {/* Unread Indicator */}

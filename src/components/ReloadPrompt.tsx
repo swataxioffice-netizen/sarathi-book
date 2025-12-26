@@ -52,8 +52,8 @@ function ReloadPrompt() {
                     )}
                 </div>
 
-                <button onClick={close} className="text-slate-400 hover:text-white p-1">
-                    <X size={16} />
+                <button onClick={close} className="text-slate-400 hover:text-white p-1" aria-label="Close notification">
+                    <X size={16} aria-hidden="true" />
                 </button>
             </div>
 

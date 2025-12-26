@@ -241,8 +241,9 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                     <div className="mt-3 pt-3 border-t border-slate-200 animate-fade-in">
                         <div className="space-y-3">
                             <div>
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Expiry Date</label>
+                                <label htmlFor={`expiry-${req.type}`} className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Expiry Date</label>
                                 <input
+                                    id={`expiry-${req.type}`}
                                     type="date"
                                     value={expiry}
                                     onChange={(e) => setExpiry(e.target.value)}
@@ -250,10 +251,17 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                                 />
                             </div>
                             <div>
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Document File</label>
+                                <label htmlFor={`file-${req.type}`} className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Document File</label>
                                 <div className="relative">
-                                    <input type="file" accept="image/*,application/pdf" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                    <div className={`tn-input h-9 flex items-center px-3 text-[10px] font-medium bg-white ${fileName ? 'text-green-600 bg-green-50' : 'text-slate-400'}`}>
+                                    <input
+                                        id={`file-${req.type}`}
+                                        type="file"
+                                        accept="image/*,application/pdf"
+                                        onChange={handleFileUpload}
+                                        aria-label={`Upload ${req.label}`}
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                    />
+                                    <div className={`tn-input h-9 flex items-center px-3 text-[10px] font-medium bg-white ${fileName ? 'text-green-600 bg-green-50' : 'text-slate-400'}`} aria-hidden="true">
                                         {fileName ? <><CheckCircle size={12} className="mr-2" /> {fileName}</> : 'Tap to Take Photo / Choose File'}
                                     </div>
                                 </div>
@@ -291,6 +299,7 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                         <select
                             value={selectedVehicleId}
                             onChange={(e) => setSelectedVehicleId(e.target.value)}
+                            aria-label="Select vehicle for documentation"
                             className="bg-slate-50 border-none text-[10px] font-black uppercase tracking-wider text-slate-700 py-1.5 pl-3 pr-8 rounded-lg focus:ring-0 cursor-pointer outline-none"
                         >
                             {settings.vehicles.map(v => (

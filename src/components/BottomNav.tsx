@@ -23,15 +23,17 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
     }
 
     return (
-        <nav className="bg-white border-t border-slate-200 px-2 py-2 flex items-center justify-around fixed bottom-0 left-0 right-0 max-w-md mx-auto z-50">
+        <nav className="bg-white border-t border-slate-200 px-2 py-2 flex items-center justify-around fixed bottom-0 left-0 right-0 max-w-md mx-auto z-50" aria-label="Main Navigation">
             {navItems.map((item) => (
                 <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
+                    aria-label={item.label}
+                    aria-current={activeTab === item.id ? 'page' : undefined}
                     className={`flex flex-col items-center justify-center py-2 px-1 w-16 transition-all relative ${activeTab === item.id ? 'text-[#0047AB]' : 'text-slate-400'
                         }`}
                 >
-                    <div className="mb-1">
+                    <div className="mb-1" aria-hidden="true">
                         {item.icon}
                     </div>
                     <span className={`text-[8px] font-black uppercase tracking-tight transition-all ${activeTab === item.id ? 'opacity-100' : 'opacity-60'
@@ -39,7 +41,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
                         {item.label}
                     </span>
                     {activeTab === item.id && (
-                        <div className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-[#0047AB]"></div>
+                        <div className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-[#0047AB]" aria-hidden="true"></div>
                     )}
                 </button>
             ))}

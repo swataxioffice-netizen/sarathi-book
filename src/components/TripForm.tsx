@@ -221,7 +221,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                     <button
                         key={m.id}
                         onClick={() => setMode(m.id as any)}
-                        className={`flex-1 py-2 px-1 text-[10px] font-black tracking-wider border-r last:border-r-0 transition-all ${mode === m.id ? 'bg-[#0047AB] text-white' : 'bg-[var(--bg-card)] text-slate-500 hover:bg-slate-50'
+                        aria-pressed={mode === m.id}
+                        aria-label={`Switch to ${m.label} mode`}
+                        className={`flex-1 py-2 px-1 text-[10px] font-black tracking-wider border-r last:border-r-0 transition-all ${mode === m.id ? 'bg-[#0047AB] text-white' : 'bg-[var(--bg-card)] text-slate-600 hover:bg-slate-50'
                             }`}
                     >
                         {m.label}
@@ -239,20 +241,20 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                     <div className="flex items-start gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1 flex-shrink-0" />
-                        <p className="text-[9px] text-slate-600 leading-tight"><b>ONE WAY:</b> Dropping at airport/city. Min 100km billed.</p>
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1 flex-shrink-0" />
+                        <p className="text-[9px] text-slate-700 leading-tight"><b className="text-slate-900">ONE WAY:</b> Dropping at airport/city. Min 100km billed.</p>
                     </div>
                     <div className="flex items-start gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1 flex-shrink-0" />
-                        <p className="text-[9px] text-slate-600 leading-tight"><b>ROUND TRIP:</b> Outstation trips. Min 250km/day billed.</p>
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1 flex-shrink-0" />
+                        <p className="text-[9px] text-slate-700 leading-tight"><b className="text-slate-900">ROUND TRIP:</b> Outstation trips. Min 250km/day billed.</p>
                     </div>
                     <div className="flex items-start gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1 flex-shrink-0" />
-                        <p className="text-[9px] text-slate-600 leading-tight"><b>FIXED:</b> Special rate with companies. KM won't affect fare.</p>
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1 flex-shrink-0" />
+                        <p className="text-[9px] text-slate-700 leading-tight"><b className="text-slate-900">FIXED:</b> Special rate with companies. KM won't affect fare.</p>
                     </div>
                     <div className="flex items-start gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1 flex-shrink-0" />
-                        <p className="text-[9px] text-slate-600 leading-tight"><b>RENTAL:</b> Local hours (4hr/8hr/12hr) duty.</p>
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1 flex-shrink-0" />
+                        <p className="text-[9px] text-slate-700 leading-tight"><b className="text-slate-900">RENTAL:</b> Local hours (4hr/8hr/12hr) duty.</p>
                     </div>
                 </div>
             </div>
@@ -262,8 +264,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                 {/* Header Controls */}
                 <div className="flex items-center justify-between px-1 border-b border-slate-50 pb-1.5">
                     <div className="flex flex-col">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Invoice Date</label>
+                        <label htmlFor="trip-date" className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Invoice Date</label>
                         <input
+                            id="trip-date"
                             type="date"
                             value={invoiceDate}
                             onChange={(e) => setInvoiceDate(e.target.value)}
@@ -281,8 +284,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                 {/* Customer Section */}
                 <div className="space-y-1.5">
                     <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Customer Name</label>
+                        <label htmlFor="customer-name" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Customer Name</label>
                         <input
+                            id="customer-name"
                             type="text"
                             value={customerName}
                             onChange={(_) => setCustomerName(_.target.value)}
@@ -292,11 +296,12 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                     </div>
 
                     <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
-                            <Phone size={10} /> Phone Number
+                        <label htmlFor="customer-phone" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+                            <Phone size={10} aria-hidden="true" /> Phone Number
                         </label>
                         <div className="flex gap-2">
                             <input
+                                id="customer-phone"
                                 type="tel"
                                 value={customerPhone}
                                 onChange={(_) => setCustomerPhone(_.target.value)}
@@ -307,15 +312,17 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                 onClick={handleImportContact}
                                 className="h-8 w-10 flex items-center justify-center bg-blue-50 border border-blue-200 rounded-xl text-[#0047AB] hover:bg-blue-100 transition-all flex-shrink-0"
                                 title="Import from Contacts"
+                                aria-label="Import from Contacts"
                             >
-                                <UserPlus size={18} />
+                                <UserPlus size={18} aria-hidden="true" />
                             </button>
                         </div>
                     </div>
 
                     <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Billing Address</label>
+                        <label htmlFor="billing-address" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Billing Address</label>
                         <textarea
+                            id="billing-address"
                             value={billingAddress}
                             onChange={(_) => setBillingAddress(_.target.value)}
                             className="tn-input h-10 resize-none bg-slate-50 border-slate-200 text-xs font-bold pt-1.5 active:ring-0 leading-tight"
@@ -326,9 +333,10 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
 
 
                     <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">GST Number</label>
+                        <label htmlFor="customer-gst" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">GST Number</label>
                         <div className="flex gap-2">
                             <input
+                                id="customer-gst"
                                 type="text"
                                 value={customerGst}
                                 onChange={(_) => setCustomerGst(_.target.value.toUpperCase())}
@@ -339,9 +347,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                             <button
                                 disabled={!customerGst || !validateGSTIN(customerGst)}
                                 onClick={() => setLocalGst(!localGst)}
-                                className={`h-8 px-3 rounded-xl text-[9px] font-black uppercase transition-all flex items-center justify-center gap-1.5 border flex-shrink-0 ${localGst ? 'bg-[#00965E] text-white border-[#00965E]' : 'bg-slate-50 text-slate-400 border-slate-200'}`}
+                                aria-label={localGst ? "Turn GST Off" : "Turn GST On"}
+                                aria-pressed={localGst}
+                                className={`h-8 px-3 rounded-xl text-[9px] font-black uppercase transition-all flex items-center justify-center gap-1.5 border flex-shrink-0 ${localGst ? 'bg-[#00965E] text-white border-[#00965E]' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
                             >
-                                {localGst ? <Navigation size={12} fill="white" /> : <div className="w-2.5 h-2.5 border-2 border-slate-300 rounded-full" />}
+                                {localGst ? <Navigation size={12} fill="white" aria-hidden="true" /> : <div className="w-2.5 h-2.5 border-2 border-slate-400 rounded-full" aria-hidden="true" />}
                                 {localGst ? 'GST ON' : 'GST OFF'}
                             </button>
                         </div>
@@ -349,10 +359,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
 
                     <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-50">
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
-                                <Users size={10} /> Passengers
+                            <label htmlFor="passengers-select" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+                                <Users size={10} aria-hidden="true" /> Passengers
                             </label>
                             <select
+                                id="passengers-select"
                                 value={numPersons}
                                 onChange={(e) => setNumPersons(Number(e.target.value))}
                                 className="tn-input h-10 py-1 text-[13px] font-bold text-center text-slate-900 bg-white"
@@ -363,10 +374,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                             </select>
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
-                                <Car size={10} /> Vehicle Type
+                            <label htmlFor="vehicle-select" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+                                <Car size={10} aria-hidden="true" /> Vehicle Type
                             </label>
                             <select
+                                id="vehicle-select"
                                 value={selectedVehicleId}
                                 onChange={(e) => setSelectedVehicleId(e.target.value)}
                                 className="tn-input h-10 py-1 text-[13px] font-bold text-slate-900 bg-white"
@@ -384,9 +396,10 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
 
                     {(mode === 'drop' || mode === 'outstation') && (
                         <div className="pt-2 border-t border-slate-50">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block"># Requested Rate / KM</label>
+                            <label htmlFor="custom-rate" className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-1 block"># Requested Rate / KM</label>
                             <div className="relative">
                                 <input
+                                    id="custom-rate"
                                     type="number"
                                     value={customRate}
                                     onChange={(e) => setCustomRate(Number(e.target.value))}
@@ -406,8 +419,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                 {/* Locations Section */}
                 <div className="grid grid-cols-2 gap-2">
                     <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">From</label>
+                        <label htmlFor="from-loc" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">From</label>
                         <input
+                            id="from-loc"
                             type="text"
                             value={fromLoc}
                             onChange={(_) => setFromLoc(_.target.value)}
@@ -416,8 +430,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                         />
                     </div>
                     <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">To</label>
+                        <label htmlFor="to-loc" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">To</label>
                         <input
+                            id="to-loc"
                             type="text"
                             value={toLoc}
                             onChange={(_) => setToLoc(_.target.value)}
@@ -429,8 +444,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                 </div>
 
                 <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Route / Notes</label>
+                    <label htmlFor="trip-notes" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Route / Notes</label>
                     <input
+                        id="trip-notes"
                         type="text"
                         value={notes}
                         onChange={(_) => setNotes(_.target.value)}
@@ -444,22 +460,23 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                     <div className="space-y-3 pt-1">
                         <div className="grid grid-cols-[2fr,1fr] gap-3">
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Package Name</label>
-                                <input type="text" value={packageName} onChange={(_) => setPackageName(_.target.value)} className="tn-input h-8 bg-slate-50 border-slate-200 text-xs font-bold" />
+                                <label htmlFor="package-name" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Package Name</label>
+                                <input id="package-name" type="text" value={packageName} onChange={(_) => setPackageName(_.target.value)} className="tn-input h-8 bg-slate-50 border-slate-200 text-xs font-bold" />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Price</label>
-                                <input type="number" value={packagePrice || ''} onChange={(_) => setPackagePrice(Number(_.target.value))} className="tn-input h-8 bg-slate-50 border-slate-200 text-xs font-black text-[#0047AB]" />
+                                <label htmlFor="package-price" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Price</label>
+                                <input id="package-price" type="number" value={packagePrice || ''} onChange={(_) => setPackagePrice(Number(_.target.value))} className="tn-input h-8 bg-slate-50 border-slate-200 text-xs font-black text-[#0047AB]" />
                             </div>
                         </div>
                     </div>
                 ) : mode === 'outstation' ? (
                     <div className="space-y-2 pt-1 border-t border-slate-100">
                         <div className="flex items-center justify-between px-2">
-                            <label className="text-[10px] font-black text-[#0047AB] uppercase tracking-widest">Round Trip Support</label>
+                            <label htmlFor="trip-days" className="text-[10px] font-black text-[#0047AB] uppercase tracking-widest">Round Trip Support</label>
                             <div className="flex items-center gap-2">
-                                <label className="text-[10px] font-bold text-slate-400">Total Days:</label>
+                                <label htmlFor="trip-days" className="text-[10px] font-bold text-slate-400">Total Days:</label>
                                 <select
+                                    id="trip-days"
                                     value={days}
                                     onChange={(e) => setDays(Number(e.target.value))}
                                     className="tn-input h-7 w-16 text-center text-[11px] font-black bg-white border-slate-200"
@@ -568,7 +585,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                 <div className="flex-1">
                                     <span className={`text-[10px] font-bold uppercase tracking-wide ${nightBata ? 'text-[#0047AB]' : 'text-slate-400'}`}>Batta</span>
                                 </div>
-                                <button onClick={() => setNightBata(!nightBata)} className={`w-8 h-4 rounded-full relative transition-all ${nightBata ? 'bg-[#00965E]' : 'bg-slate-300'}`}> 
+                                <button onClick={() => setNightBata(!nightBata)} className={`w-8 h-4 rounded-full relative transition-all ${nightBata ? 'bg-[#00965E]' : 'bg-slate-300'}`}>
                                     <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${nightBata ? 'left-4.5' : 'left-0.5'}`} />
                                 </button>
                                 <div className="w-16">
@@ -580,7 +597,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                 <div className="flex-1">
                                     <span className={`text-[10px] font-bold uppercase tracking-wide ${isHillStation ? 'text-[#0047AB]' : 'text-slate-400'}`}>Hills</span>
                                 </div>
-                                <button onClick={() => setIsHillStation(!isHillStation)} className={`w-8 h-4 rounded-full relative transition-all ${isHillStation ? 'bg-[#00965E]' : 'bg-slate-300'}`}> 
+                                <button onClick={() => setIsHillStation(!isHillStation)} className={`w-8 h-4 rounded-full relative transition-all ${isHillStation ? 'bg-[#00965E]' : 'bg-slate-300'}`}>
                                     <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${isHillStation ? 'left-4.5' : 'left-0.5'}`} />
                                 </button>
                                 <div className="w-16">
@@ -592,7 +609,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                 <div className="flex-1">
                                     <span className={`text-[10px] font-bold uppercase tracking-wide ${permitActive ? 'text-[#0047AB]' : 'text-slate-400'}`}>Permit</span>
                                 </div>
-                                <button onClick={() => setPermitActive(!permitActive)} className={`w-8 h-4 rounded-full relative transition-all ${permitActive ? 'bg-[#00965E]' : 'bg-slate-300'}`}> 
+                                <button onClick={() => setPermitActive(!permitActive)} className={`w-8 h-4 rounded-full relative transition-all ${permitActive ? 'bg-[#00965E]' : 'bg-slate-300'}`}>
                                     <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${permitActive ? 'left-4.5' : 'left-0.5'}`} />
                                 </button>
                                 <div className="w-16">
@@ -604,7 +621,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                 <div className="flex-1">
                                     <span className={`text-[10px] font-bold uppercase tracking-wide ${tollCharge ? 'text-[#0047AB]' : 'text-slate-400'}`}>Toll</span>
                                 </div>
-                                <button onClick={() => setTollCharge(!tollCharge)} className={`w-8 h-4 rounded-full relative transition-all ${tollCharge ? 'bg-[#00965E]' : 'bg-slate-300'}`}> 
+                                <button onClick={() => setTollCharge(!tollCharge)} className={`w-8 h-4 rounded-full relative transition-all ${tollCharge ? 'bg-[#00965E]' : 'bg-slate-300'}`}>
                                     <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${tollCharge ? 'left-4.5' : 'left-0.5'}`} />
                                 </button>
                                 <div className="w-16">
@@ -616,7 +633,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                 <div className="flex-1">
                                     <span className={`text-[10px] font-bold uppercase tracking-wide ${parkingCharge ? 'text-[#0047AB]' : 'text-slate-400'}`}>Parking</span>
                                 </div>
-                                <button onClick={() => setParkingCharge(!parkingCharge)} className={`w-8 h-4 rounded-full relative transition-all ${parkingCharge ? 'bg-[#00965E]' : 'bg-slate-300'}`}> 
+                                <button onClick={() => setParkingCharge(!parkingCharge)} className={`w-8 h-4 rounded-full relative transition-all ${parkingCharge ? 'bg-[#00965E]' : 'bg-slate-300'}`}>
                                     <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${parkingCharge ? 'left-4.5' : 'left-0.5'}`} />
                                 </button>
                                 <div className="w-16">
@@ -628,7 +645,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                 <div className="flex-1">
                                     <span className={`text-[10px] font-bold uppercase tracking-wide ${waitingCharge ? 'text-[#0047AB]' : 'text-slate-400'}`}>Wait Hrs</span>
                                 </div>
-                                <button onClick={() => setWaitingCharge(!waitingCharge)} className={`w-8 h-4 rounded-full relative transition-all ${waitingCharge ? 'bg-[#00965E]' : 'bg-slate-300'}`}> 
+                                <button onClick={() => setWaitingCharge(!waitingCharge)} className={`w-8 h-4 rounded-full relative transition-all ${waitingCharge ? 'bg-[#00965E]' : 'bg-slate-300'}`}>
                                     <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${waitingCharge ? 'left-4.5' : 'left-0.5'}`} />
                                 </button>
                                 <div className="w-16">
@@ -639,8 +656,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                     )}
                 </div>
 
-                <button onClick={handleCalculate} className="w-full bg-[#0047AB] text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.2em] shadow-lg active:scale-[0.98] transition-all">
-                    <FileText size={16} fill="white" /> Generate Invoice
+                <button onClick={handleCalculate} aria-label="Generate Invoice" className="w-full bg-[#0047AB] text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.2em] shadow-lg active:scale-[0.98] transition-all">
+                    <FileText size={16} fill="white" aria-hidden="true" /> Generate Invoice
                 </button>
             </div>
 
