@@ -1,0 +1,33 @@
+﻿                </div >
+
+    {/* Fare Results - Compact */ }
+{
+    isCalculated && result && (
+        <div className="bg-slate-900 text-white rounded-2xl p-6 border border-white/10 shadow-xl space-y-6">
+            <div className="text-center space-y-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Invoice Total</p>
+                <div className="text-4xl font-black tabular-nums tracking-tight text-blue-400">â‚¹{Math.round(result.total).toLocaleString()}</div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/10">
+                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{result.distance} KM</span>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+                <button onClick={handleSave} className="bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 border border-white/10 transition-all">
+                    <Save size={16} /> Save
+                </button>
+                <button
+                    onClick={() => shareReceipt({ ...result, id: '', customerName, customerGst, from: fromLoc, to: toLoc, notes, billingAddress, startKm, endKm, startTime, endTime, toll: tollCharge ? toll : 0, parking: parkingCharge ? parking : 0, nightBata: nightBata ? settings.nightBata : 0, baseFare: settings.baseFare, ratePerKm: settings.ratePerKm, totalFare: result.total, gst: result.gst, date: new Date(invoiceDate).toISOString(), mode, waitingHours, waitingCharges: result.waitingCharges, hillStationCharges: result.hillStationCharges, petCharges: result.petCharges, packageName: mode === 'package' ? packageName : undefined, numberOfPersons: mode === 'package' ? numPersons : undefined, packagePrice: mode === 'package' ? packagePrice : undefined }, { ...settings, vehicleNumber: currentVehicle?.number || 'N/A' })}
+                    className="bg-[#0047AB] hover:bg-blue-600 text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all"
+                >
+                    <Share2 size={16} /> PDF
+                </button>
+            </div>
+        </div>
+    )
+}
+        </div >
+    );
+};
+
+export default TripForm;

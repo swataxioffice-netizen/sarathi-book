@@ -1,127 +1,281 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { safeJSONParse } from '../utils/storage';
 import type { Trip, Expense } from '../utils/fare';
-import { IndianRupee, Globe, ArrowUpRight, TrendingUp, Wallet } from 'lucide-react';
+import { IndianRupee, Globe, TrendingUp, StickyNote, Plus, Trash2 } from 'lucide-react';
 
 interface DashboardProps {
     trips: Trip[];
 }
 
+interface Note {
+    id: string;
+    content: string;
+    createdAt: string;
+}
+
+type TimeRange = 'today' | 'week' | 'month' | 'year';
+
 const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
-    const today = new Date().toISOString().split('T')[0];
-    const todaysTrips = trips.filter(trip => trip.date.startsWith(today));
-    const income = todaysTrips.reduce((sum, trip) => sum + trip.totalFare, 0);
+    const [range, setRange] = useState<TimeRange>('today');
+    const [notes, setNotes] = useState<Note[]>(() => {
+        const saved = safeJSONParse<Note[]>('driver-quick-notes', []);
+        // If no notes exist, create one default note for new users
+        if (saved.length === 0) {
+            return [{
+                id: Date.now().toString(),
+                content: '',
+                createdAt: new Date().toISOString()
+            }];
+        }
+        return saved;
+    });
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+
+    // Save notes to localStorage whenever they change
+    React.useEffect(() => {
+        localStorage.setItem('driver-quick-notes', JSON.stringify(notes));
+    }, [notes]);
+
+    // Add new note
+    const addNote = () => {
+        const newNote: Note = {
+            id: Date.now().toString(),
+            content: '',
+            createdAt: new Date().toISOString()
+        };
+        setNotes(prev => [newNote, ...prev]);
+    };
+
+    // Update note content
+    const updateNote = (id: string, content: string) => {
+        setNotes(prev => prev.map(note =>
+            note.id === id ? { ...note, content } : note
+        ));
+    };
+
+    // Delete note
+    const deleteNote = (id: string) => {
+        setNotes(prev => prev.filter(note => note.id !== id));
+    };
+
+    // Helper for date ranges
+    const isThisWeek = (dateStr: string) => {
+        const d = new Date(dateStr);
+        const diff = now.getTime() - d.getTime();
+        return diff <= 7 * 24 * 60 * 60 * 1000;
+    };
+    const isThisMonth = (dateStr: string) => {
+        const d = new Date(dateStr);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    };
+    const isThisYear = (dateStr: string) => {
+        const d = new Date(dateStr);
+        return d.getFullYear() === now.getFullYear();
+    };
+
     const expenses = safeJSONParse<Expense[]>('cab-expenses', []);
-    const spending = expenses.filter(e => e.date.startsWith(today)).reduce((sum, e) => sum + e.amount, 0);
-    const profit = income - spending;
+
+    // Selection Logic
+    const getStats = () => {
+        let income = 0;
+        let spending = 0;
+        let label = '';
+
+        switch (range) {
+            case 'today':
+                income = trips.filter(t => t.date.startsWith(today)).reduce((sum, t) => sum + t.totalFare, 0);
+                spending = expenses.filter(e => e.date.startsWith(today)).reduce((sum, e) => sum + e.amount, 0);
+                label = 'CASH FLOW TODAY';
+                break;
+            case 'week':
+                income = trips.filter(t => isThisWeek(t.date)).reduce((sum, t) => sum + t.totalFare, 0);
+                spending = expenses.filter(e => isThisWeek(e.date)).reduce((sum, e) => sum + e.amount, 0);
+                label = 'CASH FLOW THIS WEEK';
+                break;
+            case 'month':
+                income = trips.filter(t => isThisMonth(t.date)).reduce((sum, t) => sum + t.totalFare, 0);
+                spending = expenses.filter(e => isThisMonth(e.date)).reduce((sum, e) => sum + e.amount, 0);
+                label = 'CASH FLOW THIS MONTH';
+                break;
+            case 'year':
+                income = trips.filter(t => isThisYear(t.date)).reduce((sum, t) => sum + t.totalFare, 0);
+                spending = expenses.filter(e => isThisYear(e.date)).reduce((sum, e) => sum + e.amount, 0);
+                label = 'CASH FLOW THIS YEAR';
+                break;
+        }
+        return { income, spending, profit: income - spending, label };
+    };
+
+    const stats = getStats();
 
     return (
-        <div className="space-y-2 pb-24">
-            {/* Professional Summary Dashboard - Compact */}
-            <div className="bg-[#0047AB] rounded-2xl p-4 text-white shadow-xl shadow-blue-900/20 relative overflow-hidden">
-                {/* Decorative Pattern */}
-                <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-10 -mt-10"></div>
-                <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full -ml-10 -mb-10"></div>
-
+        <div className="space-y-4 pb-24">
+            {/* Main Dynamic Card - Compact Black Theme */}
+            <div className="rounded-2xl p-4 text-white shadow-xl relative overflow-hidden transition-all duration-500 bg-[#0F172A] border border-slate-800">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-[#0047AB]/10 rounded-full -mr-12 -mt-12"></div>
                 <div className="relative z-10 flex justify-between items-start">
                     <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-80 flex items-center gap-1.5">
-                            <TrendingUp size={10} /> NET CASH FLOW TODAY
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 flex items-center gap-1.5 text-slate-400">
+                            <TrendingUp size={12} /> {stats.label}
                         </p>
-                        <h2 className="text-3xl font-black mt-2 tabular-nums">₹{profit.toLocaleString()}</h2>
+                        <h2 className={`text-3xl font-black mt-2 tabular-nums transition-colors duration-500 ${stats.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            ₹{stats.profit.toLocaleString()}
+                        </h2>
                     </div>
-                    <div className="bg-white/10 p-3 rounded-xl backdrop-blur-sm border border-white/10">
-                        <IndianRupee size={20} strokeWidth={2.5} />
+                    <div className="bg-[#0047AB]/20 p-2.5 rounded-xl backdrop-blur-md border border-[#0047AB]/30">
+                        <IndianRupee size={20} strokeWidth={2.5} className="text-[#0047AB]" />
                     </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-white/10 flex justify-between items-center relative z-10">
-                    <div className="text-left">
-                        <p className="text-[9px] font-black uppercase tracking-widest opacity-60">PROFIT MARGIN</p>
-                        <p className="text-sm font-black mt-0.5">{income > 0 ? Math.round((profit / income) * 100) : 0}%</p>
+                <div className="mt-5 flex gap-3">
+                    <div className="flex-1 bg-slate-800/50 rounded-xl p-2.5 border border-slate-700/50">
+                        <p className="text-[8px] font-black uppercase tracking-widest opacity-60 text-slate-400">TOTAL INCOME</p>
+                        <p className="text-sm font-black mt-1">₹{stats.income.toLocaleString()}</p>
                     </div>
-                    <div className="w-1/2 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div className="flex-1 bg-slate-800/50 rounded-xl p-2.5 border border-slate-700/50">
+                        <p className="text-[8px] font-black uppercase tracking-widest opacity-60 text-slate-400">TOTAL SPENT</p>
+                        <p className="text-sm font-black mt-1">₹{stats.spending.toLocaleString()}</p>
+                    </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center relative z-10">
+                    <div className="text-left">
+                        <p className="text-[9px] font-black uppercase tracking-widest opacity-60 text-slate-400">PROFIT MARGIN</p>
+                        <p className={`text-base font-black mt-0.5 ${stats.income > 0 && stats.profit >= 0 ? 'text-green-400' : stats.profit < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                            {stats.income > 0 ? Math.round((stats.profit / stats.income) * 100) : 0}%
+                        </p>
+                    </div>
+                    <div className="w-1/2 h-2 bg-slate-800 rounded-full overflow-hidden">
                         <div
-                            className="h-full bg-white transition-all duration-1000"
-                            style={{ width: `${Math.max(0, Math.min(100, income > 0 ? (profit / income) * 100 : 0))}%` }}
+                            className={`h-full transition-all duration-1000 ${stats.profit >= 0 ? 'bg-green-400' : 'bg-red-400'}`}
+                            style={{ width: `${Math.max(0, Math.min(100, stats.income > 0 ? Math.abs((stats.profit / stats.income) * 100) : 0))}%` }}
                         ></div>
                     </div>
                 </div>
             </div>
 
-            {/* Split Record Blocks - Compact */}
-            <div className="grid grid-cols-2 gap-2">
-                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="p-1.5 bg-green-50 text-[#00965E] rounded-lg">
-                            <TrendingUp size={14} />
-                        </div>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">INCOME</p>
+            {/* Range Toggle - Clean Pill Style */}
+            <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex gap-1">
+                {(['today', 'week', 'month', 'year'] as const).map((r) => (
+                    <button
+                        key={r}
+                        onClick={() => setRange(r)}
+                        className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${range === r
+                            ? 'bg-[#0047AB] text-white shadow-md'
+                            : 'text-slate-400 hover:bg-slate-50'
+                            }`}
+                    >
+                        {r}
+                    </button>
+                ))}
+            </div>
+
+            {/* Analysis Guide Card */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-blue-100 text-blue-700 rounded-md">
+                        <Globe size={14} />
                     </div>
-                    <div className="flex flex-col">
-                        <span className="text-xl font-black tabular-nums text-slate-900">₹{income.toLocaleString()}</span>
-                        <div className="flex items-center gap-1 mt-1">
-                            <span className="w-1 h-1 rounded-full bg-green-500"></span>
-                            <span className="text-[9px] font-black text-green-600 uppercase tracking-widest">{todaysTrips.length} INVOICES</span>
-                        </div>
-                    </div>
+                    <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Financial Insights Guide</h3>
                 </div>
-                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="p-1.5 bg-red-50 text-red-500 rounded-lg">
-                            <Wallet size={14} />
-                        </div>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">SPENDING</p>
+                <div className="space-y-2">
+                    <div className="flex items-start gap-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1"></div>
+                        <p className="text-[10px] font-bold text-slate-600 uppercase leading-relaxed">
+                            <span className="text-slate-900">INCOME:</span> Money from all saved <span className="text-green-600">Invoices</span>.
+                        </p>
                     </div>
-                    <div className="flex flex-col">
-                        <span className="text-xl font-black tabular-nums text-slate-900">₹{spending.toLocaleString()}</span>
-                        <div className="flex items-center gap-1 mt-1">
-                            <span className="w-1 h-1 rounded-full bg-red-500"></span>
-                            <span className="text-[9px] font-black text-red-600 uppercase tracking-widest">{expenses.filter(e => e.date.startsWith(today)).length} LOGS</span>
-                        </div>
+                    <div className="flex items-start gap-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1"></div>
+                        <p className="text-[10px] font-bold text-slate-600 uppercase leading-relaxed">
+                            <span className="text-slate-900">SPENT:</span> Money logged in the <span className="text-red-500">Expenses</span> page.
+                        </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#0047AB] mt-1"></div>
+                        <p className="text-[10px] font-bold text-slate-600 uppercase leading-relaxed">
+                            <span className="text-slate-900">CASH FLOW:</span> Remaining profit (<span className="text-[#0047AB]">Income - Spent</span>).
+                        </p>
                     </div>
                 </div>
             </div>
 
-            {/* Official Portal Portal - Compact */}
-            <a
-                href="https://kalidasstravels.netlify.app/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-2xl shadow-sm hover:border-[#0047AB] transition-all group"
-            >
+            {/* Official Booking Portal - Coming Soon */}
+            <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-2xl shadow-sm opacity-60 cursor-not-allowed">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[#0047AB] group-hover:bg-blue-50 transition-colors">
+                    <div className="p-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-400">
                         <Globe size={20} />
                     </div>
                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-900 leading-tight">OFFICIAL BOOKING PORTAL</p>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5 tracking-tight">Access Central Reservations</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-700 leading-tight">OFFICIAL BOOKING PORTAL</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5 tracking-tight">Coming Soon</p>
                     </div>
                 </div>
-                <div className="p-1 text-slate-300 group-hover:text-[#0047AB] transition-colors">
-                    <ArrowUpRight size={20} />
+                <div className="px-3 py-1 bg-yellow-100 border border-yellow-300 rounded-full">
+                    <span className="text-[8px] font-black text-yellow-700 uppercase tracking-wider">Soon</span>
                 </div>
-            </a>
+            </div>
 
-            {/* Recent Ledger Preview - Compact */}
-            <div className="space-y-3 pt-1">
-                <div className="flex flex-col items-center gap-1 px-1 pb-2">
-                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest border-b-2 border-slate-100 pb-1.5 px-6">Real-Time Logbook</h3>
-                    <div className="flex items-center gap-1 px-2 py-0.5 bg-green-50 rounded-full border border-green-100">
-                        <span className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></span>
-                        <span className="text-[8px] font-black text-green-700 uppercase tracking-wide">LIVE MONITORING</span>
+            {/* Quick Notes - Google Keep Style */}
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-yellow-200 text-yellow-700 rounded-md">
+                            <StickyNote size={16} />
+                        </div>
+                        <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Quick Notes</h3>
                     </div>
+                    <button
+                        onClick={addNote}
+                        className="flex items-center gap-1.5 bg-[#0047AB] text-white px-3 py-2 rounded-lg hover:bg-[#003a8c] transition-all active:scale-95 shadow-sm"
+                    >
+                        <Plus size={14} strokeWidth={3} />
+                        <span className="text-[10px] font-black uppercase tracking-wider">Add Note</span>
+                    </button>
                 </div>
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-3">
-                    <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-200">
-                        <TrendingUp size={24} />
+
+                {notes.length === 0 ? (
+                    <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center">
+                        <StickyNote size={32} className="mx-auto text-slate-300 mb-2" />
+                        <p className="text-sm font-bold text-slate-400 uppercase tracking-wide">No notes yet</p>
+                        <p className="text-xs text-slate-400 mt-1">Click "Add Note" to create your first note</p>
                     </div>
-                    <div>
-                        <p className="text-[10px] font-black text-slate-900 uppercase">Performance Metrics Active</p>
-                        <p className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase leading-relaxed">System monitoring enabled for<br /> Driver Console</p>
+                ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                        {notes.map((note) => (
+                            <div
+                                key={note.id}
+                                className="bg-gradient-to-br from-yellow-50 to-amber-50 border-2 border-yellow-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-all relative group"
+                            >
+                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-300 rounded-t-xl"></div>
+                                <button
+                                    onClick={() => deleteNote(note.id)}
+                                    className="absolute top-2 right-2 p-1.5 bg-red-100 text-red-600 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-200 transition-all active:scale-90"
+                                    title="Delete note"
+                                >
+                                    <Trash2 size={12} />
+                                </button>
+                                <textarea
+                                    value={note.content}
+                                    onChange={(e) => updateNote(note.id, e.target.value)}
+                                    placeholder="📝 Start KM: ___&#10;Start Time: ___&#10;End KM: ___&#10;End Time: ___&#10;Notes..."
+                                    className="w-full bg-white/50 border border-yellow-300 rounded-lg p-2.5 text-sm text-slate-800 placeholder:text-slate-400 font-medium resize-none focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all mt-1"
+                                    rows={5}
+                                    style={{ fontFamily: 'Noto Sans, sans-serif' }}
+                                />
+                                <p className="text-[8px] font-bold text-slate-400 uppercase mt-1.5 tracking-wide">
+                                    {new Date(note.createdAt).toLocaleDateString('en-IN', {
+                                        day: 'numeric',
+                                        month: 'short',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    })}
+                                </p>
+                            </div>
+                        ))}
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );

@@ -3,8 +3,9 @@ import { useSettings } from '../contexts/SettingsContext';
 import { calculateFare } from '../utils/fare';
 import type { Trip } from '../utils/fare';
 import { shareReceipt } from '../utils/pdf';
-import { Clock, Navigation, Save, Share2, ChevronDown, ChevronUp, FileText, Phone, UserPlus } from 'lucide-react';
+import { Clock, Navigation, Save, Share2, ChevronDown, ChevronUp, FileText, Phone, UserPlus, Users, Car } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
+import { VEHICLES } from '../utils/fare';
 
 interface TripFormProps {
     onSaveTrip: (trip: Trip) => void;
@@ -13,6 +14,7 @@ interface TripFormProps {
 
 const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     const { settings, currentVehicle } = useSettings();
+    const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerGst, setCustomerGst] = useState('');
@@ -42,8 +44,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
 
     // Package details
     const [packageName, setPackageName] = useState('');
-    const [numPersons, setNumPersons] = useState<number>(1);
+    const [numPersons, setNumPersons] = useState<number>(4);
     const [packagePrice, setPackagePrice] = useState<number>(0);
+    const [selectedVehicleId, setSelectedVehicleId] = useState<string>('swift');
+    const [days, setDays] = useState<number>(1);
+    const [customRate, setCustomRate] = useState<number>(14);
 
     // Helper function to get state name from GSTIN
     const getStateFromGSTIN = (gstin: string): string => {
@@ -85,6 +90,25 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
         }
     }, [mode, fromLoc]);
 
+    useEffect(() => {
+        if (numPersons === 12) {
+            setSelectedVehicleId('tempo');
+        } else if (numPersons === 7) {
+            if (!['innova', 'crysta', 'tempo'].includes(selectedVehicleId)) {
+                setSelectedVehicleId('innova');
+            }
+        }
+    }, [numPersons]);
+
+    // Auto-suggest rate based on vehicle and mode, but keep it editable
+    useEffect(() => {
+        const vehicle = VEHICLES.find(v => v.id === selectedVehicleId);
+        if (vehicle) {
+            const suggestedRate = mode === 'outstation' ? vehicle.roundRate : vehicle.dropRate;
+            setCustomRate(suggestedRate);
+        }
+    }, [selectedVehicleId, mode]);
+
     const handleImportContact = async () => {
         try {
             // Check if Contact Picker API is available
@@ -117,15 +141,17 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     };
 
     const handleCalculate = () => {
+        const activeRate = (mode === 'drop' || mode === 'outstation') ? customRate : settings.ratePerKm;
         const res = calculateFare({
-            startKm, endKm, baseFare: settings.baseFare, ratePerKm: settings.ratePerKm, toll, parking,
-            gstEnabled: localGst, mode, hourlyRate: settings.hourlyRate,
+            startKm, endKm, baseFare: settings.baseFare, ratePerKm: activeRate, toll, parking,
+            gstEnabled: localGst, mode, vehicleId: selectedVehicleId, hourlyRate: settings.hourlyRate,
             durationHours: mode === 'hourly' ? startKm : 0,
             nightBata: nightBata ? settings.nightBata : 0,
             waitingHours, isHillStation, petCharge,
-            packagePrice: mode === 'package' ? packagePrice : 0,
+            packagePrice: mode === 'package' ? packagePrice : (mode === 'fixed' ? packagePrice : 0),
             actualHours: 0,
-            baseKmLimit: 0, baseHourLimit: 0, extraKmRate: 0, extraHourRate: 0
+            baseKmLimit: 0, baseHourLimit: 0, extraKmRate: 0, extraHourRate: 0,
+            days: mode === 'outstation' ? days : 1
         });
         setResult({ ...res, distance: res.distance ?? (endKm - startKm) });
         setIsCalculated(true);
@@ -139,7 +165,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             customerGst,
             from: fromLoc, to: toLoc, billingAddress, startKm, endKm, startTime, endTime, toll: tollCharge ? toll : 0, parking: parkingCharge ? parking : 0,
             nightBata: nightBata ? settings.nightBata : 0, baseFare: settings.baseFare, ratePerKm: settings.ratePerKm,
-            totalFare: result.total, gst: result.gst, date: new Date().toISOString(), mode,
+            totalFare: result.total, gst: result.gst, date: new Date(invoiceDate).toISOString(), mode,
             durationHours: mode === 'hourly' ? startKm : undefined,
             hourlyRate: mode === 'hourly' ? settings.hourlyRate : undefined,
             notes: notes || '',
@@ -153,6 +179,13 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
         });
         setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setTollCharge(false); setParkingCharge(false); setWaitingCharge(false); setIsCalculated(false); setResult(null);
         setPackageName(''); setNumPersons(1); setPackagePrice(0);
+        setInvoiceDate(new Date().toISOString().split('T')[0]);
+    };
+
+    const handleClear = () => {
+        setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setTollCharge(false); setParkingCharge(false); setWaitingCharge(false); setIsCalculated(false); setResult(null);
+        setPackageName(''); setNumPersons(1); setPackagePrice(0);
+        setInvoiceDate(new Date().toISOString().split('T')[0]);
     };
 
     return (
@@ -164,17 +197,18 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             </div>
 
             {/* Service Selection - Compact */}
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden flex shadow-sm">
+            <div className="bg-[var(--bg-card)] border border-slate-200 rounded-xl overflow-hidden flex shadow-sm">
                 {[
                     { id: 'drop', label: 'ONE WAY' },
                     { id: 'outstation', label: 'ROUND TRIP' },
                     { id: 'hourly', label: 'RENTAL' },
-                    { id: 'package', label: 'PACKAGE' }
+                    { id: 'package', label: 'PACKAGE' },
+                    { id: 'fixed', label: 'FIXED' }
                 ].map((m) => (
                     <button
                         key={m.id}
                         onClick={() => setMode(m.id as any)}
-                        className={`flex-1 py-2 px-1 text-[10px] font-black tracking-wider border-r last:border-r-0 transition-all ${mode === m.id ? 'bg-[#0047AB] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'
+                        className={`flex-1 py-2 px-1 text-[10px] font-black tracking-wider border-r last:border-r-0 transition-all ${mode === m.id ? 'bg-[#0047AB] text-white' : 'bg-[var(--bg-card)] text-slate-500 hover:bg-slate-50'
                             }`}
                     >
                         {m.label}
@@ -182,8 +216,55 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                 ))}
             </div>
 
+            {/* Guideline Banner - Helpful for Drivers */}
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-2.5 space-y-1.5 shadow-sm">
+                <div className="flex items-center gap-2 text-[#0047AB]">
+                    <div className="bg-white p-1 rounded-full shadow-sm">
+                        <FileText size={12} />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider">Guide: When to use?</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    <div className="flex items-start gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1 flex-shrink-0" />
+                        <p className="text-[9px] text-slate-600 leading-tight"><b>ONE WAY:</b> Dropping at airport/city. Min 100km billed.</p>
+                    </div>
+                    <div className="flex items-start gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1 flex-shrink-0" />
+                        <p className="text-[9px] text-slate-600 leading-tight"><b>ROUND TRIP:</b> Outstation trips. Min 250km/day billed.</p>
+                    </div>
+                    <div className="flex items-start gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1 flex-shrink-0" />
+                        <p className="text-[9px] text-slate-600 leading-tight"><b>FIXED:</b> Special rate with companies. KM won't affect fare.</p>
+                    </div>
+                    <div className="flex items-start gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1 flex-shrink-0" />
+                        <p className="text-[9px] text-slate-600 leading-tight"><b>RENTAL:</b> Local hours (4hr/8hr/12hr) duty.</p>
+                    </div>
+                </div>
+            </div>
+
             {/* Trip Details Form - Dense */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-2 space-y-1.5">
+            <div className="bg-[var(--bg-card)] rounded-2xl border border-slate-200 shadow-sm p-2 space-y-1.5">
+                {/* Header Controls */}
+                <div className="flex items-center justify-between px-1 border-b border-slate-50 pb-1.5">
+                    <div className="flex flex-col">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Invoice Date</label>
+                        <input
+                            type="date"
+                            value={invoiceDate}
+                            onChange={(e) => setInvoiceDate(e.target.value)}
+                            className="text-[11px] font-black bg-transparent border-none p-0 focus:ring-0 text-[#0047AB]"
+                        />
+                    </div>
+                    <button
+                        onClick={handleClear}
+                        className="text-[9px] font-black text-red-500 uppercase tracking-widest px-2 py-1 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                    >
+                        Clear All
+                    </button>
+                </div>
+
                 {/* Customer Section */}
                 <div className="space-y-1.5">
                     <div>
@@ -252,6 +333,59 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                             </button>
                         </div>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-50">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+                                <Users size={10} /> Passengers
+                            </label>
+                            <select
+                                value={numPersons}
+                                onChange={(e) => setNumPersons(Number(e.target.value))}
+                                className="tn-input h-10 py-1 text-[13px] font-bold text-center text-slate-900 bg-white"
+                            >
+                                {[4, 7, 12].map(n => (
+                                    <option key={n} value={n} className="text-slate-900">{n} Seats</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+                                <Car size={10} /> Vehicle Type
+                            </label>
+                            <select
+                                value={selectedVehicleId}
+                                onChange={(e) => setSelectedVehicleId(e.target.value)}
+                                className="tn-input h-10 py-1 text-[13px] font-bold text-slate-900 bg-white"
+                            >
+                                {VEHICLES.filter(v => {
+                                    if (numPersons === 12) return v.id === 'tempo';
+                                    if (numPersons === 7) return v.seats >= 7;
+                                    return true;
+                                }).map(v => (
+                                    <option key={v.id} value={v.id} className="text-slate-900">{v.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {(mode === 'drop' || mode === 'outstation') && (
+                        <div className="pt-2 border-t border-slate-50">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block"># Requested Rate / KM</label>
+                            <div className="relative">
+                                <input
+                                    type="number"
+                                    value={customRate}
+                                    onChange={(e) => setCustomRate(Number(e.target.value))}
+                                    className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-sm font-black text-[#0047AB]"
+                                    placeholder="Standard Rate"
+                                />
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">
+                                    per KM
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
 
@@ -305,6 +439,61 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                 <input type="number" value={packagePrice || ''} onChange={(_) => setPackagePrice(Number(_.target.value))} className="tn-input h-8 bg-slate-50 border-slate-200 text-xs font-black text-[#0047AB]" />
                             </div>
                         </div>
+                    </div>
+                ) : mode === 'outstation' ? (
+                    <div className="space-y-2 pt-1 border-t border-slate-100">
+                        <div className="flex items-center justify-between px-2">
+                            <label className="text-[10px] font-black text-[#0047AB] uppercase tracking-widest">Round Trip Support</label>
+                            <div className="flex items-center gap-2">
+                                <label className="text-[10px] font-bold text-slate-400">Total Days:</label>
+                                <select
+                                    value={days}
+                                    onChange={(e) => setDays(Number(e.target.value))}
+                                    className="tn-input h-7 w-16 text-center text-[11px] font-black bg-white border-slate-200"
+                                >
+                                    {[1, 2, 3, 4, 5, 6, 7, 10, 15].map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                                <div>
+                                    <label className="text-[9px] font-black text-slate-400 uppercase block text-center mb-0.5">Start KM</label>
+                                    <input type="number" value={startKm || ''} onChange={(_) => setStartKm(Number(_.target.value))} className="tn-input h-8 text-center font-black text-sm bg-white border-slate-200 mb-1" placeholder="0" />
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-black text-slate-400 uppercase block text-center mb-0.5">Start Time</label>
+                                    <div className="flex gap-1">
+                                        <input type="text" value={startTime} onChange={(_) => setStartTime(_.target.value)} className="tn-input h-8 text-center font-bold text-xs bg-white border-slate-200 flex-1" placeholder="00:00" />
+                                        <button onClick={() => captureTime('start')} className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-50"><Clock size={14} /></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                                <div>
+                                    <label className="text-[9px] font-black text-slate-400 uppercase block text-center mb-0.5">End KM</label>
+                                    <input type="number" value={endKm || ''} onChange={(_) => setEndKm(Number(_.target.value))} className="tn-input h-8 text-center font-black text-sm bg-white border-slate-200 mb-1" placeholder="0" />
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-black text-slate-400 uppercase block text-center mb-0.5">End Time</label>
+                                    <div className="flex gap-1">
+                                        <input type="text" value={endTime} onChange={(_) => setEndTime(_.target.value)} className="tn-input h-8 text-center font-bold text-xs bg-white border-slate-200 flex-1" placeholder="00:00" />
+                                        <button onClick={() => captureTime('end')} className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-50"><Clock size={14} /></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : mode === 'fixed' ? (
+                    <div className="space-y-1 pt-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block text-center">Agreed Fixed Amount</label>
+                        <input
+                            type="number"
+                            value={packagePrice || ''}
+                            onChange={(_) => setPackagePrice(Number(_.target.value))}
+                            className="tn-input h-12 text-center text-3xl font-black text-[#00965E] bg-slate-50 border-slate-200"
+                            placeholder="₹ 0.00"
+                        />
                     </div>
                 ) : mode === 'hourly' ? (
                     <div className="space-y-1 pt-1">
@@ -405,7 +594,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                             <Save size={16} /> Save
                         </button>
                         <button
-                            onClick={() => shareReceipt({ ...result, id: '', customerName, customerGst, from: fromLoc, to: toLoc, notes, billingAddress, startKm, endKm, startTime, endTime, toll: tollCharge ? toll : 0, parking: parkingCharge ? parking : 0, nightBata: nightBata ? settings.nightBata : 0, baseFare: settings.baseFare, ratePerKm: settings.ratePerKm, totalFare: result.total, gst: result.gst, date: new Date().toISOString(), mode, waitingHours, waitingCharges: result.waitingCharges, hillStationCharges: result.hillStationCharges, petCharges: result.petCharges, packageName: mode === 'package' ? packageName : undefined, numberOfPersons: mode === 'package' ? numPersons : undefined, packagePrice: mode === 'package' ? packagePrice : undefined }, { ...settings, vehicleNumber: currentVehicle?.number || 'N/A' })}
+                            onClick={() => shareReceipt({ ...result, id: '', customerName, customerGst, from: fromLoc, to: toLoc, notes, billingAddress, startKm, endKm, startTime, endTime, toll: tollCharge ? toll : 0, parking: parkingCharge ? parking : 0, nightBata: nightBata ? settings.nightBata : 0, baseFare: settings.baseFare, ratePerKm: settings.ratePerKm, totalFare: result.total, gst: result.gst, date: new Date(invoiceDate).toISOString(), mode, waitingHours, waitingCharges: result.waitingCharges, hillStationCharges: result.hillStationCharges, petCharges: result.petCharges, packageName: mode === 'package' ? packageName : undefined, numberOfPersons: mode === 'package' ? numPersons : undefined, packagePrice: mode === 'package' ? packagePrice : undefined }, { ...settings, vehicleNumber: currentVehicle?.number || 'N/A' })}
                             className="bg-[#0047AB] hover:bg-blue-600 text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all"
                         >
                             <Share2 size={16} /> PDF

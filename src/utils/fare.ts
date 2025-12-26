@@ -1,9 +1,29 @@
-export type FareMode = 'distance' | 'hourly' | 'outstation' | 'drop' | 'package';
+export type FareMode = 'distance' | 'hourly' | 'outstation' | 'drop' | 'package' | 'fixed';
+
+export interface VehicleType {
+    id: string;
+    name: string;
+    dropRate: number;
+    roundRate: number;
+    seats: number;
+    type: 'Sedan' | 'SUV' | 'Van';
+    minKm: number;
+    batta: number;
+}
+
+export const VEHICLES: VehicleType[] = [
+    { id: 'swift', name: 'Sedan (Swift/Etios)', dropRate: 14, roundRate: 13, seats: 4, type: 'Sedan', minKm: 250, batta: 400 },
+    { id: 'innova', name: 'SUV (Innova)', dropRate: 19, roundRate: 18, seats: 7, type: 'SUV', minKm: 300, batta: 500 },
+    { id: 'crysta', name: 'Innova Crysta', dropRate: 22, roundRate: 20, seats: 7, type: 'SUV', minKm: 300, batta: 600 },
+    { id: 'tempo', name: 'Tempo Traveller', dropRate: 28, roundRate: 28, seats: 12, type: 'Van', minKm: 300, batta: 600 }
+];
 
 export interface Trip {
     id: string;
     customerName: string;
     customerGst?: string;
+    vehicleId?: string;
+    passengers?: number;
     startKm: number;
     endKm: number;
     startTime: string;
@@ -61,6 +81,7 @@ export const calculateFare = (
         parking: number;
         gstEnabled: boolean;
         mode: FareMode;
+        vehicleId?: string;
         hourlyRate?: number;
         durationHours?: number;
         nightBata?: number; // Driver Batta
@@ -73,45 +94,38 @@ export const calculateFare = (
         baseHourLimit?: number;
         extraKmRate?: number;
         extraHourRate?: number;
+        days?: number;
     }
 ) => {
     const {
         startKm, endKm, baseFare, ratePerKm, toll, parking,
-        gstEnabled, mode, hourlyRate = 0, durationHours = 0, nightBata = 0,
+        gstEnabled, mode, vehicleId, hourlyRate = 0, durationHours = 0, nightBata = 0,
         waitingHours = 0, isHillStation = false, petCharge = false,
         packagePrice = 0, actualHours = 0, baseKmLimit = 0, baseHourLimit = 0,
-        extraKmRate = 0, extraHourRate = 0
+        extraKmRate = 0, extraHourRate = 0, days = 1
     } = params;
 
     const distance = Math.max(0, endKm - startKm);
     let taxableFare = 0;
     const waitingChargeRate = 150; // Standard TN industry rate
 
+    // Use vehicle-specific rates if available
+    const vehicle = VEHICLES.find(v => v.id === vehicleId);
+    const activeRate = vehicle ? (mode === 'outstation' ? vehicle.roundRate : vehicle.dropRate) : ratePerKm;
+    const activeBatta = vehicle ? vehicle.batta : (nightBata || 400);
+    const activeMinKm = vehicle ? vehicle.minKm : (mode === 'outstation' ? 250 : 100);
+
     // TN Drop/Outstation Logic
     if (mode === 'drop') {
-        // Minimum 100km for drop trips
         const effectiveDistance = Math.max(100, distance);
-        taxableFare = effectiveDistance * ratePerKm;
-
-        // Driver Batta for Drop: Rs. 400 (Rs. 600 if > 400km)
-        // We use the provided nightBata as base but apply TN logic if it's default
-        let actualBatta = nightBata;
-        if (actualBatta === 0 || actualBatta === 250) { // If user hasn't customized or is using old logic
-            actualBatta = distance > 400 ? 600 : 400;
-        }
-        taxableFare += actualBatta;
+        taxableFare = effectiveDistance * activeRate;
+        taxableFare += activeBatta;
 
     } else if (mode === 'outstation') {
-        // Minimum 250km per day for round trips
-        const effectiveDistance = Math.max(250, distance);
-        taxableFare = effectiveDistance * ratePerKm;
-
-        // Driver Batta for Round: Rs. 500 (Rs. 600 if > 500km)
-        let actualBatta = nightBata;
-        if (actualBatta === 0 || actualBatta === 250) {
-            actualBatta = distance > 500 ? 600 : 500;
-        }
-        taxableFare += actualBatta;
+        const minKmForTotalDays = activeMinKm * days;
+        const effectiveDistance = Math.max(minKmForTotalDays, distance);
+        taxableFare = effectiveDistance * activeRate;
+        taxableFare += (activeBatta * days);
 
     } else if (mode === 'package') {
         const extraKms = Math.max(0, distance - (baseKmLimit || 0));
@@ -121,6 +135,8 @@ export const calculateFare = (
         taxableFare += extraKms * (extraKmRate || 0);
         taxableFare += extraHr * (extraHourRate || 0);
         taxableFare += nightBata;
+    } else if (mode === 'fixed') {
+        taxableFare = packagePrice; // Reuse manual price field
     } else if (mode === 'hourly') {
         taxableFare = baseFare + (durationHours * hourlyRate);
         taxableFare += nightBata;

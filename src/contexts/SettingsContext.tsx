@@ -122,10 +122,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return {
             language: 'en',
             gstEnabled: false,
-            baseFare: 150,
-            ratePerKm: 18,
+            baseFare: 100,
+            ratePerKm: 13,
             hourlyRate: 150,
-            nightBata: 500,
+            nightBata: 400,
             companyName: '',
             companyAddress: '',
             driverPhone: '',

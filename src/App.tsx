@@ -11,6 +11,7 @@ import BottomNav from './components/BottomNav';
 import Dashboard from './components/Dashboard';
 import ExpenseTracker from './components/ExpenseTracker';
 import Calculator from './components/Calculator';
+import GoogleSignInButton from './components/GoogleSignInButton';
 
 import type { Trip } from './utils/fare';
 import QuotationForm from './components/QuotationForm';
@@ -20,7 +21,7 @@ import SideNav from './components/SideNav';
 
 function AppContent() {
   /* Guest Roaming Logic */
-  const { user, loading, signInWithGoogle, isAdmin } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [invoiceQuotationToggle, setInvoiceQuotationToggle] = useState<'invoice' | 'quotation'>('invoice');
@@ -162,12 +163,11 @@ function AppContent() {
               <p className="text-sm text-slate-300 font-medium mb-4">
                 Sign in to sync your trips, expenses, and invoices across all your devices securely.
               </p>
-              <button
-                onClick={() => signInWithGoogle()}
-                className="w-full bg-white text-[#0f172a] font-black py-3 rounded-xl uppercase tracking-wider text-xs hover:bg-blue-50 transition-colors"
-              >
-                Connect Google Account
-              </button>
+              <GoogleSignInButton
+                text="Sign in with Google"
+                size="large"
+                className="w-full"
+              />
               <button
                 onClick={() => setShowLoginNudge(false)}
                 className="w-full mt-3 text-slate-400 font-bold text-[10px] uppercase tracking-widest hover:text-white"
