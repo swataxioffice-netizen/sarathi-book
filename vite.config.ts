@@ -9,7 +9,7 @@ export default defineConfig({
         VitePWA({
             registerType: 'autoUpdate',
             injectRegister: 'script',
-            includeAssets: ['favicon.ico', 'apple-touch-icon.svg', 'favicon.svg', 'favicon-96x96.svg', 'favicon-158x158.svg'],
+            includeAssets: ['apple-touch-icon.png', 'favicon.png', 'favicon-96x96.png', 'favicon-158x158.png', 'logo.png'],
             manifest: {
                 name: 'Sarathi Book',
                 short_name: 'Sarathi',
