@@ -16,13 +16,20 @@ interface SavedQuotation {
 
 const QuotationForm: React.FC = () => {
     const { settings } = useSettings();
-    const [customerName, setCustomerName] = useState('');
-    const [subject, setSubject] = useState('');
-    const [vehicleType, setVehicleType] = useState('Sedan');
-    const [items, setItems] = useState<QuotationItem[]>([]);
+    const [customerName, setCustomerName] = useState(() => safeJSONParse('draft-q-name', ''));
+    const [subject, setSubject] = useState(() => safeJSONParse('draft-q-subject', ''));
+    const [vehicleType, setVehicleType] = useState(() => safeJSONParse('draft-q-vehicle', 'Sedan'));
+    const [items, setItems] = useState<QuotationItem[]>(() => safeJSONParse('draft-q-items', []));
     const [showItems, setShowItems] = useState(false);
     const [quotations, setQuotations] = useState<SavedQuotation[]>(() => safeJSONParse('saved-quotations', []));
     const [showAllHistory, setShowAllHistory] = useState(false);
+
+    // Auto-save draft changes
+    useEffect(() => { localStorage.setItem('draft-q-name', JSON.stringify(customerName)); }, [customerName]);
+    useEffect(() => { localStorage.setItem('draft-q-subject', JSON.stringify(subject)); }, [subject]);
+    useEffect(() => { localStorage.setItem('draft-q-vehicle', JSON.stringify(vehicleType)); }, [vehicleType]);
+    useEffect(() => { localStorage.setItem('draft-q-items', JSON.stringify(items)); }, [items]);
+
 
     useEffect(() => {
         localStorage.setItem('saved-quotations', JSON.stringify(quotations));
@@ -62,6 +69,16 @@ const QuotationForm: React.FC = () => {
             date: newQuote.date,
             items: newQuote.items
         }, { ...settings, vehicleNumber: 'N/A' });
+
+        // Clear draft after successful creation
+        setCustomerName('');
+        setSubject('');
+        setVehicleType('Sedan');
+        setItems([]);
+        localStorage.removeItem('draft-q-name');
+        localStorage.removeItem('draft-q-subject');
+        localStorage.removeItem('draft-q-vehicle');
+        localStorage.removeItem('draft-q-items');
     };
 
     const handleReshare = async (quote: SavedQuotation) => {
