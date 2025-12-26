@@ -7,7 +7,7 @@ const Header: React.FC = () => {
         <header className="bg-white border-b-2 border-slate-100 px-5 py-3 flex-none sticky top-0 z-40">
             <div className="flex justify-between items-center max-w-md mx-auto">
                 <div className="flex items-center gap-3">
-                    <div className="w-14 h-14 flex-shrink-0 bg-blue-50 rounded-full p-1 border border-blue-100 shadow-sm">
+                    <div className="w-14 h-14 flex-shrink-0">
                         <img
                             src="/logo.png"
                             alt="Sarathi Book"
