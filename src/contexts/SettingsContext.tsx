@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { safeJSONParse } from '../utils/storage';
+import { supabase } from '../utils/supabase';
 
 type Language = 'en';
 
@@ -142,6 +143,36 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         };
     });
 
+    // Cloud Sync Logic
+    useEffect(() => {
+        const syncSettings = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                // 1. Fetch Cloud Settings
+                const { data } = await supabase.from('profiles').select('settings').eq('id', session.user.id).single();
+                if (data?.settings) {
+                    // Merge cloud settings with local defaults, preferring cloud
+                    setSettings(prev => ({ ...prev, ...data.settings }));
+                }
+            }
+        };
+
+        syncSettings();
+
+        // Listen for Auth Changes to switch profiles
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_IN' && session?.user) {
+                const { data } = await supabase.from('profiles').select('settings').eq('id', session.user.id).single();
+                if (data?.settings) {
+                    setSettings(prev => ({ ...prev, ...data.settings }));
+                }
+            }
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
+
+    // Save to Cloud on Change (Debounced)
     useEffect(() => {
         localStorage.setItem('namma-cab-settings', JSON.stringify(settings));
         if (settings.theme === 'dark') {
@@ -149,6 +180,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         } else {
             document.documentElement.classList.remove('dark');
         }
+
+        // Debounced Cloud Save
+        const saveToCloud = setTimeout(async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                await supabase.from('profiles').update({ settings: settings }).eq('id', session.user.id);
+            }
+        }, 2000);
+
+        return () => clearTimeout(saveToCloud);
     }, [settings]);
 
     const updateSettings = (newSettings: Partial<Settings>) => {

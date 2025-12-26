@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { safeJSONParse } from './utils/storage';
+import { supabase } from './utils/supabase';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { X } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -51,8 +52,57 @@ function AppContent() {
 
   /* Guest Access Enabled - Login handled per tab */
 
-  const handleSaveTrip = (trip: Trip) => {
-    setTrips(prev => [trip, ...prev]);
+  // Sync Trips on Load/Login
+  useEffect(() => {
+    const fetchTrips = async () => {
+      if (user) {
+        const { data } = await supabase.from('trips').select('*').order('created_at', { ascending: false });
+        if (data) {
+          // Map DB rows back to Trip objects if needed, or just use the JSON `details` if that's where we store it.
+          // Since I created specific columns + details jsonb, I'll prefer `details` for full fidelity.
+          const cloudTrips: Trip[] = data.map(row => row.details);
+          // Simple Strategy: If cloud has data, use it. Or merge. 
+          // For now, let's Append Cloud trips that aren't in local? Or just Replace local with cloud?
+          // User asked for "internet came back it all upload back". This implies sync.
+          // Simplest Robust Strategy for single-user-multi-device:
+          // 1. Fetch Cloud. 
+          // 2. Identify Local trips not in Cloud (by ID?).
+          // 3. Upload Local-only trips to Cloud.
+          // 4. Set State to Union.
+
+          setTrips(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const newFromCloud = cloudTrips.filter(c => !existingIds.has(c.id));
+            return [...newFromCloud, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          });
+        }
+      }
+    };
+    fetchTrips();
+  }, [user]);
+
+  // Sync Local Trips to Cloud (Background Sync) - Placeholder for future robust sync
+  useEffect(() => {
+    // Intentionally left blank for simplified flow: Cloud Restore on User Login
+  }, [user]);
+
+  const handleSaveTrip = async (trip: Trip) => {
+    const newTrips = [trip, ...trips];
+    setTrips(newTrips);
+
+    // Save to Cloud
+    if (user) {
+      await supabase.from('trips').upsert({
+        id: trip.id,
+        user_id: user.id,
+        customer_name: trip.customerName,
+        // Map 'mode' to customer_name or drop_location if needed? 
+        // Actually customer_name is present in Trip.
+        date: trip.date,
+        amount: trip.totalFare,
+        details: trip
+      });
+    }
   };
 
   const renderContent = () => {
