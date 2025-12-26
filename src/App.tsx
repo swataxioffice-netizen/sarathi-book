@@ -186,13 +186,17 @@ import ReloadPrompt from './components/ReloadPrompt';
 import { NotificationProvider } from './contexts/NotificationContext';
 import Notifications from './components/Notifications';
 
+import { UpdateProvider } from './contexts/UpdateContext';
+
 function App() {
   return (
     <AuthProvider>
       <NotificationProvider>
         <SettingsProvider>
-          <AppContent />
-          <ReloadPrompt />
+          <UpdateProvider>
+            <AppContent />
+            <ReloadPrompt />
+          </UpdateProvider>
         </SettingsProvider>
       </NotificationProvider>
     </AuthProvider>

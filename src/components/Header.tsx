@@ -1,7 +1,9 @@
-import React from 'react';
+import { useUpdate } from '../contexts/UpdateContext';
+import { RefreshCw } from 'lucide-react';
 import Notifications from './Notifications';
 
 const Header: React.FC = () => {
+    const { needRefresh, updateServiceWorker } = useUpdate();
 
     return (
         <header className="bg-white border-b-2 border-slate-100 px-5 py-3 flex-none sticky top-0 z-40">
@@ -23,7 +25,19 @@ const Header: React.FC = () => {
                         </p>
                     </div>
                 </div>
-                <Notifications />
+
+                <div className="flex items-center gap-2">
+                    {needRefresh && (
+                        <button
+                            onClick={() => updateServiceWorker(true)}
+                            className="flex items-center gap-1 bg-red-50 text-red-600 px-3 py-1.5 rounded-full border border-red-100 animate-pulse shadow-sm"
+                        >
+                            <RefreshCw size={14} className="animate-spin-slow" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Update</span>
+                        </button>
+                    )}
+                    <Notifications />
+                </div>
             </div>
         </header>
     );
