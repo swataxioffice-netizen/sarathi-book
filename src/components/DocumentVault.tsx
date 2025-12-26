@@ -202,7 +202,7 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
 
         } catch (error: any) {
             console.error('Save failed:', error);
-            alert(`Failed to save document. Please try again.`);
+            alert(`Failed to save: ${error.message || error.error_description || JSON.stringify(error)}`);
         } finally {
             setLoading(false);
         }

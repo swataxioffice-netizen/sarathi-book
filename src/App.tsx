@@ -23,7 +23,12 @@ function AppContent() {
   /* Guest Roaming Logic */
   const { user, loading, isAdmin } = useAuth();
 
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('nav-active-tab') || 'dashboard');
+
+  useEffect(() => {
+    localStorage.setItem('nav-active-tab', activeTab);
+  }, [activeTab]);
+
   const [invoiceQuotationToggle, setInvoiceQuotationToggle] = useState<'invoice' | 'quotation'>('invoice');
   const [trips, setTrips] = useState<Trip[]>(() => safeJSONParse<Trip[]>('namma-cab-trips', []));
   const [showLoginNudge, setShowLoginNudge] = useState(false);
