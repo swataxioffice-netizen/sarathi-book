@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { safeJSONParse } from './utils/storage';
 import { supabase } from './utils/supabase';
+import UpdateWatcher from './components/UpdateWatcher';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { X } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -160,6 +161,7 @@ function AppContent() {
 
   return (
     <>
+      <UpdateWatcher />
       {/* Desktop Layout */}
       <div className="hidden md:flex h-screen w-full bg-slate-100 overflow-hidden">
         <SideNav activeTab={activeTab} setActiveTab={setActiveTab} />

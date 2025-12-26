@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { safeJSONParse } from '../utils/storage';
 import { supabase } from '../utils/supabase';
 
-type Language = 'en';
+type Language = 'en' | 'ta' | 'kn' | 'hi';
 
 interface Vehicle {
     id: string;
@@ -30,6 +30,7 @@ interface Settings {
     ifscCode?: string;
     branchName?: string;
     holderName?: string;
+    upiId?: string;
 }
 
 interface SettingsContextType {
@@ -140,7 +141,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             accountNumber: '',
             ifscCode: '',
             branchName: '',
-            holderName: ''
+            holderName: '',
+            upiId: ''
         };
     });
 

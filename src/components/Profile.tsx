@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { User as UserIcon, Trash2, Camera, LogOut, Globe, Plus, Landmark, CheckCircle, Circle, AlertCircle } from 'lucide-react';
+import { Trash2, Plus, User as UserIcon, CheckCircle, Circle, Globe, Camera, LogOut, Landmark } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
 import DocumentVault from './DocumentVault';
 import GoogleSignInButton from './GoogleSignInButton';
@@ -14,7 +14,9 @@ const Profile: React.FC = () => {
     const [newVehicleModel, setNewVehicleModel] = useState('');
     const [isEditingPhoto, setIsEditingPhoto] = useState(false);
     const [customPhotoUrl, setCustomPhotoUrl] = useState('');
-    const [savingSection, setSavingSection] = useState<'business' | 'banking' | null>(null);
+    const [savingSection, setSavingSection] = useState<'business' | 'banking' | 'fleet' | 'language' | null>(null);
+    const [selectedLanguage, setSelectedLanguage] = useState<any>(settings.language || 'en'); // Use any to avoid import issue for now, or just string.
+
 
     // Stats for Completion
     const [docStats, setDocStats] = useState({ hasFullVehicle: false, hasFullDriver: false });
@@ -54,7 +56,7 @@ const Profile: React.FC = () => {
         }
     }, [user]);
 
-    const operatorId = user ? `OP-${user.id.slice(0, 6).toUpperCase()}-${new Date().getFullYear()}` : 'GUEST-DRIVER';
+    const operatorId = user ? `OP - ${user.id.slice(0, 6).toUpperCase()} -${new Date().getFullYear()} ` : 'GUEST-DRIVER';
 
     // -- Completion Logic --
     const getCompletion = () => {
@@ -93,12 +95,12 @@ const Profile: React.FC = () => {
                     <div className="w-full mb-4">
                         <div className="flex justify-between items-end mb-1 px-1">
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Profile Completion</span>
-                            <span className={`text-xs font-black ${completion === 100 ? 'text-green-500' : 'text-[#0047AB]'}`}>{completion}%</span>
+                            <span className={`text - xs font - black ${completion === 100 ? 'text-green-500' : 'text-[#0047AB]'} `}>{completion}%</span>
                         </div>
                         <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                             <div
-                                className={`h-full rounded-full transition-all duration-1000 ease-out ${completion === 100 ? 'bg-green-500' : 'bg-[#0047AB]'}`}
-                                style={{ width: `${completion}%` }}
+                                className={`h - full rounded - full transition - all duration - 1000 ease - out ${completion === 100 ? 'bg-green-500' : 'bg-[#0047AB]'} `}
+                                style={{ width: `${completion}% ` }}
                             ></div>
                         </div>
                         {completion < 100 && (
@@ -214,15 +216,15 @@ const Profile: React.FC = () => {
                                 placeholder="State, City"
                             />
                         </div>
-                        <div className="pt-2">
+                        <div className="pt-2 flex justify-end">
                             <button
                                 onClick={async () => {
                                     setSavingSection('business');
                                     await saveSettings();
-                                    await new Promise(r => setTimeout(r, 500)); // Fake delay for feel
+                                    await new Promise(r => setTimeout(r, 500));
                                     setSavingSection(null);
                                 }}
-                                className="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+                                className="bg-green-600 text-white px-6 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm"
                             >
                                 {savingSection === 'business' ? (
                                     <>
@@ -231,7 +233,7 @@ const Profile: React.FC = () => {
                                     </>
                                 ) : (
                                     <>
-                                        <CheckCircle size={14} /> Save Details
+                                        <CheckCircle size={14} /> Save
                                     </>
                                 )}
                             </button>
@@ -253,9 +255,9 @@ const Profile: React.FC = () => {
                         <span className="text-[10px] font-black text-slate-600 uppercase tracking-wide">Enable GST Invoice</span>
                         <div
                             onClick={() => updateSettings({ gstEnabled: !settings.gstEnabled })}
-                            className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${settings.gstEnabled ? 'bg-green-500' : 'bg-slate-300'}`}
+                            className={`w - 10 h - 5 rounded - full relative cursor - pointer transition - colors ${settings.gstEnabled ? 'bg-green-500' : 'bg-slate-300'} `}
                         >
-                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${settings.gstEnabled ? 'left-6' : 'left-1'}`}></div>
+                            <div className={`absolute top - 1 w - 3 h - 3 bg - white rounded - full shadow - sm transition - all ${settings.gstEnabled ? 'left-6' : 'left-1'} `}></div>
                         </div>
                     </div>
 
@@ -267,7 +269,7 @@ const Profile: React.FC = () => {
                                     type="text"
                                     value={settings.gstin}
                                     onChange={(_) => updateSettings({ gstin: _.target.value.toUpperCase() })}
-                                    className={`tn-input h-10 text-xs font-bold ${settings.gstin && !validateGSTIN(settings.gstin) ? 'border-red-300 bg-red-50' : ''}`}
+                                    className={`tn - input h - 10 text - xs font - bold ${settings.gstin && !validateGSTIN(settings.gstin) ? 'border-red-300 bg-red-50' : ''} `}
                                     placeholder="22AAAAA0000A1Z5"
                                     maxLength={15}
                                 />
@@ -325,8 +327,18 @@ const Profile: React.FC = () => {
                                 />
                             </div>
                         </div>
+                        <div>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">UPI ID</label>
+                            <input
+                                type="text"
+                                value={settings.upiId || ''}
+                                onChange={(_) => updateSettings({ upiId: _.target.value })}
+                                className="tn-input h-9 text-xs font-bold"
+                                placeholder="e.g. 9999999999@upi"
+                            />
+                        </div>
                     </div>
-                    <div className="pt-2">
+                    <div className="pt-2 flex justify-end">
                         <button
                             onClick={async () => {
                                 setSavingSection('banking');
@@ -334,7 +346,7 @@ const Profile: React.FC = () => {
                                 await new Promise(r => setTimeout(r, 500));
                                 setSavingSection(null);
                             }}
-                            className="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+                            className="bg-green-600 text-white px-6 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm"
                         >
                             {savingSection === 'banking' ? (
                                 <>
@@ -343,7 +355,7 @@ const Profile: React.FC = () => {
                                 </>
                             ) : (
                                 <>
-                                    <CheckCircle size={14} /> Save Bank Details
+                                    <CheckCircle size={14} /> Save
                                 </>
                             )}
                         </button>
@@ -362,7 +374,7 @@ const Profile: React.FC = () => {
                     <div className="space-y-2">
                         {settings.vehicles.map((v) => (
                             <div key={v.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-xl group relative overflow-hidden">
-                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${settings.currentVehicleId === v.id ? 'bg-[#0047AB]' : 'bg-slate-300'}`}></div>
+                                <div className={`absolute left - 0 top - 0 bottom - 0 w - 1 ${settings.currentVehicleId === v.id ? 'bg-[#0047AB]' : 'bg-slate-300'} `}></div>
                                 <div
                                     className="flex-1 pl-2 cursor-pointer"
                                     onClick={() => updateSettings({ currentVehicleId: v.id })}
@@ -414,6 +426,29 @@ const Profile: React.FC = () => {
                             <Plus size={16} />
                         </button>
                     </div>
+
+                    <div className="pt-2 flex justify-end">
+                        <button
+                            onClick={async () => {
+                                setSavingSection('fleet');
+                                await saveSettings();
+                                await new Promise(r => setTimeout(r, 500));
+                                setSavingSection(null);
+                            }}
+                            className="bg-green-600 text-white px-6 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm"
+                        >
+                            {savingSection === 'fleet' ? (
+                                <>
+                                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircle size={14} /> Save
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -435,41 +470,84 @@ const Profile: React.FC = () => {
                                 className="text-[9px] font-black text-orange-600 uppercase tracking-widest hover:underline"
                             >
                                 Visit
-                            </a>
-                        </div>
-                    </div>
-                </div>
+                            </a >
+                        </div >
+                    </div >
+                </div >
             )}
 
             {/* 6. Documents */}
-            <div className="space-y-2 pt-2">
-                <div className="flex items-center gap-2 px-1 mb-2">
+            <div className="space-y-2">
+                <div className="flex items-center gap-2 px-1">
                     {docStats.hasFullVehicle && docStats.hasFullDriver ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
-                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Documents Status</h3>
+                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Documents</h3>
                 </div>
-
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className={`p-3 rounded-xl border ${docStats.hasFullVehicle ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'} flex items-center gap-3`}>
-                        {docStats.hasFullVehicle ? <CheckCircle size={16} className="text-green-600" /> : <AlertCircle size={16} className="text-slate-400" />}
-                        <div>
-                            <p className="text-[10px] font-black uppercase text-slate-700">Vehicle Docs</p>
-                            <p className="text-[9px] font-bold text-slate-500">{docStats.hasFullVehicle ? 'Complete' : 'Pending Uploads'}</p>
-                        </div>
-                    </div>
-                    <div className={`p-3 rounded-xl border ${docStats.hasFullDriver ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'} flex items-center gap-3`}>
-                        {docStats.hasFullDriver ? <CheckCircle size={16} className="text-green-600" /> : <AlertCircle size={16} className="text-slate-400" />}
-                        <div>
-                            <p className="text-[10px] font-black uppercase text-slate-700">Driver Docs</p>
-                            <p className="text-[9px] font-bold text-slate-500">{docStats.hasFullDriver ? 'Complete' : 'Pending Uploads'}</p>
-                        </div>
+                <div className="pt-0">
+                    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+                        <DocumentVault onStatsUpdate={setDocStats} />
                     </div>
                 </div>
-
-                <DocumentVault onStatsUpdate={setDocStats} />
             </div>
-        </div>
+
+            {/* 7. Language */}
+            <div className="space-y-2">
+                <div className="flex items-center gap-2 px-1">
+                    {settings.language ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
+                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Language</h3>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                    <div className="grid grid-cols-2 gap-3">
+                        {['English', 'Tamil', 'Kannada', 'Hindi'].map(lang => (
+                            <div
+                                key={lang}
+                                onClick={() => setSelectedLanguage(lang)}
+                                className={`p-2 border rounded-lg text-center cursor-pointer transition-colors ${selectedLanguage === lang
+                                    ? 'bg-blue-500 text-white border-blue-500'
+                                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-blue-50 hover:border-blue-300'
+                                    }`}
+                            >
+                                <span className="text-xs font-bold">{lang}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mt-4 flex justify-end">
+                        <button
+                            onClick={async () => {
+                                setSavingSection('language');
+                                updateSettings({ language: selectedLanguage });
+                                await saveSettings();
+                                await new Promise(r => setTimeout(r, 500));
+                                setSavingSection(null);
+                            }}
+                            disabled={selectedLanguage === settings.language}
+                            className="bg-green-600 text-white px-6 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {savingSection === 'language' ? (
+                                <>
+                                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircle size={14} /> Save Language
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* 8. Sign Out */}
+            <div className="pt-4">
+                <button
+                    onClick={signOut}
+                    className="w-full bg-red-500 text-white px-6 py-3 rounded-lg font-black text-sm uppercase tracking-widest hover:bg-red-600 transition-colors flex items-center justify-center gap-2 shadow-md"
+                >
+                    <LogOut size={16} /> Sign Out
+                </button>
+            </div>
+        </div >
     );
 };
 
 export default Profile;
-
