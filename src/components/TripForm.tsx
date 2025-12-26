@@ -41,6 +41,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     const [parkingCharge, setParkingCharge] = useState(false);
     const [waitingCharge, setWaitingCharge] = useState(false);
     const [showAdditional, setShowAdditional] = useState(false);
+    const [permitCharge, setPermitCharge] = useState(0);
+    const [permitActive, setPermitActive] = useState(false);
 
     // Package details
     const [packageName, setPackageName] = useState('');
@@ -142,6 +144,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
 
     const handleCalculate = () => {
         const activeRate = (mode === 'drop' || mode === 'outstation') ? customRate : settings.ratePerKm;
+        // Add permit charge if active
+        const permit = permitActive ? permitCharge : 0;
         const res = calculateFare({
             startKm, endKm, baseFare: settings.baseFare, ratePerKm: activeRate, toll, parking,
             gstEnabled: localGst, mode, vehicleId: selectedVehicleId, hourlyRate: settings.hourlyRate,
@@ -153,7 +157,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             baseKmLimit: 0, baseHourLimit: 0, extraKmRate: 0, extraHourRate: 0,
             days: mode === 'outstation' ? days : 1
         });
-        setResult({ ...res, distance: res.distance ?? (endKm - startKm) });
+        // Add permit to total and fare
+        setResult({ ...res, total: res.total + permit, fare: res.fare + permit, distance: res.distance ?? (endKm - startKm) });
         setIsCalculated(true);
     };
 
@@ -163,9 +168,16 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             id: crypto.randomUUID(),
             customerName: customerName || 'Cash Guest',
             customerGst,
-            from: fromLoc, to: toLoc, billingAddress, startKm, endKm, startTime, endTime, toll: tollCharge ? toll : 0, parking: parkingCharge ? parking : 0,
-            nightBata: nightBata ? settings.nightBata : 0, baseFare: settings.baseFare, ratePerKm: settings.ratePerKm,
-            totalFare: result.total, gst: result.gst, date: new Date(invoiceDate).toISOString(), mode,
+            from: fromLoc, to: toLoc, billingAddress, startKm, endKm, startTime, endTime,
+            toll: tollCharge ? toll : 0,
+            parking: parkingCharge ? parking : 0,
+            nightBata: nightBata ? settings.nightBata : 0,
+            baseFare: settings.baseFare,
+            ratePerKm: settings.ratePerKm,
+            totalFare: result.total,
+            gst: result.gst,
+            date: new Date(invoiceDate).toISOString(),
+            mode,
             durationHours: mode === 'hourly' ? startKm : undefined,
             hourlyRate: mode === 'hourly' ? settings.hourlyRate : undefined,
             notes: notes || '',
@@ -175,9 +187,10 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             petCharges: result.petCharges,
             packageName: mode === 'package' ? packageName : undefined,
             numberOfPersons: mode === 'package' ? numPersons : undefined,
-            packagePrice: mode === 'package' ? packagePrice : undefined
+            packagePrice: mode === 'package' ? packagePrice : undefined,
+            permit: permitActive ? permitCharge : 0
         });
-        setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setTollCharge(false); setParkingCharge(false); setWaitingCharge(false); setIsCalculated(false); setResult(null);
+        setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setTollCharge(false); setParkingCharge(false); setWaitingCharge(false); setPermitActive(false); setPermitCharge(0); setIsCalculated(false); setResult(null);
         setPackageName(''); setNumPersons(1); setPackagePrice(0);
         setInvoiceDate(new Date().toISOString().split('T')[0]);
     };
@@ -550,25 +563,78 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
 
                     {showAdditional && (
                         <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                            {[
-                                { id: 'batta', label: 'Batta', active: nightBata, toggle: () => setNightBata(!nightBata), value: settings.nightBata, isPreset: true },
-                                { id: 'hills', label: 'Hills', active: isHillStation, toggle: () => setIsHillStation(!isHillStation), value: 300, isPreset: true },
-                                { id: 'toll', label: 'Toll', active: tollCharge, toggle: () => setTollCharge(!tollCharge), value: toll, setValue: setToll, isPreset: false },
-                                { id: 'parking', label: 'Parking', active: parkingCharge, toggle: () => setParkingCharge(!parkingCharge), value: parking, setValue: setParking, isPreset: false },
-                                { id: 'waiting', label: 'Wait Hrs', active: waitingCharge, toggle: () => setWaitingCharge(!waitingCharge), value: waitingHours, setValue: setWaitingHours, isPreset: false },
-                            ].map((item) => (
-                                <div key={item.id} className="flex items-center gap-2 py-1.5 border-b border-slate-200 last:border-0">
-                                    <div className="flex-1">
-                                        <span className={`text-[10px] font-bold uppercase tracking-wide ${item.active ? 'text-[#0047AB]' : 'text-slate-400'}`}>{item.label}</span>
-                                    </div>
-                                    <button onClick={item.toggle} className={`w-8 h-4 rounded-full relative transition-all ${item.active ? 'bg-[#00965E]' : 'bg-slate-300'}`}>
-                                        <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${item.active ? 'left-4.5' : 'left-0.5'}`} />
-                                    </button>
-                                    <div className="w-16">
-                                        <input type="number" value={item.value || ''} onChange={(e) => item.setValue?.(Number(e.target.value))} disabled={!item.active} readOnly={item.isPreset} className={`tn-input h-7 w-full text-center text-xs font-bold p-0 ${item.active ? 'bg-white border-slate-300' : 'bg-transparent border-transparent'}`} placeholder="0" />
-                                    </div>
+                            {/* Batta */}
+                            <div className="flex items-center gap-2 py-1.5 border-b border-slate-200">
+                                <div className="flex-1">
+                                    <span className={`text-[10px] font-bold uppercase tracking-wide ${nightBata ? 'text-[#0047AB]' : 'text-slate-400'}`}>Batta</span>
                                 </div>
-                            ))}
+                                <button onClick={() => setNightBata(!nightBata)} className={`w-8 h-4 rounded-full relative transition-all ${nightBata ? 'bg-[#00965E]' : 'bg-slate-300'}`}> 
+                                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${nightBata ? 'left-4.5' : 'left-0.5'}`} />
+                                </button>
+                                <div className="w-16">
+                                    <input type="number" value={settings.nightBata} readOnly className={`tn-input h-7 w-full text-center text-xs font-bold p-0 bg-white border-slate-300`} />
+                                </div>
+                            </div>
+                            {/* Hills */}
+                            <div className="flex items-center gap-2 py-1.5 border-b border-slate-200">
+                                <div className="flex-1">
+                                    <span className={`text-[10px] font-bold uppercase tracking-wide ${isHillStation ? 'text-[#0047AB]' : 'text-slate-400'}`}>Hills</span>
+                                </div>
+                                <button onClick={() => setIsHillStation(!isHillStation)} className={`w-8 h-4 rounded-full relative transition-all ${isHillStation ? 'bg-[#00965E]' : 'bg-slate-300'}`}> 
+                                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${isHillStation ? 'left-4.5' : 'left-0.5'}`} />
+                                </button>
+                                <div className="w-16">
+                                    <input type="number" value={300} readOnly className={`tn-input h-7 w-full text-center text-xs font-bold p-0 bg-white border-slate-300`} />
+                                </div>
+                            </div>
+                            {/* Permit */}
+                            <div className="flex items-center gap-2 py-1.5 border-b border-slate-200">
+                                <div className="flex-1">
+                                    <span className={`text-[10px] font-bold uppercase tracking-wide ${permitActive ? 'text-[#0047AB]' : 'text-slate-400'}`}>Permit</span>
+                                </div>
+                                <button onClick={() => setPermitActive(!permitActive)} className={`w-8 h-4 rounded-full relative transition-all ${permitActive ? 'bg-[#00965E]' : 'bg-slate-300'}`}> 
+                                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${permitActive ? 'left-4.5' : 'left-0.5'}`} />
+                                </button>
+                                <div className="w-16">
+                                    <input type="number" value={permitCharge || ''} onChange={e => setPermitCharge(Number(e.target.value))} disabled={!permitActive} className={`tn-input h-7 w-full text-center text-xs font-bold p-0 ${permitActive ? 'bg-white border-slate-300' : 'bg-transparent border-transparent'}`} placeholder="0" />
+                                </div>
+                            </div>
+                            {/* Toll */}
+                            <div className="flex items-center gap-2 py-1.5 border-b border-slate-200">
+                                <div className="flex-1">
+                                    <span className={`text-[10px] font-bold uppercase tracking-wide ${tollCharge ? 'text-[#0047AB]' : 'text-slate-400'}`}>Toll</span>
+                                </div>
+                                <button onClick={() => setTollCharge(!tollCharge)} className={`w-8 h-4 rounded-full relative transition-all ${tollCharge ? 'bg-[#00965E]' : 'bg-slate-300'}`}> 
+                                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${tollCharge ? 'left-4.5' : 'left-0.5'}`} />
+                                </button>
+                                <div className="w-16">
+                                    <input type="number" value={toll || ''} onChange={e => setToll(Number(e.target.value))} disabled={!tollCharge} className={`tn-input h-7 w-full text-center text-xs font-bold p-0 ${tollCharge ? 'bg-white border-slate-300' : 'bg-transparent border-transparent'}`} placeholder="0" />
+                                </div>
+                            </div>
+                            {/* Parking */}
+                            <div className="flex items-center gap-2 py-1.5 border-b border-slate-200">
+                                <div className="flex-1">
+                                    <span className={`text-[10px] font-bold uppercase tracking-wide ${parkingCharge ? 'text-[#0047AB]' : 'text-slate-400'}`}>Parking</span>
+                                </div>
+                                <button onClick={() => setParkingCharge(!parkingCharge)} className={`w-8 h-4 rounded-full relative transition-all ${parkingCharge ? 'bg-[#00965E]' : 'bg-slate-300'}`}> 
+                                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${parkingCharge ? 'left-4.5' : 'left-0.5'}`} />
+                                </button>
+                                <div className="w-16">
+                                    <input type="number" value={parking || ''} onChange={e => setParking(Number(e.target.value))} disabled={!parkingCharge} className={`tn-input h-7 w-full text-center text-xs font-bold p-0 ${parkingCharge ? 'bg-white border-slate-300' : 'bg-transparent border-transparent'}`} placeholder="0" />
+                                </div>
+                            </div>
+                            {/* Wait Hrs */}
+                            <div className="flex items-center gap-2 py-1.5">
+                                <div className="flex-1">
+                                    <span className={`text-[10px] font-bold uppercase tracking-wide ${waitingCharge ? 'text-[#0047AB]' : 'text-slate-400'}`}>Wait Hrs</span>
+                                </div>
+                                <button onClick={() => setWaitingCharge(!waitingCharge)} className={`w-8 h-4 rounded-full relative transition-all ${waitingCharge ? 'bg-[#00965E]' : 'bg-slate-300'}`}> 
+                                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${waitingCharge ? 'left-4.5' : 'left-0.5'}`} />
+                                </button>
+                                <div className="w-16">
+                                    <input type="number" value={waitingHours || ''} onChange={e => setWaitingHours(Number(e.target.value))} disabled={!waitingCharge} className={`tn-input h-7 w-full text-center text-xs font-bold p-0 ${waitingCharge ? 'bg-white border-slate-300' : 'bg-transparent border-transparent'}`} placeholder="0" />
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
