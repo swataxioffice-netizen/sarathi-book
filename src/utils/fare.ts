@@ -50,6 +50,7 @@ export interface Trip {
     packageName?: string;
     numberOfPersons?: number;
     packagePrice?: number;
+    permit?: number;
 }
 
 export interface Expense {
