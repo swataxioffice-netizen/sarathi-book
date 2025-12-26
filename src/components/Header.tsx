@@ -27,13 +27,20 @@ const Header: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {needRefresh && (
+                    {needRefresh ? (
                         <button
                             onClick={() => updateServiceWorker(true)}
                             className="flex items-center gap-1 bg-red-50 text-red-600 px-3 py-1.5 rounded-full border border-red-100 animate-pulse shadow-sm"
                         >
                             <RefreshCw size={14} className="animate-spin-slow" />
                             <span className="text-[10px] font-black uppercase tracking-widest">Update</span>
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="flex items-center gap-1 bg-slate-50 text-slate-400 px-3 py-1.5 rounded-full border border-slate-100 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                        >
+                            <RefreshCw size={14} />
                         </button>
                     )}
                     <Notifications />
