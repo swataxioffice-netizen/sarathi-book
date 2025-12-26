@@ -13,14 +13,16 @@ interface Vehicle {
     roundRate: number;
     seats: number;
     type: 'Sedan' | 'SUV' | 'Van';
+    minKm: number;    // Market Standard Minimum KM per day
+    batta: number;    // Market Standard Driver Batta per day
 }
 
 const VEHICLES: Vehicle[] = [
-    { id: 'swift', name: 'Swift Dzire', dropRate: 14, roundRate: 13, seats: 4, type: 'Sedan' },
-    { id: 'etios', name: 'Toyota Etios', dropRate: 14, roundRate: 13, seats: 4, type: 'Sedan' },
-    { id: 'innova', name: 'Innova', dropRate: 19, roundRate: 18, seats: 7, type: 'SUV' },
-    { id: 'crysta', name: 'Innova Crysta', dropRate: 22, roundRate: 20, seats: 7, type: 'SUV' },
-    { id: 'tempo', name: 'Tempo Traveller', dropRate: 28, roundRate: 28, seats: 12, type: 'Van' }
+    { id: 'swift', name: 'Swift Dzire', dropRate: 14, roundRate: 13, seats: 4, type: 'Sedan', minKm: 250, batta: 400 },
+    { id: 'etios', name: 'Toyota Etios', dropRate: 14, roundRate: 13, seats: 4, type: 'Sedan', minKm: 250, batta: 400 },
+    { id: 'innova', name: 'Innova', dropRate: 19, roundRate: 18, seats: 7, type: 'SUV', minKm: 300, batta: 500 },
+    { id: 'crysta', name: 'Innova Crysta', dropRate: 22, roundRate: 20, seats: 7, type: 'SUV', minKm: 300, batta: 600 },
+    { id: 'tempo', name: 'Tempo Traveller', dropRate: 28, roundRate: 28, seats: 12, type: 'Van', minKm: 300, batta: 600 }
 ];
 
 // --- 1. Cab Calculator Component ---
@@ -32,6 +34,7 @@ const CabCalculator: React.FC = () => {
     const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [dropCoords, setDropCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [distance, setDistance] = useState<string>('');
+    const [days, setDays] = useState<string>('1');
     const [passengers, setPassengers] = useState<number>(4);
     const [selectedVehicle, setSelectedVehicle] = useState<string>('swift');
     const [customRate, setCustomRate] = useState<number>(14);
@@ -115,14 +118,20 @@ const CabCalculator: React.FC = () => {
         const estimatedTolls = Math.ceil(dist / 100) * 250;
 
         if (tripType === 'roundtrip') {
-            // Tamil Nadu Round Trip Logic
+            // Market Logic: Use vehicle-specific standards
+            const vehicle = VEHICLES.find(v => v.id === selectedVehicle) || VEHICLES[0];
             const roundTripDistance = dist * 2;
-            const minKmPerDay = 250;
-            const daysNeeded = Math.ceil(roundTripDistance / minKmPerDay);
-            const minChargeableKm = daysNeeded * minKmPerDay;
+            const minKmPerDay = vehicle.minKm;
+            const inputDays = parseInt(days) || 1;
+
+            // Market Logic: Days are determined by either user input OR distance (whichever is higher)
+            const minDaysByDist = Math.ceil(roundTripDistance / minKmPerDay);
+            const actualDays = Math.max(inputDays, minDaysByDist);
+
+            const minChargeableKm = actualDays * minKmPerDay;
             const chargedKm = Math.max(roundTripDistance, minChargeableKm);
-            const driverBataPerDay = 400;
-            const totalBata = daysNeeded * driverBataPerDay;
+            const driverBataPerDay = vehicle.batta;
+            const totalBata = actualDays * driverBataPerDay;
 
             const kmCharge = chargedKm * customRate;
             const tollsRoundTrip = estimatedTolls * 2;
@@ -131,10 +140,10 @@ const CabCalculator: React.FC = () => {
 
             const details = [
                 `🚗 Round Trip: ${dist} KM × 2 = ${roundTripDistance} KM`,
-                `📅 Days Required: ${daysNeeded} day(s) @ ${minKmPerDay} KM/day`,
+                `📅 Duration: ${actualDays} day(s) (Min ${minKmPerDay} KM/day)`,
                 `📏 Minimum Chargeable: ${minChargeableKm} KM`,
                 `💰 Distance Charge: ${chargedKm} KM × ₹${customRate}/KM = ₹${kmCharge.toFixed(0)}`,
-                `🍽️ Driver Bata: ${daysNeeded} day(s) × ₹${driverBataPerDay} = ₹${totalBata}`,
+                `🍽️ Driver Bata: ${actualDays} day(s) × ₹${driverBataPerDay} = ₹${totalBata}`,
                 needsPermit ? `📋 ${permitState} Permit: ₹${permitCharge}` : '',
                 `🛣️ Toll Estimate (approx): ₹${tollsRoundTrip}`,
                 ``,
@@ -149,7 +158,7 @@ const CabCalculator: React.FC = () => {
                     bata: totalBata,
                     permit: permitCharge,
                     tolls: tollsRoundTrip,
-                    days: daysNeeded,
+                    days: actualDays,
                     chargedKm
                 }
             });
@@ -182,9 +191,19 @@ const CabCalculator: React.FC = () => {
 
     const book = () => {
         const vehicle = VEHICLES.find(v => v.id === selectedVehicle);
-        const msg = `*New Cab Quote*%0AType: ${tripType}%0AVehicle: ${vehicle?.name}%0ARoute: ${pickup} to ${drop}%0ADist: ${distance} km%0AFare: ₹${result.fare}`;
+        const typeLabel = tripType === 'oneway' ? 'One Way / Drop' : 'Round Trip';
+        const msg = `📍 *Pickup:* ${pickup}\n` +
+            `🏁 *Drop:* ${drop}\n\n` +
+            `🚗 *Vehicle:* ${vehicle?.name} (${passengers} Seats)\n` +
+            `🛣️ *Type:* ${typeLabel}\n` +
+            `📏 *Distance:* ${distance} km\n` +
+            (tripType === 'roundtrip' ? `📅 *Duration:* ${days} Day(s)\n` : '') +
+            `\n` +
+            `💰 *ESTIMATED FARE: ₹${result.fare}*\n` +
+            `_(Includes Approx Tolls & Permits)_`;
+
         const phone = settings?.driverPhone?.replace(/[^0-9]/g, '') || '919000000000';
-        window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
     };
 
     return (
@@ -246,11 +265,21 @@ const CabCalculator: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="space-y-1">
-                    <Label icon={<Users size={10} />} text="Passengers" />
-                    <select value={passengers} onChange={e => setPassengers(Number(e.target.value))} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
-                        {[4, 7, 12].map(n => <option key={n} value={n}>{n} Seats</option>)}
-                    </select>
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                        <Label icon={<Users size={10} />} text="Passengers" />
+                        <select value={passengers} onChange={e => setPassengers(Number(e.target.value))} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
+                            {[4, 7, 12].map(n => <option key={n} value={n}>{n} Seats</option>)}
+                        </select>
+                    </div>
+                    {tripType === 'roundtrip' && (
+                        <div className="space-y-1">
+                            <Label icon={<Clock size={10} />} text="Trip Duration" />
+                            <select value={days} onChange={e => setDays(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
+                                {[1, 2, 3, 4, 5, 6, 7, 10, 15].map(n => <option key={n} value={n}>{n} {n === 1 ? 'Day' : 'Days'}</option>)}
+                            </select>
+                        </div>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-[2fr,1fr] gap-3">
@@ -295,7 +324,7 @@ const ActingDriverCalculator: React.FC = () => {
         const rates = {
             local8: 800,   // 8 hours / 80 KM per day
             local12: 1200, // 12 hours / 120 KM per day
-            outstation: 1000 // Per day (unlimited hours)
+            outstation: 1200 // Per day (2025 Market Rate)
         };
 
         const baseRate = rates[serviceType];
@@ -348,8 +377,16 @@ const ActingDriverCalculator: React.FC = () => {
             local12: 'Local Driver (12 hrs/120 KM)',
             outstation: 'Outstation Driver'
         };
-        const msg = `*Book Acting Driver*\n\nService: ${serviceNames[serviceType]}\nDuration: ${days} day(s)\n${serviceType === 'outstation' ? `Food: ${foodProvided ? 'Provided' : 'Not Provided'}\nStay: ${stayProvided ? 'Provided' : 'Not Provided'}\n` : ''}Total Cost: ₹${result.fare}`;
-        window.open(`https://wa.me/${settings.driverPhone}?text=${encodeURIComponent(msg)}`);
+        const msg = `🛠️ *Service:* ${serviceNames[serviceType]}\n` +
+            `📅 *Duration:* ${days} Day(s)\n` +
+            (serviceType === 'outstation' ?
+                `🍽️ *Food:* ${foodProvided ? 'Provided' : 'Not Provided'}\n` +
+                `🏨 *Stay:* ${stayProvided ? 'Provided' : 'Not Provided'}\n` : '') +
+            `\n` +
+            `💰 *ESTIMATED COST: ₹${result.fare}*`;
+
+        const phone = settings?.driverPhone?.replace(/[^0-9]/g, '') || '919000000000';
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
     };
 
     return (
@@ -420,7 +457,7 @@ const ActingDriverCalculator: React.FC = () => {
             </div>
 
             <Button onClick={calculate} disabled={!days} text="Calculate Driver Cost" />
-            {result && <ResultCard title="Acting Driver Cost" amount={result.fare} details={result.details} sub={serviceType === 'outstation' ? 'Fuel & Vehicle by Customer' : 'Extra hours charged separately'} onBook={book} />}
+            {result && <ResultCard title="Acting Driver Cost" amount={result.fare} details={result.details} sub={serviceType === 'outstation' ? 'Fuel & Vehicle by Customer' : 'Extra hours/Night charges (₹200) extra'} onBook={book} />}
         </div>
     );
 };
@@ -497,9 +534,9 @@ const RelocationCalculator: React.FC = () => {
             // Professional Carrier Service (All-Inclusive)
             // Rates based on vehicle type and distance
             const baseRates = {
-                car: dist <= 500 ? 5000 : dist <= 1000 ? 8000 : dist <= 1500 ? 12000 : 15000,
-                van: dist <= 500 ? 7000 : dist <= 1000 ? 11000 : dist <= 1500 ? 16000 : 20000,
-                bus: dist <= 500 ? 12000 : dist <= 1000 ? 18000 : dist <= 1500 ? 25000 : 32000
+                car: dist <= 500 ? 6000 : dist <= 1000 ? 10000 : dist <= 1500 ? 14000 : 18000,
+                van: dist <= 500 ? 8000 : dist <= 1000 ? 13000 : dist <= 1500 ? 18000 : 24000,
+                bus: dist <= 500 ? 14000 : dist <= 1000 ? 22000 : dist <= 1500 ? 30000 : 38000
             };
 
             const baseCharge = baseRates[vehicleType];
@@ -578,8 +615,16 @@ const RelocationCalculator: React.FC = () => {
             van: 'Van/SUV',
             bus: 'Bus/Large Vehicle'
         };
-        const msg = `*Vehicle Relocation Quote*\n\nService: ${serviceNames[serviceType]}\nVehicle: ${vehicleNames[vehicleType]}\nRoute: ${pickup} → ${drop}\nDistance: ${distance} KM\nEstimated Cost: ₹${result.fare.toFixed(0)}`;
-        window.open(`https://wa.me/${settings.driverPhone}?text=${encodeURIComponent(msg)}`);
+        const msg = `📍 *Pickup:* ${pickup}\n` +
+            `🏁 *Drop:* ${drop}\n\n` +
+            `🚗 *Vehicle:* ${vehicleNames[vehicleType]}\n` +
+            `🛠️ *Service:* ${serviceNames[serviceType]}\n` +
+            `📏 *Distance:* ${distance} km\n` +
+            `\n` +
+            `💰 *ESTIMATED COST: ₹${result.fare.toFixed(0)}*`;
+
+        const phone = settings?.driverPhone?.replace(/[^0-9]/g, '') || '919000000000';
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
     };
 
     return (
@@ -760,15 +805,25 @@ const ResultCard = ({ title, amount, details, sub, onBook }: any) => {
     };
 
     return (
-        <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-xl animate-fade-in relative overflow-hidden">
+        <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-xl animate-fade-in relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/20 rounded-full blur-2xl -mr-8 -mt-8"></div>
             <div className="relative z-10 space-y-3">
-                <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                <div className="flex justify-between items-center border-b border-white/10 pb-2">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{title}</span>
-                    <span className="text-2xl font-black text-[#4ade80]">₹{amount.toLocaleString()}</span>
+                    <span className="text-xl font-black text-[#4ade80]">₹{amount.toLocaleString()}</span>
                 </div>
-                <pre className="font-mono text-[10px] text-slate-300 whitespace-pre-wrap leading-relaxed bg-white/5 p-3 rounded-xl">
-                    {Array.isArray(details) ? details.join('\n') : details}
+                <pre className="font-mono text-[10px] text-slate-300 whitespace-pre-wrap leading-relaxed bg-white/5 p-2.5 rounded-xl">
+                    {Array.isArray(details) ? (
+                        details.map((line: string, i: number) => {
+                            let emoji = '🔹';
+                            if (line.includes('Trip')) emoji = '🚐';
+                            if (line.includes('Charge')) emoji = '💰';
+                            if (line.includes('Toll')) emoji = '🛣️';
+                            if (line.includes('TOTAL')) emoji = '💵';
+                            if (line.includes('Bata')) emoji = '🍽️';
+                            return <div key={i} className="flex gap-2 mb-1"><span>{emoji}</span><span>{line}</span></div>;
+                        })
+                    ) : details}
                 </pre>
                 <div className="flex items-center gap-2 text-amber-500 bg-amber-500/10 p-2 rounded-lg">
                     <AlertCircle size={12} /> <span className="text-[9px] font-bold uppercase">{sub}</span>
@@ -779,7 +834,7 @@ const ResultCard = ({ title, amount, details, sub, onBook }: any) => {
                         className="py-3 bg-slate-700 hover:bg-slate-600 text-white font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-lg text-[10px]"
                     >
                         {copied ? <CheckCircle2 size={16} /> : <MessageCircle size={16} />}
-                        {copied ? 'Copied!' : 'Copy'}
+                        {copied ? 'Copied' : 'Copy'}
                     </button>
                     <button
                         onClick={onBook}
