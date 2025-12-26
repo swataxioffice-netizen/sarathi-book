@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Fuel, Settings, Trash2, PieChart, ShoppingBag, Coffee, Calculator, Wallet } from 'lucide-react';
+import { Plus, Fuel, Settings, Trash2, PieChart, ShoppingBag, Coffee, Calculator, Wallet, MapPin, Shield, CreditCard } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import type { Expense } from '../utils/fare';
 import { safeJSONParse } from '../utils/storage';
@@ -54,6 +54,9 @@ const ExpenseTracker: React.FC = () => {
             case 'fuel': return <Fuel size={16} />;
             case 'food': return <Coffee size={16} />;
             case 'maintenance': return <Settings size={16} />;
+            case 'toll': return <MapPin size={16} />;
+            case 'permit': return <Shield size={16} />;
+            case 'parking': return <CreditCard size={16} />;
             default: return <ShoppingBag size={16} />;
         }
     }
@@ -63,6 +66,9 @@ const ExpenseTracker: React.FC = () => {
             case 'fuel': return 'text-orange-500 bg-orange-50 border-orange-100';
             case 'food': return 'text-blue-500 bg-blue-50 border-blue-100';
             case 'maintenance': return 'text-purple-500 bg-purple-50 border-purple-100';
+            case 'toll': return 'text-emerald-500 bg-emerald-50 border-emerald-100';
+            case 'permit': return 'text-indigo-500 bg-indigo-50 border-indigo-100';
+            case 'parking': return 'text-rose-500 bg-rose-50 border-rose-100';
             default: return 'text-slate-500 bg-slate-50 border-slate-100';
         }
     }
@@ -130,7 +136,7 @@ const ExpenseTracker: React.FC = () => {
                             onChange={(_) => setCategory(_.target.value as any)}
                             className="tn-input h-10 bg-slate-50 border-slate-200 font-bold text-[10px] uppercase w-full"
                         >
-                            {['fuel', 'maintenance', 'food', 'other'].map(c => <option key={c} value={c}>{t(c)}</option>)}
+                            {['fuel', 'maintenance', 'food', 'toll', 'permit', 'parking', 'other'].map(c => <option key={c} value={c}>{t(c)}</option>)}
                         </select>
                     </div>
                 </div>

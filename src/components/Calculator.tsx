@@ -18,8 +18,8 @@ interface Vehicle {
 }
 
 const VEHICLES: Vehicle[] = [
-    { id: 'swift', name: 'Swift Dzire', dropRate: 14, roundRate: 13, seats: 4, type: 'Sedan', minKm: 250, batta: 400 },
-    { id: 'etios', name: 'Toyota Etios', dropRate: 14, roundRate: 13, seats: 4, type: 'Sedan', minKm: 250, batta: 400 },
+    { id: 'swift', name: 'Swift Dzire', dropRate: 14, roundRate: 13, seats: 4, type: 'Sedan', minKm: 300, batta: 400 },
+    { id: 'etios', name: 'Toyota Etios', dropRate: 14, roundRate: 13, seats: 4, type: 'Sedan', minKm: 300, batta: 400 },
     { id: 'innova', name: 'Innova', dropRate: 19, roundRate: 18, seats: 7, type: 'SUV', minKm: 300, batta: 500 },
     { id: 'crysta', name: 'Innova Crysta', dropRate: 22, roundRate: 20, seats: 7, type: 'SUV', minKm: 300, batta: 600 },
     { id: 'tempo', name: 'Tempo Traveller', dropRate: 28, roundRate: 28, seats: 12, type: 'Van', minKm: 300, batta: 600 }

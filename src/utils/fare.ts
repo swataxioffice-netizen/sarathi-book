@@ -12,7 +12,7 @@ export interface VehicleType {
 }
 
 export const VEHICLES: VehicleType[] = [
-    { id: 'swift', name: 'Sedan (Swift/Etios)', dropRate: 14, roundRate: 13, seats: 4, type: 'Sedan', minKm: 250, batta: 400 },
+    { id: 'swift', name: 'Sedan (Swift/Etios)', dropRate: 14, roundRate: 13, seats: 4, type: 'Sedan', minKm: 300, batta: 400 },
     { id: 'innova', name: 'SUV (Innova)', dropRate: 19, roundRate: 18, seats: 7, type: 'SUV', minKm: 300, batta: 500 },
     { id: 'crysta', name: 'Innova Crysta', dropRate: 22, roundRate: 20, seats: 7, type: 'SUV', minKm: 300, batta: 600 },
     { id: 'tempo', name: 'Tempo Traveller', dropRate: 28, roundRate: 28, seats: 12, type: 'Van', minKm: 300, batta: 600 }
@@ -55,7 +55,7 @@ export interface Trip {
 
 export interface Expense {
     id: string;
-    category: 'fuel' | 'maintenance' | 'food' | 'other';
+    category: 'fuel' | 'maintenance' | 'food' | 'toll' | 'permit' | 'parking' | 'other';
     amount: number;
     date: string;
     description: string;
@@ -128,6 +128,10 @@ export const calculateFare = (
         taxableFare = effectiveDistance * activeRate;
         taxableFare += (activeBatta * days);
 
+    } else if (mode === 'hourly') {
+        taxableFare = (durationHours * hourlyRate);
+        taxableFare += nightBata;
+        // Local rental (8/80 type) often has a base, handled by durationHours * hourlyRate if durationHours is high
     } else if (mode === 'package') {
         const extraKms = Math.max(0, distance - (baseKmLimit || 0));
         const extraHr = Math.max(0, (actualHours || 0) - (baseHourLimit || 0));
@@ -138,11 +142,8 @@ export const calculateFare = (
         taxableFare += nightBata;
     } else if (mode === 'fixed') {
         taxableFare = packagePrice; // Reuse manual price field
-    } else if (mode === 'hourly') {
-        taxableFare = baseFare + (durationHours * hourlyRate);
-        taxableFare += nightBata;
     } else {
-        // Standard distance (local)
+        // Standard distance (local) or any other fallback
         taxableFare = baseFare + (distance * ratePerKm);
         taxableFare += nightBata;
     }

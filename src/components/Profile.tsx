@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { Trash2, Plus, User as UserIcon, CheckCircle, Circle, Globe, Camera, LogOut, Landmark } from 'lucide-react';
+import { Trash2, Plus, User as UserIcon, CheckCircle, Circle, Globe, Camera, LogOut, Landmark, HelpCircle, MessageCircle } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
 import DocumentVault from './DocumentVault';
 import GoogleSignInButton from './GoogleSignInButton';
@@ -173,23 +173,26 @@ const Profile: React.FC = () => {
             <div className="space-y-2">
                 <div className="flex items-center gap-2 px-1">
                     {settings.companyName && settings.companyAddress && settings.driverPhone ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
-                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Business Profile</h3>
+                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Travels Details</h3>
                 </div>
 
                 <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
                     <div className="space-y-2">
                         <div>
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Business Name <span className="text-red-500">*</span></label>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Travels Name <span className="text-red-500">*</span></label>
                             <input
                                 type="text"
                                 value={settings.companyName}
                                 onChange={(_) => updateSettings({ companyName: _.target.value })}
                                 className="tn-input h-10 text-xs font-bold"
-                                placeholder="Your Travels Name"
+                                placeholder="e.g. Saravana Travels"
                             />
                         </div>
                         <div>
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Contact Number <span className="text-red-500">*</span></label>
+                            <div className="flex items-center gap-1 ml-1">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">WhatsApp Number <span className="text-red-500">*</span></label>
+                                <MessageCircle size={10} className="text-[#25D366]" />
+                            </div>
                             <input
                                 type="text"
                                 value={settings.driverPhone}
@@ -246,7 +249,7 @@ const Profile: React.FC = () => {
             <div className="space-y-2">
                 <div className="flex items-center gap-2 px-1">
                     {settings.bankName && settings.accountNumber && settings.ifscCode ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
-                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-green-500 underline-offset-4">Legal & Banking</h3>
+                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-green-500 underline-offset-4">Bank Details</h3>
                 </div>
 
                 <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
@@ -317,7 +320,10 @@ const Profile: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">IFSC Code</label>
+                                <div className="flex items-center gap-1 ml-1">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">IFSC Code</label>
+                                    <HelpCircle size={10} className="text-slate-300" />
+                                </div>
                                 <input
                                     type="text"
                                     value={settings.ifscCode || ''}
@@ -325,10 +331,14 @@ const Profile: React.FC = () => {
                                     className="tn-input h-9 text-xs font-bold uppercase"
                                     placeholder="SBIN000...."
                                 />
+                                <p className="text-[8px] text-slate-400 ml-1 mt-0.5 font-bold italic">Find this in your passbook</p>
                             </div>
                         </div>
                         <div>
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">UPI ID</label>
+                            <div className="flex items-center gap-1 ml-1">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">UPI ID (Optional)</label>
+                                <HelpCircle size={10} className="text-slate-300" />
+                            </div>
                             <input
                                 type="text"
                                 value={settings.upiId || ''}
@@ -336,6 +346,7 @@ const Profile: React.FC = () => {
                                 className="tn-input h-9 text-xs font-bold"
                                 placeholder="e.g. 9999999999@upi"
                             />
+                            <p className="text-[8px] text-slate-400 ml-1 mt-0.5 font-bold italic">PhonePe / GPay / Paytm ID for direct payment</p>
                         </div>
                     </div>
                     <div className="pt-2 flex justify-end">
@@ -367,7 +378,7 @@ const Profile: React.FC = () => {
             <div className="space-y-2">
                 <div className="flex items-center gap-2 px-1">
                     {settings.vehicles.length > 0 ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
-                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-purple-500 underline-offset-4">Fleet Manager</h3>
+                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-purple-500 underline-offset-4">My Vehicles</h3>
                 </div>
 
                 <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
@@ -537,13 +548,32 @@ const Profile: React.FC = () => {
                 </div>
             </div>
 
-            {/* 8. Sign Out */}
+            {/* 8. Help & Support */}
+            <div className="pt-2">
+                <div className="flex items-center gap-2 px-1 mb-2">
+                    <CheckCircle size={14} className="text-green-500" />
+                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-green-500 underline-offset-4">Support</h3>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                    <p className="text-xs text-slate-600 font-bold mb-4">Need help using Sarathi Book? Message our support team on WhatsApp.</p>
+                    <a
+                        href="https://wa.me/919952749408?text=I%20need%20help%20with%20Sarathi%20Book"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-full bg-[#25D366] text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 active:scale-95 transition-all"
+                    >
+                        <MessageCircle size={16} /> Chat on WhatsApp
+                    </a>
+                </div>
+            </div>
+
+            {/* 9. Sign Out */}
             <div className="pt-4">
                 <button
                     onClick={signOut}
-                    className="w-full bg-red-500 text-white px-6 py-3 rounded-lg font-black text-sm uppercase tracking-widest hover:bg-red-600 transition-colors flex items-center justify-center gap-2 shadow-md"
+                    className="w-full bg-red-50 text-red-500 border border-red-100 px-6 py-4 rounded-xl font-black text-sm uppercase tracking-widest hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
                 >
-                    <LogOut size={16} /> Sign Out
+                    <LogOut size={18} /> Sign Out
                 </button>
             </div>
         </div >

@@ -177,7 +177,7 @@ function AppContent() {
                   className="flex items-center gap-1 bg-red-50 text-red-600 px-3 py-1.5 rounded-full border border-red-100 animate-pulse shadow-sm"
                 >
                   <RefreshCw size={14} className="animate-spin-slow" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Update</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">New Version Available</span>
                 </button>
               ) : (
                 <button

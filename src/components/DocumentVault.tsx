@@ -18,18 +18,18 @@ interface DocumentVaultProps {
 }
 
 const REQUIRED_VEHICLE_DOCS = [
-    { type: 'RC', label: 'RC Book' },
-    { type: 'Insurance', label: 'Insurance Policy' },
-    { type: 'Permit', label: 'Permit Copy' },
-    { type: 'Fitness', label: 'FC (Fitness)' },
-    { type: 'Pollution', label: 'Pollution (PUC)' }
+    { type: 'RC', label: 'RC Book (Original)', helper: 'Registration Certificate' },
+    { type: 'Insurance', label: 'Insurance Policy', helper: 'Comprehensive or Third Party' },
+    { type: 'Permit', label: 'Permit Copy', helper: 'State or All India Permit' },
+    { type: 'Fitness', label: 'FC (Fitness)', helper: 'Fitness Certificate Copy' },
+    { type: 'Pollution', label: 'Pollution (PUC)', helper: 'Current Emission Certificate' }
 ];
 
 const REQUIRED_DRIVER_DOCS = [
-    { type: 'License', label: 'Driving License' },
-    { type: 'Badge', label: 'Driver Badge' },
-    { type: 'Aadhar', label: 'Aadhar Card' },
-    { type: 'Police', label: 'Police Verification' }
+    { type: 'License', label: 'Driving License', helper: 'Original or DigiLocker copy' },
+    { type: 'Badge', label: 'Driver Badge', helper: 'Public Service Badge' },
+    { type: 'Aadhar', label: 'Aadhar Card', helper: 'Front and Back copy' },
+    { type: 'Police', label: 'Police Verification', helper: 'Safety Background Check' }
 ];
 
 const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
@@ -178,7 +178,7 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
     const getDays = (dateStr: string) => Math.ceil((new Date(dateStr).getTime() - new Date().getTime()) / (86400000));
     const selectedVehicle = settings.vehicles.find(v => v.id === selectedVehicleId);
 
-    const renderDocItem = (req: { type: string, label: string }, category: 'vehicle' | 'driver') => {
+    const renderDocItem = (req: { type: string, label: string, helper: string }, category: 'vehicle' | 'driver') => {
         // Find existing doc. 
         // For vehicle: match type AND vehicle number.
         // For driver: match type only (assuming single driver profile for now).
@@ -202,12 +202,13 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                         </div>
                         <div>
                             <h4 className="text-xs font-black text-slate-800">{req.label}</h4>
+                            <p className="text-[9px] font-medium text-slate-400">{req.helper}</p>
                             {existingDoc ? (
                                 <p className={`text-[9px] font-bold uppercase ${isExpired ? 'text-red-500' : isWarning ? 'text-orange-500' : 'text-green-600'}`}>
                                     {isExpired ? 'Expired' : `Expires in ${daysLeft} days`}
                                 </p>
                             ) : (
-                                <p className="text-[9px] font-medium text-slate-400">Missing</p>
+                                <p className="text-[9px] font-medium text-slate-400">Not Uploaded Yet</p>
                             )}
                         </div>
                     </div>
@@ -253,12 +254,12 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                                 <div className="relative">
                                     <input type="file" accept="image/*,application/pdf" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                     <div className={`tn-input h-9 flex items-center px-3 text-[10px] font-medium bg-white ${fileName ? 'text-green-600 bg-green-50' : 'text-slate-400'}`}>
-                                        {fileName ? <><CheckCircle size={12} className="mr-2" /> {fileName}</> : 'Tap to select file...'}
+                                        {fileName ? <><CheckCircle size={12} className="mr-2" /> {fileName}</> : 'Tap to Take Photo / Choose File'}
                                     </div>
                                 </div>
                             </div>
                             <button
-                                onClick={() => saveDoc(req.type, category)}
+                                onClick={() => saveDoc(req.type, REQUIRED_VEHICLE_DOCS.some(doc => doc.type === req.type) ? 'vehicle' : 'driver')}
                                 disabled={loading}
                                 className="w-full bg-[#0047AB] text-white py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-70"
                             >
@@ -311,9 +312,9 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
             </div>
 
             {/* Driver Section */}
-            <div className="space-y-3 pt-4 border-t border-slate-100">
+            <div className="space-y-3 pt-6 border-t border-slate-100">
                 <div className="flex items-center gap-2">
-                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">For Driver</h4>
+                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Driver Documents</h4>
                 </div>
                 <div className="space-y-3">
                     {REQUIRED_DRIVER_DOCS.map(req => renderDocItem(req, 'driver'))}
