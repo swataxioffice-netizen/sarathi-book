@@ -103,6 +103,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
             const google = await loadGoogleMaps();
             const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current!, {
                 fields: ['geometry', 'formatted_address'],
+                componentRestrictions: { country: 'in' }, // Restrict to India
             });
             autocomplete.bindTo('bounds', map);
 

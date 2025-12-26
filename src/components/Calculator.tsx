@@ -27,7 +27,7 @@ const VEHICLES: Vehicle[] = [
 
 // --- 1. Cab Calculator Component ---
 const CabCalculator: React.FC = () => {
-    const { settings } = useSettings();
+    useSettings();
     const [tripType, setTripType] = useState<'oneway' | 'roundtrip' | 'airport'>('oneway');
     const [pickup, setPickup] = useState('');
     const [drop, setDrop] = useState('');
@@ -72,8 +72,13 @@ const CabCalculator: React.FC = () => {
     }, [pickupCoords, dropCoords]);
 
     useEffect(() => {
-        if (passengers > 7) setSelectedVehicle('tempo');
-        else if (passengers > 4 && !['innova', 'crysta'].includes(selectedVehicle)) setSelectedVehicle('innova');
+        if (passengers > 7) {
+            setSelectedVehicle('tempo');
+        } else if (passengers > 4) {
+            if (!['innova', 'crysta', 'tempo'].includes(selectedVehicle)) {
+                setSelectedVehicle('innova');
+            }
+        }
     }, [passengers]);
 
     useEffect(() => {
@@ -139,15 +144,15 @@ const CabCalculator: React.FC = () => {
             const totalFare = subtotal + tollsRoundTrip;
 
             const details = [
-                `🚗 Round Trip: ${dist} KM × 2 = ${roundTripDistance} KM`,
-                `📅 Duration: ${actualDays} day(s) (Min ${minKmPerDay} KM/day)`,
-                `📏 Minimum Chargeable: ${minChargeableKm} KM`,
-                `💰 Distance Charge: ${chargedKm} KM × ₹${customRate}/KM = ₹${kmCharge.toFixed(0)}`,
-                `🍽️ Driver Bata: ${actualDays} day(s) × ₹${driverBataPerDay} = ₹${totalBata}`,
-                needsPermit ? `📋 ${permitState} Permit: ₹${permitCharge}` : '',
-                `🛣️ Toll Estimate (approx): ₹${tollsRoundTrip}`,
+                `Round Trip: ${dist} KM × 2 = ${roundTripDistance} KM`,
+                `Duration: ${actualDays} day(s) (Min ${minKmPerDay} KM/day)`,
+                `Minimum Chargeable: ${minChargeableKm} KM`,
+                `Distance Charge: ${chargedKm} KM × ₹${customRate}/KM = ₹${kmCharge.toFixed(0)}`,
+                `Driver Bata: ${actualDays} day(s) × ₹${driverBataPerDay} = ₹${totalBata}`,
+                needsPermit ? `${permitState} Permit: ₹${permitCharge}` : '',
+                `Toll Estimate (approx): ₹${tollsRoundTrip}`,
                 ``,
-                `💵 TOTAL FARE: ₹${totalFare.toFixed(0)}`
+                `TOTAL FARE: ₹${totalFare.toFixed(0)}`
             ].filter(Boolean);
 
             setResult({
@@ -169,12 +174,12 @@ const CabCalculator: React.FC = () => {
             const totalFare = subtotal + estimatedTolls;
 
             const details = [
-                `🚗 One-Way Trip: ${dist} KM`,
-                `💰 Distance Charge: ${dist} KM × ₹${customRate}/KM = ₹${baseFare.toFixed(0)}`,
-                needsPermit ? `📋 ${permitState} Permit: ₹${permitCharge}` : '',
-                `🛣️ Toll Estimate (approx): ₹${estimatedTolls}`,
+                `One-Way Trip: ${dist} KM`,
+                `Distance Charge: ${dist} KM × ₹${customRate}/KM = ₹${baseFare.toFixed(0)}`,
+                needsPermit ? `${permitState} Permit: ₹${permitCharge}` : '',
+                `Toll Estimate (approx): ₹${estimatedTolls}`,
                 ``,
-                `💵 TOTAL FARE: ₹${totalFare.toFixed(0)}`
+                `TOTAL FARE: ₹${totalFare.toFixed(0)}`
             ].filter(Boolean);
 
             setResult({
@@ -192,18 +197,18 @@ const CabCalculator: React.FC = () => {
     const book = () => {
         const vehicle = VEHICLES.find(v => v.id === selectedVehicle);
         const typeLabel = tripType === 'oneway' ? 'One Way / Drop' : 'Round Trip';
-        const msg = `📍 *Pickup:* ${pickup}\n` +
-            `🏁 *Drop:* ${drop}\n\n` +
-            `🚗 *Vehicle:* ${vehicle?.name} (${passengers} Seats)\n` +
-            `🛣️ *Type:* ${typeLabel}\n` +
-            `📏 *Distance:* ${distance} km\n` +
-            (tripType === 'roundtrip' ? `📅 *Duration:* ${days} Day(s)\n` : '') +
+        const msg = `*PICKUP:* ${pickup}\n` +
+            `*DROP:* ${drop}\n\n` +
+            `*VEHICLE:* ${vehicle?.name} (${passengers} Seats)\n` +
+            `*TRIP TYPE:* ${typeLabel}\n` +
+            `*DISTANCE:* ${distance} km\n` +
+            (tripType === 'roundtrip' ? `*DURATION:* ${days} Day(s)\n` : '') +
             `\n` +
-            `💰 *ESTIMATED FARE: ₹${result.fare}*\n` +
+            `*ESTIMATED FARE: ₹${result.fare}*\n` +
             `_(Includes Approx Tolls & Permits)_`;
 
-        const phone = settings?.driverPhone?.replace(/[^0-9]/g, '') || '919000000000';
-        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+        const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank');
     };
 
     return (
@@ -286,7 +291,11 @@ const CabCalculator: React.FC = () => {
                     <div className="space-y-1">
                         <Label icon={<Car size={10} />} text="Vehicle" />
                         <select value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
-                            {VEHICLES.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                            {VEHICLES.filter(v => {
+                                if (passengers > 7) return v.id === 'tempo';
+                                if (passengers > 4) return v.seats >= 7;
+                                return true;
+                            }).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                         </select>
                     </div>
                     <Input label="Rate/Km" icon={<Hash size={10} />} value={customRate} onChange={setCustomRate} type="number" highlight />
@@ -310,7 +319,7 @@ const CabCalculator: React.FC = () => {
 
 // --- 2. Acting Driver Calculator ---
 const ActingDriverCalculator: React.FC = () => {
-    const { settings } = useSettings();
+    useSettings();
     const [serviceType, setServiceType] = useState<'local8' | 'local12' | 'outstation'>('local8');
     const [days, setDays] = useState('1');
     const [stayProvided, setStayProvided] = useState(false);
@@ -349,14 +358,14 @@ const ActingDriverCalculator: React.FC = () => {
         const totalFare = driverCharge + bataCharge + accommodationCharge + returnCharge;
 
         const details = [
-            `👨‍✈️ Service: ${serviceType === 'local8' ? 'Local (8 hrs/80 KM)' : serviceType === 'local12' ? 'Local (12 hrs/120 KM)' : 'Outstation'}`,
-            `📅 Duration: ${numDays} day(s)`,
-            `💰 Driver Charge: ${numDays} day(s) × ₹${baseRate} = ₹${driverCharge}`,
-            serviceType === 'outstation' && !foodProvided ? `🍽️ Food Bata: ${numDays} day(s) × ₹400 = ₹${bataCharge}` : '',
-            serviceType === 'outstation' && !stayProvided ? `🏨 Accommodation: ${numDays} day(s) × ₹500 = ₹${accommodationCharge}` : '',
-            serviceType === 'outstation' ? `🔄 Return Charge: ₹${returnCharge}` : '',
+            `Service: ${serviceType === 'local8' ? 'Local (8 hrs/80 KM)' : serviceType === 'local12' ? 'Local (12 hrs/120 KM)' : 'Outstation'}`,
+            `Duration: ${numDays} day(s)`,
+            `Driver Charge: ${numDays} day(s) × ₹${baseRate} = ₹${driverCharge}`,
+            serviceType === 'outstation' && !foodProvided ? `Food Bata: ${numDays} day(s) × ₹400 = ₹${bataCharge}` : '',
+            serviceType === 'outstation' && !stayProvided ? `Accommodation: ${numDays} day(s) × ₹500 = ₹${accommodationCharge}` : '',
+            serviceType === 'outstation' ? `Return Charge: ₹${returnCharge}` : '',
             ``,
-            `💵 TOTAL COST: ₹${totalFare}`
+            `TOTAL COST: ₹${totalFare}`
         ].filter(Boolean);
 
         setResult({
@@ -377,16 +386,16 @@ const ActingDriverCalculator: React.FC = () => {
             local12: 'Local Driver (12 hrs/120 KM)',
             outstation: 'Outstation Driver'
         };
-        const msg = `🛠️ *Service:* ${serviceNames[serviceType]}\n` +
-            `📅 *Duration:* ${days} Day(s)\n` +
+        const msg = `*SERVICE:* ${serviceNames[serviceType]}\n` +
+            `*DURATION:* ${days} Day(s)\n` +
             (serviceType === 'outstation' ?
-                `🍽️ *Food:* ${foodProvided ? 'Provided' : 'Not Provided'}\n` +
-                `🏨 *Stay:* ${stayProvided ? 'Provided' : 'Not Provided'}\n` : '') +
+                `*FOOD:* ${foodProvided ? 'Provided' : 'Not Provided'}\n` +
+                `*STAY:* ${stayProvided ? 'Provided' : 'Not Provided'}\n` : '') +
             `\n` +
-            `💰 *ESTIMATED COST: ₹${result.fare}*`;
+            `*ESTIMATED COST: ₹${result.fare}*`;
 
-        const phone = settings?.driverPhone?.replace(/[^0-9]/g, '') || '919000000000';
-        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+        const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank');
     };
 
     return (
@@ -464,7 +473,7 @@ const ActingDriverCalculator: React.FC = () => {
 
 // --- 3. Relocation Calculator ---
 const RelocationCalculator: React.FC = () => {
-    const { settings } = useSettings();
+    useSettings();
     const [serviceType, setServiceType] = useState<'carrier' | 'driver'>('carrier');
     const [vehicleType, setVehicleType] = useState<'car' | 'van' | 'bus'>('car');
     const [pickup, setPickup] = useState('');
@@ -543,16 +552,16 @@ const RelocationCalculator: React.FC = () => {
             totalFare = baseCharge + permitCharge;
 
             details.push(
-                `🚛 Professional Carrier Service`,
-                `🚗 Vehicle: ${vehicleType === 'car' ? 'Car/Sedan' : vehicleType === 'van' ? 'Van/SUV' : 'Bus/Large Vehicle'}`,
-                `📍 Route: ${pickup} → ${drop}`,
-                `📏 Distance: ${dist} KM`,
+                `Professional Carrier Service`,
+                `Vehicle: ${vehicleType === 'car' ? 'Car/Sedan' : vehicleType === 'van' ? 'Van/SUV' : 'Bus/Large Vehicle'}`,
+                `Route: ${pickup} → ${drop}`,
+                `Distance: ${dist} KM`,
                 ``,
-                `💰 Base Charge: ₹${baseCharge.toFixed(0)}`,
+                `Base Charge: ₹${baseCharge.toFixed(0)}`,
                 `   (Includes: Carrier + Fuel + Tolls + Driver + Insurance)`,
-                needsPermit ? `📋 ${permitState} Permit: ₹${permitCharge}` : '',
+                needsPermit ? `${permitState} Permit: ₹${permitCharge}` : '',
                 ``,
-                `💵 TOTAL COST: ₹${totalFare.toFixed(0)}`
+                `TOTAL COST: ₹${totalFare.toFixed(0)}`
             );
         } else {
             // Driver-Driven Service (Customer Controls Costs)
@@ -584,18 +593,18 @@ const RelocationCalculator: React.FC = () => {
             totalFare = driverCharge + fuelCharge + tollCharge + permitCharge + returnCharge;
 
             details.push(
-                `👨‍✈️ Driver-Driven Service`,
-                `🚗 Vehicle: ${vehicleType === 'car' ? 'Car/Sedan' : vehicleType === 'van' ? 'Van/SUV' : 'Bus/Large Vehicle'}`,
-                `📍 Route: ${pickup} → ${drop}`,
-                `📏 Distance: ${dist} KM`,
+                `Driver-Driven Service`,
+                `Vehicle: ${vehicleType === 'car' ? 'Car/Sedan' : vehicleType === 'van' ? 'Van/SUV' : 'Bus/Large Vehicle'}`,
+                `Route: ${pickup} → ${drop}`,
+                `Distance: ${dist} KM`,
                 ``,
-                `💰 Driver Charge: ₹${driverCharge}`,
-                !fuelIncluded ? `⛽ Fuel: ${dist} KM × ₹${vehicleType === 'car' ? 7 : vehicleType === 'van' ? 9 : 12}/KM = ₹${fuelCharge.toFixed(0)}` : `⛽ Fuel: Provided by Customer`,
-                !tollsIncluded ? `🛣️ Tolls: ₹${tollCharge}` : `🛣️ Tolls: Paid by Customer`,
-                needsPermit ? `📋 ${permitState} Permit: ₹${permitCharge}` : '',
-                !driverReturnIncluded ? `🎫 Driver Return: ₹${returnCharge}` : `🎫 Driver Return: Arranged by Customer`,
+                `Driver Charge: ₹${driverCharge}`,
+                !fuelIncluded ? `Fuel: ${dist} KM × ₹${vehicleType === 'car' ? 7 : vehicleType === 'van' ? 9 : 12}/KM = ₹${fuelCharge.toFixed(0)}` : `Fuel: Provided by Customer`,
+                !tollsIncluded ? `Tolls: ₹${tollCharge}` : `Tolls: Paid by Customer`,
+                needsPermit ? `${permitState} Permit: ₹${permitCharge}` : '',
+                !driverReturnIncluded ? `Driver Return: ₹${returnCharge}` : `Driver Return: Arranged by Customer`,
                 ``,
-                `💵 TOTAL COST: ₹${totalFare.toFixed(0)}`
+                `TOTAL COST: ₹${totalFare.toFixed(0)}`
             );
         }
 
@@ -615,16 +624,16 @@ const RelocationCalculator: React.FC = () => {
             van: 'Van/SUV',
             bus: 'Bus/Large Vehicle'
         };
-        const msg = `📍 *Pickup:* ${pickup}\n` +
-            `🏁 *Drop:* ${drop}\n\n` +
-            `🚗 *Vehicle:* ${vehicleNames[vehicleType]}\n` +
-            `🛠️ *Service:* ${serviceNames[serviceType]}\n` +
-            `📏 *Distance:* ${distance} km\n` +
+        const msg = `*PICKUP:* ${pickup}\n` +
+            `*DROP:* ${drop}\n\n` +
+            `*VEHICLE:* ${vehicleNames[vehicleType]}\n` +
+            `*SERVICE:* ${serviceNames[serviceType]}\n` +
+            `*DISTANCE:* ${distance} km\n` +
             `\n` +
-            `💰 *ESTIMATED COST: ₹${result.fare.toFixed(0)}*`;
+            `*ESTIMATED COST: ₹${result.fare.toFixed(0)}*`;
 
-        const phone = settings?.driverPhone?.replace(/[^0-9]/g, '') || '919000000000';
-        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+        const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank');
     };
 
     return (
@@ -798,7 +807,7 @@ const ResultCard = ({ title, amount, details, sub, onBook }: any) => {
     const [copied, setCopied] = useState(false);
 
     const copyToClipboard = () => {
-        const text = `🚖 *${title}*\n\n${Array.isArray(details) ? details.join('\n') : details}\n\n⚠️ ${sub}\n\n📞 Book Now: Contact us for confirmation`;
+        const text = `*${title}*\n\n${Array.isArray(details) ? details.join('\n') : details}\n\nNote: ${sub}\n\nBook Now: Contact us for confirmation`;
         navigator.clipboard.writeText(text);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
