@@ -189,13 +189,45 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Save to Cloud on Change (Debounced)
     // Manual Save Function
-    const saveSettings = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-            await supabase.from('profiles').update({ settings: settings }).eq('id', session.user.id);
-            return true;
+    // Manual Save Function
+    const saveSettings = async (): Promise<boolean> => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                console.log('Saving settings to cloud...');
+                const { error, data } = await supabase
+                    .from('profiles')
+                    .update({ settings: settings, updated_at: new Date().toISOString() })
+                    .eq('id', session.user.id)
+                    .select();
+
+                if (error) {
+                    console.error('Error saving settings to cloud:', error);
+                    return false;
+                }
+
+                if (data && data.length === 0) {
+                    console.warn('No profile row found to update. Attempting upsert...');
+                    // Fallback to upsert if update failed to find row
+                    const { error: upsertError } = await supabase.from('profiles').upsert({
+                        id: session.user.id,
+                        settings: settings,
+                        updated_at: new Date().toISOString(),
+                        email: session.user.email // Try to provide email if possible, though it might be partial
+                    }).select();
+
+                    if (upsertError) {
+                        console.error('Upsert failed:', upsertError);
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
+        } catch (err) {
+            console.error('Unexpected error saving settings:', err);
+            return false;
         }
-        return false;
     };
 
     // Save to Cloud on Change (Debounced)

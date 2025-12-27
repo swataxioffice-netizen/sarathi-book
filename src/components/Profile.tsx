@@ -17,6 +17,7 @@ const Profile: React.FC = () => {
     const [savingSection, setSavingSection] = useState<'business' | 'banking' | 'fleet' | 'language' | null>(null);
     const [selectedLanguage, setSelectedLanguage] = useState<any>(settings.language || 'en'); // Use any to avoid import issue for now, or just string.
     const [profileLoading, setProfileLoading] = useState(false);
+    const [loadingTimeout, setLoadingTimeout] = useState(false);
 
     // Stats for Completion
     const [docStats, setDocStats] = useState({ hasFullVehicle: false, hasFullDriver: false });
@@ -100,12 +101,33 @@ const Profile: React.FC = () => {
     const completion = getCompletion();
 
     // Show loading state while auth is initializing
+    React.useEffect(() => {
+        let timer: NodeJS.Timeout;
+        if (authLoading || profileLoading) {
+            timer = setTimeout(() => setLoadingTimeout(true), 10000); // 10s timeout
+        } else {
+            setLoadingTimeout(false);
+        }
+        return () => clearTimeout(timer);
+    }, [authLoading, profileLoading]);
+
     if (authLoading || profileLoading) {
         return (
             <div className="flex items-center justify-center min-h-screen pb-24">
                 <div className="text-center space-y-4">
                     <div className="w-16 h-16 border-4 border-[#0047AB]/20 border-t-[#0047AB] rounded-full animate-spin mx-auto"></div>
                     <p className="text-sm font-bold text-slate-500">Loading profile...</p>
+                    {loadingTimeout && (
+                        <div className="animate-fade-in">
+                            <p className="text-xs text-red-500 mb-2">Taking longer than expected...</p>
+                            <button
+                                onClick={signOut}
+                                className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200"
+                            >
+                                Sign Out / Reload
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -207,18 +229,18 @@ const Profile: React.FC = () => {
                 <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
                     <div className="space-y-2">
                         <div>
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Travels Name <span className="text-red-500">*</span></label>
+                            <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Travels Name <span className="text-red-500">*</span></label>
                             <input
                                 type="text"
                                 value={settings.companyName}
                                 onChange={(_) => updateSettings({ companyName: _.target.value })}
-                                className="tn-input h-10 text-xs font-bold"
+                                className="tn-input h-10 font-bold placeholder:text-slate-500"
                                 placeholder="e.g. Saravana Travels"
                             />
                         </div>
                         <div>
                             <div className="flex items-center gap-1 ml-1">
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">WhatsApp Number <span className="text-red-500">*</span></label>
+                                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">WhatsApp Number <span className="text-red-500">*</span></label>
                                 <MessageCircle size={10} className="text-[#25D366]" />
                             </div>
                             <input
@@ -233,17 +255,17 @@ const Profile: React.FC = () => {
                                         });
                                     }
                                 }}
-                                className="tn-input h-10 text-xs font-bold"
+                                className="tn-input h-10 font-bold placeholder:text-slate-500"
                                 placeholder="+91 99999 88888"
                             />
                         </div>
                         <div>
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Address <span className="text-red-500">*</span></label>
+                            <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Address <span className="text-red-500">*</span></label>
                             <input
                                 type="text"
                                 value={settings.companyAddress}
                                 onChange={(_) => updateSettings({ companyAddress: _.target.value })}
-                                className="tn-input h-10 text-xs font-bold"
+                                className="tn-input h-10 font-bold placeholder:text-slate-500"
                                 placeholder="State, City"
                             />
                         </div>
@@ -251,11 +273,12 @@ const Profile: React.FC = () => {
                             <button
                                 onClick={async () => {
                                     setSavingSection('business');
-                                    await saveSettings();
+                                    const success = await saveSettings();
                                     await new Promise(r => setTimeout(r, 500));
+                                    if (!success) alert('Failed to save settings. Please try again.');
                                     setSavingSection(null);
                                 }}
-                                className="bg-green-600 text-white px-6 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm"
+                                className="bg-green-700 text-white px-6 h-12 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
                             >
                                 {savingSection === 'business' ? (
                                     <>
@@ -295,12 +318,12 @@ const Profile: React.FC = () => {
                     {settings.gstEnabled && (
                         <div className="space-y-2 animate-fade-in pl-1">
                             <div>
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">GST Number</label>
+                                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">GST Number</label>
                                 <input
                                     type="text"
                                     value={settings.gstin}
                                     onChange={(_) => updateSettings({ gstin: _.target.value.toUpperCase() })}
-                                    className={`tn - input h - 10 text - xs font - bold ${settings.gstin && !validateGSTIN(settings.gstin) ? 'border-red-300 bg-red-50' : ''} `}
+                                    className={`tn - input h - 10 font - bold placeholder:text-slate-500 ${settings.gstin && !validateGSTIN(settings.gstin) ? 'border-red-300 bg-red-50' : ''} `}
                                     placeholder="22AAAAA0000A1Z5"
                                     maxLength={15}
                                 />
@@ -316,47 +339,47 @@ const Profile: React.FC = () => {
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             <div>
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Account Name</label>
+                                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Account Name</label>
                                 <input
                                     type="text"
                                     value={settings.holderName || ''}
                                     onChange={(_) => updateSettings({ holderName: _.target.value })}
-                                    className="tn-input h-9 text-xs font-bold"
+                                    className="tn-input h-9 font-bold placeholder:text-slate-500"
                                     placeholder="Name on Passbook"
                                 />
                             </div>
                             <div>
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Bank Name</label>
+                                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Bank Name</label>
                                 <input
                                     type="text"
                                     value={settings.bankName || ''}
                                     onChange={(_) => updateSettings({ bankName: _.target.value })}
-                                    className="tn-input h-9 text-xs font-bold"
+                                    className="tn-input h-9 font-bold"
                                     placeholder="e.g. SBI"
                                 />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             <div>
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Account No.</label>
+                                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Account No.</label>
                                 <input
                                     type="text"
                                     value={settings.accountNumber || ''}
                                     onChange={(_) => updateSettings({ accountNumber: _.target.value })}
-                                    className="tn-input h-9 text-xs font-bold"
+                                    className="tn-input h-9 font-bold placeholder:text-slate-500"
                                     placeholder="XXXX XXXX"
                                 />
                             </div>
                             <div>
                                 <div className="flex items-center gap-1 ml-1">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">IFSC Code</label>
+                                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">IFSC Code</label>
                                     <HelpCircle size={10} className="text-slate-300" />
                                 </div>
                                 <input
                                     type="text"
                                     value={settings.ifscCode || ''}
                                     onChange={(_) => updateSettings({ ifscCode: _.target.value.toUpperCase() })}
-                                    className="tn-input h-9 text-xs font-bold uppercase"
+                                    className="tn-input h-9 font-bold uppercase placeholder:text-slate-500"
                                     placeholder="SBIN000...."
                                 />
                                 <p className="text-[8px] text-slate-400 ml-1 mt-0.5 font-bold italic">Find this in your passbook</p>
@@ -364,14 +387,14 @@ const Profile: React.FC = () => {
                         </div>
                         <div>
                             <div className="flex items-center gap-1 ml-1">
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">UPI ID (Optional)</label>
+                                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">UPI ID (Optional)</label>
                                 <HelpCircle size={10} className="text-slate-300" />
                             </div>
                             <input
                                 type="text"
                                 value={settings.upiId || ''}
                                 onChange={(_) => updateSettings({ upiId: _.target.value })}
-                                className="tn-input h-9 text-xs font-bold"
+                                className="tn-input h-9 font-bold placeholder:text-slate-500"
                                 placeholder="e.g. 9999999999@upi"
                             />
                             <p className="text-[8px] text-slate-400 ml-1 mt-0.5 font-bold italic">PhonePe / GPay / Paytm ID for direct payment</p>
@@ -381,11 +404,12 @@ const Profile: React.FC = () => {
                         <button
                             onClick={async () => {
                                 setSavingSection('banking');
-                                await saveSettings();
+                                const success = await saveSettings();
                                 await new Promise(r => setTimeout(r, 500));
+                                if (!success) alert('Failed to save settings. Please try again.');
                                 setSavingSection(null);
                             }}
-                            className="bg-green-600 text-white px-6 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm"
+                            className="bg-green-700 text-white px-6 h-12 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
                         >
                             {savingSection === 'banking' ? (
                                 <>
@@ -460,7 +484,7 @@ const Profile: React.FC = () => {
                         <button
                             onClick={addVehicle}
                             disabled={!newVehicleNumber || !newVehicleModel}
-                            className="w-9 h-9 flex items-center justify-center bg-slate-900 text-white rounded-xl shadow-md disabled:opacity-50 active:scale-95 transition-all"
+                            className="w-10 h-10 flex items-center justify-center bg-slate-900 text-white rounded-xl shadow-md disabled:opacity-50 active:scale-95 transition-all"
                         >
                             <Plus size={16} />
                         </button>
@@ -470,11 +494,12 @@ const Profile: React.FC = () => {
                         <button
                             onClick={async () => {
                                 setSavingSection('fleet');
-                                await saveSettings();
+                                const success = await saveSettings();
                                 await new Promise(r => setTimeout(r, 500));
+                                if (!success) alert('Failed to save settings. Please try again.');
                                 setSavingSection(null);
                             }}
-                            className="bg-green-600 text-white px-6 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm"
+                            className="bg-green-700 text-white px-6 h-12 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
                         >
                             {savingSection === 'fleet' ? (
                                 <>
@@ -554,12 +579,13 @@ const Profile: React.FC = () => {
                             onClick={async () => {
                                 setSavingSection('language');
                                 updateSettings({ language: selectedLanguage });
-                                await saveSettings();
+                                const success = await saveSettings();
                                 await new Promise(r => setTimeout(r, 500));
+                                if (!success) alert('Failed to save settings. Please try again.');
                                 setSavingSection(null);
                             }}
                             disabled={selectedLanguage === settings.language}
-                            className="bg-green-600 text-white px-6 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="bg-green-700 text-white px-6 h-12 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                         >
                             {savingSection === 'language' ? (
                                 <>

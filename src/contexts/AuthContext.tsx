@@ -37,11 +37,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         // Check active sessions and sets the user
         const checkUser = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            const currentUser = session?.user ?? null;
-            setUser(currentUser);
-            setLoading(false);
-            if (currentUser) ensureProfile(currentUser);
+            try {
+                // Race condition: if getSession takes too long, we stop waiting
+                const sessionPromise = supabase.auth.getSession();
+                const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
+                    setTimeout(() => resolve({ data: { session: null } }), 5000)
+                );
+
+                const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
+                const currentUser = session?.user ?? null;
+                setUser(currentUser);
+                if (currentUser) ensureProfile(currentUser);
+            } catch (error) {
+                console.error('Auth check failed:', error);
+            } finally {
+                setLoading(false);
+            }
         };
 
         checkUser();

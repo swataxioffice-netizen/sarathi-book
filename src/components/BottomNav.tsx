@@ -30,18 +30,18 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
                     onClick={() => setActiveTab(item.id)}
                     aria-label={item.label}
                     aria-current={activeTab === item.id ? 'page' : undefined}
-                    className={`flex flex-col items-center justify-center py-2 px-1 w-16 transition-all relative ${activeTab === item.id ? 'text-[#0047AB]' : 'text-slate-400'
+                    className={`flex flex-col items-center justify-center py-3 px-1 w-full h-full transition-all duration-300 relative ${activeTab === item.id ? 'text-[#0047AB] scale-105' : 'text-slate-400'
                         }`}
                 >
-                    <div className="mb-1" aria-hidden="true">
+                    <div className={`mb-1 transition-transform ${activeTab === item.id ? '-translate-y-0.5' : ''}`} aria-hidden="true">
                         {item.icon}
                     </div>
-                    <span className={`text-[8px] font-black uppercase tracking-tight transition-all ${activeTab === item.id ? 'opacity-100' : 'opacity-60'
+                    <span className={`text-[10px] font-black uppercase tracking-tight transition-all ${activeTab === item.id ? 'opacity-100' : 'opacity-70 font-medium'
                         }`}>
                         {item.label}
                     </span>
                     {activeTab === item.id && (
-                        <div className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-[#0047AB]" aria-hidden="true"></div>
+                        <div className="absolute bottom-1 w-1 h-1 rounded-full bg-[#0047AB]" aria-hidden="true"></div>
                     )}
                 </button>
             ))}

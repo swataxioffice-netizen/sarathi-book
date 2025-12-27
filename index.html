@@ -3,6 +3,19 @@
 
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://*.supabase.co https://www.googletagmanager.com https://cdn.logrocket.io https://cdn.lr-ingest.io https://cdn.logr-in.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https://*.supabase.co https://maps.googleapis.com https://www.google-analytics.com https://*.sentry.io https://*.logrocket.io https://*.lr-ingest.io https://*.logrocket.com; img-src 'self' data: https://maps.gstatic.com https://*.googleusercontent.com https://*.supabase.co https://www.google-analytics.com; font-src 'self' https://fonts.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self';" />
+
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-PSDHTVX94M"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-PSDHTVX94M');
+  </script>
+
   <link rel="icon" type="image/png" href="/favicon-96x96.png" />
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="shortcut icon" href="/favicon.png" />
@@ -152,6 +165,42 @@
   }
   </script>
 
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "serviceType": "Taxi Service",
+    "provider": {
+      "@type": "LocalBusiness",
+      "name": "Sarathi Book"
+    },
+    "areaServed": {
+      "@type": "State",
+      "name": "Tamil Nadu"
+    },
+    "hasOfferCatalog": {
+      "@type": "OfferCatalog",
+      "name": "Transportation Services",
+      "itemListElement": [
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "One Way Drop"
+          }
+        },
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Round Trip"
+          }
+        }
+      ]
+    }
+  }
+  </script>
+
   <!-- HowTo Schema for Calculator -->
   <script type="application/ld+json">
   {
@@ -213,6 +262,19 @@
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('SW registered: ', registration);
+          })
+          .catch(registrationError => {
+            console.log('SW registration failed: ', registrationError);
+          });
+      });
+    }
+  </script>
 </body>
 
 </html>
