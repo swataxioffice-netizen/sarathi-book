@@ -8,7 +8,7 @@ import GoogleSignInButton from './GoogleSignInButton';
 import { supabase } from '../utils/supabase';
 
 const Profile: React.FC = () => {
-    const { user, signOut } = useAuth();
+    const { user, signOut, loading: authLoading } = useAuth();
     const { settings, updateSettings, saveSettings } = useSettings();
     const [newVehicleNumber, setNewVehicleNumber] = useState('');
     const [newVehicleModel, setNewVehicleModel] = useState('');
@@ -16,7 +16,7 @@ const Profile: React.FC = () => {
     const [customPhotoUrl, setCustomPhotoUrl] = useState('');
     const [savingSection, setSavingSection] = useState<'business' | 'banking' | 'fleet' | 'language' | null>(null);
     const [selectedLanguage, setSelectedLanguage] = useState<any>(settings.language || 'en'); // Use any to avoid import issue for now, or just string.
-
+    const [profileLoading, setProfileLoading] = useState(false);
 
     // Stats for Completion
     const [docStats, setDocStats] = useState({ hasFullVehicle: false, hasFullDriver: false });
@@ -46,14 +46,30 @@ const Profile: React.FC = () => {
 
     // Fetch existing profile data (phone) on load
     React.useEffect(() => {
-        if (user) {
-            supabase.from('profiles').select('phone').eq('id', user.id).single()
-                .then(({ data }) => {
-                    if (data?.phone && !settings.driverPhone) {
+        const fetchProfile = async () => {
+            if (user) {
+                setProfileLoading(true);
+                try {
+                    const { data, error } = await supabase
+                        .from('profiles')
+                        .select('phone')
+                        .eq('id', user.id)
+                        .single();
+
+                    if (error) {
+                        console.error('Error fetching profile:', error);
+                    } else if (data?.phone && !settings.driverPhone) {
                         updateSettings({ driverPhone: data.phone });
                     }
-                });
-        }
+                } catch (err: any) {
+                    console.error('Profile fetch failed:', err);
+                } finally {
+                    setProfileLoading(false);
+                }
+            }
+        };
+
+        fetchProfile();
     }, [user]);
 
     const operatorId = user ? `OP - ${user.id.slice(0, 6).toUpperCase()} -${new Date().getFullYear()} ` : 'GUEST-DRIVER';
@@ -82,6 +98,18 @@ const Profile: React.FC = () => {
     };
 
     const completion = getCompletion();
+
+    // Show loading state while auth is initializing
+    if (authLoading || profileLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen pb-24">
+                <div className="text-center space-y-4">
+                    <div className="w-16 h-16 border-4 border-[#0047AB]/20 border-t-[#0047AB] rounded-full animate-spin mx-auto"></div>
+                    <p className="text-sm font-bold text-slate-500">Loading profile...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div key={user?.id || 'guest'} className="space-y-4 pb-24">

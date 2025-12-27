@@ -149,14 +149,20 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Cloud Sync Logic
     useEffect(() => {
         const syncSettings = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-                // 1. Fetch Cloud Settings
-                const { data } = await supabase.from('profiles').select('settings').eq('id', session.user.id).single();
-                if (data?.settings) {
-                    // Merge cloud settings with local defaults, preferring cloud
-                    setSettings(prev => ({ ...prev, ...data.settings }));
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user) {
+                    // 1. Fetch Cloud Settings
+                    const { data, error } = await supabase.from('profiles').select('settings').eq('id', session.user.id).single();
+                    if (error) {
+                        console.error('Error fetching cloud settings:', error);
+                    } else if (data?.settings) {
+                        // Merge cloud settings with local defaults, preferring cloud
+                        setSettings(prev => ({ ...prev, ...data.settings }));
+                    }
                 }
+            } catch (err) {
+                console.error('Settings sync failed:', err);
             }
         };
 
@@ -165,9 +171,15 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // Listen for Auth Changes to switch profiles
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'SIGNED_IN' && session?.user) {
-                const { data } = await supabase.from('profiles').select('settings').eq('id', session.user.id).single();
-                if (data?.settings) {
-                    setSettings(prev => ({ ...prev, ...data.settings }));
+                try {
+                    const { data, error } = await supabase.from('profiles').select('settings').eq('id', session.user.id).single();
+                    if (error) {
+                        console.error('Error fetching settings on sign in:', error);
+                    } else if (data?.settings) {
+                        setSettings(prev => ({ ...prev, ...data.settings }));
+                    }
+                } catch (err) {
+                    console.error('Settings fetch on sign in failed:', err);
                 }
             }
         });
