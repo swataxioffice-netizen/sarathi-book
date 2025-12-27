@@ -280,7 +280,7 @@ function AppContent() {
   );
 }
 
-import ReloadPrompt from './components/ReloadPrompt';
+
 import { NotificationProvider } from './contexts/NotificationContext';
 import Notifications from './components/Notifications';
 
@@ -293,7 +293,6 @@ function App() {
         <SettingsProvider>
           <UpdateProvider>
             <AppContent />
-            <ReloadPrompt />
           </UpdateProvider>
         </SettingsProvider>
       </NotificationProvider>

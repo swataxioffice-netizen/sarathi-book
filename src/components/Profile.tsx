@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { Trash2, Plus, User as UserIcon, CheckCircle, Circle, Globe, Camera, LogOut, Landmark, HelpCircle, MessageCircle } from 'lucide-react';
+import { Trash2, Plus, User as UserIcon, CheckCircle, Circle, Globe, Camera, LogOut, Landmark, HelpCircle, MessageCircle, RefreshCw } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
 import DocumentVault from './DocumentVault';
 import GoogleSignInButton from './GoogleSignInButton';
@@ -636,7 +636,44 @@ const Profile: React.FC = () => {
                 </div>
             </div>
 
-            {/* 9. Sign Out */}
+            {/* 9. System Health */}
+            <div className="pt-2">
+                <div className="flex items-center gap-2 px-1 mb-2">
+                    <RefreshCw size={14} className="text-orange-500" />
+                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-orange-500 underline-offset-4">System Health</h3>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                    <p className="text-[10px] text-slate-500 font-bold mb-3">Updating issues or app acting slow? Try a hard refresh.</p>
+                    <button
+                        onClick={async () => {
+                            if (window.confirm('This will refresh the app and clear cache to fix loading issues. Your data synced to cloud will be safe. Proceed?')) {
+                                // 1. Unregister all service workers
+                                if ('serviceWorker' in navigator) {
+                                    const registrations = await navigator.serviceWorker.getRegistrations();
+                                    for (const registration of registrations) {
+                                        await registration.unregister();
+                                    }
+                                }
+                                // 2. Clear caches
+                                if ('caches' in window) {
+                                    const keys = await caches.keys();
+                                    for (const key of keys) {
+                                        await caches.delete(key);
+                                    }
+                                }
+                                // 3. Hard reload
+                                window.location.href = window.location.origin + '?cache_bust=' + Date.now();
+                            }
+                        }}
+                        className="w-full bg-slate-100 text-slate-700 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200 transition-all border border-slate-200"
+                    >
+                        <RefreshCw size={14} /> Repair & Hard Refresh
+                    </button>
+                    <p className="text-[8px] text-slate-400 mt-2 text-center font-medium italic">Fixes "Cache not refreshing" and "Not saving" issues.</p>
+                </div>
+            </div>
+
+            {/* 10. Sign Out */}
             <div className="pt-4">
                 <button
                     onClick={signOut}
