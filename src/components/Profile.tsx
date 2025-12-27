@@ -51,11 +51,18 @@ const Profile: React.FC = () => {
             if (user) {
                 setProfileLoading(true);
                 try {
-                    const { data, error } = await supabase
+                    // Timeout promise to prevent infinite loading (15 seconds)
+                    const timeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Profile fetch timed out')), 15000)
+                    );
+
+                    const dbPromise = supabase
                         .from('profiles')
                         .select('phone')
                         .eq('id', user.id)
                         .single();
+
+                    const { data, error } = await Promise.race([dbPromise, timeoutPromise]) as any;
 
                     if (error) {
                         console.error('Error fetching profile:', error);
@@ -118,14 +125,22 @@ const Profile: React.FC = () => {
                     <div className="w-16 h-16 border-4 border-[#0047AB]/20 border-t-[#0047AB] rounded-full animate-spin mx-auto"></div>
                     <p className="text-sm font-bold text-slate-500">Loading profile...</p>
                     {loadingTimeout && (
-                        <div className="animate-fade-in">
-                            <p className="text-xs text-red-500 mb-2">Taking longer than expected...</p>
-                            <button
-                                onClick={signOut}
-                                className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200"
-                            >
-                                Sign Out / Reload
-                            </button>
+                        <div className="animate-fade-in space-y-3">
+                            <p className="text-xs text-red-500 font-medium">Taking longer than expected...</p>
+                            <div className="flex gap-2 justify-center">
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="px-4 py-2 bg-[#0047AB] text-white rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm transition-colors"
+                                >
+                                    Reload Page
+                                </button>
+                                <button
+                                    onClick={signOut}
+                                    className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors"
+                                >
+                                    Sign Out
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>

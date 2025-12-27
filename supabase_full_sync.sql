@@ -15,6 +15,12 @@ CREATE TABLE IF NOT EXISTS public.trips (
 -- Enable RLS for trips
 ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies for trips
+DROP POLICY IF EXISTS "Users can insert their own trips" ON public.trips;
+DROP POLICY IF EXISTS "Users can view their own trips" ON public.trips;
+DROP POLICY IF EXISTS "Users can update their own trips" ON public.trips;
+DROP POLICY IF EXISTS "Users can delete their own trips" ON public.trips;
+
 CREATE POLICY "Users can insert their own trips"
 ON public.trips FOR INSERT
 TO authenticated
@@ -49,6 +55,12 @@ CREATE TABLE IF NOT EXISTS public.expenses (
 -- Enable RLS for expenses
 ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies for expenses
+DROP POLICY IF EXISTS "Users can insert their own expenses" ON public.expenses;
+DROP POLICY IF EXISTS "Users can view their own expenses" ON public.expenses;
+DROP POLICY IF EXISTS "Users can update their own expenses" ON public.expenses;
+DROP POLICY IF EXISTS "Users can delete their own expenses" ON public.expenses;
+
 CREATE POLICY "Users can insert their own expenses"
 ON public.expenses FOR INSERT
 TO authenticated
@@ -68,3 +80,42 @@ CREATE POLICY "Users can delete their own expenses"
 ON public.expenses FOR DELETE
 TO authenticated
 USING (auth.uid() = user_id);
+
+-- Create profiles table (if not exists)
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id uuid REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+    email text,
+    name text,
+    phone text,
+    avatar_url text,
+    updated_at timestamp with time zone,
+    settings jsonb DEFAULT '{}'::jsonb
+);
+
+-- Ensure columns exist if table resulted from a previous migration
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS name text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS phone text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS settings jsonb DEFAULT '{}'::jsonb;
+
+-- Enable RLS for profiles
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies for profiles
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone." ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile." ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile." ON public.profiles;
+
+CREATE POLICY "Public profiles are viewable by everyone."
+ON public.profiles FOR SELECT
+USING (true);
+
+CREATE POLICY "Users can insert their own profile."
+ON public.profiles FOR INSERT
+WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can update own profile."
+ON public.profiles FOR UPDATE
+USING (auth.uid() = id);
