@@ -104,7 +104,7 @@ export const generateReceiptPDF = (trip: Trip, settings: PDFSettings, isQuotatio
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.text('BILL TO:', margin, y);
-    doc.text('JOURNEY DETAILS:', 110, y);
+    doc.text('PICKUP & DROP:', 110, y);
 
     y += 5;
     doc.setFont('helvetica', 'normal');
@@ -445,10 +445,12 @@ export const shareReceipt = async (trip: Trip, settings: PDFSettings, isQuotatio
 
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
             try {
+                const pickup = trip.from || 'N/A';
+                const drop = trip.to || 'N/A';
                 await navigator.share({
                     files: [file],
                     title: `${settings.companyName} ${isQuotation ? 'Quotation' : 'Invoice'}`,
-                    text: `${isQuotation ? 'Quotation' : 'Invoice'} for ${trip.customerName} - Total: Rs. ${trip.totalFare}`,
+                    text: `${isQuotation ? 'Quotation' : 'Invoice'} for ${trip.customerName} - Total: Rs. ${trip.totalFare}\nPickup: ${pickup}\nDrop: ${drop}`,
                 });
                 return;
             } catch (shareError) {

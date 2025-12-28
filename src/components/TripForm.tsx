@@ -340,7 +340,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="col-span-2">
                                 <PlacesAutocomplete
-                                    label="Pickup Location"
+                                    label="Pickup"
                                     icon={<MapPin size={16} />}
                                     value={fromLoc}
                                     onChange={setFromLoc}
@@ -362,8 +362,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
 
                             <div className="col-span-2">
                                 <PlacesAutocomplete
-                                    label="Destination"
-                                    icon={<Navigation className="rotate-90" size={16} />}
+                                    label="Drop"
+                                    icon={<MapPin size={16} />}
                                     value={toLoc}
                                     onChange={setToLoc}
                                     onPlaceSelected={(place) => setToLoc(place.address)}

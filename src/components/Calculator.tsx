@@ -485,7 +485,8 @@ const RelocationCalculator: React.FC = () => {
             details.push(
                 `Professional Carrier Service`,
                 `Vehicle: ${vehicleType === 'car' ? 'Car/Sedan' : vehicleType === 'van' ? 'Van/SUV' : 'Bus/Large Vehicle'}`,
-                `Route: ${pickup} → ${drop}`,
+                `Pickup: ${pickup}`,
+                `Drop: ${drop}`,
                 `Distance: ${dist} KM`,
                 ``,
                 `Base Charge: ₹${baseCharge.toFixed(0)}`,
@@ -524,7 +525,8 @@ const RelocationCalculator: React.FC = () => {
             details.push(
                 `Driver-Driven Service`,
                 `Vehicle: ${vehicleType === 'car' ? 'Car/Sedan' : vehicleType === 'van' ? 'Van/SUV' : 'Bus/Large Vehicle'}`,
-                `Route: ${pickup} → ${drop}`,
+                `Pickup: ${pickup}`,
+                `Drop: ${drop}`,
                 `Distance: ${dist} KM`,
                 ``,
                 `Driver Charge: ₹${driverCharge}`,
@@ -619,7 +621,7 @@ const RelocationCalculator: React.FC = () => {
             <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                     <PlacesAutocomplete
-                        label="Pickup Location"
+                        label="Pickup"
                         icon={<MapPin size={10} aria-hidden="true" />}
                         value={pickup}
                         onChange={setPickup}
@@ -631,7 +633,7 @@ const RelocationCalculator: React.FC = () => {
                         placeholder="Start typing..."
                     />
                     <PlacesAutocomplete
-                        label="Drop Location"
+                        label="Drop"
                         icon={<MapPin size={10} aria-hidden="true" />}
                         value={drop}
                         onChange={setDrop}

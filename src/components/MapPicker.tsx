@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { loadGoogleMaps, calculateDistance, getCurrentLocation } from '../utils/googleMaps';
-import { MapPin, Navigation as NavigationIcon, X, Search, Locate } from 'lucide-react';
+import { MapPin, X, Search, Locate } from 'lucide-react';
 
 interface MapPickerProps {
     onLocationSelect: (pickup: string, drop: string, distance: number) => void;
@@ -322,7 +322,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
             {/* Header */}
             <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between">
                 <div>
-                    <h3 className="text-lg font-black text-slate-900">Select Locations</h3>
+                    <h3 className="text-lg font-black text-slate-900">Select Pickup & Drop</h3>
                     <p className="text-xs text-slate-500 mt-0.5">
                         {mode === 'pickup' ? '📍 Drag map to set pickup location' : '🎯 Drag map to set drop location'}
                     </p>
@@ -397,7 +397,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
                 {dropLocation && (
                     <div className="flex items-start gap-3 p-3 bg-red-50 rounded-xl border border-red-200">
                         <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                            <NavigationIcon size={16} className="text-white" />
+                            <MapPin size={16} className="text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-xs font-black text-red-700 uppercase tracking-wide">Drop</p>
