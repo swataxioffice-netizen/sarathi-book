@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, FileText, CheckCircle, AlertCircle, X, Loader2 } from 'lucide-react';
+import { Trash2, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../utils/supabase';
 import { useSettings } from '../contexts/SettingsContext';
@@ -36,13 +36,9 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
     const { settings } = useSettings();
     const [loading, setLoading] = useState(false);
     const [docs, setDocs] = useState<Document[]>([]);
-    const [expandedDoc, setExpandedDoc] = useState<string | null>(null); // 'type' of doc currently expanding
 
     // Selection State
     const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
-
-    // Form State
-    const [expiry, setExpiry] = useState('');
 
     // Initialize selected vehicle
     useEffect(() => {
@@ -86,8 +82,8 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
         }
     };
 
-    const saveDoc = async (type: string, category: 'vehicle' | 'driver') => {
-        if (!expiry) { alert('Please enter expiry date'); return; }
+    const saveDoc = async (type: string, category: 'vehicle' | 'driver', dateStr: string) => {
+        if (!dateStr) return;
 
         let docName = 'Driver';
         if (category === 'vehicle') {
@@ -101,12 +97,12 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
         setLoading(true);
         try {
             let newDoc: Document = {
-                id: crypto.randomUUID(), name: docName, type: type as any, expiryDate: expiry,
+                id: crypto.randomUUID(), name: docName, type: type as any, expiryDate: dateStr,
             };
 
             if (user) {
                 const { data, error } = await supabase.from('user_documents').insert({
-                    user_id: user.id, name: docName, type, expiry_date: expiry,
+                    user_id: user.id, name: docName, type, expiry_date: dateStr,
                     file_url: null, file_path: null
                 }).select().single();
                 if (error) throw error;
@@ -117,9 +113,6 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
             const finalDocs = [newDoc, ...updatedDocs];
             setDocs(finalDocs);
             if (!user) localStorage.setItem('cab-docs', JSON.stringify(finalDocs));
-
-            setExpandedDoc(null);
-            setExpiry('');
 
         } catch (error: any) {
             console.error(error);
@@ -153,7 +146,6 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
             return true;
         });
 
-        const isExpanded = expandedDoc === req.type;
         const daysLeft = existingDoc ? getDays(existingDoc.expiryDate) : 0;
         const isExpired = daysLeft < 0;
         const isWarning = daysLeft < 30;
@@ -184,44 +176,25 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                                 <Trash2 size={14} />
                             </button>
                         ) : (
-                            <button
-                                onClick={() => {
-                                    if (isExpanded) { setExpandedDoc(null); }
-                                    else { setExpandedDoc(req.type); setExpiry(''); }
-                                }}
-                                className={`px-4 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-wider flex items-center gap-2 transition-all active:scale-95 ${isExpanded ? 'bg-white border-slate-300 text-slate-700' : 'bg-[#0047AB] border-[#0047AB] text-white shadow-md'}`}
-                            >
-                                {isExpanded ? <X size={12} /> : null}
-                                {isExpanded ? 'Cancel' : 'Set Date'}
-                            </button>
+                            <div className="relative">
+                                <input
+                                    type="date"
+                                    onChange={(e) => {
+                                        if (e.target.value) {
+                                            saveDoc(req.type, category, e.target.value);
+                                        }
+                                    }}
+                                    className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
+                                />
+                                <button
+                                    className="px-4 py-1.5 rounded-lg border border-[#0047AB] bg-[#0047AB] text-white shadow-md text-[10px] font-black uppercase tracking-wider flex items-center gap-2 active:scale-95"
+                                >
+                                    Set Date
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>
-
-                {isExpanded && !existingDoc && (
-                    <div className="mt-3 pt-3 border-t border-slate-200 animate-fade-in">
-                        <div className="space-y-3">
-                            <div>
-                                <label htmlFor={`expiry-${req.type}`} className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Document Expiry Date</label>
-                                <input
-                                    id={`expiry-${req.type}`}
-                                    type="date"
-                                    value={expiry}
-                                    onChange={(e) => setExpiry(e.target.value)}
-                                    className="tn-input h-10 w-full text-xs font-bold uppercase text-slate-900 bg-white mt-1 border-slate-200 focus:border-[#0047AB] focus:ring-1 focus:ring-[#0047AB]"
-                                />
-                            </div>
-                            <button
-                                onClick={() => saveDoc(req.type, REQUIRED_VEHICLE_DOCS.some(doc => doc.type === req.type) ? 'vehicle' : 'driver')}
-                                disabled={loading}
-                                className="w-full bg-[#0047AB] text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-70 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all"
-                            >
-                                {loading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-                                Save Record
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
         );
     };

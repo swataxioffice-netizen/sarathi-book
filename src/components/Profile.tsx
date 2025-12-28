@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { Trash2, Plus, User as UserIcon, CheckCircle, Circle, Globe, Camera, LogOut, Landmark, HelpCircle, MessageCircle, RefreshCw } from 'lucide-react';
+import { Trash2, Plus, User as UserIcon, CheckCircle, Circle, Globe, Camera, LogOut, Landmark, MessageCircle, RefreshCw } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
 import DocumentVault from './DocumentVault';
 import GoogleSignInButton from './GoogleSignInButton';
@@ -151,85 +151,89 @@ const Profile: React.FC = () => {
     return (
         <div key={user?.id || 'guest'} className="space-y-4 pb-24">
 
-            {/* Profile Header Card */}
+            {/* Profile Header Card - Compact */}
             <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#0047AB]/5 rounded-full -mr-16 -mt-16"></div>
-                <div className="relative z-10 flex flex-col items-center text-center">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-[#0047AB]/5 rounded-full -mr-10 -mt-10"></div>
 
-                    {/* Completion Bar */}
-                    <div className="w-full mb-4">
-                        <div className="flex justify-between items-end mb-1 px-1">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Profile Completion</span>
-                            <span className={`text - xs font - black ${completion === 100 ? 'text-green-500' : 'text-[#0047AB]'} `}>{completion}%</span>
-                        </div>
-                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                                className={`h - full rounded - full transition - all duration - 1000 ease - out ${completion === 100 ? 'bg-green-500' : 'bg-[#0047AB]'} `}
-                                style={{ width: `${completion}% ` }}
-                            ></div>
-                        </div>
-                        {completion < 100 && (
-                            <p className="text-[9px] text-slate-400 mt-1 text-left font-bold">
-                                Finish your profile to unlock full potential!
-                            </p>
-                        )}
-                    </div>
-
-                    <div className="relative group">
-                        <div className="w-20 h-20 rounded-full border-4 border-white shadow-md overflow-hidden bg-slate-50 flex items-center justify-center">
-                            {(customPhotoUrl || user?.user_metadata?.avatar_url) ? (
-                                <img
-                                    src={customPhotoUrl || user?.user_metadata?.avatar_url}
-                                    alt="Profile"
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                />
-                            ) : null}
-                            {(!customPhotoUrl && !user?.user_metadata?.avatar_url) && (
-                                <UserIcon size={32} className="text-slate-300" />
+                <div className="relative z-10">
+                    <div className="flex items-center gap-4">
+                        {/* Avatar */}
+                        <div className="relative group flex-shrink-0">
+                            <div className="w-16 h-16 rounded-full border-2 border-white shadow-md overflow-hidden bg-slate-50 flex items-center justify-center">
+                                {(customPhotoUrl || user?.user_metadata?.avatar_url) ? (
+                                    <img
+                                        src={customPhotoUrl || user?.user_metadata?.avatar_url}
+                                        alt="Profile"
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                    />
+                                ) : null}
+                                {(!customPhotoUrl && !user?.user_metadata?.avatar_url) && (
+                                    <UserIcon size={24} className="text-slate-300" />
+                                )}
+                            </div>
+                            {user && (
+                                <button
+                                    onClick={() => setIsEditingPhoto(!isEditingPhoto)}
+                                    className="absolute bottom-0 right-0 p-1 bg-[#0047AB] text-white rounded-full shadow-md hover:bg-blue-700 transition-colors"
+                                >
+                                    <Camera size={10} />
+                                </button>
+                            )}
+                            {isEditingPhoto && (
+                                <div className="absolute top-full left-0 mt-2 bg-white p-2 rounded-xl shadow-xl border border-slate-100 z-50 w-32 animate-fade-in">
+                                    <label className="block text-[9px] font-bold text-center py-2 text-slate-600 hover:bg-slate-50 cursor-pointer rounded-lg uppercase tracking-wider">
+                                        Upload
+                                        <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                                    </label>
+                                    <div className="border-t border-slate-100 my-1"></div>
+                                    <button onClick={() => setCustomPhotoUrl('')} className="w-full text-[9px] font-bold text-red-500 py-2 hover:bg-red-50 rounded-lg uppercase tracking-wider">Remove</button>
+                                </div>
                             )}
                         </div>
-                        {user && (
-                            <button
-                                onClick={() => setIsEditingPhoto(!isEditingPhoto)}
-                                className="absolute bottom-0 right-0 p-1.5 bg-[#0047AB] text-white rounded-full shadow-md hover:bg-blue-700 transition-colors"
-                            >
-                                <Camera size={12} />
-                            </button>
-                        )}
-                        {isEditingPhoto && (
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white p-2 rounded-xl shadow-xl border border-slate-100 z-50 w-40 animate-fade-in">
-                                <label className="block text-[10px] font-bold text-center py-2 text-slate-600 hover:bg-slate-50 cursor-pointer rounded-lg uppercase tracking-wider">
-                                    Upload Photo
-                                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-                                </label>
-                                <div className="border-t border-slate-100 my-1"></div>
-                                <button onClick={() => setCustomPhotoUrl('')} className="w-full text-[10px] font-bold text-red-500 py-2 hover:bg-red-50 rounded-lg uppercase tracking-wider">Remove Photo</button>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                            <h2 className="text-base font-black text-slate-900 uppercase tracking-tight truncate">
+                                {user?.user_metadata?.full_name || 'Guest Driver'}
+                            </h2>
+                            <div className="inline-block mt-1 px-2 py-0.5 bg-slate-50 rounded-md border border-slate-100">
+                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                                    ID: <span className="text-[#0047AB]">{operatorId}</span>
+                                </p>
                             </div>
-                        )}
+                        </div>
+
+                        {/* Sign Out / Google - Compact */}
+                        <div>
+                            {user ? (
+                                <button
+                                    onClick={signOut}
+                                    className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-all"
+                                >
+                                    <LogOut size={16} />
+                                </button>
+                            ) : (
+                                <div className="w-28 opacity-100">
+                                    {/* Using a smaller custom wrapper to force compactness if GoogleSignInButton allows */}
+                                    <GoogleSignInButton className="w-full text-[10px] py-1 shadow-sm" />
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    <h2 className="text-lg font-black text-slate-900 mt-2 uppercase tracking-tight">
-                        {user?.user_metadata?.full_name || 'Guest Driver'}
-                    </h2>
-
-                    <div className="mt-1 px-3 py-1 bg-slate-50 rounded-full border border-slate-100 mb-3">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                            ID: <span className="text-[#0047AB]">{operatorId}</span>
-                        </p>
-                    </div>
-
-                    <div className="w-full px-2">
-                        {user ? (
-                            <button
-                                onClick={signOut}
-                                className="w-full py-2.5 bg-red-50 text-red-500 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-red-100 transition-all flex items-center justify-center gap-2"
-                            >
-                                <LogOut size={14} /> Sign Out {user.email?.split('@')[0]}
-                            </button>
-                        ) : (
-                            <GoogleSignInButton className="w-full shadow-md" />
-                        )}
+                    {/* Completion Bar - Slim */}
+                    <div className="w-full mt-4">
+                        <div className="flex justify-between items-end mb-1 px-1">
+                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Complete Profile</span>
+                            <span className={`text-[9px] font-black ${completion === 100 ? 'text-green-500' : 'text-[#0047AB]'}`}>{completion}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                                className={`h-full rounded-full transition-all duration-1000 ease-out ${completion === 100 ? 'bg-green-500' : 'bg-[#0047AB]'}`}
+                                style={{ width: `${completion}%` }}
+                            ></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -324,9 +328,9 @@ const Profile: React.FC = () => {
                         <span className="text-[10px] font-black text-slate-600 uppercase tracking-wide">Enable GST Invoice</span>
                         <div
                             onClick={() => updateSettings({ gstEnabled: !settings.gstEnabled })}
-                            className={`w - 10 h - 5 rounded - full relative cursor - pointer transition - colors ${settings.gstEnabled ? 'bg-green-500' : 'bg-slate-300'} `}
+                            className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${settings.gstEnabled ? 'bg-green-500' : 'bg-slate-300'}`}
                         >
-                            <div className={`absolute top - 1 w - 3 h - 3 bg - white rounded - full shadow - sm transition - all ${settings.gstEnabled ? 'left-6' : 'left-1'} `}></div>
+                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${settings.gstEnabled ? 'left-6' : 'left-1'}`}></div>
                         </div>
                     </div>
 
@@ -338,7 +342,7 @@ const Profile: React.FC = () => {
                                     type="text"
                                     value={settings.gstin}
                                     onChange={(_) => updateSettings({ gstin: _.target.value.toUpperCase() })}
-                                    className={`tn - input h - 10 font - bold placeholder:text-slate-500 ${settings.gstin && !validateGSTIN(settings.gstin) ? 'border-red-300 bg-red-50' : ''} `}
+                                    className={`tn-input h-10 font-bold placeholder:text-slate-500 ${settings.gstin && !validateGSTIN(settings.gstin) ? 'border-red-300 bg-red-50' : ''}`}
                                     placeholder="22AAAAA0000A1Z5"
                                     maxLength={15}
                                 />
@@ -346,12 +350,28 @@ const Profile: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Bank Details */}
+                    {/* Bank Details - Simplified */}
                     <div className="pt-2 border-t border-slate-100 space-y-2">
                         <div className="flex items-center gap-2 mb-2">
                             <Landmark size={14} className="text-slate-400" />
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Bank Details</span>
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Payment Info</span>
                         </div>
+
+                        <div>
+                            <div className="flex items-center gap-1 ml-1">
+                                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">UPI ID (Primary)</label>
+                                <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-[8px] font-black rounded uppercase">Main</span>
+                            </div>
+                            <input
+                                type="text"
+                                value={settings.upiId || ''}
+                                onChange={(_) => updateSettings({ upiId: _.target.value })}
+                                className="tn-input h-10 font-bold placeholder:text-slate-500"
+                                placeholder="username@upi / phone@upi"
+                            />
+                            <p className="text-[8px] text-slate-400 ml-1 mt-0.5 font-bold italic">Payments will be sent to this ID</p>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-2">
                             <div>
                                 <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Account Name</label>
@@ -360,7 +380,7 @@ const Profile: React.FC = () => {
                                     value={settings.holderName || ''}
                                     onChange={(_) => updateSettings({ holderName: _.target.value })}
                                     className="tn-input h-9 font-bold placeholder:text-slate-500"
-                                    placeholder="Name on Passbook"
+                                    placeholder="Holder Name"
                                 />
                             </div>
                             <div>
@@ -370,51 +390,12 @@ const Profile: React.FC = () => {
                                     value={settings.bankName || ''}
                                     onChange={(_) => updateSettings({ bankName: _.target.value })}
                                     className="tn-input h-9 font-bold"
-                                    placeholder="e.g. SBI"
+                                    placeholder="Bank Name"
                                 />
                             </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div>
-                                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Account No.</label>
-                                <input
-                                    type="text"
-                                    value={settings.accountNumber || ''}
-                                    onChange={(_) => updateSettings({ accountNumber: _.target.value })}
-                                    className="tn-input h-9 font-bold placeholder:text-slate-500"
-                                    placeholder="XXXX XXXX"
-                                />
-                            </div>
-                            <div>
-                                <div className="flex items-center gap-1 ml-1">
-                                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">IFSC Code</label>
-                                    <HelpCircle size={10} className="text-slate-300" />
-                                </div>
-                                <input
-                                    type="text"
-                                    value={settings.ifscCode || ''}
-                                    onChange={(_) => updateSettings({ ifscCode: _.target.value.toUpperCase() })}
-                                    className="tn-input h-9 font-bold uppercase placeholder:text-slate-500"
-                                    placeholder="SBIN000...."
-                                />
-                                <p className="text-[8px] text-slate-400 ml-1 mt-0.5 font-bold italic">Find this in your passbook</p>
-                            </div>
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-1 ml-1">
-                                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">UPI ID (Optional)</label>
-                                <HelpCircle size={10} className="text-slate-300" />
-                            </div>
-                            <input
-                                type="text"
-                                value={settings.upiId || ''}
-                                onChange={(_) => updateSettings({ upiId: _.target.value })}
-                                className="tn-input h-9 font-bold placeholder:text-slate-500"
-                                placeholder="e.g. 9999999999@upi"
-                            />
-                            <p className="text-[8px] text-slate-400 ml-1 mt-0.5 font-bold italic">PhonePe / GPay / Paytm ID for direct payment</p>
                         </div>
                     </div>
+
                     <div className="pt-2 flex justify-end">
                         <button
                             onClick={async () => {
@@ -424,7 +405,7 @@ const Profile: React.FC = () => {
                                 if (!success) alert('Failed to save settings. Please try again.');
                                 setSavingSection(null);
                             }}
-                            className="bg-green-700 text-white px-6 h-12 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
+                            className="bg-green-700 text-white px-6 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
                         >
                             {savingSection === 'banking' ? (
                                 <>
@@ -433,7 +414,7 @@ const Profile: React.FC = () => {
                                 </>
                             ) : (
                                 <>
-                                    <CheckCircle size={14} /> Save
+                                    <CheckCircle size={12} /> Save
                                 </>
                             )}
                         </button>
@@ -623,7 +604,7 @@ const Profile: React.FC = () => {
                     <RefreshCw size={14} className="text-orange-500" />
                     <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-orange-500 underline-offset-4">System Health</h3>
                 </div>
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col items-center text-center">
                     <p className="text-[10px] text-slate-500 font-bold mb-3">Updating issues or app acting slow? Try a hard refresh.</p>
                     <button
                         onClick={async () => {
@@ -646,7 +627,7 @@ const Profile: React.FC = () => {
                                 window.location.href = window.location.origin + '?cache_bust=' + Date.now();
                             }
                         }}
-                        className="w-full bg-slate-100 text-slate-700 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200 transition-all border border-slate-200"
+                        className="w-auto px-8 bg-slate-100 text-slate-700 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200 transition-all border border-slate-200 shadow-sm"
                     >
                         <RefreshCw size={14} /> Repair & Hard Refresh
                     </button>
@@ -660,22 +641,22 @@ const Profile: React.FC = () => {
                     <CheckCircle size={14} className="text-green-500" />
                     <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-green-500 underline-offset-4">Support</h3>
                 </div>
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm group hover:border-[#25D366]/50 transition-colors">
                     <p className="text-xs text-slate-600 font-bold mb-4">Need help using Sarathi Book? Message our support team on WhatsApp.</p>
                     <a
                         href="https://wa.me/919952749408?text=I%20need%20help%20with%20Sarathi%20Book"
                         target="_blank"
                         rel="noreferrer"
-                        className="w-full bg-[#25D366] text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 active:scale-95 transition-all"
+                        className="w-full bg-[#25D366] text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 active:scale-95 transition-all hover:bg-[#20bd5a]"
                     >
-                        <MessageCircle size={16} /> Chat on WhatsApp
+                        <MessageCircle size={18} /> Chat on WhatsApp
                     </a>
                 </div>
             </div>
 
             {/* 10. Legal & Compliance Footer */}
             <div className="pt-8 pb-4 text-center space-y-3">
-                <div className="flex justify-center gap-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                <div className="flex justify-center flex-wrap gap-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-full">
                     <span className="cursor-pointer hover:text-slate-600">Terms</span>
                     <span className="text-slate-200">•</span>
                     <span className="cursor-pointer hover:text-slate-600">Privacy</span>
@@ -683,26 +664,26 @@ const Profile: React.FC = () => {
                     <span className="cursor-pointer hover:text-slate-600">Compliance</span>
                 </div>
 
-                <div className="space-y-1">
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                <div className="space-y-1 w-full">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-4">
                         Designed for Indian Transport Operations
                     </p>
-                    <p className="text-[7px] font-bold text-slate-300 uppercase tracking-tighter max-w-[200px] mx-auto leading-relaxed">
+                    <p className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter max-w-[250px] mx-auto leading-relaxed">
                         In compliance with Ministry of Road Transport & Highways (MoRTH) digital documentation guidelines.
                     </p>
                 </div>
 
                 <div className="pt-2">
-                    <p className="text-[10px] font-black text-slate-900 tracking-tight">
+                    <p className="text-[11px] font-black text-slate-900 tracking-tight">
                         © {new Date().getFullYear()} SARATHI BOOK
                     </p>
-                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
                         All Rights Reserved
                     </p>
                 </div>
 
-                <p className="text-[8px] text-slate-300 font-medium italic">
-                    v1.0.4 - Heavy Duty Construction
+                <p className="text-[9px] text-slate-300 font-medium italic">
+                    v1.0.5 - Heavy Duty Construction
                 </p>
             </div>
         </div >
