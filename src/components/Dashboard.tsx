@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { safeJSONParse } from '../utils/storage';
 import type { Trip, Expense } from '../utils/fare';
-import { IndianRupee, Globe, TrendingUp, StickyNote, Plus, Trash2 } from 'lucide-react';
+import { IndianRupee, Globe, TrendingUp, StickyNote, Plus, Trash2, FileText } from 'lucide-react';
 
 interface DashboardProps {
     trips: Trip[];
@@ -151,6 +151,20 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                             className={`h-full transition-all duration-1000 ${stats.profit >= 0 ? 'bg-green-400' : 'bg-red-400'}`}
                             style={{ width: `${Math.max(0, Math.min(100, stats.income > 0 ? Math.abs((stats.profit / stats.income) * 100) : 0))}%` }}
                         ></div>
+                    </div>
+                </div>
+            </div>
+
+            {/* GST Report Banner */}
+            <div className="p-4 bg-gradient-to-r from-blue-900 to-blue-800 rounded-2xl shadow-lg relative overflow-hidden group cursor-pointer active:scale-98 transition-all">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl"></div>
+                <div className="relative z-10 flex items-center justify-between">
+                    <div>
+                        <h4 className="text-white font-black text-xs uppercase tracking-widest mb-1">Monthly Report</h4>
+                        <p className="text-blue-200 text-[10px] font-medium max-w-[200px]">Download GST-ready PDF report for all trips in one click.</p>
+                    </div>
+                    <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/20">
+                        <FileText className="text-white" size={20} />
                     </div>
                 </div>
             </div>

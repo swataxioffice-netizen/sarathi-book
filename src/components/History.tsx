@@ -17,20 +17,6 @@ const History: React.FC<HistoryProps> = ({ trips }) => {
 
     return (
         <div className="space-y-4 pt-2 pb-24">
-            {/* GST Report Banner */}
-            <div className="mx-1 p-4 bg-gradient-to-r from-blue-900 to-blue-800 rounded-2xl shadow-lg relative overflow-hidden group cursor-pointer active:scale-98 transition-all">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl"></div>
-                <div className="relative z-10 flex items-center justify-between">
-                    <div>
-                        <h4 className="text-white font-black text-xs uppercase tracking-widest mb-1">Monthly Report</h4>
-                        <p className="text-blue-200 text-[10px] font-medium max-w-[200px]">Download GST-ready PDF report for all trips in one click.</p>
-                    </div>
-                    <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/20">
-                        <FileText className="text-white" size={20} />
-                    </div>
-                </div>
-            </div>
-
             <div className="flex justify-between items-center px-1">
                 <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Recent Invoices</h3>
                 {trips.length > 5 && (
@@ -43,50 +29,52 @@ const History: React.FC<HistoryProps> = ({ trips }) => {
                 )}
             </div>
 
-            {sortedTrips.length === 0 ? (
-                <div className="bg-white border border-slate-200 border-dashed rounded-xl py-6 flex flex-col items-center justify-center text-center">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No invoices yet</p>
-                </div>
-            ) : (
-                <div className="space-y-2">
-                    {displayTrips.map((trip) => (
-                        <div key={trip.id} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-sm relative overflow-hidden group">
-                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0047AB]/20"></div>
+            {
+                sortedTrips.length === 0 ? (
+                    <div className="bg-white border border-slate-200 border-dashed rounded-xl py-6 flex flex-col items-center justify-center text-center">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No invoices yet</p>
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {displayTrips.map((trip) => (
+                            <div key={trip.id} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-sm relative overflow-hidden group">
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0047AB]/20"></div>
 
-                            <div className="flex items-center gap-3 pl-1">
-                                <div className="p-2 bg-blue-50 border border-blue-100 rounded-lg text-[#0047AB]">
-                                    <FileText size={16} />
-                                </div>
-                                <div className="leading-tight">
-                                    <h4 className="text-xs font-black text-slate-900">{trip.customerName || 'Unknown Customer'}</h4>
-                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                        <span className="text-[9px] font-bold text-slate-400">
-                                            {new Date(trip.date).toLocaleDateString()}
-                                        </span>
-                                        <span className="w-0.5 h-0.5 rounded-full bg-slate-300"></span>
-                                        <span className="text-[8px] font-black text-[#0047AB] uppercase">
-                                            {trip.mode === 'package' ? 'PKG' : trip.mode === 'hourly' ? 'RENT' : trip.mode === 'outstation' ? 'RT' : 'ONE'}
-                                        </span>
-                                        <span className="w-0.5 h-0.5 rounded-full bg-slate-300"></span>
-                                        <span className="text-[9px] font-black text-slate-600">
-                                            ₹{Math.round(trip.totalFare).toLocaleString()}
-                                        </span>
+                                <div className="flex items-center gap-3 pl-1">
+                                    <div className="p-2 bg-blue-50 border border-blue-100 rounded-lg text-[#0047AB]">
+                                        <FileText size={16} />
+                                    </div>
+                                    <div className="leading-tight">
+                                        <h4 className="text-xs font-black text-slate-900">{trip.customerName || 'Unknown Customer'}</h4>
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                            <span className="text-[9px] font-bold text-slate-400">
+                                                {new Date(trip.date).toLocaleDateString()}
+                                            </span>
+                                            <span className="w-0.5 h-0.5 rounded-full bg-slate-300"></span>
+                                            <span className="text-[8px] font-black text-[#0047AB] uppercase">
+                                                {trip.mode === 'package' ? 'PKG' : trip.mode === 'hourly' ? 'RENT' : trip.mode === 'outstation' ? 'RT' : 'ONE'}
+                                            </span>
+                                            <span className="w-0.5 h-0.5 rounded-full bg-slate-300"></span>
+                                            <span className="text-[9px] font-black text-slate-600">
+                                                ₹{Math.round(trip.totalFare).toLocaleString()}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <button
-                                onClick={() => shareReceipt(trip, { ...settings, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A' })}
-                                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-[#0047AB] hover:text-white transition-colors"
-                                aria-label={`Share receipt for ${trip.customerName}`}
-                            >
-                                <Share2 size={14} aria-hidden="true" />
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
+                                <button
+                                    onClick={() => shareReceipt(trip, { ...settings, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A' })}
+                                    className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-[#0047AB] hover:text-white transition-colors"
+                                    aria-label={`Share receipt for ${trip.customerName}`}
+                                >
+                                    <Share2 size={14} aria-hidden="true" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )
+            }
+        </div >
     );
 };
 
