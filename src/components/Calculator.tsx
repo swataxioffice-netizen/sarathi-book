@@ -19,7 +19,7 @@ const CabCalculator: React.FC = () => {
     const [distance, setDistance] = useState<string>('');
     const [days, setDays] = useState<string>('1');
     const [passengers, setPassengers] = useState<number>(4);
-    const [selectedVehicle, setSelectedVehicle] = useState<string>('swift');
+    const [selectedVehicle, setSelectedVehicle] = useState<string>('hatchback');
     const [customRate, setCustomRate] = useState<number>(14);
     const [result, setResult] = useState<any>(null);
     const [calculatingDistance, setCalculatingDistance] = useState(false);
@@ -54,11 +54,13 @@ const CabCalculator: React.FC = () => {
     }, [pickupCoords, dropCoords]);
 
     useEffect(() => {
-        if (passengers > 7) {
-            setSelectedVehicle('tempo');
+        if (passengers > 12) {
+            setSelectedVehicle('tempo_18');
+        } else if (passengers > 7) {
+            setSelectedVehicle('tempo_12');
         } else if (passengers > 4) {
-            if (!['innova', 'crysta', 'tempo'].includes(selectedVehicle)) {
-                setSelectedVehicle('innova');
+            if (!['suv', 'innova_old', 'premium_suv', 'tempo_12', 'tempo_18'].includes(selectedVehicle)) {
+                setSelectedVehicle('suv');
             }
         }
     }, [passengers]);
@@ -216,7 +218,7 @@ const CabCalculator: React.FC = () => {
                     <div className="space-y-1">
                         <Label icon={<Users size={10} aria-hidden="true" />} text="Passengers" htmlFor="cab-passengers" />
                         <select id="cab-passengers" value={passengers} onChange={e => setPassengers(Number(e.target.value))} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
-                            {[4, 7, 12].map(n => <option key={n} value={n}>{n} Seats</option>)}
+                            {[4, 7, 12, 18, 24].map(n => <option key={n} value={n}>{n} Passengers</option>)}
                         </select>
                     </div>
                     {tripType === 'roundtrip' && (
@@ -234,7 +236,8 @@ const CabCalculator: React.FC = () => {
                         <Label icon={<Car size={10} aria-hidden="true" />} text="Vehicle" htmlFor="cab-vehicle" />
                         <select id="cab-vehicle" value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
                             {VEHICLES.filter(v => {
-                                if (passengers > 7) return v.id === 'tempo';
+                                if (passengers > 12) return v.seats >= 18;
+                                if (passengers > 7) return v.seats >= 12;
                                 if (passengers > 4) return v.seats >= 7;
                                 return true;
                             }).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}

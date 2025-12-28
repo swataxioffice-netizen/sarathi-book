@@ -47,7 +47,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     const [packageName, setPackageName] = useState('');
     const [numPersons, setNumPersons] = useState<number>(4);
     const [packagePrice, setPackagePrice] = useState<number>(0);
-    const [selectedVehicleId, setSelectedVehicleId] = useState<string>('swift');
+    const [selectedVehicleId, setSelectedVehicleId] = useState<string>(currentVehicle?.id || VEHICLES[0].id);
     const [days, setDays] = useState<number>(1);
     const [customRate, setCustomRate] = useState<number>(14);
     const [currentStep, setCurrentStep] = useState(1);
@@ -523,19 +523,44 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                             </div>
 
                             <div>
-                                <label className="tn-label">Vehicle Details</label>
+                                <label className="tn-label">Select Vehicle from Fleet</label>
                                 <div className="grid grid-cols-2 gap-3">
-                                    {VEHICLES.map((v) => (
-                                        <button
-                                            key={v.id}
-                                            onClick={() => setSelectedVehicleId(v.id)}
-                                            className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${selectedVehicleId === v.id ? 'bg-blue-50 border-blue-600 text-blue-900 shadow-sm' : 'bg-slate-50 border-transparent text-slate-400'}`}
-                                        >
-                                            <span className="text-[10px] font-black uppercase tracking-widest">{v.name}</span>
-                                            <span className="text-[11px] font-bold">₹{mode === 'outstation' ? v.roundRate : v.dropRate}/KM</span>
-                                        </button>
-                                    ))}
+                                    {(settings.vehicles.length > 0 ? settings.vehicles : VEHICLES).map((v) => {
+                                        // Find rate info based on categoryId if it's a saved vehicle, or use v directly if it's from VEHICLES
+                                        const vInfo = 'categoryId' in v
+                                            ? VEHICLES.find(cat => cat.id === v.categoryId) || VEHICLES[1] // Fallback to Sedan
+                                            : v as typeof VEHICLES[0];
+
+                                        const isActive = selectedVehicleId === v.id;
+                                        const rate = mode === 'outstation' ? vInfo.roundRate : vInfo.dropRate;
+
+                                        return (
+                                            <button
+                                                key={v.id}
+                                                onClick={() => {
+                                                    setSelectedVehicleId(v.id);
+                                                    setCustomRate(rate);
+                                                }}
+                                                className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${isActive ? 'bg-blue-50 border-blue-600 text-blue-900 shadow-sm' : 'bg-slate-50 border-transparent text-slate-400'}`}
+                                            >
+                                                <span className="text-[10px] font-black uppercase tracking-widest truncate w-full text-center">
+                                                    {'number' in v ? v.number : v.name}
+                                                </span>
+                                                <span className="text-[11px] font-bold">
+                                                    {'number' in v ? (v as any).model : `₹${rate}/KM`}
+                                                </span>
+                                                {'number' in v && (
+                                                    <span className="text-[9px] font-black text-blue-600 uppercase">₹{rate}/KM</span>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
+                                {settings.vehicles.length === 0 && (
+                                    <p className="text-[9px] text-orange-500 font-bold mt-2 uppercase tracking-wide">
+                                        Tip: Add your vehicles in Profile for faster selection
+                                    </p>
+                                )}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">

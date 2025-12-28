@@ -3,19 +3,23 @@ export type FareMode = 'distance' | 'hourly' | 'outstation' | 'drop' | 'package'
 export interface VehicleType {
     id: string;
     name: string;
+    popularModels: string;
     dropRate: number;
     roundRate: number;
     seats: number;
-    type: 'Sedan' | 'SUV' | 'Van';
+    type: 'Hatchback' | 'Sedan' | 'SUV' | 'Van';
     minKm: number;
     batta: number;
 }
 
 export const VEHICLES: VehicleType[] = [
-    { id: 'swift', name: 'Sedan (Swift/Etios)', dropRate: 14, roundRate: 12, seats: 4, type: 'Sedan', minKm: 250, batta: 400 },
-    { id: 'innova', name: 'SUV (Innova)', dropRate: 19, roundRate: 18, seats: 7, type: 'SUV', minKm: 250, batta: 500 },
-    { id: 'crysta', name: 'Innova Crysta', dropRate: 22, roundRate: 20, seats: 7, type: 'SUV', minKm: 250, batta: 600 },
-    { id: 'tempo', name: 'Tempo Traveller', dropRate: 28, roundRate: 28, seats: 12, type: 'Van', minKm: 300, batta: 800 }
+    { id: 'hatchback', name: 'Hatchback', popularModels: 'Indica, WagonR, Celerio', dropRate: 11, roundRate: 10, seats: 4, type: 'Hatchback', minKm: 250, batta: 300 },
+    { id: 'sedan', name: 'Sedan', popularModels: 'Etios, Swift Dzire, Aura, Xcent', dropRate: 14, roundRate: 12, seats: 4, type: 'Sedan', minKm: 250, batta: 400 },
+    { id: 'suv', name: 'SUV / MUV', popularModels: 'Ertiga, Tavera, Xylo, Marazzo', dropRate: 17, roundRate: 15, seats: 7, type: 'SUV', minKm: 250, batta: 500 },
+    { id: 'innova_old', name: 'Innova (Old)', popularModels: 'Toyota Innova (G/V models)', dropRate: 19, roundRate: 18, seats: 7, type: 'SUV', minKm: 250, batta: 500 },
+    { id: 'premium_suv', name: 'Premium SUV', popularModels: 'Innova Crysta', dropRate: 22, roundRate: 20, seats: 7, type: 'SUV', minKm: 250, batta: 600 },
+    { id: 'tempo_12', name: 'Tempo (12s)', popularModels: 'Force Traveller (12 Seater)', dropRate: 23, roundRate: 23, seats: 12, type: 'Van', minKm: 300, batta: 700 },
+    { id: 'tempo_18', name: 'Tempo (18s)', popularModels: 'Force Traveller (18 Seater)', dropRate: 27, roundRate: 27, seats: 18, type: 'Van', minKm: 300, batta: 800 }
 ];
 
 export interface Trip {
@@ -119,10 +123,10 @@ export const calculateFare = (
     // 1. Driver Batta (Standard per day)
     let driverBatta = (vehicle ? vehicle.batta : 400);
     if (mode === 'drop' && distance > 400) {
-        driverBatta = 600;
+        driverBatta = Math.max(driverBatta, 600);
     } else if (mode === 'outstation') {
         const kmPerDay = distance / (days || 1);
-        driverBatta = kmPerDay > 500 ? 600 : 500;
+        if (kmPerDay > 500) driverBatta = Math.max(driverBatta, 600);
     }
 
     // 2. Extra Night Batta (Optional from form)

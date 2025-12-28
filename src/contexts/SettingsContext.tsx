@@ -8,6 +8,7 @@ interface Vehicle {
     id: string;
     number: string;
     model: string;
+    categoryId?: string;
 }
 
 interface Settings {

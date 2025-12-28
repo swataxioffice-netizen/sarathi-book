@@ -6,12 +6,13 @@ import { validateGSTIN } from '../utils/validation';
 import DocumentVault from './DocumentVault';
 import GoogleSignInButton from './GoogleSignInButton';
 import { supabase } from '../utils/supabase';
+import { VEHICLES } from '../utils/fare';
 
 const Profile: React.FC = () => {
     const { user, signOut, loading: authLoading } = useAuth();
     const { settings, updateSettings, saveSettings } = useSettings();
     const [newVehicleNumber, setNewVehicleNumber] = useState('');
-    const [newVehicleModel, setNewVehicleModel] = useState('');
+    const [selectedCategoryId, setSelectedCategoryId] = useState(VEHICLES[0].id);
     const [isEditingPhoto, setIsEditingPhoto] = useState(false);
     const [customPhotoUrl, setCustomPhotoUrl] = useState('');
     const [savingSection, setSavingSection] = useState<'business' | 'banking' | 'fleet' | 'language' | null>(null);
@@ -23,9 +24,19 @@ const Profile: React.FC = () => {
     const [docStats, setDocStats] = useState({ hasFullVehicle: false, hasFullDriver: false });
 
     const addVehicle = () => {
-        if (!newVehicleNumber || !newVehicleModel) return;
-        updateSettings({ vehicles: [...settings.vehicles, { id: crypto.randomUUID(), number: newVehicleNumber, model: newVehicleModel }] });
-        setNewVehicleNumber(''); setNewVehicleModel('');
+        if (!newVehicleNumber || !selectedCategoryId) return;
+        const vehicleInfo = VEHICLES.find(v => v.id === selectedCategoryId);
+        if (!vehicleInfo) return;
+
+        updateSettings({
+            vehicles: [...settings.vehicles, {
+                id: crypto.randomUUID(),
+                number: newVehicleNumber,
+                model: vehicleInfo.name, // Display name like "Sedan"
+                categoryId: vehicleInfo.id
+            }]
+        });
+        setNewVehicleNumber('');
     };
 
     const deleteVehicle = (id: string) => {
@@ -462,27 +473,53 @@ const Profile: React.FC = () => {
                         ))}
                     </div>
 
-                    <div className="flex gap-2 pt-1 border-t border-slate-100 mt-2">
-                        <input
-                            type="text"
-                            value={newVehicleNumber}
-                            onChange={(e) => setNewVehicleNumber(e.target.value.toUpperCase())}
-                            className="flex-[2] tn-input h-9 text-[10px] font-bold uppercase"
-                            placeholder="TN-00-AA-0000"
-                        />
-                        <input
-                            type="text"
-                            value={newVehicleModel}
-                            onChange={(e) => setNewVehicleModel(e.target.value)}
-                            className="flex-1 tn-input h-9 text-[10px] font-bold"
-                            placeholder="Model"
-                        />
+                    <div className="flex flex-col gap-2 pt-1 border-t border-slate-100 mt-2">
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Vehicle Number</label>
+                                <input
+                                    type="text"
+                                    value={newVehicleNumber}
+                                    onChange={(e) => setNewVehicleNumber(e.target.value.toUpperCase())}
+                                    className="tn-input h-10 text-[10px] font-bold uppercase w-full"
+                                    placeholder="TN-00-AA-0000"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Category</label>
+                                <select
+                                    value={selectedCategoryId}
+                                    onChange={(e) => setSelectedCategoryId(e.target.value)}
+                                    className="tn-input h-10 text-[10px] font-bold w-full bg-slate-50"
+                                >
+                                    {VEHICLES.map(v => (
+                                        <option key={v.id} value={v.id}>
+                                            {v.name} (₹{v.dropRate}/KM)
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {selectedCategoryId && (
+                            <div className="bg-blue-50/50 p-2 rounded-xl border border-blue-100 space-y-1">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[9px] font-black text-blue-600 uppercase">Popular Models:</span>
+                                    <span className="text-[9px] font-bold text-slate-600">{VEHICLES.find(v => v.id === selectedCategoryId)?.popularModels}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[9px] font-black text-blue-600 uppercase">Driver Batta:</span>
+                                    <span className="text-[9px] font-bold text-slate-600">₹{VEHICLES.find(v => v.id === selectedCategoryId)?.batta} / Day</span>
+                                </div>
+                            </div>
+                        )}
+
                         <button
                             onClick={addVehicle}
-                            disabled={!newVehicleNumber || !newVehicleModel}
-                            className="w-10 h-10 flex items-center justify-center bg-slate-900 text-white rounded-xl shadow-md disabled:opacity-50 active:scale-95 transition-all"
+                            disabled={!newVehicleNumber || !selectedCategoryId}
+                            className="w-full h-11 bg-slate-900 text-white rounded-xl shadow-md disabled:opacity-50 active:scale-95 transition-all font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
                         >
-                            <Plus size={16} />
+                            <Plus size={16} /> Add Vehicle to Fleet
                         </button>
                     </div>
 
