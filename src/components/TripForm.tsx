@@ -363,7 +363,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                     onPlaceSelected={(place) => setFromLoc(place.address)}
                                     onMapClick={() => { setActiveMapField('from'); setShowMap(true); }}
                                     placeholder="e.g. Chennai Airport"
-                                    className="tn-input pl-11 pr-24 transition-all focus:ring-2 focus:ring-blue-500/20"
+                                    className="tn-input pl-4 pr-24 transition-all focus:ring-2 focus:ring-blue-500/20"
                                     rightContent={
                                         <>
                                             <button
@@ -395,7 +395,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                     onPlaceSelected={(place) => setToLoc(place.address)}
                                     onMapClick={() => { setActiveMapField('to'); setShowMap(true); }}
                                     placeholder="e.g. Pondicherry"
-                                    className="tn-input pl-11 pr-12"
+                                    className="tn-input pl-4 pr-12"
                                     rightContent={
                                         <button
                                             onClick={() => startListening(setToLoc)}
