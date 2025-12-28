@@ -27,6 +27,15 @@ const Header: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    {/* Language Toggle */}
+                    <button
+                        onClick={() => alert('Language selection coming soon!')}
+                        className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-600 font-bold text-xs hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all font-serif"
+                        aria-label="Change Language"
+                    >
+                        A/अ
+                    </button>
+
                     {needRefresh ? (
                         <button
                             onClick={() => updateServiceWorker(true)}
@@ -34,13 +43,13 @@ const Header: React.FC = () => {
                             className="flex items-center gap-1 bg-red-50 text-red-600 px-3 py-1.5 rounded-full border border-red-100 animate-pulse shadow-sm"
                         >
                             <RefreshCw size={14} className="animate-spin-slow" aria-hidden="true" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">New Version Available</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest">Update</span>
                         </button>
                     ) : (
                         <button
                             onClick={() => window.location.reload()}
                             aria-label="Refresh page"
-                            className="flex items-center gap-1 bg-slate-50 text-slate-400 px-3 py-1.5 rounded-full border border-slate-100 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                            className="w-9 h-9 flex items-center justify-center bg-slate-50 text-slate-400 rounded-full border border-slate-100 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                         >
                             <RefreshCw size={14} aria-hidden="true" />
                         </button>

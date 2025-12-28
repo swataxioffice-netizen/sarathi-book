@@ -3,7 +3,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { calculateFare } from '../utils/fare';
 import type { Trip } from '../utils/fare';
 import { shareReceipt } from '../utils/pdf';
-import { Clock, Navigation, Save, Share2, UserPlus, ArrowLeft, Receipt, Star, History } from 'lucide-react';
+import { Clock, Navigation, Save, UserPlus, ArrowLeft, Receipt, Star, History, MapPin, Camera, Mic, MessageCircle } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
 import { VEHICLES } from '../utils/fare';
 
@@ -38,12 +38,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     const [waitingHours, setWaitingHours] = useState<number>(0);
     const [isHillStation, setIsHillStation] = useState(false);
     const [petCharge, setPetCharge] = useState(false);
-    const [tollCharge, setTollCharge] = useState(false);
-    const [parkingCharge, setParkingCharge] = useState(false);
-    const [waitingCharge, setWaitingCharge] = useState(false);
 
     const [permitCharge, setPermitCharge] = useState(0);
-    const [permitActive, setPermitActive] = useState(false);
 
     // Package details
     const [packageName, setPackageName] = useState('');
@@ -123,7 +119,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             if ('contacts' in navigator && 'ContactsManager' in window) {
                 const props = ['name', 'tel'];
                 const opts = { multiple: false };
-                // @ts-ignore - Contact Picker API is not yet in TypeScript definitions
+                // @ts-ignore
                 const contacts = await navigator.contacts.select(props, opts);
                 if (contacts && contacts.length > 0) {
                     const contact = contacts[0];
@@ -142,26 +138,78 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
         }
     };
 
+    const handleCurrentLocation = () => {
+        if (!navigator.geolocation) {
+            alert('Geolocation is not supported by your browser');
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const { latitude, longitude } = position.coords;
+            try {
+                // Attempt reverse geocoding (using a free service like Nominatim - strictly for client-side convenience)
+                // Note: In production, consider a more robust API or handle rate limits.
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.display_name) {
+                        // Extract a shorter name if possible, or use full
+                        setFromLoc(data.display_name.split(',').slice(0, 3).join(', '));
+                        return;
+                    }
+                }
+                setFromLoc(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+            } catch (e) {
+                setFromLoc(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+            }
+        }, () => {
+            alert('Unable to retrieve your location');
+        });
+    };
+
+    // Voice Input Helper (Simple implementation using Web Speech API if available)
+    const startListening = (setField: (val: string) => void) => {
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            // @ts-ignore
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'en-US'; // Default to English, could be made dynamic
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.start();
+
+            recognition.onresult = (event: any) => {
+                const transcript = event.results[0][0].transcript;
+                setField(transcript);
+            };
+
+            recognition.onerror = (event: any) => {
+                console.error('Speech recognition error', event.error);
+            };
+        } else {
+            alert('Voice input not supported in this browser.');
+        }
+    };
+
 
 
     const handleCalculate = () => {
         const activeRate = (mode === 'drop' || mode === 'outstation') ? customRate : settings.ratePerKm;
-        // Add permit charge if active
-        const permit = permitActive ? permitCharge : 0;
+        const permit = permitCharge; // Use value directly
         const res = calculateFare({
             startKm,
             endKm,
             baseFare: settings.baseFare,
             ratePerKm: activeRate,
-            toll: tollCharge ? toll : 0,
-            parking: parkingCharge ? parking : 0,
+            toll: toll, // Use value directly
+            parking: parking, // Use value directly
             gstEnabled: localGst,
             mode,
             vehicleId: selectedVehicleId,
             hourlyRate: settings.hourlyRate,
-            durationHours: mode === 'hourly' ? (endKm - startKm) : 0, // In hourly mode distance is hours in some contexts, but let's be careful
+            durationHours: mode === 'hourly' ? (endKm - startKm) : 0,
             nightBata: nightBata ? settings.nightBata : 0,
-            waitingHours: waitingCharge ? waitingHours : 0,
+            waitingHours: waitingHours, // Use value directly
             isHillStation,
             petCharge,
             packagePrice: (mode === 'package' || mode === 'fixed') ? packagePrice : 0,
@@ -172,11 +220,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             extraHourRate: 0,
             days: mode === 'outstation' ? days : 1
         });
-        // Add permit to total and fare
-        // Add permit to total and fare
+
         setResult({ ...res, total: res.total + permit, fare: res.fare + permit, distance: res.distance ?? (endKm - startKm) });
         setIsCalculated(true);
-
     };
 
     const handleSave = () => {
@@ -186,8 +232,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             customerName: customerName || 'Cash Guest',
             customerGst,
             from: fromLoc, to: toLoc, billingAddress, startKm, endKm, startTime, endTime,
-            toll: tollCharge ? toll : 0,
-            parking: parkingCharge ? parking : 0,
+            toll: toll,
+            parking: parking,
             nightBata: nightBata ? settings.nightBata : 0,
             baseFare: settings.baseFare,
             ratePerKm: settings.ratePerKm,
@@ -205,15 +251,15 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             packageName: mode === 'package' ? packageName : undefined,
             numberOfPersons: mode === 'package' ? numPersons : undefined,
             packagePrice: mode === 'package' ? packagePrice : undefined,
-            permit: permitActive ? permitCharge : 0
+            permit: permitCharge
         });
-        setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setTollCharge(false); setParkingCharge(false); setWaitingCharge(false); setPermitActive(false); setPermitCharge(0); setIsCalculated(false); setResult(null);
+        setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setPermitCharge(0); setIsCalculated(false); setResult(null);
         setPackageName(''); setNumPersons(1); setPackagePrice(0);
         setInvoiceDate(new Date().toISOString().split('T')[0]);
     };
 
     const handleClear = () => {
-        setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setTollCharge(false); setParkingCharge(false); setWaitingCharge(false); setIsCalculated(false); setResult(null);
+        setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setPermitCharge(0); setIsCalculated(false); setResult(null);
         setPackageName(''); setNumPersons(1); setPackagePrice(0);
         setInvoiceDate(new Date().toISOString().split('T')[0]);
     };
@@ -296,14 +342,32 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                             <div className="col-span-2">
                                 <label className="tn-label">Pickup Location</label>
                                 <div className="relative">
-                                    <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                     <input
                                         type="text"
-                                        className="tn-input pl-11"
+                                        className="tn-input pl-11 pr-20 transition-all focus:ring-2 focus:ring-blue-500/20"
                                         placeholder="e.g. Chennai Airport"
                                         value={fromLoc}
                                         onChange={(e) => setFromLoc(e.target.value)}
                                     />
+                                    {/* Action Buttons */}
+                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                                        <button
+                                            onClick={() => startListening(setFromLoc)}
+                                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                            title="Voice Input"
+                                        >
+                                            <Mic size={16} />
+                                        </button>
+                                        <button
+                                            onClick={handleCurrentLocation}
+                                            className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1"
+                                            title="Current Location"
+                                        >
+                                            <MapPin size={14} className="fill-current" />
+                                            <span className="text-[9px] font-black uppercase">GPS</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -313,16 +377,30 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                     <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 rotate-90" size={16} />
                                     <input
                                         type="text"
-                                        className="tn-input pl-11"
+                                        className="tn-input pl-11 pr-10"
                                         placeholder="e.g. Pondicherry"
                                         value={toLoc}
                                         onChange={(e) => setToLoc(e.target.value)}
                                     />
+                                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                                        <button
+                                            onClick={() => startListening(setToLoc)}
+                                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                        >
+                                            <Mic size={16} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
                             <div>
-                                <label className="tn-label">Start KM</label>
+                                <label className="tn-label flex items-center justify-between">
+                                    Start KM
+                                    <label className="text-[9px] text-blue-600 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100">
+                                        <Camera size={10} /> Photo
+                                        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={() => alert('Photo attached!')} />
+                                    </label>
+                                </label>
                                 <input
                                     type="number"
                                     className="tn-input"
@@ -332,7 +410,13 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                             </div>
 
                             <div>
-                                <label className="tn-label">End KM</label>
+                                <label className="tn-label flex items-center justify-between">
+                                    End KM
+                                    <label className="text-[9px] text-blue-600 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100">
+                                        <Camera size={10} /> Photo
+                                        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={() => alert('Photo attached!')} />
+                                    </label>
+                                </label>
                                 <input
                                     type="number"
                                     className="tn-input"
@@ -357,40 +441,42 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                         </div>
 
                         <div className="grid grid-cols-1 gap-3">
+                            <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100 mb-2">
+                                <p className="text-[10px] text-blue-700 font-medium text-center">
+                                    💡 Tip: Enter 0 to disable a charge. Values {'>'} 0 are automatically added.
+                                </p>
+                            </div>
+
                             {[
-                                { id: 'tollCharge', label: 'Toll Fees', state: tollCharge, setState: setTollCharge, input: toll, setInput: setToll },
-                                { id: 'parkingCharge', label: 'Parking Fees', state: parkingCharge, setState: setParkingCharge, input: parking, setInput: setParking },
-                                { id: 'waitingCharge', label: 'Waiting Time', state: waitingCharge, setState: setWaitingCharge, input: waitingHours, setInput: setWaitingHours, unit: 'Hrs' },
-                                { id: 'permitActive', label: 'Permit Charge', state: permitActive, setState: setPermitActive, input: permitCharge, setInput: setPermitCharge }
+                                { id: 'toll', label: 'Toll Fees', input: toll, setInput: setToll },
+                                { id: 'parking', label: 'Parking Fees', input: parking, setInput: setParking },
+                                { id: 'waiting', label: 'Waiting Time', input: waitingHours, setInput: setWaitingHours, unit: 'Hrs' },
+                                { id: 'permit', label: 'Permit Charge', input: permitCharge, setInput: setPermitCharge }
                             ].map((item) => (
-                                <div key={item.id} className={`p-4 rounded-2xl border-2 transition-all ${item.state ? 'bg-blue-50 border-blue-600 shadow-sm' : 'bg-slate-50 border-transparent'}`}>
-                                    <div className="flex items-center justify-between">
+                                <div key={item.id} className={`p-4 rounded-2xl border-2 transition-all ${Number(item.input) > 0 ? 'bg-blue-50 border-blue-600 shadow-sm' : 'bg-white border-slate-100'}`}>
+                                    <div className="flex items-center justify-between gap-4">
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.state ? 'bg-blue-600 text-white' : 'bg-white text-slate-400'}`}>
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${Number(item.input) > 0 ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-400'}`}>
                                                 <Receipt size={18} />
                                             </div>
-                                            <span className={`text-[13px] font-black uppercase tracking-wider ${item.state ? 'text-blue-900' : 'text-slate-900'}`}>{item.label}</span>
+                                            <div className="flex flex-col">
+                                                <span className={`text-[13px] font-black uppercase tracking-wider ${Number(item.input) > 0 ? 'text-blue-900' : 'text-slate-900'}`}>{item.label}</span>
+                                                <span className="text-[9px] font-bold text-slate-400">{Number(item.input) > 0 ? 'Active' : 'Not Added'}</span>
+                                            </div>
                                         </div>
-                                        <button
-                                            onClick={() => item.setState(!item.state)}
-                                            className={`w-12 h-6 rounded-full transition-all relative ${item.state ? 'bg-blue-600' : 'bg-slate-200'}`}
-                                        >
-                                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${item.state ? 'left-7' : 'left-1'}`} />
-                                        </button>
-                                    </div>
-                                    {item.state && (
-                                        <div className="mt-4 flex items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
-                                            <span className="text-[11px] font-black text-blue-900 opacity-60">AMOUNT:</span>
+                                        <div className="flex items-center gap-2">
+                                            {Number(item.input) > 0 && <span className="text-[11px] font-black text-blue-900 opacity-60">₹</span>}
                                             <input
                                                 type="number"
-                                                className="bg-white border border-blue-200 rounded-lg px-3 py-2 text-sm font-bold w-full outline-none focus:ring-2 focus:ring-blue-600/20"
-                                                placeholder={`Enter ${item.unit || 'amount'}...`}
+                                                className={`tn-input w-24 text-right font-black ${Number(item.input) > 0 ? 'text-blue-900 bg-white border-blue-200' : 'text-slate-400 bg-slate-50 border-transparent'}`}
+                                                placeholder="0"
                                                 value={item.input || ''}
                                                 onChange={(e) => item.setInput(Number(e.target.value))}
+                                                onFocus={(e) => e.target.select()}
                                             />
-                                            {item.unit && <span className="text-[11px] font-black text-blue-900">{item.unit}</span>}
+                                            {item.unit && <span className="text-[10px] font-bold text-slate-400 w-6">{item.unit}</span>}
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -423,9 +509,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                     />
                                     <button
                                         onClick={handleImportContact}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-50 text-blue-600 p-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-50 text-blue-600 p-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors flex items-center gap-1"
                                     >
-                                        Import
+                                        <UserPlus size={14} /> Pick Contact
                                     </button>
                                 </div>
                             </div>
@@ -456,14 +542,19 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                         onChange={(e) => setCustomRate(Number(e.target.value))}
                                     />
                                 </div>
-                                <div className="flex items-end">
-                                    <button
-                                        onClick={() => setNightBata(!nightBata)}
-                                        className={`w-full py-3 rounded-xl border-2 font-black text-[11px] uppercase tracking-wider transition-all h-12 flex items-center justify-center gap-2 ${nightBata ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-slate-50 border-transparent text-slate-400'}`}
-                                    >
-                                        <Clock size={14} />
-                                        Night Bat{nightBata ? 'ta' : 'ta'}
-                                    </button>
+                                <div className="flex items-end h-full pb-1">
+                                    <label className={`w-full py-3 px-4 rounded-xl border-2 font-black text-[11px] uppercase tracking-wider transition-all cursor-pointer flex items-center justify-between ${nightBata ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={nightBata}
+                                                onChange={() => setNightBata(!nightBata)}
+                                                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                            />
+                                            <span>Night Batta</span>
+                                        </div>
+                                        <span>₹{settings.nightBata}</span>
+                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -538,7 +629,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                                 waitingHours,
                                                 hillStationCharges: result.hillStationCharges,
                                                 petCharges: result.petCharges,
-                                                permit: permitActive ? permitCharge : 0,
+                                                permit: permitCharge,
                                                 ratePerKm: customRate
                                             };
                                             shareReceipt(tripData, {
@@ -550,10 +641,10 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                                 gstEnabled: localGst
                                             });
                                         }}
-                                        className="w-full py-4 rounded-2xl border-2 border-slate-200 font-black text-[11px] uppercase tracking-widest text-slate-600 flex items-center justify-center gap-2 hover:bg-slate-50"
+                                        className="w-full py-4 rounded-2xl border-2 border-[#25D366] bg-[#25D366]/5 font-black text-[11px] uppercase tracking-widest text-[#25D366] flex items-center justify-center gap-2 hover:bg-[#25D366]/10"
                                     >
-                                        <Share2 size={16} />
-                                        Share Quote
+                                        <MessageCircle size={18} />
+                                        Share on WhatsApp
                                     </button>
 
                                     <div className="grid grid-cols-2 gap-3">
