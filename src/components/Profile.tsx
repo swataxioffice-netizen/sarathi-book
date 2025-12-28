@@ -13,6 +13,8 @@ const Profile: React.FC = () => {
     const { settings, updateSettings, saveSettings } = useSettings();
     const [newVehicleNumber, setNewVehicleNumber] = useState('');
     const [selectedCategoryId, setSelectedCategoryId] = useState(VEHICLES[0].id);
+    const [newVehicleModel, setNewVehicleModel] = useState('');
+    const [isCustomModel, setIsCustomModel] = useState(false);
     const [isEditingPhoto, setIsEditingPhoto] = useState(false);
     const [customPhotoUrl, setCustomPhotoUrl] = useState('');
     const [savingSection, setSavingSection] = useState<'business' | 'banking' | 'fleet' | 'language' | null>(null);
@@ -24,7 +26,7 @@ const Profile: React.FC = () => {
     const [docStats, setDocStats] = useState({ hasFullVehicle: false, hasFullDriver: false });
 
     const addVehicle = () => {
-        if (!newVehicleNumber || !selectedCategoryId) return;
+        if (!newVehicleNumber || !selectedCategoryId || (!newVehicleModel && !isCustomModel)) return;
         const vehicleInfo = VEHICLES.find(v => v.id === selectedCategoryId);
         if (!vehicleInfo) return;
 
@@ -32,11 +34,13 @@ const Profile: React.FC = () => {
             vehicles: [...settings.vehicles, {
                 id: crypto.randomUUID(),
                 number: newVehicleNumber,
-                model: vehicleInfo.name, // Display name like "Sedan"
+                model: newVehicleModel || vehicleInfo.name,
                 categoryId: vehicleInfo.id
             }]
         });
         setNewVehicleNumber('');
+        setNewVehicleModel('');
+        setIsCustomModel(false);
     };
 
     const deleteVehicle = (id: string) => {
@@ -486,34 +490,68 @@ const Profile: React.FC = () => {
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Category</label>
                                 <select
                                     value={selectedCategoryId}
-                                    onChange={(e) => setSelectedCategoryId(e.target.value)}
+                                    onChange={(e) => {
+                                        setSelectedCategoryId(e.target.value);
+                                        setNewVehicleModel('');
+                                        setIsCustomModel(false);
+                                    }}
                                     className="tn-input h-10 text-[10px] font-bold w-full bg-slate-50"
                                 >
                                     {VEHICLES.map(v => (
                                         <option key={v.id} value={v.id}>
-                                            {v.name} (₹{v.dropRate}/KM)
+                                            {v.name}
                                         </option>
                                     ))}
                                 </select>
                             </div>
                         </div>
 
-                        {selectedCategoryId && (
-                            <div className="bg-blue-50/50 p-2 rounded-xl border border-blue-100 space-y-1">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[9px] font-black text-blue-600 uppercase">Popular Models:</span>
-                                    <span className="text-[9px] font-bold text-slate-600">{VEHICLES.find(v => v.id === selectedCategoryId)?.popularModels}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[9px] font-black text-blue-600 uppercase">Driver Batta:</span>
-                                    <span className="text-[9px] font-bold text-slate-600">₹{VEHICLES.find(v => v.id === selectedCategoryId)?.batta} / Day</span>
-                                </div>
+                        <div className="grid grid-cols-1 gap-2">
+                            <div>
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Car Model</label>
+                                {!isCustomModel ? (
+                                    <select
+                                        value={newVehicleModel}
+                                        onChange={(e) => {
+                                            if (e.target.value === 'CUSTOM') {
+                                                setIsCustomModel(true);
+                                                setNewVehicleModel('');
+                                            } else {
+                                                setNewVehicleModel(e.target.value);
+                                            }
+                                        }}
+                                        className="tn-input h-10 text-[10px] font-bold w-full bg-slate-50"
+                                    >
+                                        <option value="">Select Model...</option>
+                                        {VEHICLES.find(v => v.id === selectedCategoryId)?.popularModels.split(', ').map(model => (
+                                            <option key={model} value={model}>{model}</option>
+                                        ))}
+                                        <option value="CUSTOM">+ Type Manual Model Name</option>
+                                    </select>
+                                ) : (
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={newVehicleModel}
+                                            onChange={(e) => setNewVehicleModel(e.target.value)}
+                                            className="tn-input h-10 text-[10px] font-bold w-full pr-16"
+                                            placeholder="Enter Car Model (e.g. Swift Dzire)"
+                                            autoFocus
+                                        />
+                                        <button
+                                            onClick={() => { setIsCustomModel(false); setNewVehicleModel(''); }}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-blue-600 uppercase"
+                                        >
+                                            Back
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                        )}
+                        </div>
 
                         <button
                             onClick={addVehicle}
-                            disabled={!newVehicleNumber || !selectedCategoryId}
+                            disabled={!newVehicleNumber || !selectedCategoryId || !newVehicleModel}
                             className="w-full h-11 bg-slate-900 text-white rounded-xl shadow-md disabled:opacity-50 active:scale-95 transition-all font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
                         >
                             <Plus size={16} /> Add Vehicle to Fleet
