@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import { useRegisterSW } from 'virtual:pwa-register/react';
+
 
 interface UpdateContextType {
     needRefresh: boolean;

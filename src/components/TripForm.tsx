@@ -20,12 +20,12 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     const [customerGst, setCustomerGst] = useState('');
     const [startKm, setStartKm] = useState<number>(0);
     const [endKm, setEndKm] = useState<number>(0);
-    const [startTime, setStartTime] = useState('');
-    const [endTime, setEndTime] = useState('');
+    const [startTime] = useState('');
+    const [endTime] = useState('');
     const [toll, setToll] = useState<number>(0);
     const [parking, setParking] = useState<number>(0);
     const [nightBata, setNightBata] = useState(false);
-    const [isCalculated, setIsCalculated] = useState(false);
+
     const [result, setResult] = useState<{ total: number; gst: number; fare: number; distance: number; waitingCharges: number; hillStationCharges: number; petCharges: number } | null>(null);
     const [notes, setNotes] = useState('');
     const [mode, setMode] = useState<Trip['mode']>('drop');
@@ -49,7 +49,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     const [numPersons, setNumPersons] = useState<number>(4);
     const [packagePrice, setPackagePrice] = useState<number>(0);
     const [selectedVehicleId, setSelectedVehicleId] = useState<string>('swift');
-    const [days, setDays] = useState<number>(1);
+    const [days] = useState<number>(1);
     const [customRate, setCustomRate] = useState<number>(14);
     const [currentStep, setCurrentStep] = useState(1);
     const totalSteps = 5;
@@ -141,22 +141,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
         }
     };
 
-    const captureTime = (type: 'start' | 'end') => {
-        const now = new Date();
-        const hours = now.getHours().toString().padStart(2, '0');
-        const minutes = now.getMinutes().toString().padStart(2, '0');
-        const timeStr = `${hours}:${minutes}`;
-        if (type === 'start') {
-            setStartTime(timeStr);
-            // Suggest end time as +4 hours if empty
-            if (!endTime) {
-                const end = new Date(now.getTime() + 4 * 60 * 60 * 1000);
-                setEndTime(`${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`);
-            }
-        } else {
-            setEndTime(timeStr);
-        }
-    };
+
 
     const handleCalculate = () => {
         const activeRate = (mode === 'drop' || mode === 'outstation') ? customRate : settings.ratePerKm;
@@ -188,7 +173,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
         });
         // Add permit to total and fare
         setResult({ ...res, total: res.total + permit, fare: res.fare + permit, distance: res.distance ?? (endKm - startKm) });
-        setIsCalculated(true);
+
     };
 
     const handleSave = () => {
@@ -219,13 +204,13 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             packagePrice: mode === 'package' ? packagePrice : undefined,
             permit: permitActive ? permitCharge : 0
         });
-        setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setTollCharge(false); setParkingCharge(false); setWaitingCharge(false); setPermitActive(false); setPermitCharge(0); setIsCalculated(false); setResult(null);
+        setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setTollCharge(false); setParkingCharge(false); setWaitingCharge(false); setPermitActive(false); setPermitCharge(0); setResult(null);
         setPackageName(''); setNumPersons(1); setPackagePrice(0);
         setInvoiceDate(new Date().toISOString().split('T')[0]);
     };
 
     const handleClear = () => {
-        setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setTollCharge(false); setParkingCharge(false); setWaitingCharge(false); setIsCalculated(false); setResult(null);
+        setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setTollCharge(false); setParkingCharge(false); setWaitingCharge(false); setResult(null);
         setPackageName(''); setNumPersons(1); setPackagePrice(0);
         setInvoiceDate(new Date().toISOString().split('T')[0]);
     };
@@ -573,7 +558,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                         <button
                                             onClick={() => {
                                                 setCurrentStep(1);
-                                                setResult(null);
+                                                handleClear();
                                             }}
                                             className="w-full py-4 font-bold text-red-400 uppercase tracking-widest text-[11px] border-2 border-red-50 rounded-xl"
                                         >
