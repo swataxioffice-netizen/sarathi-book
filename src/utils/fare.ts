@@ -12,10 +12,10 @@ export interface VehicleType {
 }
 
 export const VEHICLES: VehicleType[] = [
-    { id: 'swift', name: 'Sedan (Swift/Etios)', dropRate: 14, roundRate: 13, seats: 4, type: 'Sedan', minKm: 300, batta: 400 },
-    { id: 'innova', name: 'SUV (Innova)', dropRate: 19, roundRate: 18, seats: 7, type: 'SUV', minKm: 300, batta: 500 },
-    { id: 'crysta', name: 'Innova Crysta', dropRate: 22, roundRate: 20, seats: 7, type: 'SUV', minKm: 300, batta: 600 },
-    { id: 'tempo', name: 'Tempo Traveller', dropRate: 28, roundRate: 28, seats: 12, type: 'Van', minKm: 300, batta: 600 }
+    { id: 'swift', name: 'Sedan (Swift/Etios)', dropRate: 14, roundRate: 12, seats: 4, type: 'Sedan', minKm: 250, batta: 400 },
+    { id: 'innova', name: 'SUV (Innova)', dropRate: 19, roundRate: 18, seats: 7, type: 'SUV', minKm: 250, batta: 500 },
+    { id: 'crysta', name: 'Innova Crysta', dropRate: 22, roundRate: 20, seats: 7, type: 'SUV', minKm: 250, batta: 600 },
+    { id: 'tempo', name: 'Tempo Traveller', dropRate: 28, roundRate: 28, seats: 12, type: 'Van', minKm: 300, batta: 800 }
 ];
 
 export interface Trip {
@@ -116,28 +116,37 @@ export const calculateFare = (
     // If ratePerKm is provided (non-zero), use it. Otherwise use vehicle default.
     const activeRate = ratePerKm > 0 ? ratePerKm : (vehicle ? (mode === 'outstation' ? vehicle.roundRate : vehicle.dropRate) : 13);
 
-    // If nightBata is provided (non-zero), use it. Otherwise use vehicle default.
-    const activeBatta = nightBata > 0 ? nightBata : (vehicle ? vehicle.batta : 400);
+    // 1. Driver Batta (Standard per day)
+    let driverBatta = (vehicle ? vehicle.batta : 400);
+    if (mode === 'drop' && distance > 400) {
+        driverBatta = 600;
+    } else if (mode === 'outstation') {
+        const kmPerDay = distance / (days || 1);
+        driverBatta = kmPerDay > 500 ? 600 : 500;
+    }
 
-    // Min KM logic
-    const activeMinKm = vehicle ? vehicle.minKm : (mode === 'outstation' ? 300 : 100);
+    // 2. Extra Night Batta (Optional from form)
+    // In TripForm, nightBata is either settings.nightBata (e.g. 300) or 0
+    const totalDailyBatta = driverBatta + nightBata;
+
+    // 3. Min KM logic
+    const activeMinKm = vehicle ? vehicle.minKm : (mode === 'outstation' ? 250 : 100);
 
     // TN Drop/Outstation Logic
     if (mode === 'drop') {
         const effectiveDistance = Math.max(100, distance);
         taxableFare = effectiveDistance * activeRate;
-        taxableFare += activeBatta;
+        taxableFare += totalDailyBatta;
 
     } else if (mode === 'outstation') {
         const minKmForTotalDays = activeMinKm * days;
         const effectiveDistance = Math.max(minKmForTotalDays, distance);
         taxableFare = effectiveDistance * activeRate;
-        taxableFare += (activeBatta * days);
+        taxableFare += (totalDailyBatta * days);
 
     } else if (mode === 'hourly') {
-        taxableFare = (durationHours * hourlyRate);
-        taxableFare += nightBata;
-        // Local rental (8/80 type) often has a base, handled by durationHours * hourlyRate if durationHours is high
+        taxableFare = (durationHours * hourlyRate) + nightBata;
+        // Local rental doesn't usually have per-day batta in this specific way
     } else if (mode === 'package') {
         const extraKms = Math.max(0, distance - (baseKmLimit || 0));
         const extraHr = Math.max(0, (actualHours || 0) - (baseHourLimit || 0));

@@ -181,62 +181,74 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
 
 
     const handleCalculate = () => {
-        const activeRate = (mode === 'drop' || mode === 'outstation') ? customRate : settings.ratePerKm;
-        const permit = permitCharge; // Use value directly
+        const activeRate = (mode === 'distance' || mode === 'drop' || mode === 'outstation') ? customRate : (mode === 'hourly' ? settings.hourlyRate : 0);
+        const permit = permitCharge;
+
+        // For hourly rental, we use durationHours from a new state or manual input
+        // For now, let's assume we use waitingHours or a dedicated field if needed
+        // But the user complained about the formula, so let's make it robust.
+
         const res = calculateFare({
             startKm,
             endKm,
             baseFare: settings.baseFare,
             ratePerKm: activeRate,
-            toll: toll, // Use value directly
-            parking: parking, // Use value directly
+            toll: toll,
+            parking: parking,
             gstEnabled: localGst,
             mode,
             vehicleId: selectedVehicleId,
             hourlyRate: settings.hourlyRate,
-            durationHours: mode === 'hourly' ? (endKm - startKm) : 0,
+            durationHours: mode === 'hourly' ? waitingHours : 0, // Using waitingHours field as duration for hourly mode
             nightBata: nightBata ? settings.nightBata : 0,
-            waitingHours: waitingHours, // Use value directly
+            waitingHours: mode === 'hourly' ? 0 : waitingHours,
             isHillStation,
             petCharge,
             packagePrice: (mode === 'package' || mode === 'fixed') ? packagePrice : 0,
-            actualHours: 0,
-            baseKmLimit: 0,
-            baseHourLimit: 0,
-            extraKmRate: 0,
-            extraHourRate: 0,
             days: mode === 'outstation' ? days : 1
         });
 
-        setResult({ ...res, total: res.total + permit, fare: res.fare + permit, distance: res.distance ?? (endKm - startKm) });
+        setResult({
+            ...res,
+            total: res.total + permit,
+            fare: res.fare + permit,
+            distance: res.distance ?? (endKm - startKm)
+        });
         setIsCalculated(true);
     };
 
     const handleSave = () => {
         if (!result) return;
+        const activeRate = (mode === 'distance' || mode === 'drop' || mode === 'outstation') ? customRate : (mode === 'hourly' ? settings.hourlyRate : 0);
+
         onSaveTrip({
             id: crypto.randomUUID(),
             customerName: customerName || 'Cash Guest',
             customerGst,
-            from: fromLoc, to: toLoc, billingAddress, startKm, endKm, startTime, endTime,
+            from: fromLoc,
+            to: toLoc,
+            billingAddress,
+            startKm,
+            endKm,
+            startTime,
+            endTime,
             toll: toll,
             parking: parking,
             nightBata: nightBata ? settings.nightBata : 0,
             baseFare: settings.baseFare,
-            ratePerKm: settings.ratePerKm,
+            ratePerKm: activeRate,
             totalFare: result.total,
             gst: result.gst,
             date: new Date(invoiceDate).toISOString(),
             mode,
-            durationHours: mode === 'hourly' ? startKm : undefined,
+            durationHours: mode === 'hourly' ? waitingHours : undefined,
             hourlyRate: mode === 'hourly' ? settings.hourlyRate : undefined,
             notes: notes || '',
-            waitingHours,
+            waitingHours: mode === 'hourly' ? 0 : waitingHours,
             waitingCharges: result.waitingCharges,
             hillStationCharges: result.hillStationCharges,
             petCharges: result.petCharges,
             packageName: mode === 'package' ? packageName : undefined,
-            numberOfPersons: mode === 'package' ? numPersons : undefined,
             packagePrice: mode === 'package' ? packagePrice : undefined,
             permit: permitCharge
         });
