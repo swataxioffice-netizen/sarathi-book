@@ -3,6 +3,8 @@ import { useSettings } from '../contexts/SettingsContext';
 import { calculateFare } from '../utils/fare';
 import type { Trip } from '../utils/fare';
 import { shareReceipt } from '../utils/pdf';
+import PlacesAutocomplete from './PlacesAutocomplete';
+import MapPicker from './MapPicker';
 import { Clock, Navigation, Save, UserPlus, ArrowLeft, Receipt, Star, History, MapPin, Camera, Mic, MessageCircle } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
 import { VEHICLES } from '../utils/fare';
@@ -51,8 +53,21 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     const [currentStep, setCurrentStep] = useState(1);
     const totalSteps = 5;
 
+    // Map State
+    const [showMap, setShowMap] = useState(false);
+    const [activeMapField, setActiveMapField] = useState<'from' | 'to'>('from');
+
     const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, totalSteps));
     const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+
+    const handleMapSelect = (pickupAddr: string, dropAddr: string, _dist: number) => {
+        if (activeMapField === 'from') {
+            setFromLoc(pickupAddr);
+        } else {
+            setToLoc(dropAddr || pickupAddr); // MapPicker returns both usually, but let's use what makes sense
+        }
+        setShowMap(false);
+    };
 
     // Helper function to get state name from GSTIN
     const getStateFromGSTIN = (gstin: string): string => {
@@ -340,57 +355,56 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="col-span-2">
-                                <label className="tn-label">Pickup Location</label>
-                                <div className="relative">
-                                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                    <input
-                                        type="text"
-                                        className="tn-input pl-11 pr-20 transition-all focus:ring-2 focus:ring-blue-500/20"
-                                        placeholder="e.g. Chennai Airport"
-                                        value={fromLoc}
-                                        onChange={(e) => setFromLoc(e.target.value)}
-                                    />
-                                    {/* Action Buttons */}
-                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                                        <button
-                                            onClick={() => startListening(setFromLoc)}
-                                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                            title="Voice Input"
-                                        >
-                                            <Mic size={16} />
-                                        </button>
-                                        <button
-                                            onClick={handleCurrentLocation}
-                                            className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1"
-                                            title="Current Location"
-                                        >
-                                            <MapPin size={14} className="fill-current" />
-                                            <span className="text-[9px] font-black uppercase">GPS</span>
-                                        </button>
-                                    </div>
-                                </div>
+                                <PlacesAutocomplete
+                                    label="Pickup Location"
+                                    icon={<MapPin size={16} />}
+                                    value={fromLoc}
+                                    onChange={setFromLoc}
+                                    onPlaceSelected={(place) => setFromLoc(place.address)}
+                                    onMapClick={() => { setActiveMapField('from'); setShowMap(true); }}
+                                    placeholder="e.g. Chennai Airport"
+                                    className="tn-input pl-11 pr-24 transition-all focus:ring-2 focus:ring-blue-500/20"
+                                    rightContent={
+                                        <>
+                                            <button
+                                                onClick={() => startListening(setFromLoc)}
+                                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                title="Voice Input"
+                                            >
+                                                <Mic size={16} />
+                                            </button>
+                                            <button
+                                                onClick={handleCurrentLocation}
+                                                className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1"
+                                                title="Current Location"
+                                            >
+                                                <MapPin size={14} className="fill-current" />
+                                                <span className="text-[9px] font-black uppercase">GPS</span>
+                                            </button>
+                                        </>
+                                    }
+                                />
                             </div>
 
                             <div className="col-span-2">
-                                <label className="tn-label">Destination</label>
-                                <div className="relative">
-                                    <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 rotate-90" size={16} />
-                                    <input
-                                        type="text"
-                                        className="tn-input pl-11 pr-10"
-                                        placeholder="e.g. Pondicherry"
-                                        value={toLoc}
-                                        onChange={(e) => setToLoc(e.target.value)}
-                                    />
-                                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                                <PlacesAutocomplete
+                                    label="Destination"
+                                    icon={<Navigation className="rotate-90" size={16} />}
+                                    value={toLoc}
+                                    onChange={setToLoc}
+                                    onPlaceSelected={(place) => setToLoc(place.address)}
+                                    onMapClick={() => { setActiveMapField('to'); setShowMap(true); }}
+                                    placeholder="e.g. Pondicherry"
+                                    className="tn-input pl-11 pr-12"
+                                    rightContent={
                                         <button
                                             onClick={() => startListening(setToLoc)}
                                             className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                         >
                                             <Mic size={16} />
                                         </button>
-                                    </div>
-                                </div>
+                                    }
+                                />
                             </div>
 
                             <div>
@@ -667,6 +681,12 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             </div>
 
 
+            {showMap && (
+                <MapPicker
+                    onLocationSelect={handleMapSelect}
+                    onClose={() => setShowMap(false)}
+                />
+            )}
         </div>
     );
 };

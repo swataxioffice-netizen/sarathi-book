@@ -11,6 +11,7 @@ interface PlacesAutocompleteProps {
     className?: string;
     label?: string;
     icon?: React.ReactNode;
+    rightContent?: React.ReactNode;
 }
 
 const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
@@ -21,7 +22,8 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
     placeholder,
     className,
     label,
-    icon
+    icon,
+    rightContent
 }) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
@@ -86,16 +88,20 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                     className={className || "tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs pr-10"}
                     placeholder={placeholder || "Start typing..."}
                 />
-                {onMapClick && (
-                    <button
-                        type="button"
-                        onClick={onMapClick}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-slate-200 rounded-md transition-colors"
-                        title="Select on map"
-                    >
-                        <Map size={16} className="text-slate-500" />
-                    </button>
-                )}
+
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {onMapClick && (
+                        <button
+                            type="button"
+                            onClick={onMapClick}
+                            className="p-1.5 hover:bg-slate-200 rounded-md transition-colors"
+                            title="Select on map"
+                        >
+                            <Map size={16} className="text-slate-500" />
+                        </button>
+                    )}
+                    {rightContent}
+                </div>
             </div>
         </div>
     );
