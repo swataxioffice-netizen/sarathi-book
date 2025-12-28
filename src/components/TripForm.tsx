@@ -25,6 +25,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     const [toll, setToll] = useState<number>(0);
     const [parking, setParking] = useState<number>(0);
     const [nightBata, setNightBata] = useState(false);
+    const [isCalculated, setIsCalculated] = useState(false);
 
     const [result, setResult] = useState<{ total: number; gst: number; fare: number; distance: number; waitingCharges: number; hillStationCharges: number; petCharges: number } | null>(null);
     const [notes, setNotes] = useState('');
@@ -172,7 +173,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             days: mode === 'outstation' ? days : 1
         });
         // Add permit to total and fare
+        // Add permit to total and fare
         setResult({ ...res, total: res.total + permit, fare: res.fare + permit, distance: res.distance ?? (endKm - startKm) });
+        setIsCalculated(true);
 
     };
 
@@ -204,13 +207,13 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             packagePrice: mode === 'package' ? packagePrice : undefined,
             permit: permitActive ? permitCharge : 0
         });
-        setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setTollCharge(false); setParkingCharge(false); setWaitingCharge(false); setPermitActive(false); setPermitCharge(0); setResult(null);
+        setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setTollCharge(false); setParkingCharge(false); setWaitingCharge(false); setPermitActive(false); setPermitCharge(0); setIsCalculated(false); setResult(null);
         setPackageName(''); setNumPersons(1); setPackagePrice(0);
         setInvoiceDate(new Date().toISOString().split('T')[0]);
     };
 
     const handleClear = () => {
-        setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setTollCharge(false); setParkingCharge(false); setWaitingCharge(false); setResult(null);
+        setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setTollCharge(false); setParkingCharge(false); setWaitingCharge(false); setIsCalculated(false); setResult(null);
         setPackageName(''); setNumPersons(1); setPackagePrice(0);
         setInvoiceDate(new Date().toISOString().split('T')[0]);
     };
@@ -479,7 +482,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
 
                 {currentStep === 5 && (
                     <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                        {result && (
+                        {isCalculated && result && (
                             <div className="space-y-6">
                                 <div className="bg-slate-900 text-white p-6 rounded-3xl relative overflow-hidden shadow-2xl">
                                     {/* Glassmorphism Effect */}
