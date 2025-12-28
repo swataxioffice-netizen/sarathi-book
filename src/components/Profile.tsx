@@ -225,10 +225,7 @@ const Profile: React.FC = () => {
                                     <LogOut size={16} />
                                 </button>
                             ) : (
-                                <div className="w-28 opacity-100">
-                                    {/* Using a smaller custom wrapper to force compactness if GoogleSignInButton allows */}
-                                    <GoogleSignInButton className="w-full text-[10px] py-1 shadow-sm" />
-                                </div>
+                                <GoogleSignInButton variant="compact" />
                             )}
                         </div>
                     </div>

@@ -279,7 +279,7 @@ function AppContent() {
               </p>
               <GoogleSignInButton
                 text="Sign in with Google"
-                size="large"
+                variant="full"
                 className="w-full"
               />
               <button

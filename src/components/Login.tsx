@@ -53,7 +53,7 @@ const Login: React.FC = () => {
                 </div>
 
                 <div className="space-y-6 md:space-y-8 text-center pb-2 md:pb-4">
-                    <GoogleSignInButton size="large" className="w-full shadow-lg" />
+                    <GoogleSignInButton variant="full" className="w-full shadow-lg" />
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
                         OFFICIAL SOFTWARE FOR<br />THE TRANSPORT GUILD
                     </p>
