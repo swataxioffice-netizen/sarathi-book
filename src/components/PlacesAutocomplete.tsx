@@ -80,26 +80,27 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                 </label>
             )}
             <div className="relative">
+                {onMapClick && (
+                    <button
+                        type="button"
+                        onClick={onMapClick}
+                        className="absolute left-1 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors z-10"
+                        title="Select on map"
+                    >
+                        <Map size={18} />
+                    </button>
+                )}
+
                 <input
                     ref={inputRef}
                     type="text"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
-                    className={className || "tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs pr-10"}
+                    className={className || `tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs ${onMapClick ? 'pl-10' : 'pl-3'} pr-10`}
                     placeholder={placeholder || "Start typing..."}
                 />
 
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    {onMapClick && (
-                        <button
-                            type="button"
-                            onClick={onMapClick}
-                            className="p-1.5 hover:bg-slate-200 rounded-md transition-colors"
-                            title="Select on map"
-                        >
-                            <Map size={16} className="text-slate-500" />
-                        </button>
-                    )}
                     {rightContent}
                 </div>
             </div>

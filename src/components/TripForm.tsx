@@ -153,34 +153,6 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
         }
     };
 
-    const handleCurrentLocation = () => {
-        if (!navigator.geolocation) {
-            alert('Geolocation is not supported by your browser');
-            return;
-        }
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            const { latitude, longitude } = position.coords;
-            try {
-                // Attempt reverse geocoding (using a free service like Nominatim - strictly for client-side convenience)
-                // Note: In production, consider a more robust API or handle rate limits.
-                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.display_name) {
-                        // Extract a shorter name if possible, or use full
-                        setFromLoc(data.display_name.split(',').slice(0, 3).join(', '));
-                        return;
-                    }
-                }
-                setFromLoc(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-            } catch (e) {
-                setFromLoc(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-            }
-        }, () => {
-            alert('Unable to retrieve your location');
-        });
-    };
-
     // Voice Input Helper (Simple implementation using Web Speech API if available)
     const startListening = (setField: (val: string) => void) => {
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -363,25 +335,15 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                     onPlaceSelected={(place) => setFromLoc(place.address)}
                                     onMapClick={() => { setActiveMapField('from'); setShowMap(true); }}
                                     placeholder="e.g. Chennai Airport"
-                                    className="tn-input pl-4 pr-24 transition-all focus:ring-2 focus:ring-blue-500/20"
+                                    className="tn-input pl-10 pr-10 transition-all focus:ring-2 focus:ring-blue-500/20"
                                     rightContent={
-                                        <>
-                                            <button
-                                                onClick={() => startListening(setFromLoc)}
-                                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                title="Voice Input"
-                                            >
-                                                <Mic size={16} />
-                                            </button>
-                                            <button
-                                                onClick={handleCurrentLocation}
-                                                className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1"
-                                                title="Current Location"
-                                            >
-                                                <MapPin size={14} className="fill-current" />
-                                                <span className="text-[9px] font-black uppercase">GPS</span>
-                                            </button>
-                                        </>
+                                        <button
+                                            onClick={() => startListening(setFromLoc)}
+                                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                            title="Voice Input"
+                                        >
+                                            <Mic size={16} />
+                                        </button>
                                     }
                                 />
                             </div>
@@ -395,7 +357,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                     onPlaceSelected={(place) => setToLoc(place.address)}
                                     onMapClick={() => { setActiveMapField('to'); setShowMap(true); }}
                                     placeholder="e.g. Pondicherry"
-                                    className="tn-input pl-4 pr-12"
+                                    className="tn-input pl-10 pr-10"
                                     rightContent={
                                         <button
                                             onClick={() => startListening(setToLoc)}
