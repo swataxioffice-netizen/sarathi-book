@@ -11,24 +11,15 @@ interface UpdateContextType {
 const UpdateContext = createContext<UpdateContextType | undefined>(undefined);
 
 export const UpdateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const {
-        offlineReady: [offlineReady, _setOfflineReady],
-        needRefresh: [needRefresh, setNeedRefresh],
-        updateServiceWorker,
-    } = useRegisterSW({
-        onRegistered(r) {
-            // Check for updates every 10 minutes (aggressive for drivers)
-            r && setInterval(() => {
-                r.update();
-            }, 10 * 60 * 1000);
-        },
-        onRegisterError(error) {
-            console.error('SW registration error', error);
-        },
-    });
-
     return (
-        <UpdateContext.Provider value={{ needRefresh, setNeedRefresh, updateServiceWorker, offlineReady }}>
+        <UpdateContext.Provider
+            value={{
+                needRefresh: false,
+                setNeedRefresh: () => { },
+                updateServiceWorker: async () => { },
+                offlineReady: false,
+            }}
+        >
             {children}
         </UpdateContext.Provider>
     );

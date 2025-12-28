@@ -617,26 +617,7 @@ const Profile: React.FC = () => {
                 </div>
             </div>
 
-            {/* 8. Help & Support */}
-            <div className="pt-2">
-                <div className="flex items-center gap-2 px-1 mb-2">
-                    <CheckCircle size={14} className="text-green-500" />
-                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-green-500 underline-offset-4">Support</h3>
-                </div>
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-                    <p className="text-xs text-slate-600 font-bold mb-4">Need help using Sarathi Book? Message our support team on WhatsApp.</p>
-                    <a
-                        href="https://wa.me/919952749408?text=I%20need%20help%20with%20Sarathi%20Book"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="w-full bg-[#25D366] text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 active:scale-95 transition-all"
-                    >
-                        <MessageCircle size={16} /> Chat on WhatsApp
-                    </a>
-                </div>
-            </div>
-
-            {/* 9. System Health */}
+            {/* 8. System Health */}
             <div className="pt-2">
                 <div className="flex items-center gap-2 px-1 mb-2">
                     <RefreshCw size={14} className="text-orange-500" />
@@ -673,14 +654,56 @@ const Profile: React.FC = () => {
                 </div>
             </div>
 
-            {/* 10. Sign Out */}
-            <div className="pt-4">
-                <button
-                    onClick={signOut}
-                    className="w-full bg-red-50 text-red-500 border border-red-100 px-6 py-4 rounded-xl font-black text-sm uppercase tracking-widest hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
-                >
-                    <LogOut size={18} /> Sign Out
-                </button>
+            {/* 9. Help & Support */}
+            <div className="pt-2">
+                <div className="flex items-center gap-2 px-1 mb-2">
+                    <CheckCircle size={14} className="text-green-500" />
+                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-green-500 underline-offset-4">Support</h3>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                    <p className="text-xs text-slate-600 font-bold mb-4">Need help using Sarathi Book? Message our support team on WhatsApp.</p>
+                    <a
+                        href="https://wa.me/919952749408?text=I%20need%20help%20with%20Sarathi%20Book"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-full bg-[#25D366] text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 active:scale-95 transition-all"
+                    >
+                        <MessageCircle size={16} /> Chat on WhatsApp
+                    </a>
+                </div>
+            </div>
+
+            {/* 10. Legal & Compliance Footer */}
+            <div className="pt-8 pb-4 text-center space-y-3">
+                <div className="flex justify-center gap-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    <span className="cursor-pointer hover:text-slate-600">Terms</span>
+                    <span className="text-slate-200">•</span>
+                    <span className="cursor-pointer hover:text-slate-600">Privacy</span>
+                    <span className="text-slate-200">•</span>
+                    <span className="cursor-pointer hover:text-slate-600">Compliance</span>
+                </div>
+
+                <div className="space-y-1">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                        Designed for Indian Transport Operations
+                    </p>
+                    <p className="text-[7px] font-bold text-slate-300 uppercase tracking-tighter max-w-[200px] mx-auto leading-relaxed">
+                        In compliance with Ministry of Road Transport & Highways (MoRTH) digital documentation guidelines.
+                    </p>
+                </div>
+
+                <div className="pt-2">
+                    <p className="text-[10px] font-black text-slate-900 tracking-tight">
+                        © {new Date().getFullYear()} SARATHI BOOK
+                    </p>
+                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                        All Rights Reserved
+                    </p>
+                </div>
+
+                <p className="text-[8px] text-slate-300 font-medium italic">
+                    v1.0.4 - Heavy Duty Construction
+                </p>
             </div>
         </div >
     );

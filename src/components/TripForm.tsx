@@ -3,7 +3,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { calculateFare } from '../utils/fare';
 import type { Trip } from '../utils/fare';
 import { shareReceipt } from '../utils/pdf';
-import { Clock, Navigation, Save, Share2, ChevronDown, ChevronUp, FileText, Phone, UserPlus, Users, Car } from 'lucide-react';
+import { Clock, Navigation, Save, Share2, UserPlus, ArrowLeft, Receipt, Star, History } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
 import { VEHICLES } from '../utils/fare';
 
@@ -40,7 +40,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     const [tollCharge, setTollCharge] = useState(false);
     const [parkingCharge, setParkingCharge] = useState(false);
     const [waitingCharge, setWaitingCharge] = useState(false);
-    const [showAdditional, setShowAdditional] = useState(false);
+
     const [permitCharge, setPermitCharge] = useState(0);
     const [permitActive, setPermitActive] = useState(false);
 
@@ -51,6 +51,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     const [selectedVehicleId, setSelectedVehicleId] = useState<string>('swift');
     const [days, setDays] = useState<number>(1);
     const [customRate, setCustomRate] = useState<number>(14);
+    const [currentStep, setCurrentStep] = useState(1);
+    const totalSteps = 5;
+
+    const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+    const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
     // Helper function to get state name from GSTIN
     const getStateFromGSTIN = (gstin: string): string => {
@@ -137,9 +142,20 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     };
 
     const captureTime = (type: 'start' | 'end') => {
-        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-        if (type === 'start') setStartTime(timeStr);
-        else setEndTime(timeStr);
+        const now = new Date();
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const timeStr = `${hours}:${minutes}`;
+        if (type === 'start') {
+            setStartTime(timeStr);
+            // Suggest end time as +4 hours if empty
+            if (!endTime) {
+                const end = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+                setEndTime(`${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`);
+            }
+        } else {
+            setEndTime(timeStr);
+        }
     };
 
     const handleCalculate = () => {
@@ -147,14 +163,27 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
         // Add permit charge if active
         const permit = permitActive ? permitCharge : 0;
         const res = calculateFare({
-            startKm, endKm, baseFare: settings.baseFare, ratePerKm: activeRate, toll, parking,
-            gstEnabled: localGst, mode, vehicleId: selectedVehicleId, hourlyRate: settings.hourlyRate,
-            durationHours: mode === 'hourly' ? startKm : 0,
+            startKm,
+            endKm,
+            baseFare: settings.baseFare,
+            ratePerKm: activeRate,
+            toll: tollCharge ? toll : 0,
+            parking: parkingCharge ? parking : 0,
+            gstEnabled: localGst,
+            mode,
+            vehicleId: selectedVehicleId,
+            hourlyRate: settings.hourlyRate,
+            durationHours: mode === 'hourly' ? (endKm - startKm) : 0, // In hourly mode distance is hours in some contexts, but let's be careful
             nightBata: nightBata ? settings.nightBata : 0,
-            waitingHours, isHillStation, petCharge,
-            packagePrice: mode === 'package' ? packagePrice : (mode === 'fixed' ? packagePrice : 0),
+            waitingHours: waitingCharge ? waitingHours : 0,
+            isHillStation,
+            petCharge,
+            packagePrice: (mode === 'package' || mode === 'fixed') ? packagePrice : 0,
             actualHours: 0,
-            baseKmLimit: 0, baseHourLimit: 0, extraKmRate: 0, extraHourRate: 0,
+            baseKmLimit: 0,
+            baseHourLimit: 0,
+            extraKmRate: 0,
+            extraHourRate: 0,
             days: mode === 'outstation' ? days : 1
         });
         // Add permit to total and fare
@@ -202,491 +231,372 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     };
 
     return (
-        <div className="space-y-2">
-            {/* Page Title */}
-            <div className="px-2 py-1 text-center">
-                <h2 className="text-lg font-black uppercase tracking-wide text-slate-800 underline decoration-4 decoration-blue-500 underline-offset-4">INVOICES</h2>
-                <p className="text-slate-600 text-[10px] font-medium mt-0.5">Create and manage trip invoices</p>
+        <div className="space-y-4">
+            {/* Step Indicator */}
+            <div className="flex items-center justify-between mb-2">
+                <div className="flex gap-1.5">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                        <div
+                            key={s}
+                            className={`h-1.5 rounded-full transition-all duration-300 ${s <= currentStep ? (s === currentStep ? 'w-8 bg-blue-600' : 'w-4 bg-blue-400') : 'w-4 bg-slate-200'
+                                }`}
+                        />
+                    ))}
+                </div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Step {currentStep} of {totalSteps}</span>
             </div>
 
-            {/* Service Selection - Compact */}
-            <div className="bg-[var(--bg-card)] border border-slate-200 rounded-xl overflow-hidden flex shadow-sm">
-                {[
-                    { id: 'drop', label: 'ONE WAY' },
-                    { id: 'outstation', label: 'ROUND TRIP' },
-                    { id: 'hourly', label: 'RENTAL' },
-                    { id: 'package', label: 'PACKAGE' },
-                    { id: 'fixed', label: 'FIXED' }
-                ].map((m) => (
-                    <button
-                        key={m.id}
-                        onClick={() => setMode(m.id as any)}
-                        aria-pressed={mode === m.id}
-                        aria-label={`Switch to ${m.label} mode`}
-                        className={`flex-1 py-2 px-1 text-[10px] font-black tracking-wider border-r last:border-r-0 transition-all ${mode === m.id ? 'bg-[#0047AB] text-white' : 'bg-[var(--bg-card)] text-slate-600 hover:bg-slate-50'
-                            }`}
-                    >
-                        {m.label}
-                    </button>
-                ))}
-            </div>
-
-            {/* Guideline Banner - Helpful for Drivers */}
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-2.5 space-y-1.5 shadow-sm">
-                <div className="flex items-center gap-2 text-[#0047AB]">
-                    <div className="bg-white p-1 rounded-full shadow-sm">
-                        <FileText size={12} />
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-wider">Guide: When to use?</span>
-                </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                    <div className="flex items-start gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1 flex-shrink-0" />
-                        <p className="text-[9px] text-slate-700 leading-tight"><b className="text-slate-900">ONE WAY:</b> Dropping at airport/city. Min 100km billed.</p>
-                    </div>
-                    <div className="flex items-start gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1 flex-shrink-0" />
-                        <p className="text-[9px] text-slate-700 leading-tight"><b className="text-slate-900">ROUND TRIP:</b> Outstation trips. Min 250km/day billed.</p>
-                    </div>
-                    <div className="flex items-start gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1 flex-shrink-0" />
-                        <p className="text-[9px] text-slate-700 leading-tight"><b className="text-slate-900">FIXED:</b> Special rate with companies. KM won't affect fare.</p>
-                    </div>
-                    <div className="flex items-start gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1 flex-shrink-0" />
-                        <p className="text-[9px] text-slate-700 leading-tight"><b className="text-slate-900">RENTAL:</b> Local hours (4hr/8hr/12hr) duty.</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Trip Details Form - Dense */}
-            <div className="bg-[var(--bg-card)] rounded-2xl border border-slate-200 shadow-sm p-2 space-y-1.5">
-                {/* Header Controls */}
-                <div className="flex items-center justify-between px-1 border-b border-slate-50 pb-1.5">
-                    <div className="flex flex-col">
-                        <label htmlFor="trip-date" className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Invoice Date</label>
-                        <input
-                            id="trip-date"
-                            type="date"
-                            value={invoiceDate}
-                            onChange={(e) => setInvoiceDate(e.target.value)}
-                            className="text-[11px] font-black bg-transparent border-none p-0 focus:ring-0 text-[#0047AB]"
-                        />
-                    </div>
-                    <button
-                        onClick={handleClear}
-                        className="text-[9px] font-black text-red-500 uppercase tracking-widest px-2 py-1 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
-                    >
-                        Clear All
-                    </button>
-                </div>
-
-                {/* Customer Section */}
-                <div className="space-y-1.5">
-                    <div>
-                        <label htmlFor="customer-name" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Customer Name</label>
-                        <input
-                            id="customer-name"
-                            type="text"
-                            value={customerName}
-                            onChange={(_) => setCustomerName(_.target.value)}
-                            className="tn-input h-8 bg-slate-50 border-slate-200 text-xs font-bold"
-                            placeholder="Customer Name"
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="customer-phone" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1.5">
-                            <Phone size={10} aria-hidden="true" /> Phone Number
-                        </label>
-                        <div className="flex gap-2">
-                            <input
-                                id="customer-phone"
-                                type="tel"
-                                value={customerPhone}
-                                onChange={(_) => setCustomerPhone(_.target.value)}
-                                className="tn-input h-8 bg-slate-50 border-slate-200 text-xs font-bold flex-1"
-                                placeholder="+91 99999 88888"
-                            />
-                            <button
-                                onClick={handleImportContact}
-                                className="h-8 w-10 flex items-center justify-center bg-blue-50 border border-blue-200 rounded-xl text-[#0047AB] hover:bg-blue-100 transition-all flex-shrink-0"
-                                title="Import from Contacts"
-                                aria-label="Import from Contacts"
-                            >
-                                <UserPlus size={18} aria-hidden="true" />
-                            </button>
+            <div className="tn-card overflow-hidden">
+                {currentStep === 1 && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                        <div>
+                            <h3 className="text-xl font-black text-slate-900 leading-tight">Choose Service</h3>
+                            <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wide">What kind of trip is this?</p>
                         </div>
-                    </div>
 
-                    <div>
-                        <label htmlFor="billing-address" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Billing Address</label>
-                        <textarea
-                            id="billing-address"
-                            value={billingAddress}
-                            onChange={(_) => setBillingAddress(_.target.value)}
-                            className="tn-input h-10 resize-none bg-slate-50 border-slate-200 text-xs font-bold pt-1.5 active:ring-0 leading-tight"
-                            placeholder="Address"
-                            rows={1}
-                        />
-                    </div>
-
-
-                    <div>
-                        <label htmlFor="customer-gst" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">GST Number</label>
-                        <div className="flex gap-2">
-                            <input
-                                id="customer-gst"
-                                type="text"
-                                value={customerGst}
-                                onChange={(_) => setCustomerGst(_.target.value.toUpperCase())}
-                                className={`tn-input h-8 bg-slate-50 border-slate-200 text-xs font-bold uppercase flex-1 ${customerGst && !validateGSTIN(customerGst) ? 'border-red-300 ring-1 ring-red-100' : ''}`}
-                                placeholder="GSTIN (Optional)"
-                                maxLength={15}
-                            />
-                            <button
-                                disabled={!customerGst || !validateGSTIN(customerGst)}
-                                onClick={() => setLocalGst(!localGst)}
-                                aria-label={localGst ? "Turn GST Off" : "Turn GST On"}
-                                aria-pressed={localGst}
-                                className={`h-8 px-3 rounded-xl text-[9px] font-black uppercase transition-all flex items-center justify-center gap-1.5 border flex-shrink-0 ${localGst ? 'bg-[#00965E] text-white border-[#00965E]' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
-                            >
-                                {localGst ? <Navigation size={12} fill="white" aria-hidden="true" /> : <div className="w-2.5 h-2.5 border-2 border-slate-400 rounded-full" aria-hidden="true" />}
-                                {localGst ? 'GST ON' : 'GST OFF'}
-                            </button>
+                        <div className="grid grid-cols-1 gap-3">
+                            {[
+                                { id: 'drop', label: 'One Way Drop', desc: 'Point to point travel', icon: Navigation },
+                                { id: 'outstation', label: 'Round Trip', desc: 'Multi-day outstation', icon: History },
+                                { id: 'hourly', label: 'Local Hourly', desc: 'City rental by hours', icon: Clock },
+                                { id: 'package', label: 'Tour Package', desc: 'Fixed rate packages', icon: Star },
+                                { id: 'fixed', label: 'Fixed Price', desc: 'Pre-negotiated rate', icon: Receipt }
+                            ].map((s) => {
+                                const Icon = s.icon;
+                                return (
+                                    <button
+                                        key={s.id}
+                                        onClick={() => { setMode(s.id as any); nextStep(); }}
+                                        className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${mode === s.id ? 'bg-blue-50 border-blue-600 shadow-sm' : 'bg-slate-50 border-transparent hover:border-slate-200'
+                                            }`}
+                                    >
+                                        <div className={`p-3 rounded-xl ${mode === s.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 border border-slate-100'}`}>
+                                            <Icon size={20} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className={`text-xs font-black uppercase tracking-wider ${mode === s.id ? 'text-blue-900' : 'text-slate-900'}`}>{s.label}</p>
+                                            <p className="text-[10px] font-bold text-slate-400 mt-0.5 leading-tight">{s.desc}</p>
+                                        </div>
+                                        {mode === s.id && (
+                                            <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+                                                <div className="w-2 h-2 bg-white rounded-full" />
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
                         </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-50">
-                        <div className="space-y-1">
-                            <label htmlFor="passengers-select" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1.5">
-                                <Users size={10} aria-hidden="true" /> Passengers
-                            </label>
-                            <select
-                                id="passengers-select"
-                                value={numPersons}
-                                onChange={(e) => setNumPersons(Number(e.target.value))}
-                                className="tn-input h-10 py-1 text-[13px] font-bold text-center text-slate-900 bg-white"
-                            >
-                                {[4, 7, 12].map(n => (
-                                    <option key={n} value={n} className="text-slate-900">{n} Seats</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="space-y-1">
-                            <label htmlFor="vehicle-select" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1.5">
-                                <Car size={10} aria-hidden="true" /> Vehicle Type
-                            </label>
-                            <select
-                                id="vehicle-select"
-                                value={selectedVehicleId}
-                                onChange={(e) => setSelectedVehicleId(e.target.value)}
-                                className="tn-input h-10 py-1 text-[13px] font-bold text-slate-900 bg-white"
-                            >
-                                {VEHICLES.filter(v => {
-                                    if (numPersons === 12) return v.id === 'tempo';
-                                    if (numPersons === 7) return v.seats >= 7;
-                                    return true;
-                                }).map(v => (
-                                    <option key={v.id} value={v.id} className="text-slate-900">{v.name}</option>
-                                ))}
-                            </select>
-                        </div>
+                        <button
+                            onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'dashboard' }))}
+                            className="w-full py-4 font-bold text-slate-400 uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:text-slate-600 transition-colors"
+                        >
+                            <ArrowLeft size={14} />
+                            Back to Dashboard
+                        </button>
                     </div>
+                )}
 
-                    {(mode === 'drop' || mode === 'outstation') && (
-                        <div className="pt-2 border-t border-slate-50">
-                            <label htmlFor="custom-rate" className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-1 block"># Requested Rate / KM</label>
-                            <div className="relative">
+                {currentStep === 2 && (
+                    <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                        <div>
+                            <h3 className="text-xl font-black text-slate-900 leading-tight">Trip Details</h3>
+                            <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wide">Enter route and timing</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="col-span-2">
+                                <label className="tn-label">Pickup Location</label>
+                                <div className="relative">
+                                    <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <input
+                                        type="text"
+                                        className="tn-input pl-11"
+                                        placeholder="e.g. Chennai Airport"
+                                        value={fromLoc}
+                                        onChange={(e) => setFromLoc(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="col-span-2">
+                                <label className="tn-label">Destination</label>
+                                <div className="relative">
+                                    <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 rotate-90" size={16} />
+                                    <input
+                                        type="text"
+                                        className="tn-input pl-11"
+                                        placeholder="e.g. Pondicherry"
+                                        value={toLoc}
+                                        onChange={(e) => setToLoc(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="tn-label">Start KM</label>
                                 <input
-                                    id="custom-rate"
                                     type="number"
-                                    value={customRate}
-                                    onChange={(e) => setCustomRate(Number(e.target.value))}
-                                    className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-sm font-black text-[#0047AB]"
-                                    placeholder="Standard Rate"
+                                    className="tn-input"
+                                    value={startKm || ''}
+                                    onChange={(e) => setStartKm(Number(e.target.value))}
                                 />
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">
-                                    per KM
-                                </div>
+                            </div>
+
+                            <div>
+                                <label className="tn-label">End KM</label>
+                                <input
+                                    type="number"
+                                    className="tn-input"
+                                    value={endKm || ''}
+                                    onChange={(e) => setEndKm(Number(e.target.value))}
+                                />
                             </div>
                         </div>
-                    )}
-                </div>
 
-
-
-                {/* Locations Section */}
-                <div className="grid grid-cols-2 gap-2">
-                    <div>
-                        <label htmlFor="from-loc" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">From</label>
-                        <input
-                            id="from-loc"
-                            type="text"
-                            value={fromLoc}
-                            onChange={(_) => setFromLoc(_.target.value)}
-                            className="tn-input h-8 bg-slate-50 border-slate-200 text-xs font-bold"
-                            placeholder="Pickup"
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="to-loc" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">To</label>
-                        <input
-                            id="to-loc"
-                            type="text"
-                            value={toLoc}
-                            onChange={(_) => setToLoc(_.target.value)}
-                            className={`tn-input h-8 bg-slate-50 border-slate-200 text-xs font-bold ${mode === 'outstation' ? 'text-[#0047AB]' : ''}`}
-                            placeholder="Drop"
-                            readOnly={mode === 'outstation'}
-                        />
-                    </div>
-                </div>
-
-                <div>
-                    <label htmlFor="trip-notes" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Route / Notes</label>
-                    <input
-                        id="trip-notes"
-                        type="text"
-                        value={notes}
-                        onChange={(_) => setNotes(_.target.value)}
-                        className="tn-input h-8 bg-slate-50 border-slate-200 text-xs font-bold"
-                        placeholder="Details"
-                    />
-                </div>
-
-                {/* Meter and Time Section - Compact */}
-                {mode === 'package' ? (
-                    <div className="space-y-3 pt-1">
-                        <div className="grid grid-cols-[2fr,1fr] gap-3">
-                            <div className="space-y-1">
-                                <label htmlFor="package-name" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Package Name</label>
-                                <input id="package-name" type="text" value={packageName} onChange={(_) => setPackageName(_.target.value)} className="tn-input h-8 bg-slate-50 border-slate-200 text-xs font-bold" />
-                            </div>
-                            <div className="space-y-1">
-                                <label htmlFor="package-price" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Price</label>
-                                <input id="package-price" type="number" value={packagePrice || ''} onChange={(_) => setPackagePrice(Number(_.target.value))} className="tn-input h-8 bg-slate-50 border-slate-200 text-xs font-black text-[#0047AB]" />
-                            </div>
-                        </div>
-                    </div>
-                ) : mode === 'outstation' ? (
-                    <div className="space-y-2 pt-1 border-t border-slate-100">
-                        <div className="flex items-center justify-between px-2">
-                            <label htmlFor="trip-days" className="text-[10px] font-black text-[#0047AB] uppercase tracking-widest">Round Trip Support</label>
-                            <div className="flex items-center gap-2">
-                                <label htmlFor="trip-days" className="text-[10px] font-bold text-slate-400">Total Days:</label>
-                                <select
-                                    id="trip-days"
-                                    value={days}
-                                    onChange={(e) => setDays(Number(e.target.value))}
-                                    className="tn-input h-7 w-16 text-center text-[11px] font-black bg-white border-slate-200"
-                                >
-                                    {[1, 2, 3, 4, 5, 6, 7, 10, 15].map(d => <option key={d} value={d}>{d}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-                                <div>
-                                    <label className="text-[9px] font-black text-slate-400 uppercase block text-center mb-0.5">Start KM</label>
-                                    <input type="number" value={startKm || ''} onChange={(_) => setStartKm(Number(_.target.value))} className="tn-input h-8 text-center font-black text-sm bg-white border-slate-200 mb-1" placeholder="0" />
-                                </div>
-                                <div>
-                                    <label className="text-[9px] font-black text-slate-400 uppercase block text-center mb-0.5">Start Time</label>
-                                    <div className="flex gap-1">
-                                        <input type="text" value={startTime} onChange={(_) => setStartTime(_.target.value)} className="tn-input h-8 text-center font-bold text-xs bg-white border-slate-200 flex-1" placeholder="00:00" />
-                                        <button onClick={() => captureTime('start')} className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-50"><Clock size={14} /></button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-                                <div>
-                                    <label className="text-[9px] font-black text-slate-400 uppercase block text-center mb-0.5">End KM</label>
-                                    <input type="number" value={endKm || ''} onChange={(_) => setEndKm(Number(_.target.value))} className="tn-input h-8 text-center font-black text-sm bg-white border-slate-200 mb-1" placeholder="0" />
-                                </div>
-                                <div>
-                                    <label className="text-[9px] font-black text-slate-400 uppercase block text-center mb-0.5">End Time</label>
-                                    <div className="flex gap-1">
-                                        <input type="text" value={endTime} onChange={(_) => setEndTime(_.target.value)} className="tn-input h-8 text-center font-bold text-xs bg-white border-slate-200 flex-1" placeholder="00:00" />
-                                        <button onClick={() => captureTime('end')} className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-50"><Clock size={14} /></button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ) : mode === 'fixed' ? (
-                    <div className="space-y-1 pt-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block text-center">Agreed Fixed Amount</label>
-                        <input
-                            type="number"
-                            value={packagePrice || ''}
-                            onChange={(_) => setPackagePrice(Number(_.target.value))}
-                            className="tn-input h-12 text-center text-3xl font-black text-[#00965E] bg-slate-50 border-slate-200"
-                            placeholder="₹ 0.00"
-                        />
-                    </div>
-                ) : mode === 'hourly' ? (
-                    <div className="space-y-1 pt-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block text-center">Rental Hours</label>
-                        <input
-                            type="number"
-                            value={startKm || ''}
-                            onChange={(_) => setStartKm(Number(_.target.value))}
-                            className="tn-input h-12 text-center text-3xl font-black text-[#0047AB] bg-slate-50 border-slate-200"
-                            placeholder="0"
-                        />
-                    </div>
-                ) : (
-                    <div className="pt-1">
-                        <div className="grid grid-cols-2 gap-2">
-                            {/* Start */}
-                            <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-                                <div>
-                                    <label className="text-[9px] font-black text-slate-400 uppercase block text-center mb-0.5">Start KM</label>
-                                    <input type="number" value={startKm || ''} onChange={(_) => setStartKm(Number(_.target.value))} className="tn-input h-8 text-center font-black text-sm bg-white border-slate-200 mb-1" placeholder="0" />
-                                </div>
-                                <div>
-                                    <label className="text-[9px] font-black text-slate-400 uppercase block text-center mb-0.5">Start Time</label>
-                                    <div className="flex gap-1">
-                                        <input type="text" value={startTime} onChange={(_) => setStartTime(_.target.value)} className="tn-input h-8 text-center font-bold text-xs bg-white border-slate-200 flex-1" placeholder="00:00" />
-                                        <button onClick={() => captureTime('start')} className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-50"><Clock size={14} /></button>
-                                    </div>
-                                </div>
-                            </div>
-                            {/* End */}
-                            <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-                                <div>
-                                    <label className="text-[9px] font-black text-slate-400 uppercase block text-center mb-0.5">End KM</label>
-                                    <input type="number" value={endKm || ''} onChange={(_) => setEndKm(Number(_.target.value))} className="tn-input h-8 text-center font-black text-sm bg-white border-slate-200 mb-1" placeholder="0" />
-                                </div>
-                                <div>
-                                    <label className="text-[9px] font-black text-slate-400 uppercase block text-center mb-0.5">End Time</label>
-                                    <div className="flex gap-1">
-                                        <input type="text" value={endTime} onChange={(_) => setEndTime(_.target.value)} className="tn-input h-8 text-center font-bold text-xs bg-white border-slate-200 flex-1" placeholder="00:00" />
-                                        <button onClick={() => captureTime('end')} className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-50"><Clock size={14} /></button>
-                                    </div>
-                                </div>
-                            </div>
+                        <div className="flex gap-3">
+                            <button onClick={prevStep} className="flex-1 py-4 font-bold text-slate-400 uppercase tracking-widest text-[11px] border-2 border-slate-100 rounded-2xl">Back</button>
+                            <button onClick={nextStep} className="flex-[2] tn-button-primary">Continue</button>
                         </div>
                     </div>
                 )}
 
-                {/* Additional Charges - Compact */}
-                <div className="pt-2 border-t border-slate-100">
-                    <button onClick={() => setShowAdditional(!showAdditional)} className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-black text-[#0047AB] uppercase tracking-widest transition-all">
-                        <span>Additional Charges</span>
-                        {showAdditional ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </button>
+                {currentStep === 3 && (
+                    <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                        <div>
+                            <h3 className="text-xl font-black text-slate-900 leading-tight">Additional Charges</h3>
+                            <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wide">Tolls, parking, and extras</p>
+                        </div>
 
-                    {showAdditional && (
-                        <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                            {/* Batta */}
-                            <div className="flex items-center gap-2 py-1.5 border-b border-slate-200">
-                                <div className="flex-1">
-                                    <span className={`text-[10px] font-bold uppercase tracking-wide ${nightBata ? 'text-[#0047AB]' : 'text-slate-400'}`}>Batta</span>
+                        <div className="grid grid-cols-1 gap-3">
+                            {[
+                                { id: 'tollCharge', label: 'Toll Fees', state: tollCharge, setState: setTollCharge, input: toll, setInput: setToll },
+                                { id: 'parkingCharge', label: 'Parking Fees', state: parkingCharge, setState: setParkingCharge, input: parking, setInput: setParking },
+                                { id: 'waitingCharge', label: 'Waiting Time', state: waitingCharge, setState: setWaitingCharge, input: waitingHours, setInput: setWaitingHours, unit: 'Hrs' },
+                                { id: 'permitActive', label: 'Permit Charge', state: permitActive, setState: setPermitActive, input: permitCharge, setInput: setPermitCharge }
+                            ].map((item) => (
+                                <div key={item.id} className={`p-4 rounded-2xl border-2 transition-all ${item.state ? 'bg-blue-50 border-blue-600 shadow-sm' : 'bg-slate-50 border-transparent'}`}>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.state ? 'bg-blue-600 text-white' : 'bg-white text-slate-400'}`}>
+                                                <Receipt size={18} />
+                                            </div>
+                                            <span className={`text-[13px] font-black uppercase tracking-wider ${item.state ? 'text-blue-900' : 'text-slate-900'}`}>{item.label}</span>
+                                        </div>
+                                        <button
+                                            onClick={() => item.setState(!item.state)}
+                                            className={`w-12 h-6 rounded-full transition-all relative ${item.state ? 'bg-blue-600' : 'bg-slate-200'}`}
+                                        >
+                                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${item.state ? 'left-7' : 'left-1'}`} />
+                                        </button>
+                                    </div>
+                                    {item.state && (
+                                        <div className="mt-4 flex items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
+                                            <span className="text-[11px] font-black text-blue-900 opacity-60">AMOUNT:</span>
+                                            <input
+                                                type="number"
+                                                className="bg-white border border-blue-200 rounded-lg px-3 py-2 text-sm font-bold w-full outline-none focus:ring-2 focus:ring-blue-600/20"
+                                                placeholder={`Enter ${item.unit || 'amount'}...`}
+                                                value={item.input || ''}
+                                                onChange={(e) => item.setInput(Number(e.target.value))}
+                                            />
+                                            {item.unit && <span className="text-[11px] font-black text-blue-900">{item.unit}</span>}
+                                        </div>
+                                    )}
                                 </div>
-                                <button onClick={() => setNightBata(!nightBata)} className={`w-8 h-4 rounded-full relative transition-all ${nightBata ? 'bg-[#00965E]' : 'bg-slate-300'}`}>
-                                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${nightBata ? 'left-4.5' : 'left-0.5'}`} />
-                                </button>
-                                <div className="w-16">
-                                    <input type="number" value={settings.nightBata} readOnly className={`tn-input h-7 w-full text-center text-xs font-bold p-0 bg-white border-slate-300`} />
+                            ))}
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button onClick={prevStep} className="flex-1 py-4 font-bold text-slate-400 uppercase tracking-widest text-[11px] border-2 border-slate-100 rounded-2xl">Back</button>
+                            <button onClick={nextStep} className="flex-[2] tn-button-primary">Continue</button>
+                        </div>
+                    </div>
+                )}
+
+                {currentStep === 4 && (
+                    <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                        <div>
+                            <h3 className="text-xl font-black text-slate-900 leading-tight">Passenger Info</h3>
+                            <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wide">For PDF invoice generation</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="tn-label">Customer Name</label>
+                                <div className="relative">
+                                    <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <input
+                                        type="text"
+                                        className="tn-input pl-11"
+                                        placeholder="Guest Name"
+                                        value={customerName}
+                                        onChange={(e) => setCustomerName(e.target.value)}
+                                    />
+                                    <button
+                                        onClick={handleImportContact}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-50 text-blue-600 p-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors"
+                                    >
+                                        Import
+                                    </button>
                                 </div>
                             </div>
-                            {/* Hills */}
-                            <div className="flex items-center gap-2 py-1.5 border-b border-slate-200">
-                                <div className="flex-1">
-                                    <span className={`text-[10px] font-bold uppercase tracking-wide ${isHillStation ? 'text-[#0047AB]' : 'text-slate-400'}`}>Hills</span>
-                                </div>
-                                <button onClick={() => setIsHillStation(!isHillStation)} className={`w-8 h-4 rounded-full relative transition-all ${isHillStation ? 'bg-[#00965E]' : 'bg-slate-300'}`}>
-                                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${isHillStation ? 'left-4.5' : 'left-0.5'}`} />
-                                </button>
-                                <div className="w-16">
-                                    <input type="number" value={300} readOnly className={`tn-input h-7 w-full text-center text-xs font-bold p-0 bg-white border-slate-300`} />
-                                </div>
-                            </div>
-                            {/* Permit */}
-                            <div className="flex items-center gap-2 py-1.5 border-b border-slate-200">
-                                <div className="flex-1">
-                                    <span className={`text-[10px] font-bold uppercase tracking-wide ${permitActive ? 'text-[#0047AB]' : 'text-slate-400'}`}>Permit</span>
-                                </div>
-                                <button onClick={() => setPermitActive(!permitActive)} className={`w-8 h-4 rounded-full relative transition-all ${permitActive ? 'bg-[#00965E]' : 'bg-slate-300'}`}>
-                                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${permitActive ? 'left-4.5' : 'left-0.5'}`} />
-                                </button>
-                                <div className="w-16">
-                                    <input type="number" value={permitCharge || ''} onChange={e => setPermitCharge(Number(e.target.value))} disabled={!permitActive} className={`tn-input h-7 w-full text-center text-xs font-bold p-0 ${permitActive ? 'bg-white border-slate-300' : 'bg-transparent border-transparent'}`} placeholder="0" />
+
+                            <div>
+                                <label className="tn-label">Vehicle Details</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {VEHICLES.map((v) => (
+                                        <button
+                                            key={v.id}
+                                            onClick={() => setSelectedVehicleId(v.id)}
+                                            className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${selectedVehicleId === v.id ? 'bg-blue-50 border-blue-600 text-blue-900 shadow-sm' : 'bg-slate-50 border-transparent text-slate-400'}`}
+                                        >
+                                            <span className="text-[10px] font-black uppercase tracking-widest">{v.name}</span>
+                                            <span className="text-[11px] font-bold">₹{mode === 'outstation' ? v.roundRate : v.dropRate}/KM</span>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
-                            {/* Toll */}
-                            <div className="flex items-center gap-2 py-1.5 border-b border-slate-200">
-                                <div className="flex-1">
-                                    <span className={`text-[10px] font-bold uppercase tracking-wide ${tollCharge ? 'text-[#0047AB]' : 'text-slate-400'}`}>Toll</span>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="tn-label">Rate/KM (Editable)</label>
+                                    <input
+                                        type="number"
+                                        className="tn-input"
+                                        value={customRate || ''}
+                                        onChange={(e) => setCustomRate(Number(e.target.value))}
+                                    />
                                 </div>
-                                <button onClick={() => setTollCharge(!tollCharge)} className={`w-8 h-4 rounded-full relative transition-all ${tollCharge ? 'bg-[#00965E]' : 'bg-slate-300'}`}>
-                                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${tollCharge ? 'left-4.5' : 'left-0.5'}`} />
-                                </button>
-                                <div className="w-16">
-                                    <input type="number" value={toll || ''} onChange={e => setToll(Number(e.target.value))} disabled={!tollCharge} className={`tn-input h-7 w-full text-center text-xs font-bold p-0 ${tollCharge ? 'bg-white border-slate-300' : 'bg-transparent border-transparent'}`} placeholder="0" />
-                                </div>
-                            </div>
-                            {/* Parking */}
-                            <div className="flex items-center gap-2 py-1.5 border-b border-slate-200">
-                                <div className="flex-1">
-                                    <span className={`text-[10px] font-bold uppercase tracking-wide ${parkingCharge ? 'text-[#0047AB]' : 'text-slate-400'}`}>Parking</span>
-                                </div>
-                                <button onClick={() => setParkingCharge(!parkingCharge)} className={`w-8 h-4 rounded-full relative transition-all ${parkingCharge ? 'bg-[#00965E]' : 'bg-slate-300'}`}>
-                                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${parkingCharge ? 'left-4.5' : 'left-0.5'}`} />
-                                </button>
-                                <div className="w-16">
-                                    <input type="number" value={parking || ''} onChange={e => setParking(Number(e.target.value))} disabled={!parkingCharge} className={`tn-input h-7 w-full text-center text-xs font-bold p-0 ${parkingCharge ? 'bg-white border-slate-300' : 'bg-transparent border-transparent'}`} placeholder="0" />
-                                </div>
-                            </div>
-                            {/* Wait Hrs */}
-                            <div className="flex items-center gap-2 py-1.5">
-                                <div className="flex-1">
-                                    <span className={`text-[10px] font-bold uppercase tracking-wide ${waitingCharge ? 'text-[#0047AB]' : 'text-slate-400'}`}>Wait Hrs</span>
-                                </div>
-                                <button onClick={() => setWaitingCharge(!waitingCharge)} className={`w-8 h-4 rounded-full relative transition-all ${waitingCharge ? 'bg-[#00965E]' : 'bg-slate-300'}`}>
-                                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${waitingCharge ? 'left-4.5' : 'left-0.5'}`} />
-                                </button>
-                                <div className="w-16">
-                                    <input type="number" value={waitingHours || ''} onChange={e => setWaitingHours(Number(e.target.value))} disabled={!waitingCharge} className={`tn-input h-7 w-full text-center text-xs font-bold p-0 ${waitingCharge ? 'bg-white border-slate-300' : 'bg-transparent border-transparent'}`} placeholder="0" />
+                                <div className="flex items-end">
+                                    <button
+                                        onClick={() => setNightBata(!nightBata)}
+                                        className={`w-full py-3 rounded-xl border-2 font-black text-[11px] uppercase tracking-wider transition-all h-12 flex items-center justify-center gap-2 ${nightBata ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-slate-50 border-transparent text-slate-400'}`}
+                                    >
+                                        <Clock size={14} />
+                                        Night Bat{nightBata ? 'ta' : 'ta'}
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                    )}
-                </div>
 
-                <button onClick={handleCalculate} aria-label="Generate Invoice" className="w-full bg-[#0047AB] text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.2em] shadow-lg active:scale-[0.98] transition-all">
-                    <FileText size={16} fill="white" aria-hidden="true" /> Generate Invoice
-                </button>
+                        <div className="flex gap-3">
+                            <button onClick={prevStep} className="flex-1 py-4 font-bold text-slate-400 uppercase tracking-widest text-[11px] border-2 border-slate-100 rounded-2xl">Back</button>
+                            <button
+                                onClick={() => { handleCalculate(); nextStep(); }}
+                                className="flex-[2] tn-button-primary"
+                            >
+                                Calculate Fare
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {currentStep === 5 && (
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                        {result && (
+                            <div className="space-y-6">
+                                <div className="bg-slate-900 text-white p-6 rounded-3xl relative overflow-hidden shadow-2xl">
+                                    {/* Glassmorphism Effect */}
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full -mr-10 -mt-10" />
+
+                                    <div className="relative z-10 flex flex-col items-center text-center">
+                                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-400 mb-2">Final Amount</p>
+                                        <h4 className="text-5xl font-black mb-1">₹{result.total.toLocaleString()}</h4>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Includes Distance & All Taxes</p>
+
+                                        <div className="w-full h-px bg-white/10 my-6" />
+
+                                        <div className="grid grid-cols-3 w-full gap-4">
+                                            <div className="text-center">
+                                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Distance</p>
+                                                <p className="text-sm font-bold text-white">{result.distance} KM</p>
+                                            </div>
+                                            <div className="text-center border-x border-white/10">
+                                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Fare</p>
+                                                <p className="text-sm font-bold text-white">₹{result.fare}</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">GST (5%)</p>
+                                                <p className="text-sm font-bold text-white">₹{result.gst}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-3">
+                                    <button onClick={handleSave} className="tn-button-primary w-full bg-[#0047AB] hover:bg-blue-700 h-16 rounded-2xl shadow-lg border-b-4 border-blue-900 active:border-b-0 active:translate-y-1">
+                                        <Save size={20} />
+                                        <span>Save Invoice</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (!result) return;
+                                            const tripData: any = {
+                                                id: crypto.randomUUID(),
+                                                customerName: customerName || 'Valued Customer',
+                                                customerPhone,
+                                                customerGst,
+                                                from: fromLoc,
+                                                to: toLoc,
+                                                date: new Date(invoiceDate).toISOString(),
+                                                mode,
+                                                totalFare: result.total,
+                                                fare: result.fare,
+                                                gst: result.gst,
+                                                startKm,
+                                                endKm,
+                                                waitingCharges: result.waitingCharges,
+                                                waitingHours,
+                                                hillStationCharges: result.hillStationCharges,
+                                                petCharges: result.petCharges,
+                                                permit: permitActive ? permitCharge : 0,
+                                                ratePerKm: customRate
+                                            };
+                                            shareReceipt(tripData, {
+                                                companyName: settings.companyName,
+                                                companyAddress: settings.companyAddress,
+                                                driverPhone: settings.driverPhone,
+                                                gstin: settings.gstin,
+                                                vehicleNumber: currentVehicle?.number || '',
+                                                gstEnabled: localGst
+                                            });
+                                        }}
+                                        className="w-full py-4 rounded-2xl border-2 border-slate-200 font-black text-[11px] uppercase tracking-widest text-slate-600 flex items-center justify-center gap-2 hover:bg-slate-50"
+                                    >
+                                        <Share2 size={16} />
+                                        Share Quote
+                                    </button>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button onClick={prevStep} className="w-full py-4 font-bold text-slate-400 uppercase tracking-widest text-[11px] border-2 border-slate-100 rounded-xl">Back</button>
+                                        <button
+                                            onClick={() => {
+                                                setCurrentStep(1);
+                                                setResult(null);
+                                            }}
+                                            className="w-full py-4 font-bold text-red-400 uppercase tracking-widest text-[11px] border-2 border-red-50 rounded-xl"
+                                        >
+                                            Start Over
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
-            {/* Fare Results - Compact */}
-            {isCalculated && result && (
-                <div className="bg-slate-900 text-white rounded-2xl p-6 border border-white/10 shadow-xl space-y-6">
-                    <div className="text-center space-y-2">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Invoice Total</p>
-                        <div className="text-4xl font-black tabular-nums tracking-tight text-blue-400">₹{Math.round(result.total).toLocaleString()}</div>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/10">
-                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{result.distance} KM</span>
-                        </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                        <button onClick={handleSave} className="bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 border border-white/10 transition-all">
-                            <Save size={16} /> Save
-                        </button>
-                        <button
-                            onClick={() => shareReceipt({ ...result, id: '', customerName, customerGst, from: fromLoc, to: toLoc, notes, billingAddress, startKm, endKm, startTime, endTime, toll: tollCharge ? toll : 0, parking: parkingCharge ? parking : 0, nightBata: nightBata ? settings.nightBata : 0, baseFare: settings.baseFare, ratePerKm: settings.ratePerKm, totalFare: result.total, gst: result.gst, date: new Date(invoiceDate).toISOString(), mode, waitingHours, waitingCharges: result.waitingCharges, hillStationCharges: result.hillStationCharges, petCharges: result.petCharges, packageName: mode === 'package' ? packageName : undefined, numberOfPersons: mode === 'package' ? numPersons : undefined, packagePrice: mode === 'package' ? packagePrice : undefined }, { ...settings, vehicleNumber: currentVehicle?.number || 'N/A' })}
-                            className="bg-[#0047AB] hover:bg-blue-600 text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all"
-                        >
-                            <Share2 size={16} /> PDF
-                        </button>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
+
+// @ts-ignore
+function ChevronRight({ size }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+    );
+}
 
 export default TripForm;

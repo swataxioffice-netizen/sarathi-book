@@ -5,17 +5,17 @@ import UpdateWatcher from './components/UpdateWatcher';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { X, RefreshCw } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { useUpdate } from './contexts/UpdateContext';
+import { useUpdate, UpdateProvider } from './contexts/UpdateContext';
 import Header from './components/Header';
 import TripForm from './components/TripForm';
 import History from './components/History';
 import BottomNav from './components/BottomNav';
 import Dashboard from './components/Dashboard';
 import GoogleSignInButton from './components/GoogleSignInButton';
-
-import type { Trip } from './utils/fare';
-
 import SideNav from './components/SideNav';
+import { NotificationProvider } from './contexts/NotificationContext';
+import Notifications from './components/Notifications';
+import type { Trip } from './utils/fare';
 
 // Lazy load heavy components to reduce initial bundle size
 const Profile = lazy(() => import('./components/Profile'));
@@ -39,10 +39,17 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('nav-active-tab') || 'dashboard');
 
   useEffect(() => {
+    const handleNav = (e: any) => setActiveTab(e.detail);
+    window.addEventListener('nav-tab-change', handleNav);
+    return () => window.removeEventListener('nav-tab-change', handleNav);
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem('nav-active-tab', activeTab);
   }, [activeTab]);
 
   const [invoiceQuotationToggle, setInvoiceQuotationToggle] = useState<'invoice' | 'quotation'>('invoice');
+  const [loading, setLoading] = useState(false);
   const [trips, setTrips] = useState<Trip[]>(() => safeJSONParse<Trip[]>('namma-cab-trips', []));
   const [showLoginNudge, setShowLoginNudge] = useState(false);
 
@@ -60,60 +67,66 @@ function AppContent() {
     localStorage.setItem('namma-cab-trips', JSON.stringify(trips));
   }, [trips]);
 
-
-
-  /* Guest Access Enabled - Login handled per tab */
-
   // Sync Trips on Load/Login
   useEffect(() => {
     const fetchTrips = async () => {
       if (user) {
-        const { data } = await supabase.from('trips').select('*').order('created_at', { ascending: false });
-        if (data) {
-          // Map DB rows back to Trip objects if needed, or just use the JSON `details` if that's where we store it.
-          // Since I created specific columns + details jsonb, I'll prefer `details` for full fidelity.
-          const cloudTrips: Trip[] = data.map(row => row.details);
-          // Simple Strategy: If cloud has data, use it. Or merge. 
-          // For now, let's Append Cloud trips that aren't in local? Or just Replace local with cloud?
-          // User asked for "internet came back it all upload back". This implies sync.
-          // Simplest Robust Strategy for single-user-multi-device:
-          // 1. Fetch Cloud. 
-          // 2. Identify Local trips not in Cloud (by ID?).
-          // 3. Upload Local-only trips to Cloud.
-          // 4. Set State to Union.
+        setLoading(true);
+        try {
+          const { data, error } = await supabase.from('trips').select('*').order('created_at', { ascending: false });
+          if (error) throw error;
 
-          setTrips(prev => {
-            const existingIds = new Set(prev.map(p => p.id));
-            const newFromCloud = cloudTrips.filter(c => !existingIds.has(c.id));
-            return [...newFromCloud, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-          });
+          if (data) {
+            const cloudTrips: Trip[] = data.map(row => ({
+              ...row.details,
+              id: row.id // Ensure ID consistency
+            }));
+
+            setTrips(prev => {
+              // Merge logic: Map by ID to avoid duplicates, keep newest versions if applicable
+              const merged = new Map<string, Trip>();
+              // Add local trips first
+              prev.forEach(t => merged.set(t.id, t));
+              // Overwrite/Add with cloud trips (Cloud is authority for synced data)
+              cloudTrips.forEach(t => merged.set(t.id, t));
+
+              return Array.from(merged.values())
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            });
+          }
+        } catch (err) {
+          console.error('Failed to fetch trips:', err);
+        } finally {
+          setLoading(false);
         }
       }
     };
     fetchTrips();
   }, [user]);
 
-  // Sync Local Trips to Cloud (Background Sync) - Placeholder for future robust sync
-  useEffect(() => {
-    // Intentionally left blank for simplified flow: Cloud Restore on User Login
-  }, [user]);
-
   const handleSaveTrip = async (trip: Trip) => {
-    const newTrips = [trip, ...trips];
-    setTrips(newTrips);
+    // 1. Optimistic Update
+    setTrips(prev => [trip, ...prev]);
 
-    // Save to Cloud
+    // 2. Persistent Save
     if (user) {
-      await supabase.from('trips').upsert({
-        id: trip.id,
-        user_id: user.id,
-        customer_name: trip.customerName,
-        // Map 'mode' to customer_name or drop_location if needed? 
-        // Actually customer_name is present in Trip.
-        date: trip.date,
-        amount: trip.totalFare,
-        details: trip
-      });
+      try {
+        const { error } = await supabase.from('trips').upsert({
+          id: trip.id,
+          user_id: user.id,
+          customer_name: trip.customerName,
+          date: new Date(trip.date).toISOString(),
+          amount: trip.totalFare,
+          details: trip,
+          pickup_location: (trip as any).from,
+          drop_location: (trip as any).to,
+          distance: (trip as any).distance
+        });
+        if (error) throw error;
+      } catch (err) {
+        console.error('Failed to sync trip to cloud:', err);
+        // We could notify user here that cloud sync failed
+      }
     }
   };
 
@@ -212,7 +225,7 @@ function AppContent() {
                   aria-label="Refresh page"
                   className="p-2 bg-slate-50 text-slate-400 rounded-full border border-slate-100 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                 >
-                  <RefreshCw size={14} aria-hidden="true" />
+                  <RefreshCw size={14} aria-hidden="true" className={loading ? 'animate-spin text-blue-600' : ''} />
                 </button>
               )}
               <Notifications />
@@ -221,7 +234,11 @@ function AppContent() {
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Driver Account</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-blue-100 text-[#0047AB] flex items-center justify-center font-black border border-blue-200">
-                {user?.user_metadata?.full_name?.[0]?.toUpperCase() || 'U'}
+                {loading ? (
+                  <RefreshCw size={16} className="animate-spin" />
+                ) : (
+                  user?.user_metadata?.full_name?.[0]?.toUpperCase() || 'U'
+                )}
               </div>
             </div>
           </header>
@@ -268,7 +285,6 @@ function AppContent() {
               <button
                 onClick={() => setShowLoginNudge(false)}
                 className="w-full mt-3 text-slate-400 font-bold text-[10px] uppercase tracking-widest hover:text-white"
-                style={{ fontFamily: 'Korkai' }}
               >
                 Continue as Guest
               </button>
@@ -279,12 +295,6 @@ function AppContent() {
     </>
   );
 }
-
-
-import { NotificationProvider } from './contexts/NotificationContext';
-import Notifications from './components/Notifications';
-
-import { UpdateProvider } from './contexts/UpdateContext';
 
 function App() {
   return (

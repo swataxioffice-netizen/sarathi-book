@@ -4,25 +4,80 @@ import { useSettings } from '../contexts/SettingsContext';
 import type { Expense } from '../utils/fare';
 import { safeJSONParse } from '../utils/storage';
 
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../utils/supabase';
+
 const ExpenseTracker: React.FC = () => {
     const { t } = useSettings();
+    const { user } = useAuth();
     const [expenses, setExpenses] = useState<Expense[]>(() => safeJSONParse<Expense[]>('cab-expenses', []));
     const [amount, setAmount] = useState('');
     const [category, setCategory] = useState<Expense['category']>('fuel');
     const [desc, setDesc] = useState('');
 
-    const addExpense = () => {
+    // Cloud Sync: Fetch expenses on load/login
+    React.useEffect(() => {
+        const fetchExpenses = async () => {
+            if (user) {
+                const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false });
+                if (!error && data) {
+                    // Merge cloud expenses with local (prefer cloud)
+                    const cloudExpenses: Expense[] = data.map(row => ({
+                        id: row.id,
+                        category: row.category as any,
+                        amount: Number(row.amount),
+                        description: row.description || '',
+                        date: row.date
+                    }));
+                    setExpenses(prev => {
+                        const merged = new Map<string, Expense>();
+                        prev.forEach(e => merged.set(e.id, e));
+                        cloudExpenses.forEach(e => merged.set(e.id, e));
+                        return Array.from(merged.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                    });
+                }
+            }
+        };
+        fetchExpenses();
+    }, [user]);
+
+    const addExpense = async () => {
         if (!amount) return;
-        const up = [{ id: crypto.randomUUID(), category, amount: Number(amount), description: desc, date: new Date().toISOString() }, ...expenses];
+        const newExpense: Expense = {
+            id: crypto.randomUUID(),
+            category,
+            amount: Number(amount),
+            description: desc,
+            date: new Date().toISOString()
+        };
+
+        const up = [newExpense, ...expenses];
         setExpenses(up);
         localStorage.setItem('cab-expenses', JSON.stringify(up));
         setAmount(''); setDesc('');
+
+        // Sync to Cloud
+        if (user) {
+            await supabase.from('expenses').insert({
+                id: newExpense.id,
+                user_id: user.id,
+                category: newExpense.category,
+                amount: newExpense.amount,
+                description: newExpense.description,
+                date: newExpense.date
+            });
+        }
     };
 
-    const deleteExpense = (id: string) => {
+    const deleteExpense = async (id: string) => {
         const up = expenses.filter(e => e.id !== id);
         setExpenses(up);
         localStorage.setItem('cab-expenses', JSON.stringify(up));
+
+        // Sync to Cloud
+        if (user) {
+            await supabase.from('expenses').delete().eq('id', id);
+        }
     };
 
     const now = new Date();

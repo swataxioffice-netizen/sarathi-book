@@ -32,10 +32,10 @@ export const useNotifications = () => {
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
 
-    // Function to add a new notification
     const addNotification = useCallback((title: string, message: string, type: Notification['type'] = 'info') => {
+        const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 9);
         const newNotification: Notification = {
-            id: crypto.randomUUID(),
+            id,
             title,
             message,
             type,
@@ -43,9 +43,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             read: false,
         };
         setNotifications((prev) => [newNotification, ...prev]);
-
-        // Auto-remove after 5 seconds if multiple accumulate? No, let user dismiss or keep history for a session.
-        // Maybe auto-mark as read? No, user action is better.
     }, []);
 
     const markAsRead = useCallback((id: string) => {
@@ -67,13 +64,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }, []);
 
     const unreadCount = notifications.filter((n) => !n.read).length;
-
-    // Simulate a welcome notification on first load for demo purpose (optional)
-    useEffect(() => {
-        if (notifications.length === 0) {
-            // Check if we already showed welcome? skipping for now to keep it clean.
-        }
-    }, []);
 
     return (
         <NotificationContext.Provider
