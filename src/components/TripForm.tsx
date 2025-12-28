@@ -48,7 +48,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     const [numPersons, setNumPersons] = useState<number>(4);
     const [packagePrice, setPackagePrice] = useState<number>(0);
     const [selectedVehicleId, setSelectedVehicleId] = useState<string>('swift');
-    const [days] = useState<number>(1);
+    const [days, setDays] = useState<number>(1);
     const [customRate, setCustomRate] = useState<number>(14);
     const [currentStep, setCurrentStep] = useState(1);
     const totalSteps = 5;
@@ -400,6 +400,24 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                     onChange={(e) => setEndKm(Number(e.target.value))}
                                 />
                             </div>
+
+                            {mode === 'outstation' && (
+                                <div className="col-span-2">
+                                    <label className="tn-label">Trip Duration (Days)</label>
+                                    <div className="relative">
+                                        <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                        <input
+                                            type="number"
+                                            className="tn-input pl-11"
+                                            placeholder="e.g. 2"
+                                            value={days || ''}
+                                            onChange={(e) => setDays(Number(e.target.value))}
+                                            min={1}
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-1 pl-1">Min 300 KM per day & Daily Driver Batta applies</p>
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex gap-3">
