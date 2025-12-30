@@ -7,6 +7,9 @@ import { shareReceipt } from '../utils/pdf';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
 import { calculateDistance } from '../utils/googleMaps';
+import { calculateAdvancedRoute } from '../utils/routesApi';
+import { estimatePermitCharge } from '../utils/permits';
+import { estimateParkingCharge } from '../utils/parking';
 import { Clock, Navigation, Save, UserPlus, Receipt, Star, History, MapPin, Camera, Mic, MessageCircle, Plus, Trash2, Edit, Moon } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
 
@@ -102,7 +105,13 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
     const [isCalculated, setIsCalculated] = useState(false);
     const [estimatedDistance, setEstimatedDistance] = useState<number | null>(null);
 
-    const [result, setResult] = useState<{ total: number; gst: number; fare: number; distance: number; waitingCharges: number; waitingHours?: number; hillStationCharges: number; petCharges: number; driverBatta: number; nightStay?: number } | null>(null);
+    const [result, setResult] = useState<{
+        total: number; gst: number; fare: number; distance: number;
+        effectiveDistance: number; rateUsed: number;
+        waitingCharges: number; waitingHours?: number;
+        hillStationCharges: number; petCharges: number;
+        driverBatta: number; nightStay?: number
+    } | null>(null);
     const [notes, setNotes] = useState('');
     const [mode, setMode] = useState<Trip['mode']>('drop');
     const [fromLoc, setFromLoc] = useState('');
@@ -147,6 +156,25 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
     const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [dropCoords, setDropCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [driverBatta, setDriverBatta] = useState<number>(0);
+    const [visibleCharges, setVisibleCharges] = useState<string[]>(['toll', 'parking']); // Default common ones
+
+    // Sync which charges should be visible based on values and mode
+    useEffect(() => {
+        const initialVisible = new Set(visibleCharges);
+        if (toll > 0) initialVisible.add('toll');
+        if (parking > 0) initialVisible.add('parking');
+        if (driverBatta > 0) initialVisible.add('batta');
+        if (nightStay > 0) initialVisible.add('stay');
+        if (permitCharge > 0) initialVisible.add('permit');
+        if (waitingHours > 0) initialVisible.add('waiting');
+
+        if (mode === 'outstation') {
+            initialVisible.add('batta');
+            initialVisible.add('stay');
+        }
+
+        setVisibleCharges(Array.from(initialVisible));
+    }, [mode]);
 
     // Sync Driver Batta when mode/days change (Auto-calc based on Vehicle)
     useEffect(() => {
@@ -235,13 +263,20 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
     };
     const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
-    const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number) => {
+    const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number, tollAmt?: number) => {
         if (activeMapField === 'from') {
             setFromLoc(pickupAddr);
         } else {
             setToLoc(dropAddr || pickupAddr);
             if (dist > 0) {
-                setEndKm(startKm + dist);
+                const multiplier = mode === 'outstation' ? 2 : 1;
+                setEndKm(startKm + Math.round(dist * multiplier));
+            }
+            if (tollAmt && tollAmt > 0) {
+                setToll(tollAmt);
+                if (!visibleCharges.includes('toll')) {
+                    setVisibleCharges(prev => [...prev, 'toll']);
+                }
             }
         }
         setShowMap(false);
@@ -266,19 +301,62 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
         return stateMap[stateCode] || '';
     };
 
-    // Auto-calculate distance from coords
+    // Auto-calculate distance AND TOLLS AND PERMITS AND PARKING from coords
     useEffect(() => {
-        const autoDist = async () => {
+        const autoTripData = async () => {
             if (pickupCoords && dropCoords) {
-                const result = await calculateDistance(pickupCoords, dropCoords);
-                if (result) {
-                    const finalDist = mode === 'outstation' ? result.distance * 2 : result.distance;
-                    setEstimatedDistance(finalDist);
+                try {
+                    // 1. Estimate Permit based on states & vehicle
+                    const permitEst = estimatePermitCharge(fromLoc, toLoc, selectedVehicleId);
+                    if (permitEst) {
+                        setPermitCharge(permitEst.amount);
+                        if (!visibleCharges.includes('permit')) {
+                            setVisibleCharges(prev => [...prev, 'permit']);
+                        }
+                    } else {
+                        setPermitCharge(0);
+                    }
+
+                    // 2. Estimate Parking based on location keywords
+                    const pickupParking = estimateParkingCharge(fromLoc);
+                    const dropParking = estimateParkingCharge(toLoc);
+                    const totalParking = (pickupParking?.amount || 0) + (dropParking?.amount || 0);
+                    if (totalParking > 0) {
+                        setParking(totalParking);
+                        if (!visibleCharges.includes('parking')) {
+                            setVisibleCharges(prev => [...prev, 'parking']);
+                        }
+                    }
+
+                    // 3. Try Advanced Routes API (Tolls + Better distance)
+                    const advanced = await calculateAdvancedRoute(pickupCoords, dropCoords);
+                    if (advanced) {
+                        const multiplier = mode === 'outstation' ? 2 : 1;
+                        const finalDist = advanced.distanceKm * multiplier;
+                        setEstimatedDistance(finalDist);
+
+                        if (advanced.tollPrice > 0) {
+                            // Doubling toll for outstation (Round Trip)
+                            setToll(advanced.tollPrice * multiplier);
+                            if (!visibleCharges.includes('toll')) {
+                                setVisibleCharges(prev => [...prev, 'toll']);
+                            }
+                        }
+                    } else {
+                        // 4. Fallback to basic
+                        const result = await calculateDistance(pickupCoords, dropCoords);
+                        if (result) {
+                            const finalDist = mode === 'outstation' ? result.distance * 2 : result.distance;
+                            setEstimatedDistance(finalDist);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Auto calculation failed", e);
                 }
             }
         };
-        autoDist();
-    }, [pickupCoords, dropCoords, mode]);
+        autoTripData();
+    }, [pickupCoords, dropCoords, mode, fromLoc, toLoc, selectedVehicleId]);
 
     // Update End KM based on Estimated Distance
     useEffect(() => {
@@ -395,43 +473,41 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
 
     const handleCalculate = () => {
         const activeRate = (mode === 'distance' || mode === 'drop' || mode === 'outstation') ? customRate : (mode === 'hourly' ? settings.hourlyRate : 0);
-        const permit = permitCharge;
 
         const res = calculateFare({
             startKm,
             endKm,
-            baseFare: settings.baseFare,
             ratePerKm: activeRate,
-            toll: toll,
-            parking: parking,
-            gstEnabled: localGst,
             mode,
             vehicleId: selectedVehicleId,
-            hourlyRate: settings.hourlyRate,
-            durationHours: mode === 'hourly' ? waitingHours : 0,
-            nightBata: nightBata ? settings.nightBata : 0,
+            days: mode === 'outstation' ? days : 1,
+            toll: toll,
+            parking: parking,
+            permit: permitCharge,
+            gstEnabled: localGst,
             waitingHours: mode === 'hourly' ? 0 : waitingHours,
             isHillStation,
             petCharge,
+            nightBata: nightBata ? settings.nightBata : 0,
+            hourlyRate: settings.hourlyRate,
+            durationHours: mode === 'hourly' ? waitingHours : 0,
             packagePrice: (mode === 'package' || mode === 'fixed') ? packagePrice : 0,
-            days: mode === 'outstation' ? days : 1
+            nightStay: nightStay,
+            extraItems: mode === 'custom' ? extraItems : []
         });
 
-        // Use Manual Batta if > 0, else use Calculated
+        // Use Manual Batta only if user explicitly overrode it in the form
         const finalDriverBatta = driverBatta > 0 ? driverBatta : res.driverBatta;
 
-        // Recalculate totals with correct Batta
-        // Original res.total included res.driverBatta. We need to adjust.
+        // If batta was overridden, we need a small adjustment
         const diffBatta = finalDriverBatta - res.driverBatta;
-        const totalWithNewBatta = res.total + diffBatta + permit + nightStay;
 
         setResult({
             ...res,
-            total: totalWithNewBatta,
-            fare: res.fare + permit + diffBatta + nightStay, // Fare usually includes taxable stuff? Or should stay be separate?
-            distance: res.distance ?? (endKm - startKm),
+            total: res.total + diffBatta,
+            fare: res.fare + diffBatta,
             driverBatta: finalDriverBatta,
-            nightStay // Store it in result for later use
+            nightStay // already in res but good to be explicit
         });
         setIsCalculated(true);
     };
@@ -512,8 +588,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
 
                         <div className="grid grid-cols-1 gap-3">
                             {[
-                                { id: 'drop', label: 'One Way Drop', desc: 'Point to point travel', icon: Navigation },
-                                { id: 'outstation', label: 'Outstation', desc: 'Multi-day outstation', icon: History },
+                                { id: 'drop', label: 'Outstation Drop (1-Way)', desc: 'One-way drop to other city', icon: Navigation },
+                                { id: 'outstation', label: 'Outstation Round Trip', desc: 'Return trip to origin city', icon: History },
                                 { id: 'hourly', label: 'Local Hourly', desc: 'City rental by hours', icon: Clock },
                                 { id: 'custom', label: 'Custom Invoice', desc: 'Create manual bill (Excel)', icon: Edit },
                                 // { id: 'package', label: 'Tour Package', desc: 'Fixed rate packages', icon: Star },
@@ -778,77 +854,109 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                             <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wide">Tolls, parking, and extras</p>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-3">
-                            <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100 mb-2">
-                                <p className="text-[10px] text-blue-700 font-medium text-center">
-                                    💡 Tip: Enter 0 to disable a charge. Values {'>'} 0 are automatically added.
-                                </p>
-                            </div>
+                        <div className="space-y-4">
+                            {mode !== 'custom' && (
+                                <>
+                                    {/* Charge Selector Dropdown */}
+                                    <div className="relative">
+                                        <select
+                                            className="tn-input bg-slate-100 border-none font-black text-[10px] uppercase tracking-widest pl-10 h-12 rounded-2xl appearance-none cursor-pointer hover:bg-slate-200 transition-colors"
+                                            onChange={(e) => {
+                                                const id = e.target.value;
+                                                if (id && !visibleCharges.includes(id)) {
+                                                    setVisibleCharges([...visibleCharges, id]);
+                                                }
+                                                e.target.value = ''; // Reset
+                                            }}
+                                        >
+                                            <option value="">+ Add Charge (Batta, Stay, Permit...)</option>
+                                            {[
+                                                { id: 'toll', label: 'Toll Fees' },
+                                                { id: 'parking', label: 'Parking Fees' },
+                                                { id: 'batta', label: 'Driver Batta' },
+                                                { id: 'stay', label: 'Night Stay' },
+                                                { id: 'waiting', label: mode === 'hourly' ? 'Extra Hours' : 'Waiting Time' },
+                                                { id: 'permit', label: 'Permit Charge' }
+                                            ].filter(c => {
+                                                if (mode === 'outstation' && c.id === 'waiting') return false;
+                                                return !visibleCharges.includes(c.id);
+                                            }).map(c => (
+                                                <option key={c.id} value={c.id}>{c.label}</option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                            <Plus size={16} />
+                                        </div>
+                                    </div>
 
+                                    {/* Active Charge Inputs */}
+                                    <div className="space-y-3">
+                                        {[
+                                            { id: 'toll', label: 'Toll Fees', input: toll, setInput: setToll, icon: Receipt },
+                                            { id: 'parking', label: 'Parking Fees', input: parking, setInput: setParking, icon: MapPin },
+                                            { id: 'batta', label: 'Driver Batta', input: driverBatta, setInput: setDriverBatta, icon: UserPlus, hint: 'Daily Allowance' },
+                                            { id: 'stay', label: 'Night Stay', input: nightStay, setInput: setNightStay, icon: Moon, hint: 'Hotel/Lodging' },
+                                            { id: 'waiting', label: mode === 'hourly' ? 'Extra Hours' : 'Waiting Time', input: waitingHours, setInput: setWaitingHours, unit: 'Hrs', icon: Clock },
+                                            { id: 'permit', label: 'Permit Charge', input: permitCharge, setInput: setPermitCharge, icon: Star }
+                                        ].filter(item => visibleCharges.includes(item.id))
+                                            .map((item) => {
+                                                const Icon = item.icon;
+                                                return (
+                                                    <div key={item.id} className="animate-in zoom-in-95 duration-200 flex items-center justify-between p-3.5 bg-white border border-slate-200 rounded-2xl shadow-sm">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center">
+                                                                <Icon size={16} />
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-800">{item.label}</span>
+                                                                {/* @ts-ignore */}
+                                                                {item.hint && <span className="text-[8px] font-bold text-slate-400 leading-none">{item.hint}</span>}
+                                                            </div>
+                                                        </div>
 
-                            {mode === 'custom' ? (
-                                <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 text-center mb-6">
-                                    <p className="text-xs font-bold text-orange-400 uppercase tracking-widest mb-1">Total Bill Amount</p>
-                                    <p className="text-3xl font-black text-orange-900 tracking-tighter">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-xl px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                                                                {!item.unit && <span className="text-slate-400 font-bold text-[10px]">₹</span>}
+                                                                <input
+                                                                    type="number"
+                                                                    className="w-14 text-right font-black text-sm text-slate-900 bg-transparent outline-none"
+                                                                    placeholder="0"
+                                                                    value={item.input || ''}
+                                                                    onChange={(e) => item.setInput(Number(e.target.value))}
+                                                                />
+                                                                {item.unit && <span className="text-[8px] font-bold text-slate-400 uppercase">{item.unit}</span>}
+                                                            </div>
+                                                            <button
+                                                                onClick={() => {
+                                                                    item.setInput(0);
+                                                                    setVisibleCharges(visibleCharges.filter(id => id !== item.id));
+                                                                }}
+                                                                className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                    </div>
+                                </>
+                            )}
+
+                            {mode === 'custom' && (
+                                <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 text-center">
+                                    <p className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em] mb-1">Total Bill Amount</p>
+                                    <p className="text-4xl font-black text-orange-900 tracking-tighter">
                                         ₹{extraItems.reduce((sum, i) => sum + i.amount, 0).toLocaleString()}
                                     </p>
                                     <p className="text-[10px] text-orange-400 font-bold mt-2 uppercase tracking-wide">
-                                        {extraItems.length} items added
+                                        {extraItems.length} items added in Step 2
                                     </p>
                                 </div>
-                            ) : (
-                                <div className="space-y-3 mb-6">
-                                    {[
-                                        { id: 'toll', label: 'Toll Fees', input: toll, setInput: setToll, icon: Receipt },
-                                        { id: 'parking', label: 'Parking Fees', input: parking, setInput: setParking, icon: MapPin },
-                                        { id: 'batta', label: 'Driver Batta', input: driverBatta, setInput: setDriverBatta, icon: UserPlus, hint: 'Daily Food Allowance' },
-                                        { id: 'stay', label: 'Night Stay', input: nightStay, setInput: setNightStay, icon: Moon, hint: 'Hotel/Accommodation Charge' },
-                                        { id: 'waiting', label: mode === 'hourly' ? 'Total Duration' : 'Waiting Time', input: waitingHours, setInput: setWaitingHours, unit: 'Hrs', icon: Clock },
-                                        { id: 'permit', label: 'Permit Charge', input: permitCharge, setInput: setPermitCharge, icon: Star }
-                                    ].filter(item => {
-                                        if (mode === 'outstation') return item.id !== 'waiting';
-                                        return true; // Show everything else (including stay) for all modes
-                                    }).map((item) => {
-                                        const Icon = item.icon;
-                                        return (
-                                            <div key={item.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${Number(item.input) > 0 ? 'bg-blue-50/50 border-blue-200' : 'bg-white border-slate-100'}`}>
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${Number(item.input) > 0 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                                                        <Icon size={18} />
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className={`text-sm font-bold ${Number(item.input) > 0 ? 'text-blue-900' : 'text-slate-600'}`}>
-                                                            {item.label}
-                                                        </span>
-                                                        {/* @ts-ignore */}
-                                                        {item.hint && !Number(item.input) && <span className="text-[9px] text-slate-400">{item.hint}</span>}
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500">
-                                                    {!item.unit && <span className="text-slate-400 font-bold text-sm">₹</span>}
-                                                    <input
-                                                        type="number"
-                                                        inputMode="decimal"
-                                                        className="w-20 text-right font-black text-lg text-slate-900 placeholder:text-slate-300 outline-none bg-transparent"
-                                                        placeholder="0"
-                                                        value={item.input || ''}
-                                                        onChange={(e) => item.setInput(Number(e.target.value))}
-                                                        onFocus={(e) => e.target.select()}
-                                                    />
-                                                    {item.unit && <span className="text-xs font-bold text-slate-400">{item.unit}</span>}
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-
-                                    {/* Night Batta Toggle Removed as per request */}
-
-                                </div>
                             )}
-
                         </div>
-                        <div className="flex gap-3">
+
+                        <div className="flex gap-3 pt-2">
                             <button onClick={prevStep} className="flex-1 py-4 font-bold text-slate-400 uppercase tracking-widest text-[11px] border-2 border-slate-100 rounded-2xl">Back</button>
                             <button onClick={nextStep} className="flex-[2] tn-button-primary">Continue</button>
                         </div>
@@ -1039,7 +1147,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                         <div className="space-y-3 bg-white/5 p-4 rounded-2xl border border-white/10 mb-6">
                                             <div className="flex justify-between items-center text-[10px]">
                                                 <span className="font-bold text-slate-400 uppercase">Trip Type</span>
-                                                <span className="font-black text-white uppercase">{mode === 'drop' ? (result.distance <= 30 ? 'Local (Market Rate)' : 'One Way / Drop') : mode === 'outstation' ? 'Round Trip' : mode}</span>
+                                                <span className="font-black text-white uppercase">
+                                                    {mode === 'drop' ? (result.distance <= 30 ? 'Local Market Rate' : 'One Way (Empty Return Fee Included)') : mode === 'outstation' ? 'Round Trip (Return KM Included)' : mode}
+                                                </span>
                                             </div>
                                             {result.distance <= 30 && mode === 'drop' ? (
                                                 <div className="flex justify-between items-center text-[10px]">
@@ -1062,11 +1172,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                                         </span>
                                                     ) : mode === 'drop' ? (
                                                         <span className="font-black text-white">
-                                                            {Math.max(130, result.distance)} KM (Min 130) × ₹{(customRate || 14)} = ₹{(Math.max(130, result.distance) * (customRate || 14)).toLocaleString()}
+                                                            {result.effectiveDistance} KM (Min 130) × ₹{result.rateUsed} = ₹{(result.effectiveDistance * result.rateUsed).toLocaleString()}
                                                         </span>
                                                     ) : (
                                                         <span className="font-black text-white">
-                                                            {Math.max(300 * (days || 1), result.distance)} KM × ₹{customRate} = ₹{(Math.max(300 * (days || 1), result.distance) * customRate).toLocaleString()}
+                                                            {result.effectiveDistance} KM (Total Run) × ₹{result.rateUsed} = ₹{(result.effectiveDistance * result.rateUsed).toLocaleString()}
                                                         </span>
                                                     )}
                                                 </div>
@@ -1205,11 +1315,5 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
     );
 };
 
-// @ts-ignore
-function ChevronRight({ size }) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
-    );
-}
 
 export default TripForm;

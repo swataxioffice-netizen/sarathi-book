@@ -28,13 +28,7 @@ const Header: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                     {/* Language Toggle */}
-                    <button
-                        onClick={() => alert('Language selection coming soon!')}
-                        className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-600 font-bold text-xs hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all font-serif"
-                        aria-label="Change Language"
-                    >
-                        A/अ
-                    </button>
+
 
                     {needRefresh ? (
                         <button

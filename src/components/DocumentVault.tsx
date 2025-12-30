@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Trash2, FileText, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../utils/supabase';
 import { useSettings } from '../contexts/SettingsContext';
@@ -18,7 +18,6 @@ interface DocumentVaultProps {
 }
 
 const REQUIRED_VEHICLE_DOCS = [
-    { type: 'RC', label: 'RC Book (Original)', helper: 'Registration Certificate' },
     { type: 'Insurance', label: 'Insurance Policy', helper: 'Comprehensive or Third Party' },
     { type: 'Permit', label: 'Permit Copy', helper: 'State or All India Permit' },
     { type: 'Fitness', label: 'FC (Fitness)', helper: 'Fitness Certificate Copy' },
@@ -39,6 +38,9 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
 
     // Selection State
     const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
+    const [editingDocType, setEditingDocType] = useState<string | null>(null);
+    const [tempDate, setTempDate] = useState('');
+    const [newDocDates, setNewDocDates] = useState<Record<string, string>>({});
 
     // Initialize selected vehicle
     useEffect(() => {
@@ -84,13 +86,30 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
         }
     };
 
-    const saveDoc = async (type: string, category: 'vehicle' | 'driver', dateStr: string) => {
-        if (!dateStr) return;
+    const handleSave = async (reqType: string, category: 'vehicle' | 'driver', dateValue: string) => {
+        if (!dateValue) {
+            alert('Please select an expiry date');
+            return;
+        }
 
         let docName = 'Driver';
         if (category === 'vehicle') {
-            const v = settings.vehicles.find(v => v.id === selectedVehicleId);
-            if (!v) { alert('Select a vehicle first'); return; }
+            // Robust Vehicle Selection Strategy
+            // 1. Try to find the vehicle by the currently selected ID
+            let v = settings.vehicles.find(v => v.id === selectedVehicleId);
+
+            // 2. If not found (e.g. ID mismatch or stale state), but we have vehicles, default to the first one
+            // This prevents the "Select a vehicle first" error when a vehicle is visually visible in the dropdown
+            if (!v && settings.vehicles.length > 0) {
+                v = settings.vehicles[0];
+                // Silently sync the state to match the fallback
+                setSelectedVehicleId(v.id);
+            }
+
+            if (!v) {
+                alert('No vehicle found. Please add a vehicle in Garage first.');
+                return;
+            }
             docName = v.number;
         } else {
             docName = settings.holderName || 'Driver';
@@ -99,36 +118,55 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
         setLoading(true);
         try {
             let newDoc: Document = {
-                id: crypto.randomUUID(), name: docName, type: type as any, expiryDate: dateStr,
+                id: crypto.randomUUID(), name: docName, type: reqType as any, expiryDate: dateValue,
             };
 
             if (user) {
-                // Check if we need to update or insert
-                const existing = docs.find(d => d.type === type && d.name === docName);
+                const existing = docs.find(d => d.type === reqType && d.name === docName);
 
                 const payload = {
                     user_id: user.id,
                     name: docName,
-                    type,
-                    expiry_date: dateStr
+                    type: reqType,
+                    expiry_date: dateValue,
                 };
+
+                // Remove explicit file handling logic as requested
+                // Use existing file data if available to prevent overwriting with null
+                let fileUrl = existing?.fileData || null;
+                let filePath = existing?.fileName || null;
+
+                if (fileUrl) {
+                    (payload as any).file_url = fileUrl;
+                    (payload as any).file_path = filePath;
+                }
 
                 let res;
                 if (existing) {
-                    // Note: Ensure you have an UPDATE policy in Supabase for this to work
                     res = await supabase.from('user_documents').update(payload).eq('id', existing.id).select().single();
                 } else {
                     res = await supabase.from('user_documents').insert(payload).select().single();
                 }
 
                 if (res.error) throw res.error;
-                if (res.data) newDoc = { ...newDoc, id: res.data.id };
+
+                if (res.data) {
+                    newDoc = {
+                        ...newDoc,
+                        id: res.data.id,
+                        fileData: res.data.file_url,
+                        fileName: res.data.file_path
+                    };
+                }
             }
 
-            const updatedDocs = docs.filter(d => !(d.type === type && d.name === docName));
-            const finalDocs = [newDoc, ...updatedDocs];
-            setDocs(finalDocs);
-            if (!user) localStorage.setItem('cab-docs', JSON.stringify(finalDocs));
+            const updatedDocs = docs.filter(d => !(d.type === reqType && d.name === docName));
+            setDocs([newDoc, ...updatedDocs]);
+            if (!user) localStorage.setItem('cab-docs', JSON.stringify([newDoc, ...updatedDocs]));
+
+            setEditingDocType(null);
+            setTempDate('');
+            setNewDocDates(prev => ({ ...prev, [reqType]: '' })); // Clear new doc input
 
         } catch (error: any) {
             console.error(error);
@@ -162,67 +200,98 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
             return true;
         });
 
+        const isEditing = editingDocType === req.type;
         const daysLeft = existingDoc ? getDays(existingDoc.expiryDate) : 0;
         const isExpired = daysLeft < 0;
         const isWarning = daysLeft < 30;
 
+        if (isEditing) {
+            return (
+                <div key={req.type} className="bg-blue-50 border border-blue-200 rounded-2xl p-3 shadow-md animate-fade-in">
+                    <div className="flex justify-between items-start mb-2">
+                        <div>
+                            <h4 className="text-xs font-black text-blue-900">{req.label}</h4>
+                            <p className="text-[10px] text-blue-600">Update Expiry Date</p>
+                        </div>
+                        <button onClick={() => setEditingDocType(null)} className="p-1 hover:bg-white/50 rounded-full">
+                            <X size={14} className="text-blue-500" />
+                        </button>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div>
+                            <label className="text-[9px] font-bold text-blue-700 uppercase">Expiry Date <span className="text-red-500">*</span></label>
+                            <input
+                                type="date"
+                                value={tempDate}
+                                onChange={(e) => setTempDate(e.target.value)}
+                                className="w-full h-9 rounded-lg border-blue-200 text-xs font-bold px-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                        </div>
+
+                        <button
+                            onClick={() => handleSave(req.type, category, tempDate)}
+                            className="w-full h-10 bg-blue-600 text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-sm hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2"
+                        >
+                            <CheckCircle size={14} /> Update Document
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
         return (
-            <div key={req.type} className="bg-slate-50 border border-slate-200 rounded-2xl p-3 shadow-sm transition-all">
+            <div key={req.type} className="bg-slate-50 border border-slate-200 rounded-2xl p-3 shadow-sm transition-all hover:border-slate-300">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${existingDoc ? (isExpired ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600') : 'bg-white border border-slate-100 text-slate-400'}`}>
                             {existingDoc ? (isExpired ? <AlertCircle size={16} /> : <CheckCircle size={16} />) : <FileText size={16} />}
                         </div>
-                        <div>
+                        <div className="flex-1">
                             <h4 className="text-xs font-black text-slate-800">{req.label}</h4>
                             <p className="text-[9px] font-medium text-slate-400">{req.helper}</p>
+
                             {existingDoc ? (
-                                <p className={`text-[9px] font-bold uppercase ${isExpired ? 'text-red-500' : isWarning ? 'text-orange-500' : 'text-green-600'}`}>
-                                    {isExpired ? `Expired ${Math.abs(daysLeft)} days ago` : `Expires in ${daysLeft} days`}
-                                    <span className="ml-2 lowercase font-medium text-slate-400">({existingDoc.expiryDate})</span>
-                                </p>
+                                <div className="flex flex-col mt-0.5">
+                                    <p className={`text-[9px] font-bold uppercase ${isExpired ? 'text-red-500' : isWarning ? 'text-orange-500' : 'text-green-600'}`}>
+                                        {isExpired ? `Expired ${Math.abs(daysLeft)} days ago` : `Expires in ${daysLeft} days`}
+                                    </p>
+                                    <span className="text-[9px] font-medium text-slate-500">Date: {existingDoc.expiryDate}</span>
+                                </div>
                             ) : (
-                                <p className="text-[9px] font-medium text-slate-500">No date added</p>
+                                <div className="mt-1.5 flex items-center gap-2">
+                                    <input
+                                        type="date"
+                                        value={newDocDates[req.type] || ''}
+                                        onChange={(e) => setNewDocDates(prev => ({ ...prev, [req.type]: e.target.value }))}
+                                        className="h-8 max-w-[130px] rounded border-slate-300 text-[10px] font-bold text-slate-600 focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                    {newDocDates[req.type] && (
+                                        <button
+                                            onClick={() => handleSave(req.type, category, newDocDates[req.type])}
+                                            className="h-8 px-3 bg-green-600 text-white rounded text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-green-700 active:scale-95 animate-fade-in flex items-center gap-1"
+                                        >
+                                            Save <CheckCircle size={10} />
+                                        </button>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>
                     <div>
-                        {existingDoc ? (
-                            <button onClick={() => deleteDoc(existingDoc)} className="p-2 text-slate-400 hover:text-red-500 bg-white border border-slate-100 rounded-lg shadow-sm active:scale-95 transition-all">
-                                <Trash2 size={14} />
-                            </button>
-                        ) : (
-                            <div className="relative">
-                                <input
-                                    type="date"
-                                    id={`date-input-${category}-${req.type}`}
-                                    className="absolute w-[1px] h-[1px] opacity-0 pointer-events-none"
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (val) {
-                                            saveDoc(req.type, category, val);
-                                        }
-                                    }}
-                                />
+                        {existingDoc && (
+                            <div className="flex gap-2">
                                 <button
-                                    type="button"
                                     onClick={() => {
-                                        const input = document.getElementById(`date-input-${category}-${req.type}`) as any;
-                                        if (input) {
-                                            try {
-                                                if (input.showPicker) {
-                                                    input.showPicker();
-                                                } else {
-                                                    input.click();
-                                                }
-                                            } catch (e) {
-                                                input.click();
-                                            }
-                                        }
+                                        setTempDate(existingDoc.expiryDate);
+                                        setEditingDocType(req.type);
                                     }}
-                                    className="px-3 py-1.5 rounded-lg border border-[#0047AB] bg-[#0047AB] text-white shadow-md text-[9px] font-black uppercase tracking-wider flex items-center gap-2 active:scale-95"
+                                    className="p-2 text-slate-500 hover:text-blue-600 bg-white border border-slate-100 rounded-lg shadow-sm"
                                 >
-                                    Add Expiry Date
+                                    <CheckCircle size={14} />
+                                </button>
+                                <button onClick={() => deleteDoc(existingDoc)} className="p-2 text-slate-400 hover:text-red-500 bg-white border border-slate-100 rounded-lg shadow-sm">
+                                    <Trash2 size={14} />
                                 </button>
                             </div>
                         )}
@@ -239,8 +308,6 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                     <Loader2 size={32} className="text-[#0047AB] animate-spin" />
                 </div>
             )}
-
-
 
             {/* Vehicle Section */}
             <div className="space-y-3">
@@ -262,7 +329,7 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
 
                 {settings.vehicles.length === 0 ? (
                     <div className="p-4 bg-orange-50 border border-orange-100 rounded-xl text-center">
-                        <p className="text-[10px] font-bold text-orange-600">Please add a vehicle in 'Fleet Management' first.</p>
+                        <p className="text-[10px] font-bold text-orange-600">Please add a vehicle in 'Garage' first.</p>
                     </div>
                 ) : (
                     <div className="space-y-3">

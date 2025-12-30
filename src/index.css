@@ -111,7 +111,7 @@ body,
     border: 1px solid var(--border-light);
     color: var(--text-main);
     border-radius: 10px;
-    @apply py-3 px-4 font-semibold text-[15px] outline-none transition-all h-12;
+    @apply py-3 px-4 font-semibold text-[15px] outline-none transition-all h-12 text-slate-900;
     /* h-12 to accommodate larger text/padding comfortably */
   }
 

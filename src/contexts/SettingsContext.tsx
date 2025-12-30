@@ -9,6 +9,7 @@ interface Vehicle {
     number: string;
     model: string;
     categoryId?: string;
+    expiryDate?: string;
 }
 
 interface Settings {
@@ -33,6 +34,7 @@ interface Settings {
     holderName?: string;
     upiId?: string;
     appColor?: string;
+    services?: string[];
 }
 
 interface SettingsContextType {
@@ -43,6 +45,7 @@ interface SettingsContextType {
     saveSettings: () => Promise<boolean>;
     docStats: { hasFullVehicle: boolean; hasFullDriver: boolean };
     setDocStats: React.Dispatch<React.SetStateAction<{ hasFullVehicle: boolean; hasFullDriver: boolean }>>;
+    driverCode: number | null;
 }
 
 const translations = {
@@ -112,6 +115,7 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [docStats, setDocStats] = useState({ hasFullVehicle: false, hasFullDriver: false });
+    const [driverCode, setDriverCode] = useState<number | null>(null);
 
     const [settings, setSettings] = useState<Settings>(() => {
         const parsed = safeJSONParse<Settings | null>('namma-cab-settings', null);
@@ -127,6 +131,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             parsed.appColor = parsed.appColor || '#0047AB';
             // Force English to fix corrupted state
             parsed.language = 'en';
+
+            // Ensure services array exists if missing
+            if (!parsed.services) parsed.services = undefined;
+
             return parsed;
         }
         return {
@@ -150,7 +158,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             branchName: '',
             holderName: '',
             upiId: '',
-            appColor: '#0047AB'
+            appColor: '#0047AB',
+            services: ['Local', 'Outstation', 'Tours'] // Default Services
         };
     });
 
@@ -161,12 +170,12 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session?.user) {
                     // 1. Fetch Cloud Settings
-                    const { data, error } = await supabase.from('profiles').select('settings').eq('id', session.user.id).single();
+                    const { data, error } = await supabase.from('profiles').select('settings, driver_code').eq('id', session.user.id).single();
                     if (error) {
                         console.error('Error fetching cloud settings:', error);
-                    } else if (data?.settings) {
-                        // Merge cloud settings with local defaults, preferring cloud
-                        setSettings(prev => ({ ...prev, ...data.settings }));
+                    } else if (data) {
+                        if (data.settings) setSettings(prev => ({ ...prev, ...data.settings }));
+                        if (data.driver_code) setDriverCode(data.driver_code);
                     }
                 }
             } catch (err) {
@@ -180,11 +189,12 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'SIGNED_IN' && session?.user) {
                 try {
-                    const { data, error } = await supabase.from('profiles').select('settings').eq('id', session.user.id).single();
+                    const { data, error } = await supabase.from('profiles').select('settings, driver_code').eq('id', session.user.id).single();
                     if (error) {
                         console.error('Error fetching settings on sign in:', error);
-                    } else if (data?.settings) {
-                        setSettings(prev => ({ ...prev, ...data.settings }));
+                    } else if (data) {
+                        if (data.settings) setSettings(prev => ({ ...prev, ...data.settings }));
+                        if (data.driver_code) setDriverCode(data.driver_code);
                     }
                 } catch (err) {
                     console.error('Settings fetch on sign in failed:', err);
@@ -275,7 +285,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     return (
-        <SettingsContext.Provider value={{ settings, updateSettings, currentVehicle, t, saveSettings, docStats, setDocStats }}>
+        <SettingsContext.Provider value={{ settings, updateSettings, currentVehicle, t, saveSettings, docStats, setDocStats, driverCode }}>
             {children}
         </SettingsContext.Provider>
     );

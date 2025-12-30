@@ -12,7 +12,7 @@ interface HistoryProps {
 type TimeFilter = 'all' | 'today' | 'week' | 'month';
 
 const History: React.FC<HistoryProps> = ({ trips, onDeleteTrip }) => {
-    const { settings } = useSettings();
+    const { settings, driverCode } = useSettings();
     const [filter, setFilter] = useState<TimeFilter>('all');
 
     // Filter Logic
@@ -128,14 +128,14 @@ const History: React.FC<HistoryProps> = ({ trips, onDeleteTrip }) => {
                                         </span>
                                         <div className="flex gap-1.5">
                                             <button
-                                                onClick={() => shareReceipt(trip, { ...settings, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A' })}
+                                                onClick={() => shareReceipt(trip, { ...settings, driverCode: driverCode ?? undefined, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A' })}
                                                 className="p-2 rounded-lg bg-blue-50 text-[#0047AB] hover:bg-[#0047AB] hover:text-white transition-all border border-blue-100"
                                                 title="View/Download PDF"
                                             >
                                                 <Eye size={14} />
                                             </button>
                                             <button
-                                                onClick={() => shareReceipt(trip, { ...settings, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A' })}
+                                                onClick={() => shareReceipt(trip, { ...settings, driverCode: driverCode ?? undefined, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A' })}
                                                 className="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all border border-green-100"
                                                 title="Share Receipt"
                                             >

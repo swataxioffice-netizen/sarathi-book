@@ -4,6 +4,9 @@ import { MapPin, Users, Car, Clock, CheckCircle2, MessageCircle, AlertCircle, Us
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
 import { calculateDistance } from '../utils/googleMaps';
+import { calculateAdvancedRoute } from '../utils/routesApi';
+import { estimatePermitCharge } from '../utils/permits';
+import { estimateParkingCharge } from '../utils/parking';
 import { calculateFare, VEHICLES, FareMode } from '../utils/fare';
 
 // Using central VEHICLES from fare.ts
@@ -32,42 +35,75 @@ const CabCalculator: React.FC = () => {
     const [toll, setToll] = useState<string>('0');
     const [permit, setPermit] = useState<string>('0');
     const [parking, setParking] = useState<string>('0');
+    const [showAdditional, setShowAdditional] = useState(false);
 
-    const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number) => {
+    const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number, tollAmt?: number) => {
         setPickup(pickupAddr);
         setDrop(dropAddr);
         setDistance(dist.toString());
+        if (tollAmt && tollAmt > 0) {
+            setToll(tollAmt.toString());
+        }
         setShowMap(false);
     };
 
-    // Auto-calculate distance when both locations are selected via autocomplete
+    // Auto-calculate distance, TOLLS, PERMITS AND PARKING when both locations are selected via autocomplete
     useEffect(() => {
-        const autoCalculateDistance = async () => {
+        const autoCalculateTrip = async () => {
             if (pickupCoords && dropCoords) {
                 setCalculatingDistance(true);
                 try {
-                    const result = await calculateDistance(pickupCoords, dropCoords);
-                    if (result) {
-                        setDistance(result.distance.toString());
+                    // 1. Estimate Permit based on states & vehicle
+                    const permitEst = estimatePermitCharge(pickup, drop, selectedVehicle);
+                    if (permitEst) {
+                        setPermit(permitEst.amount.toString());
+                    } else {
+                        setPermit('0');
+                    }
+
+                    // 2. Estimate Parking based on location keywords
+                    const pickupParking = estimateParkingCharge(pickup);
+                    const dropParking = estimateParkingCharge(drop);
+                    const totalParking = (pickupParking?.amount || 0) + (dropParking?.amount || 0);
+                    setParking(totalParking.toString());
+
+                    // 3. Try Advanced Routes API first (for tolls)
+                    const advanced = await calculateAdvancedRoute(pickupCoords, dropCoords);
+                    if (advanced) {
+                        const multiplier = tripType === 'roundtrip' ? 2 : 1;
+                        setDistance((advanced.distanceKm * multiplier).toString());
+                        if (advanced.tollPrice > 0) {
+                            // Doubling toll for Round Trip
+                            setToll((advanced.tollPrice * multiplier).toString());
+                        }
+                    } else {
+                        // 4. Fallback to basic distance matrix
+                        const basic = await calculateDistance(pickupCoords, dropCoords);
+                        if (basic) {
+                            const multiplier = tripType === 'roundtrip' ? 2 : 1;
+                            setDistance((basic.distance * multiplier).toString());
+                        }
                     }
                 } catch (error) {
-                    console.error('Error calculating distance:', error);
+                    console.error('Error calculating trip data:', error);
                 } finally {
                     setCalculatingDistance(false);
                 }
             }
         };
 
-        autoCalculateDistance();
-    }, [pickupCoords, dropCoords]);
+        autoCalculateTrip();
+    }, [pickupCoords, dropCoords, pickup, drop, selectedVehicle, tripType]);
 
     useEffect(() => {
-        if (passengers > 12) {
-            setSelectedVehicle('tempo_18');
+        if (passengers > 18) {
+            setSelectedVehicle('bus');
+        } else if (passengers > 12) {
+            setSelectedVehicle('minibus');
         } else if (passengers > 7) {
-            setSelectedVehicle('tempo_12');
+            setSelectedVehicle('tempo');
         } else if (passengers > 4) {
-            if (!['suv', 'innova_old', 'premium_suv', 'tempo_12', 'tempo_18'].includes(selectedVehicle)) {
+            if (!['suv', 'premium_suv', 'tempo', 'minibus', 'bus'].includes(selectedVehicle)) {
                 setSelectedVehicle('suv');
             }
         }
@@ -79,6 +115,13 @@ const CabCalculator: React.FC = () => {
             setCustomRate(tripType === 'roundtrip' ? vehicle.roundRate : vehicle.dropRate);
         }
     }, [selectedVehicle, tripType]);
+
+    // AUTO-CALCULATE FARE INSTANTLY
+    useEffect(() => {
+        if (distance) {
+            calculate();
+        }
+    }, [distance, tripType, days, passengers, selectedVehicle, customRate, waitingHours, isHillStation, petCharge, toll, permit, parking]);
 
     const calculate = () => {
         const dist = parseFloat(distance);
@@ -191,7 +234,7 @@ const CabCalculator: React.FC = () => {
                         aria-label={t === 'oneway' ? 'One Way or Drop Trip' : 'Round Trip'}
                         className={`flex-1 py-3 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${tripType === t ? 'bg-white text-[#0047AB] shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
                     >
-                        {t === 'oneway' ? 'One Way / Drop' : 'Round Trip'}
+                        {t === 'oneway' ? 'One Way / Drop' : 'Outstation'}
                     </button>
                 ))}
             </div>
@@ -266,6 +309,7 @@ const CabCalculator: React.FC = () => {
                         <Label icon={<Car size={10} aria-hidden="true" />} text="Vehicle" htmlFor="cab-vehicle" />
                         <select id="cab-vehicle" value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
                             {VEHICLES.filter(v => {
+                                if (passengers > 18) return v.seats >= 24;
                                 if (passengers > 12) return v.seats >= 18;
                                 if (passengers > 7) return v.seats >= 12;
                                 if (passengers > 4) return v.seats >= 7;
@@ -276,48 +320,60 @@ const CabCalculator: React.FC = () => {
                     <Input label="Rate/Km" icon={<Hash size={10} aria-hidden="true" />} value={customRate} onChange={setCustomRate} type="number" highlight />
                 </div>
 
-                {/* Additional Charges Section */}
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                        <Plus size={12} className="text-blue-500" /> Additional Charges
-                    </p>
+                {/* Additional Charges Section - ACCORDION */}
+                <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                    <button
+                        onClick={() => setShowAdditional(!showAdditional)}
+                        className="w-full flex items-center justify-between p-3 hover:bg-slate-100 transition-colors"
+                        type="button"
+                    >
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <Plus size={12} className={`text-blue-500 transition-transform ${showAdditional ? 'rotate-45' : ''}`} />
+                            Additional Charges
+                        </p>
+                        <Plus size={12} className={`text-slate-400 transition-transform duration-200 ${showAdditional ? 'rotate-180 opacity-0' : 'rotate-0'}`} />
+                    </button>
 
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Waiting (Hrs)</label>
-                            <input type="number" value={waitingHours || ''} onChange={e => setWaitingHours(Number(e.target.value))} className="tn-input h-8 text-xs bg-white" placeholder="0" />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Toll Charges</label>
-                            <input type="number" value={toll} onChange={e => setToll(e.target.value)} className="tn-input h-8 text-xs bg-white" placeholder="0" />
-                        </div>
-                    </div>
+                    {showAdditional && (
+                        <div className="p-3 pt-0 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Waiting (Hrs)</label>
+                                    <input type="number" value={waitingHours || ''} onChange={e => setWaitingHours(Number(e.target.value))} className="tn-input h-8 text-xs bg-white" placeholder="0" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Toll Charges</label>
+                                    <input type="number" value={toll} onChange={e => setToll(e.target.value)} className="tn-input h-8 text-xs bg-white" placeholder="0" />
+                                </div>
+                            </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Parking</label>
-                            <input type="number" value={parking} onChange={e => setParking(e.target.value)} className="tn-input h-8 text-xs bg-white" placeholder="0" />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Permit Charges</label>
-                            <input type="number" value={permit} onChange={e => setPermit(e.target.value)} className="tn-input h-8 text-xs bg-white" placeholder="0" />
-                        </div>
-                    </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Parking</label>
+                                    <input type="number" value={parking} onChange={e => setParking(e.target.value)} className="tn-input h-8 text-xs bg-white" placeholder="0" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Permit Charges</label>
+                                    <input type="number" value={permit} onChange={e => setPermit(e.target.value)} className="tn-input h-8 text-xs bg-white" placeholder="0" />
+                                </div>
+                            </div>
 
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => setIsHillStation(!isHillStation)}
-                            className={`flex-1 py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${isHillStation ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
-                        >
-                            ⛰️ Hill Station
-                        </button>
-                        <button
-                            onClick={() => setPetCharge(!petCharge)}
-                            className={`flex-1 py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${petCharge ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
-                        >
-                            🐾 Pet Charge
-                        </button>
-                    </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setIsHillStation(!isHillStation)}
+                                    className={`flex-1 py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${isHillStation ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
+                                >
+                                    🏔️ Hill Station
+                                </button>
+                                <button
+                                    onClick={() => setPetCharge(!petCharge)}
+                                    className={`flex-1 py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${petCharge ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
+                                >
+                                    🐾 Pet Charge
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -522,7 +578,7 @@ const RelocationCalculator: React.FC = () => {
         autoCalculateDistance();
     }, [pickupCoords, dropCoords]);
 
-    const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number) => {
+    const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number, _tollAmt?: number) => {
         setPickup(pickupAddr);
         setDrop(dropAddr);
         setDistance(dist.toString());

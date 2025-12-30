@@ -16,6 +16,7 @@ interface ProfileData {
     };
     full_name?: string;
     avatar_url?: string;
+    driver_code?: number;
 }
 
 const PublicProfile: React.FC<PublicProfileProps> = ({ userId }) => {
@@ -30,7 +31,7 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId }) => {
                 // If RLS is strict, we might need an Edge Function or RPC, but usually profiles are public readable
                 const { data, error } = await supabase
                     .from('profiles')
-                    .select('settings, id') // selecting minimal fields
+                    .select('settings, id, driver_code') // selecting minimal fields
                     .eq('id', userId)
                     .single();
 
@@ -87,6 +88,11 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId }) => {
                     <h1 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-1">
                         {company}
                     </h1>
+                    {profile.driver_code && (
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                            ID: #{profile.driver_code}
+                        </p>
+                    )}
                     <div className="flex items-center justify-center gap-1.5 mb-4">
                         <BadgeCheck size={16} className="text-green-500" fill="currentColor" />
                         <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Verified Partner</span>

@@ -10,6 +10,7 @@ export interface PDFSettings {
     vehicleNumber: string;
     gstEnabled: boolean;
     vehicles?: any[];
+    driverCode?: number;
 }
 
 export interface QuotationItem {
@@ -53,9 +54,15 @@ export const generateReceiptPDF = (trip: Trip, settings: PDFSettings, isQuotatio
     doc.text(companyAddress, margin, 27, { maxWidth: 100 });
 
     doc.setFontSize(10);
+    doc.setFontSize(10);
     doc.text(`Phone: ${driverPhone}`, margin, 42);
-    if (gstin) {
+    if (settings?.driverCode) {
+        doc.text(`Driver ID: #${settings.driverCode}`, margin + 60, 42);
+    } else if (gstin) {
         doc.text(`GSTIN: ${gstin}`, margin + 60, 42);
+    }
+    if (gstin && settings?.driverCode) {
+        doc.text(`GSTIN: ${gstin}`, margin + 110, 42);
     }
 
     // Divider Line
@@ -436,7 +443,7 @@ export const generateQuotationPDF = (data: QuotationData, settings: PDFSettings)
     const margin = 15;
     let y = 0;
 
-    const companyName = String(settings?.companyName || 'YOUR TRAVELS NAME');
+    const companyName = String(settings?.companyName || 'YOUR Business Name');
     const companyAddress = String(settings?.companyAddress || '');
     const driverPhone = String(settings?.driverPhone || '');
     const gstin = String(settings?.gstin || '');

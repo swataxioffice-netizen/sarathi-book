@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { loadGoogleMaps, calculateDistance, getCurrentLocation } from '../utils/googleMaps';
+import { calculateAdvancedRoute } from '../utils/routesApi';
 import { MapPin, X, Search, Locate } from 'lucide-react';
 
 interface MapPickerProps {
-    onLocationSelect: (pickup: string, drop: string, distance: number) => void;
+    onLocationSelect: (pickup: string, drop: string, distance: number, toll?: number) => void;
     onClose: () => void;
 }
 
@@ -18,6 +19,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
     const [pickupLocation, setPickupLocation] = useState<{ lat: number; lng: number; address: string } | null>(null);
     const [dropLocation, setDropLocation] = useState<{ lat: number; lng: number; address: string } | null>(null);
     const [distance, setDistance] = useState<number>(0);
+    const [tollEstimate, setTollEstimate] = useState<number>(0);
     const [mode, setMode] = useState<'pickup' | 'drop'>('pickup');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string>('');
@@ -245,38 +247,50 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
         }
     };
 
-    // Calculate distance when both locations are set
+    // Calculate distance and TOLLS when both locations are set
     useEffect(() => {
         if (pickupLocation && dropLocation && directionsRenderer) {
             const calculateRoute = async () => {
                 try {
-                    const result = await calculateDistance(
+                    // 1. Get basic distance for immediate UI
+                    const basicRes = await calculateDistance(
                         { lat: pickupLocation.lat, lng: pickupLocation.lng },
                         { lat: dropLocation.lat, lng: dropLocation.lng }
                     );
 
-                    if (result) {
-                        setDistance(result.distance);
-
-                        // Draw route on map
-                        const google = await loadGoogleMaps();
-                        const directionsService = new google.maps.DirectionsService();
-
-                        directionsService.route(
-                            {
-                                origin: { lat: pickupLocation.lat, lng: pickupLocation.lng },
-                                destination: { lat: dropLocation.lat, lng: dropLocation.lng },
-                                travelMode: google.maps.TravelMode.DRIVING,
-                            },
-                            (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
-                                if (status === 'OK' && result) {
-                                    directionsRenderer.setDirections(result);
-                                }
-                            }
-                        );
+                    if (basicRes) {
+                        setDistance(basicRes.distance);
                     }
+
+                    // 2. Try Advanced Routes API for TOLL estimates
+                    const advancedRes = await calculateAdvancedRoute(
+                        { lat: pickupLocation.lat, lng: pickupLocation.lng },
+                        { lat: dropLocation.lat, lng: dropLocation.lng }
+                    );
+
+                    if (advancedRes) {
+                        setDistance(advancedRes.distanceKm);
+                        setTollEstimate(advancedRes.tollPrice);
+                    }
+
+                    // 3. Draw route line on map
+                    const google = await loadGoogleMaps();
+                    const directionsService = new google.maps.DirectionsService();
+
+                    directionsService.route(
+                        {
+                            origin: { lat: pickupLocation.lat, lng: pickupLocation.lng },
+                            destination: { lat: dropLocation.lat, lng: dropLocation.lng },
+                            travelMode: google.maps.TravelMode.DRIVING,
+                        },
+                        (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
+                            if (status === 'OK' && result) {
+                                directionsRenderer.setDirections(result);
+                            }
+                        }
+                    );
                 } catch (err) {
-                    console.error('Error calculating distance:', err);
+                    console.error('Error calculating route:', err);
                 }
             };
 
@@ -286,7 +300,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
 
     const handleConfirm = () => {
         if (pickupLocation && dropLocation) {
-            onLocationSelect(pickupLocation.address, dropLocation.address, distance);
+            onLocationSelect(pickupLocation.address, dropLocation.address, distance, tollEstimate);
             onClose();
         }
     };
@@ -406,10 +420,20 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
                     </div>
                 )}
 
-                {distance > 0 && (
-                    <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl border border-blue-200">
-                        <span className="text-sm font-bold text-blue-900">Distance</span>
-                        <span className="text-lg font-black text-blue-600">{distance} KM</span>
+                {(distance > 0 || tollEstimate > 0) && (
+                    <div className="flex gap-2">
+                        {distance > 0 && (
+                            <div className="flex-1 flex items-center justify-between p-3 bg-blue-50 rounded-xl border border-blue-200">
+                                <span className="text-[10px] font-bold text-blue-900 uppercase">Distance</span>
+                                <span className="text-sm font-black text-blue-600">{distance} KM</span>
+                            </div>
+                        )}
+                        {tollEstimate > 0 && (
+                            <div className="flex-1 flex items-center justify-between p-3 bg-orange-50 rounded-xl border border-orange-200">
+                                <span className="text-[10px] font-bold text-orange-900 uppercase">Est. Toll</span>
+                                <span className="text-sm font-black text-orange-600">₹{tollEstimate}</span>
+                            </div>
+                        )}
                     </div>
                 )}
 

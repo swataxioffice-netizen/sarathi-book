@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { Trash2, Plus, User as UserIcon, CheckCircle, Circle, Globe, Camera, LogOut, Landmark, MessageCircle, RefreshCw, Phone, Contact, X } from 'lucide-react';
-import { validateGSTIN } from '../utils/validation';
+import { Trash2, Plus, User as UserIcon, CheckCircle, Circle, Globe, Camera, LogOut, Landmark, MessageCircle, RefreshCw, Phone, Contact, X, Car, FileText, Settings, ChevronRight } from 'lucide-react';
+import { validateGSTIN, validateVehicleNumber } from '../utils/validation';
 import DocumentVault from './DocumentVault';
 import GoogleSignInButton from './GoogleSignInButton';
 import { supabase } from '../utils/supabase';
@@ -19,23 +19,39 @@ const Profile: React.FC = () => {
     const [isCustomModel, setIsCustomModel] = useState(false);
     const [isEditingPhoto, setIsEditingPhoto] = useState(false);
     const [customPhotoUrl, setCustomPhotoUrl] = useState('');
-    const [savingSection, setSavingSection] = useState<'business' | 'banking' | 'fleet' | 'language' | null>(null);
+    const [savingSection, setSavingSection] = useState<'business' | 'banking' | 'fleet' | 'language' | 'services' | 'tax' | null>(null);
     const [selectedLanguage, setSelectedLanguage] = useState<any>(settings.language || 'en');
-    const [profileLoading, setProfileLoading] = useState(false);
     const [loadingTimeout, setLoadingTimeout] = useState(false);
-    const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | 'support' | null>(null);
+    const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | 'support' | 'settings_menu' | null>(null);
     const [showCard, setShowCard] = useState(false);
+    const [driverCode, setDriverCode] = useState<number | null>(null);
+    const [activeTab, setActiveTab] = useState<'business' | 'finance' | 'garage' | 'docs'>('business');
+
+    const handleManualSave = async (section: 'business' | 'banking' | 'fleet' | 'language' | 'services') => {
+        setSavingSection(section);
+        const success = await saveSettings();
+        await new Promise(r => setTimeout(r, 500));
+        if (!success) alert('Failed to save settings. Please try again.');
+        setSavingSection(null);
+    };
 
 
     const addVehicle = () => {
         if (!newVehicleNumber || !selectedCategoryId || (!newVehicleModel && !isCustomModel)) return;
+
+        // Validate Vehicle Number
+        if (!validateVehicleNumber(newVehicleNumber)) {
+            alert('Invalid Vehicle Number. Please enter a valid Indian Vehicle Number (e.g., TN01AB1234).');
+            return;
+        }
+
         const vehicleInfo = VEHICLES.find(v => v.id === selectedCategoryId);
         if (!vehicleInfo) return;
 
         updateSettings({
             vehicles: [...settings.vehicles, {
                 id: crypto.randomUUID(),
-                number: newVehicleNumber,
+                number: newVehicleNumber.toUpperCase().replace(/[^A-Z0-9]/g, ''), // Store clean format
                 model: newVehicleModel || vehicleInfo.name,
                 categoryId: vehicleInfo.id
             }]
@@ -68,17 +84,16 @@ const Profile: React.FC = () => {
     // Fetch existing profile data (phone) on load
     React.useEffect(() => {
         const fetchProfile = async () => {
-            if (user) {
-                setProfileLoading(true);
+            if (user?.id) {
                 try {
                     // Timeout promise to prevent infinite loading (15 seconds)
                     const timeoutPromise = new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error('Profile fetch timed out')), 15000)
+                        setTimeout(() => reject(new Error('Profile fetch timed out')), 5000)
                     );
 
                     const dbPromise = supabase
                         .from('profiles')
-                        .select('phone')
+                        .select('phone, driver_code')
                         .eq('id', user.id)
                         .single();
 
@@ -86,21 +101,22 @@ const Profile: React.FC = () => {
 
                     if (error) {
                         console.error('Error fetching profile:', error);
-                    } else if (data?.phone && !settings.driverPhone) {
-                        updateSettings({ driverPhone: data.phone });
+                    } else if (data) {
+                        if (data.phone && !settings.driverPhone) updateSettings({ driverPhone: data.phone });
+                        if (data.driver_code) setDriverCode(data.driver_code);
                     }
                 } catch (err: any) {
                     console.error('Profile fetch failed:', err);
-                } finally {
-                    setProfileLoading(false);
                 }
             }
         };
 
         fetchProfile();
-    }, [user]);
+    }, [user?.id]); // Only re-run if user ID changes, not object reference
 
-    const operatorId = user ? `OP - ${user.id.slice(0, 6).toUpperCase()} -${new Date().getFullYear()} ` : 'GUEST-DRIVER';
+    const operatorId = driverCode
+        ? `#${driverCode}`
+        : (user ? `OP-${user.id.slice(0, 6).toUpperCase()}` : 'GUEST');
 
     // -- Completion Logic --
     const getCompletion = () => {
@@ -132,15 +148,16 @@ const Profile: React.FC = () => {
     // Show loading state while auth is initializing
     React.useEffect(() => {
         let timer: NodeJS.Timeout;
-        if (authLoading || profileLoading) {
+        if (authLoading) {
             timer = setTimeout(() => setLoadingTimeout(true), 10000); // 10s timeout
         } else {
             setLoadingTimeout(false);
         }
         return () => clearTimeout(timer);
-    }, [authLoading, profileLoading]);
+    }, [authLoading]);
 
-    if (authLoading || profileLoading) {
+    // CRITICAL FIX: Do not block UI for profileLoading, only for authLoading
+    if (authLoading) {
         return (
             <div className="flex items-center justify-center min-h-screen pb-24">
                 <div className="text-center space-y-4">
@@ -266,10 +283,10 @@ const Profile: React.FC = () => {
 
                         {/* Sign Out - Only show if logged in */}
                         {user && (
-                            <div>
+                            <div className="flex gap-2">
                                 <button
                                     onClick={signOut}
-                                    className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-all"
+                                    className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-all shadow-sm active:scale-95"
                                 >
                                     <LogOut size={16} />
                                 </button>
@@ -292,510 +309,627 @@ const Profile: React.FC = () => {
 
 
 
-            {/* Business Profile */}
-            <div className="space-y-2">
-                <div className="flex items-center gap-2 px-1">
-                    {settings.companyName && settings.companyAddress && settings.driverPhone ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
-                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Travels Details</h3>
-                </div>
 
-                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
-                    <div className="space-y-2">
-                        <div>
-                            <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Travels Name <span className="text-red-500">*</span></label>
-                            <input
-                                type="text"
-                                value={settings.companyName}
-                                onChange={(_) => updateSettings({ companyName: _.target.value })}
-                                className="tn-input h-10 font-bold placeholder:text-slate-500"
-                                placeholder="e.g. Saravana Travels"
-                            />
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-1 ml-1">
-                                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">WhatsApp Number <span className="text-red-500">*</span></label>
-                                <MessageCircle size={10} className="text-[#25D366]" />
-                            </div>
-                            <input
-                                type="text"
-                                value={settings.driverPhone}
-                                onChange={(_) => {
-                                    updateSettings({ driverPhone: _.target.value });
-                                    if (user) {
-                                        // Auto-sync phone to Supabase profile
-                                        supabase.from('profiles').update({ phone: _.target.value }).eq('id', user.id).then(({ error }) => {
-                                            if (error) console.error('Failed to sync phone', error);
-                                        });
-                                    }
-                                }}
-                                className="tn-input h-10 font-bold placeholder:text-slate-500"
-                                placeholder="+91 99999 88888"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Address <span className="text-red-500">*</span></label>
-                            <input
-                                type="text"
-                                value={settings.companyAddress}
-                                onChange={(_) => updateSettings({ companyAddress: _.target.value })}
-                                className="tn-input h-10 font-bold placeholder:text-slate-500"
-                                placeholder="State, City"
-                            />
-                        </div>
-                        <div className="pt-2 flex justify-end">
-                            <button
-                                onClick={async () => {
-                                    setSavingSection('business');
-                                    const success = await saveSettings();
-                                    await new Promise(r => setTimeout(r, 500));
-                                    if (!success) alert('Failed to save settings. Please try again.');
-                                    setSavingSection(null);
-                                }}
-                                className="bg-green-700 text-white px-6 h-12 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
-                            >
-                                {savingSection === 'business' ? (
-                                    <>
-                                        <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                        Saving...
-                                    </>
-                                ) : (
-                                    <>
-                                        <CheckCircle size={14} /> Save
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {/* COMPACT TABS NAVIGATION */}
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl mx-1 mb-6">
+                {[
+                    {
+                        id: 'business',
+                        label: 'Business',
+                        icon: <Contact size={14} />,
+                        color: 'blue',
+                        isComplete: !!(settings.companyName && settings.driverPhone && (settings.services?.length ?? 0) > 0)
+                    },
+                    {
+                        id: 'finance',
+                        label: 'Finance',
+                        icon: <Landmark size={14} />,
+                        color: 'green',
+                        isComplete: !!(settings.upiId || (settings.bankName && settings.holderName))
+                    },
+                    {
+                        id: 'garage',
+                        label: 'Garage',
+                        icon: <Car size={14} />,
+                        color: 'purple',
+                        isComplete: settings.vehicles.length > 0
+                    },
+                    {
+                        id: 'docs',
+                        label: 'Expiry Date',
+                        icon: <FileText size={14} />,
+                        color: 'orange',
+                        isComplete: docStats.hasFullVehicle && docStats.hasFullDriver
+                    }
+                ].map((tab) => {
+                    const isActive = activeTab === tab.id;
+                    const colorConfig: Record<string, string> = {
+                        blue: 'text-blue-600',
+                        green: 'text-green-600',
+                        purple: 'text-purple-600',
+                        orange: 'text-orange-600'
+                    };
 
-            {/* Legal & Banking */}
-            <div className="space-y-2">
-                <div className="flex items-center gap-2 px-1">
-                    {settings.bankName && settings.accountNumber && settings.ifscCode ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
-                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-green-500 underline-offset-4">Bank Details</h3>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
-                    {/* GST Toggle */}
-                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl border border-slate-100">
-                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-wide">Enable GST Invoice</span>
-                        <div
-                            onClick={() => updateSettings({ gstEnabled: !settings.gstEnabled })}
-                            className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${settings.gstEnabled ? 'bg-green-500' : 'bg-slate-300'}`}
-                        >
-                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${settings.gstEnabled ? 'left-6' : 'left-1'}`}></div>
-                        </div>
-                    </div>
-
-                    {!settings.gstEnabled && (
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 p-3 rounded-xl animate-fade-in relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                                <Landmark size={48} className="text-blue-600" />
-                            </div>
-                            <h4 className="text-[10px] font-black text-blue-800 uppercase tracking-widest mb-1 flex items-center gap-1">
-                                Need GST Registration?
-                            </h4>
-                            <p className="text-[9px] text-blue-600 font-bold mb-2 w-3/4">
-                                Get your GSTIN quickly to serve corporate clients and grow your business.
-                            </p>
-                            <div className="flex gap-2">
-                                <a
-                                    href="https://wa.me/919941033990?text=Hi, I am running a Cab Transport Business and need help with GST Registration and Tax Filing."
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-1 bg-[#25D366] text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider hover:bg-green-600 transition-colors shadow-sm"
-                                >
-                                    WhatsApp <MessageCircle size={10} />
-                                </a>
-                                <a
-                                    href="tel:+919941033990"
-                                    className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider hover:bg-blue-700 transition-colors shadow-sm"
-                                >
-                                    Call Now <Phone size={10} />
-                                </a>
-                            </div>
-                        </div>
-                    )}
-
-                    {settings.gstEnabled && (
-                        <div className="space-y-2 animate-fade-in pl-1">
-                            <div>
-                                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">GST Number</label>
-                                <input
-                                    type="text"
-                                    value={settings.gstin}
-                                    onChange={(_) => updateSettings({ gstin: _.target.value.toUpperCase() })}
-                                    className={`tn-input h-10 font-bold placeholder:text-slate-500 ${settings.gstin && !validateGSTIN(settings.gstin) ? 'border-red-300 bg-red-50' : ''}`}
-                                    placeholder="22AAAAA0000A1Z5"
-                                    maxLength={15}
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Bank Details - Simplified */}
-                    <div className="pt-2 border-t border-slate-100 space-y-2">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Landmark size={14} className="text-slate-400" />
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Payment Info</span>
-                        </div>
-
-                        <div>
-                            <div className="flex items-center gap-1 ml-1">
-                                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">UPI ID (Primary)</label>
-                                <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-[8px] font-black rounded uppercase">Main</span>
-                            </div>
-                            <input
-                                type="text"
-                                value={settings.upiId || ''}
-                                onChange={(_) => updateSettings({ upiId: _.target.value })}
-                                className="tn-input h-10 font-bold placeholder:text-slate-500"
-                                placeholder="username@upi / phone@upi"
-                            />
-                            <p className="text-[8px] text-slate-400 ml-1 mt-0.5 font-bold italic">Payments will be sent to this ID</p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                            <div>
-                                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Account Name</label>
-                                <input
-                                    type="text"
-                                    value={settings.holderName || ''}
-                                    onChange={(_) => updateSettings({ holderName: _.target.value })}
-                                    className="tn-input h-9 font-bold placeholder:text-slate-500"
-                                    placeholder="Holder Name"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Bank Name</label>
-                                <input
-                                    type="text"
-                                    value={settings.bankName || ''}
-                                    onChange={(_) => updateSettings({ bankName: _.target.value })}
-                                    className="tn-input h-9 font-bold"
-                                    placeholder="Bank Name"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="pt-2 flex justify-end">
+                    return (
                         <button
-                            onClick={async () => {
-                                setSavingSection('banking');
-                                const success = await saveSettings();
-                                await new Promise(r => setTimeout(r, 500));
-                                if (!success) alert('Failed to save settings. Please try again.');
-                                setSavingSection(null);
-                            }}
-                            className="bg-green-700 text-white px-6 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id as any)}
+                            className={`flex-1 flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all relative ${isActive
+                                ? 'bg-white shadow-sm ring-1 ring-black/5'
+                                : 'text-slate-500 hover:text-slate-700'
+                                }`}
                         >
-                            {savingSection === 'banking' ? (
-                                <>
-                                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    Saving...
-                                </>
-                            ) : (
-                                <>
-                                    <CheckCircle size={12} /> Save
-                                </>
+                            {/* Status Indicator */}
+                            {tab.isComplete && (
+                                <div className="absolute top-1 right-1">
+                                    <CheckCircle size={8} className="text-green-500 fill-white" />
+                                </div>
                             )}
+
+                            <div className={`${isActive ? colorConfig[tab.color] : 'text-slate-400'}`}>
+                                {tab.icon}
+                            </div>
+                            <span className={`text-[8px] font-black uppercase tracking-wider mt-0.5 ${isActive ? 'text-slate-900' : 'opacity-60'}`}>
+                                {tab.label}
+                            </span>
                         </button>
-                    </div>
-                </div>
+                    );
+                })}
             </div>
 
-            {/* Fleet Management */}
-            <div className="space-y-2">
-                <div className="flex items-center gap-2 px-1">
-                    {settings.vehicles.length > 0 ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
-                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-purple-500 underline-offset-4">My Vehicles</h3>
-                </div>
+            {/* TAB CONTENT: BUSINESS */}
+            {activeTab === 'business' && (
+                <div className="space-y-6 animate-fade-in">
 
-                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
+                    {/* Business Profile */}
                     <div className="space-y-2">
-                        {settings.vehicles.map((v) => (
-                            <div key={v.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-xl group relative overflow-hidden">
-                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${settings.currentVehicleId === v.id ? 'bg-primary' : 'bg-slate-300'}`}></div>
-                                <div
-                                    className="flex-1 pl-2 cursor-pointer"
-                                    onClick={() => updateSettings({ currentVehicleId: v.id })}
+                        <div className="flex items-center gap-2 px-1">
+                            {settings.companyName && settings.companyAddress && settings.driverPhone ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
+                            <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Business Details</h3>
+                        </div>
+                        <p className="text-[10px] text-slate-500 px-1 font-medium">Your company info as seen on Invoices.</p>
+                        <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
+                            <div className="space-y-2">
+                                <div>
+                                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Business Name <span className="text-red-500">*</span></label>
+                                    <input
+                                        type="text"
+                                        value={settings.companyName}
+                                        onChange={(_) => updateSettings({ companyName: _.target.value })}
+                                        className="tn-input h-10 font-bold placeholder:text-slate-500"
+                                        placeholder="e.g. Saravana Travels"
+                                    />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-1 ml-1">
+                                        <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">WhatsApp Number <span className="text-red-500">*</span></label>
+                                        <MessageCircle size={10} className="text-[#25D366]" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={settings.driverPhone}
+                                        onChange={(_) => {
+                                            updateSettings({ driverPhone: _.target.value });
+                                            if (user) {
+                                                // Auto-sync phone to Supabase profile
+                                                supabase.from('profiles').update({ phone: _.target.value }).eq('id', user.id).then(({ error }) => {
+                                                    if (error) console.error('Failed to sync phone', error);
+                                                });
+                                            }
+                                        }}
+                                        className="tn-input h-10 font-bold placeholder:text-slate-500"
+                                        placeholder="+91 99999 88888"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Address <span className="text-red-500">*</span></label>
+                                    <input
+                                        type="text"
+                                        value={settings.companyAddress}
+                                        onChange={(_) => updateSettings({ companyAddress: _.target.value })}
+                                        className="tn-input h-10 font-bold placeholder:text-slate-500"
+                                        placeholder="State, City"
+                                    />
+                                </div>
+                                <div className="pt-2 flex justify-end">
+                                    <button
+                                        onClick={async () => {
+                                            setSavingSection('business');
+                                            const success = await saveSettings();
+                                            await new Promise(r => setTimeout(r, 500));
+                                            if (!success) alert('Failed to save settings. Please try again.');
+                                            setSavingSection(null);
+                                        }}
+                                        className="bg-green-700 text-white px-6 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
+                                    >
+                                        {savingSection === 'business' ? (
+                                            <>
+                                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CheckCircle size={12} /> Save
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Service Details */}
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 px-1">
+                            {(settings.services?.length ?? 0) > 0 ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
+                            <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Service Details</h3>
+                        </div>
+                        <p className="text-[10px] text-slate-500 px-1 font-medium">Select services to display on your Visiting Card.</p>
+                        <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
+                            <div className="grid grid-cols-2 gap-2">
+                                {['Local', 'Outstation', 'Tours', 'Airport', 'Hourly'].map((service) => (
+                                    <label key={service} className="flex items-center gap-2 p-2.5 border border-slate-100 rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 active:scale-95 transition-all">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                            checked={settings.services?.includes(service) || false}
+                                            onChange={(e) => {
+                                                const currentServices = settings.services || [];
+                                                let newServices;
+                                                if (e.target.checked) {
+                                                    newServices = [...currentServices, service];
+                                                } else {
+                                                    newServices = currentServices.filter(s => s !== service);
+                                                }
+                                                updateSettings({ services: newServices });
+                                            }}
+                                        />
+                                        <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">{service}</span>
+                                    </label>
+                                ))}
+                            </div>
+                            <div className="flex justify-end pt-2 border-t border-slate-100 mt-1">
+                                <button
+                                    onClick={() => handleManualSave('services')}
+                                    disabled={savingSection === 'services'}
+                                    className="bg-green-700 text-white px-6 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95 disabled:opacity-50"
                                 >
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-black text-slate-900">{v.number}</span>
-                                        <span className="text-[9px] font-bold text-slate-500 uppercase">{v.model}</span>
+                                    {savingSection === 'services' ? (
+                                        <>
+                                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle size={12} />
+                                            Save
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            )}
+
+            {/* TAB CONTENT: FINANCE */}
+            {activeTab === 'finance' && (
+                <div className="space-y-6 animate-fade-in">
+
+                    {/* Tax Settings */}
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 px-1">
+                            {settings.gstEnabled && settings.gstin ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
+                            <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-green-500 underline-offset-4">Tax Settings</h3>
+                        </div>
+                        <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
+                            {/* GST Toggle */}
+                            <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl border border-slate-100">
+                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-wide">Enable GST Invoice</span>
+                                <div
+                                    onClick={() => updateSettings({ gstEnabled: !settings.gstEnabled })}
+                                    className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${settings.gstEnabled ? 'bg-green-500' : 'bg-slate-300'}`}
+                                >
+                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${settings.gstEnabled ? 'left-6' : 'left-1'}`}></div>
+                                </div>
+                            </div>
+
+                            {user && !settings.gstEnabled && (
+                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 p-3 rounded-xl animate-fade-in relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                                        <Landmark size={48} className="text-blue-600" />
+                                    </div>
+                                    <h4 className="text-[10px] font-black text-blue-800 uppercase tracking-widest mb-1 flex items-center gap-1">
+                                        Need GST Registration?
+                                    </h4>
+                                    <p className="text-[9px] text-blue-600 font-bold mb-2 w-3/4">
+                                        Get your GSTIN quickly to serve corporate clients and grow your business.
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <a
+                                            href="https://wa.me/919941033990?text=Hi, I am running a Cab Transport Business and need help with GST Registration and Tax Filing."
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex items-center gap-1 bg-[#25D366] text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider hover:bg-green-600 transition-colors shadow-sm"
+                                        >
+                                            WhatsApp <MessageCircle size={10} />
+                                        </a>
+                                        <a
+                                            href="tel:+919941033990"
+                                            className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider hover:bg-blue-700 transition-colors shadow-sm"
+                                        >
+                                            Call Now <Phone size={10} />
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
+
+                            {settings.gstEnabled && (
+                                <div className="space-y-2 animate-fade-in pl-1">
+                                    <div>
+                                        <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">GST Number</label>
+                                        <input
+                                            type="text"
+                                            value={settings.gstin}
+                                            onChange={(_) => updateSettings({ gstin: _.target.value.toUpperCase() })}
+                                            className={`tn-input h-10 font-bold placeholder:text-slate-500 ${settings.gstin && !validateGSTIN(settings.gstin) ? 'border-red-300 bg-red-50' : ''}`}
+                                            placeholder="22AAAAA0000A1Z5"
+                                            maxLength={15}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="pt-2 flex justify-end border-t border-slate-100">
+                                <button
+                                    onClick={async () => {
+                                        setSavingSection('tax');
+                                        const success = await saveSettings();
+                                        await new Promise(r => setTimeout(r, 500));
+                                        if (!success) alert('Failed to save settings. Please try again.');
+                                        setSavingSection(null);
+                                    }}
+                                    className="bg-green-700 text-white px-6 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
+                                >
+                                    {savingSection === 'tax' ? (
+                                        <>
+                                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle size={12} /> Save
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Legal & Banking */}
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 px-1">
+                            {settings.upiId || (settings.bankName && settings.holderName) ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
+                            <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-green-500 underline-offset-4">Bank Details</h3>
+                        </div>
+                        <p className="text-[10px] text-slate-500 px-1 font-medium">Add payment details to receive money from clients.</p>
+                        <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
+
+                            {/* Bank Details - Simplified */}
+                            <div className="space-y-2">
+
+                                <div>
+                                    <div className="flex items-center gap-1 ml-1">
+                                        <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">UPI ID (Primary)</label>
+                                        <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-[8px] font-black rounded uppercase">Main</span>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={settings.upiId || ''}
+                                        onChange={(_) => updateSettings({ upiId: _.target.value })}
+                                        className="tn-input h-10 font-bold placeholder:text-slate-500"
+                                        placeholder="username@upi / phone@upi"
+                                    />
+                                    <p className="text-[8px] text-slate-400 ml-1 mt-0.5 font-bold italic">Payments will be sent to this ID</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Account Name</label>
+                                        <input
+                                            type="text"
+                                            value={settings.holderName || ''}
+                                            onChange={(_) => updateSettings({ holderName: _.target.value })}
+                                            className="tn-input h-9 font-bold placeholder:text-slate-500"
+                                            placeholder="Holder Name"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Bank Name</label>
+                                        <input
+                                            type="text"
+                                            value={settings.bankName || ''}
+                                            onChange={(_) => updateSettings({ bankName: _.target.value })}
+                                            className="tn-input h-9 font-bold"
+                                            placeholder="Bank Name"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="pt-2 flex justify-end border-t border-slate-100">
+                                <button
+                                    onClick={async () => {
+                                        setSavingSection('banking');
+                                        const success = await saveSettings();
+                                        await new Promise(r => setTimeout(r, 500));
+                                        if (!success) alert('Failed to save settings. Please try again.');
+                                        setSavingSection(null);
+                                    }}
+                                    className="bg-green-700 text-white px-6 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
+                                >
+                                    {savingSection === 'banking' ? (
+                                        <>
+                                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle size={12} /> Save
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            )}
+
+            {/* TAB CONTENT: GARAGE */}
+            {activeTab === 'garage' && (
+                <div className="space-y-6 animate-fade-in">
+
+
+
+                    {/* Fleet Management */}
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 px-1">
+                            {settings.vehicles.length > 0 ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
+                            <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-green-500 underline-offset-4">My Vehicles</h3>
+                        </div>
+                        <p className="text-[10px] text-slate-500 px-1 font-medium">Add vehicles to manage trips and track availability.</p>
+                        <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
+                            <div className="space-y-2">
+                                {settings.vehicles.map((v) => (
+                                    <div key={v.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-xl group relative overflow-hidden">
+                                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${settings.currentVehicleId === v.id ? 'bg-primary' : 'bg-slate-300'}`}></div>
+                                        <div
+                                            className="flex-1 pl-2 cursor-pointer"
+                                            onClick={() => updateSettings({ currentVehicleId: v.id })}
+                                        >
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-black text-slate-900">{v.number}</span>
+                                                <div className="flex flex-wrap gap-2 items-center">
+                                                    <span className="text-[9px] font-bold text-slate-500 uppercase">{v.model}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => deleteVehicle(v.id)}
+                                            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+
+                                        {settings.currentVehicleId === v.id && (
+                                            <div className="mr-2 px-2 py-0.5 bg-primary text-white text-[8px] font-black uppercase rounded-full tracking-widest">
+                                                Active
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-100 space-y-2">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Plus size={14} className="text-slate-400" />
+                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Add New Vehicle</span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Vehicle Number</label>
+                                        <input
+                                            type="text"
+                                            value={newVehicleNumber}
+                                            onChange={(e) => setNewVehicleNumber(e.target.value.toUpperCase())}
+                                            className="tn-input font-bold uppercase w-full placeholder:text-slate-500"
+                                            placeholder="TN-00-AA-0000"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Category</label>
+                                        <select
+                                            value={selectedCategoryId}
+                                            onChange={(e) => {
+                                                setSelectedCategoryId(e.target.value);
+                                                setNewVehicleModel('');
+                                                setIsCustomModel(false);
+                                            }}
+                                            className="tn-input font-bold w-full bg-slate-50 text-black"
+                                        >
+                                            {VEHICLES.map(v => (
+                                                <option key={v.id} value={v.id}>
+                                                    {v.name}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </div>
 
+                                <div className="grid grid-cols-1 gap-2">
+                                    <div>
+                                        <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Car Model</label>
+                                        {!isCustomModel ? (
+                                            <select
+                                                value={newVehicleModel}
+                                                onChange={(e) => {
+                                                    if (e.target.value === 'CUSTOM') {
+                                                        setIsCustomModel(true);
+                                                        setNewVehicleModel('');
+                                                    } else {
+                                                        setNewVehicleModel(e.target.value);
+                                                    }
+                                                }}
+                                                className="tn-input font-bold w-full bg-slate-50 text-black"
+                                            >
+                                                <option value="">Select Model...</option>
+                                                {VEHICLES.find(v => v.id === selectedCategoryId)?.popularModels.split(', ').map(model => (
+                                                    <option key={model} value={model}>{model}</option>
+                                                ))}
+                                                <option value="CUSTOM">+ Type Manual Model Name</option>
+                                            </select>
+                                        ) : (
+                                            <div className="relative">
+                                                <input
+                                                    type="text"
+                                                    value={newVehicleModel}
+                                                    onChange={(e) => setNewVehicleModel(e.target.value)}
+                                                    className="tn-input font-bold w-full pr-16 placeholder:text-slate-500"
+                                                    placeholder="Enter Car Model (e.g. Swift Dzire)"
+                                                    autoFocus
+                                                />
+                                                <button
+                                                    onClick={() => { setIsCustomModel(false); setNewVehicleModel(''); }}
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-primary uppercase"
+                                                >
+                                                    Back
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+
+                                </div>
+
                                 <button
-                                    onClick={() => deleteVehicle(v.id)}
-                                    className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                    onClick={addVehicle}
+                                    disabled={!newVehicleNumber || !selectedCategoryId || !newVehicleModel}
+                                    className="w-full h-10 bg-slate-800 text-white rounded-xl shadow-md disabled:opacity-50 active:scale-95 transition-all font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-900"
                                 >
-                                    <Trash2 size={14} />
+                                    <Plus size={14} /> Add Vehicle
                                 </button>
-
-                                {settings.currentVehicleId === v.id && (
-                                    <div className="mr-2 px-2 py-0.5 bg-primary text-white text-[8px] font-black uppercase rounded-full tracking-widest">
-                                        Active
-                                    </div>
-                                )}
                             </div>
-                        ))}
-                    </div>
 
-                    <div className="flex flex-col gap-2 pt-1 border-t border-slate-100 mt-2">
-                        <div className="grid grid-cols-2 gap-2">
-                            <div>
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Vehicle Number</label>
-                                <input
-                                    type="text"
-                                    value={newVehicleNumber}
-                                    onChange={(e) => setNewVehicleNumber(e.target.value.toUpperCase())}
-                                    className="tn-input h-10 text-[10px] font-bold uppercase w-full"
-                                    placeholder="TN-00-AA-0000"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Category</label>
-                                <select
-                                    value={selectedCategoryId}
-                                    onChange={(e) => {
-                                        setSelectedCategoryId(e.target.value);
-                                        setNewVehicleModel('');
-                                        setIsCustomModel(false);
+                            <div className="pt-2 flex justify-end">
+                                <button
+                                    onClick={async () => {
+                                        setSavingSection('fleet');
+                                        const success = await saveSettings();
+                                        await new Promise(r => setTimeout(r, 500));
+                                        if (!success) alert('Failed to save settings. Please try again.');
+                                        setSavingSection(null);
                                     }}
-                                    className="tn-input h-10 text-[10px] font-bold w-full bg-slate-50"
+                                    className="bg-green-700 text-white px-6 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
                                 >
-                                    {VEHICLES.map(v => (
-                                        <option key={v.id} value={v.id}>
-                                            {v.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                    {savingSection === 'fleet' ? (
+                                        <>
+                                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle size={12} /> Save
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         </div>
-
-                        <div className="grid grid-cols-1 gap-2">
-                            <div>
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Car Model</label>
-                                {!isCustomModel ? (
-                                    <select
-                                        value={newVehicleModel}
-                                        onChange={(e) => {
-                                            if (e.target.value === 'CUSTOM') {
-                                                setIsCustomModel(true);
-                                                setNewVehicleModel('');
-                                            } else {
-                                                setNewVehicleModel(e.target.value);
-                                            }
-                                        }}
-                                        className="tn-input h-10 text-[10px] font-bold w-full bg-slate-50"
-                                    >
-                                        <option value="">Select Model...</option>
-                                        {VEHICLES.find(v => v.id === selectedCategoryId)?.popularModels.split(', ').map(model => (
-                                            <option key={model} value={model}>{model}</option>
-                                        ))}
-                                        <option value="CUSTOM">+ Type Manual Model Name</option>
-                                    </select>
-                                ) : (
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            value={newVehicleModel}
-                                            onChange={(e) => setNewVehicleModel(e.target.value)}
-                                            className="tn-input h-10 text-[10px] font-bold w-full pr-16"
-                                            placeholder="Enter Car Model (e.g. Swift Dzire)"
-                                            autoFocus
-                                        />
-                                        <button
-                                            onClick={() => { setIsCustomModel(false); setNewVehicleModel(''); }}
-                                            className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-primary uppercase"
-                                        >
-                                            Back
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={addVehicle}
-                            disabled={!newVehicleNumber || !selectedCategoryId || !newVehicleModel}
-                            className="w-full h-11 bg-slate-900 text-white rounded-xl shadow-md disabled:opacity-50 active:scale-95 transition-all font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
-                        >
-                            <Plus size={16} /> Add Vehicle to Fleet
-                        </button>
                     </div>
 
-                    <div className="pt-2 flex justify-end">
-                        <button
-                            onClick={async () => {
-                                setSavingSection('fleet');
-                                const success = await saveSettings();
-                                await new Promise(r => setTimeout(r, 500));
-                                if (!success) alert('Failed to save settings. Please try again.');
-                                setSavingSection(null);
-                            }}
-                            className="bg-green-700 text-white px-6 h-12 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
-                        >
-                            {savingSection === 'fleet' ? (
-                                <>
-                                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    Saving...
-                                </>
-                            ) : (
-                                <>
-                                    <CheckCircle size={14} /> Save
-                                </>
-                            )}
-                        </button>
-                    </div>
+
+
                 </div>
-            </div>
-
-
-
-            {settings.websiteUrl && (
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2 px-1">
-                        <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-orange-500 underline-offset-4">Website</h3>
-                    </div>
-                    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                        <div className="flex items-center justify-between p-2 bg-orange-50 border border-orange-100 rounded-xl">
-                            <div className="flex items-center gap-2">
-                                <Globe size={14} className="text-orange-500" />
-                                <span className="text-[10px] font-bold text-slate-700 truncate max-w-[150px]">{settings.websiteUrl}</span>
-                            </div>
-                            <a
-                                href={`https://${settings.websiteUrl}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[9px] font-black text-orange-600 uppercase tracking-widest hover:underline"
-                            >
-                                Visit
-                            </a >
-                        </div >
-                    </div >
-                </div >
             )}
 
-            {/* 6. Documents */}
-            <div className="space-y-2">
-                <div className="flex items-center gap-2 px-1">
-                    {docStats.hasFullVehicle && docStats.hasFullDriver ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
-                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Documents</h3>
-                </div>
-                <div className="pt-0">
-                    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                        <DocumentVault />
-                    </div>
-                </div>
-            </div>
+            {/* TAB CONTENT: BUSINESS (Website) */}
+            {activeTab === 'business' && (
+                <div className="space-y-6 animate-fade-in">
 
-            {/* 7. Language */}
-            <div className="space-y-2">
-                <div className="flex items-center gap-2 px-1">
-                    {settings.language ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
-                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Language</h3>
-                </div>
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-                    <div className="grid grid-cols-2 gap-3">
-                        {['English', 'Tamil', 'Kannada', 'Hindi'].map(lang => (
-                            <div
-                                key={lang}
-                                onClick={() => setSelectedLanguage(lang)}
-                                className={`p-2 border rounded-lg text-center cursor-pointer transition-colors ${selectedLanguage === lang
-                                    ? 'bg-blue-500 text-white border-blue-500'
-                                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-blue-50 hover:border-blue-300'
-                                    }`}
-                            >
-                                <span className="text-xs font-bold">{lang}</span>
+                    {settings.websiteUrl && (
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 px-1">
+                                <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-orange-500 underline-offset-4">Website</h3>
                             </div>
-                        ))}
-                    </div>
-                    <div className="mt-4 flex justify-end">
-                        <button
-                            onClick={async () => {
-                                setSavingSection('language');
-                                updateSettings({ language: selectedLanguage });
-                                const success = await saveSettings();
-                                await new Promise(r => setTimeout(r, 500));
-                                if (!success) alert('Failed to save settings. Please try again.');
-                                setSavingSection(null);
-                            }}
-                            disabled={selectedLanguage === settings.language}
-                            className="bg-green-700 text-white px-6 h-12 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
-                        >
-                            {savingSection === 'language' ? (
-                                <>
-                                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    Saving...
-                                </>
-                            ) : (
-                                <>
-                                    <CheckCircle size={14} /> Save Language
-                                </>
-                            )}
-                        </button>
-                    </div>
-                </div>
-            </div>
+                            <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+                                <div className="flex items-center justify-between p-2 bg-orange-50 border border-orange-100 rounded-xl">
+                                    <div className="flex items-center gap-2">
+                                        <Globe size={14} className="text-orange-500" />
+                                        <span className="text-[10px] font-bold text-slate-700 truncate max-w-[150px]">{settings.websiteUrl}</span>
+                                    </div>
+                                    <a
+                                        href={`https://${settings.websiteUrl}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-[9px] font-black text-orange-600 uppercase tracking-widest hover:underline"
+                                    >
+                                        Visit
+                                    </a >
+                                </div >
+                            </div >
+                        </div >
+                    )}
 
-            {/* 8. System Health */}
-            <div className="pt-2">
-                <div className="flex items-center gap-2 px-1 mb-2">
-                    <RefreshCw size={14} className="text-orange-500" />
-                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-orange-500 underline-offset-4">System Health</h3>
                 </div>
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col items-center text-center">
-                    <p className="text-[10px] text-slate-500 font-bold mb-3">Updating issues or app acting slow? Try a hard refresh.</p>
-                    <button
-                        onClick={async () => {
-                            if (window.confirm('This will refresh the app and clear cache to fix loading issues. Your data synced to cloud will be safe. Proceed?')) {
-                                // 1. Unregister all service workers
-                                if ('serviceWorker' in navigator) {
-                                    const registrations = await navigator.serviceWorker.getRegistrations();
-                                    for (const registration of registrations) {
-                                        await registration.unregister();
-                                    }
-                                }
-                                // 2. Clear caches
-                                if ('caches' in window) {
-                                    const keys = await caches.keys();
-                                    for (const key of keys) {
-                                        await caches.delete(key);
-                                    }
-                                }
-                                // 3. Hard reload
-                                window.location.href = window.location.origin + '?cache_bust=' + Date.now();
-                            }
-                        }}
-                        className="w-auto px-8 bg-slate-100 text-slate-700 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200 transition-all border border-slate-200 shadow-sm"
-                    >
-                        <RefreshCw size={14} /> Repair & Hard Refresh
-                    </button>
-                    <p className="text-[8px] text-slate-400 mt-2 text-center font-medium italic">Fixes "Cache not refreshing" and "Not saving" issues.</p>
-                </div>
-            </div>
+            )}
 
-            {/* 9. Help & Support */}
-            <div className="pt-2">
-                <div className="flex items-center gap-2 px-1 mb-2">
-                    <CheckCircle size={14} className="text-green-500" />
-                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-green-500 underline-offset-4">Support</h3>
+            {/* TAB CONTENT: DOCUMENTS */}
+            {activeTab === 'docs' && (
+                <div className="space-y-6 animate-fade-in">
+
+                    {/* 6. Documents */}
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 px-1">
+                            {docStats.hasFullVehicle && docStats.hasFullDriver ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
+                            <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Expiry Date</h3>
+                        </div>
+                        <p className="text-[10px] text-slate-500 px-1 font-medium">Add expiry dates.</p>
+                        <div className="pt-0">
+                            <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+                                <DocumentVault />
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm group hover:border-[#25D366]/50 transition-colors">
-                    <p className="text-xs text-slate-600 font-bold mb-4">Need help using Sarathi Book? Message our support team on WhatsApp.</p>
-                    <a
-                        href="https://wa.me/919952749408?text=I%20need%20help%20with%20Sarathi%20Book"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="w-full bg-[#25D366] text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 active:scale-95 transition-all hover:bg-[#20bd5a]"
-                    >
-                        <MessageCircle size={18} /> Chat on WhatsApp
-                    </a>
-                </div>
+            )}
+
+            {/* 9. SETTINGS & TOOLS: Relocated to last before footer */}
+            <div className="px-1 mt-8">
+                <button
+                    onClick={() => setActiveModal('settings_menu')}
+                    className="w-full flex items-center justify-between p-4 bg-white border border-slate-200 rounded-3xl shadow-sm hover:border-slate-300 active:scale-[0.98] transition-all group"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-100">
+                            <Settings size={20} />
+                        </div>
+                        <div className="text-left">
+                            <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest leading-none">Settings & Tools</h4>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1">App Language, Support & Health</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {/* Indicators if needed */}
+                        {!settings.language && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                        )}
+                        <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-1 transition-all" />
+                    </div>
+                </button>
             </div>
 
             {/* 10. Legal & Compliance Footer */}
@@ -826,16 +960,118 @@ const Profile: React.FC = () => {
                                     {activeModal === 'terms' && 'Terms of Service'}
                                     {activeModal === 'privacy' && 'Privacy Policy'}
                                     {activeModal === 'support' && 'Official Support'}
+                                    {activeModal === 'settings_menu' && 'App Settings'}
                                 </h3>
                                 <button
                                     onClick={() => setActiveModal(null)}
-                                    className="w-8 h-8 flex items-center justify-center bg-slate-100 text-slate-400 rounded-full hover:bg-slate-200"
+                                    className="w-8 h-8 flex items-center justify-center bg-slate-100 text-slate-400 rounded-full hover:bg-slate-200 transition-all"
                                 >
-                                    <Trash2 size={16} className="rotate-45" /> {/* Use Trash icon as a close X if X is not imported, but X is imported in Profile */}
+                                    <X size={16} />
                                 </button>
                             </div>
 
                             <div className="space-y-4 text-xs font-bold text-slate-600 leading-relaxed max-h-[60vh] overflow-y-auto pr-2 scrollbar-hide">
+                                {activeModal === 'settings_menu' && (
+                                    <div className="space-y-6">
+                                        {/* Language Section */}
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2">
+                                                <Globe size={14} className="text-blue-500" />
+                                                <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Select Language</h4>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {['English', 'Tamil', 'Kannada', 'Hindi'].map(lang => {
+                                                    const isAvailable = lang === 'English';
+                                                    return (
+                                                        <button
+                                                            key={lang}
+                                                            onClick={() => isAvailable && setSelectedLanguage(lang)}
+                                                            className={`relative p-2.5 border rounded-xl text-center transition-all ${selectedLanguage === lang
+                                                                ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                                                                : 'bg-slate-50 text-slate-700 border-slate-100'
+                                                                } ${isAvailable ? 'hover:bg-slate-100 active:scale-95' : 'opacity-40 cursor-not-allowed'}`}
+                                                        >
+                                                            <span className="text-[10px] font-bold">{lang}</span>
+                                                            {!isAvailable && (
+                                                                <span className="block text-[7px] mt-0.5 opacity-60">Soon</span>
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            <button
+                                                onClick={async () => {
+                                                    setSavingSection('language');
+                                                    updateSettings({ language: selectedLanguage });
+                                                    await saveSettings();
+                                                    await new Promise(r => setTimeout(r, 500));
+                                                    setSavingSection(null);
+                                                    setActiveModal(null);
+                                                }}
+                                                disabled={selectedLanguage === settings.language}
+                                                className="w-full h-10 bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-green-200 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                {savingSection === 'language' ? 'Saving...' : 'Apply Language'}
+                                            </button>
+                                        </div>
+
+                                        <div className="h-px bg-slate-100" />
+
+                                        {/* Support Section */}
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2">
+                                                <MessageCircle size={14} className="text-[#25D366]" />
+                                                <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Help & Support</h4>
+                                            </div>
+                                            <a
+                                                href="https://wa.me/919952749408?text=I%20need%20help%20with%20Sarathi%20Book"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:bg-slate-100 transition-all group"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-[#25D366]/10 flex items-center justify-center text-[#25D366]">
+                                                        <MessageCircle size={16} />
+                                                    </div>
+                                                    <span className="text-[10px] font-black text-slate-700">Chat on WhatsApp</span>
+                                                </div>
+                                                <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
+                                            </a>
+                                        </div>
+
+                                        <div className="h-px bg-slate-100" />
+
+                                        {/* System Health Section */}
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2">
+                                                <RefreshCw size={14} className="text-orange-500" />
+                                                <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Troubleshooting</h4>
+                                            </div>
+                                            <div className="p-3 bg-orange-50/50 rounded-xl border border-orange-100">
+                                                <p className="text-[9px] text-orange-700 font-bold mb-2 leading-tight">Syncing issues or app feeling slow? Repairing will clear cache and refresh data.</p>
+                                                <button
+                                                    onClick={async () => {
+                                                        if (window.confirm('This will refresh the app and clear cache. Proceed?')) {
+                                                            if ('serviceWorker' in navigator) {
+                                                                const reg = await navigator.serviceWorker.getRegistrations();
+                                                                for (const r of reg) await r.unregister();
+                                                            }
+                                                            if ('caches' in window) {
+                                                                const keys = await caches.keys();
+                                                                for (const k of keys) await caches.delete(k);
+                                                            }
+                                                            window.location.href = window.location.origin + '?cb=' + Date.now();
+                                                        }
+                                                    }}
+                                                    className="w-full h-9 bg-white text-orange-600 border border-orange-200 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-orange-50 transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    <RefreshCw size={12} /> Repair & Restart
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {activeModal === 'terms' && (
                                     <>
                                         <p>1. Sarathi Book is a digital documentation tool for individual taxi operators and fleet owners. It is not a transport service provider.</p>
@@ -858,7 +1094,6 @@ const Profile: React.FC = () => {
                                             <p className="text-lg text-[#0047AB] font-black">+91 99527 49408</p>
                                             <p className="text-[10px] text-blue-400 mt-1 italic">Response time: Usually within 2 hours</p>
                                         </div>
-                                        <p className="mt-4">If the app is acting slow or not updating, please use the <strong>Repair & Hard Refresh</strong> button in the System Health section.</p>
                                     </>
                                 )}
                             </div>
@@ -868,7 +1103,7 @@ const Profile: React.FC = () => {
                                 onClick={() => setActiveModal(null)}
                                 className="px-8 py-3 bg-[#0047AB] text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md active:scale-95 transition-all"
                             >
-                                Got it
+                                Close View
                             </button>
                         </div>
                     </div>

@@ -12,7 +12,7 @@ Before publishing the application to production, run through this checklist to e
 - [ ] **Logo & Branding**: efficient loading of the new "Blue SVG" logo and "Korkai" typography header.
 - [ ] **Compact Mode**: Verify `TripForm`, `QuotationForm`, and `Profile` all use the new "Compact" styling (`h-10` inputs, small labels).
 - [ ] **Dark Mode**: Toggle system dark mode and ensure no text becomes invisible (e.g., dark text on dark background).
-- [ ] **Consistency**: Check that "SWA TAXI SERVICES" defaults are gone and placeholders show "Your Travels Name".
+- [ ] **Consistency**: Check that "SWA TAXI SERVICES" defaults are gone and placeholders show "Your Business Name".
 
 ## 🛠️ 3. Functionality Testing
 - [ ] **Trip Invoice**: precise calculation of KM * Rate + Batta + Toll.
