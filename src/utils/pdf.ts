@@ -26,6 +26,7 @@ export interface QuotationData {
     subject: string;
     date: string;
     items: QuotationItem[];
+    gstEnabled?: boolean;
 }
 
 export const generateReceiptPDF = (trip: Trip, settings: PDFSettings, isQuotation: boolean = false) => {
@@ -519,6 +520,7 @@ export const generateQuotationPDF = (data: QuotationData, settings: PDFSettings)
     y += 10;
     doc.line(tableX, y - 2, tableX + 180, y - 2); // Bottom header line
 
+    let totalAmount = 0;
     data.items.forEach((item, index) => {
         doc.setFont('helvetica', 'normal');
         let x = tableX;
@@ -536,17 +538,42 @@ export const generateQuotationPDF = (data: QuotationData, settings: PDFSettings)
         doc.text(item.rate, x + (colWidths[3] / 2), y + 7, { align: 'center' });
         x += colWidths[3];
 
-        doc.text(`${item.amount}`, x + colWidths[4] - 2, y + 7, { align: 'right' });
+        const amt = parseFloat(item.amount) || 0;
+        doc.text(`${amt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, x + colWidths[4] - 2, y + 7, { align: 'right' });
+        totalAmount += amt;
 
         const rowHeight = Math.max(10, descLines.length * 6);
-        // Minimal row separator (optional, or just whitespace)
-        // doc.line(tableX, y + rowHeight, tableX + 180, y + rowHeight); 
         y += rowHeight;
     });
 
     y += 5;
-    // Bottom table closure line
     doc.line(tableX, y, tableX + 180, y);
+
+    // --- TOTALS SECTION ---
+    y += 10;
+    const taxableValue = totalAmount;
+    const gstTotal = data.gstEnabled ? (taxableValue * 0.05) : 0;
+    const grandTotal = taxableValue + gstTotal;
+
+    doc.setFont('helvetica', 'normal');
+    doc.text('Taxable Amount:', 140, y);
+    doc.text(`${taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
+
+    if (data.gstEnabled) {
+        y += 6;
+        doc.text('CGST (2.5%):', 140, y);
+        doc.text(`${(gstTotal / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
+        y += 6;
+        doc.text('SGST (2.5%):', 140, y);
+        doc.text(`${(gstTotal / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
+    }
+
+    y += 8;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('GRAND TOTAL:', 140, y);
+    doc.text(`Rs. ${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
+
     y += 10;
 
     doc.setFont('helvetica', 'bold');

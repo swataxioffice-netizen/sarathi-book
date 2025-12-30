@@ -20,6 +20,7 @@ const QuotationForm: React.FC = () => {
     const [subject, setSubject] = useState(() => safeJSONParse('draft-q-subject', ''));
     const [vehicleType, setVehicleType] = useState(() => safeJSONParse('draft-q-vehicle', 'Sedan'));
     const [items, setItems] = useState<QuotationItem[]>(() => safeJSONParse('draft-q-items', []));
+    const [gstEnabled, setGstEnabled] = useState(() => safeJSONParse('draft-q-gst', false));
     const [showItems, setShowItems] = useState(false);
     const [quotations, setQuotations] = useState<SavedQuotation[]>(() => safeJSONParse('saved-quotations', []));
 
@@ -28,6 +29,7 @@ const QuotationForm: React.FC = () => {
     useEffect(() => { localStorage.setItem('draft-q-subject', JSON.stringify(subject)); }, [subject]);
     useEffect(() => { localStorage.setItem('draft-q-vehicle', JSON.stringify(vehicleType)); }, [vehicleType]);
     useEffect(() => { localStorage.setItem('draft-q-items', JSON.stringify(items)); }, [items]);
+    useEffect(() => { localStorage.setItem('draft-q-gst', JSON.stringify(gstEnabled)); }, [gstEnabled]);
 
 
     useEffect(() => {
@@ -40,6 +42,23 @@ const QuotationForm: React.FC = () => {
 
     const handleRemoveItem = (index: number) => {
         setItems(items.filter((_, i) => i !== index));
+    };
+
+    const applyTemplate = (type: 'day_rental') => {
+        if (type === 'day_rental') {
+            setSubject('Day Rental Quotation');
+            setItems([
+                {
+                    description: 'Day Rental (Local)',
+                    package: '12 Hrs / 120 KM',
+                    vehicleType: vehicleType,
+                    rate: '4000',
+                    amount: '4000'
+                }
+            ]);
+            setGstEnabled(true);
+            setShowItems(true);
+        }
     };
 
     const updateItem = (index: number, field: keyof QuotationItem, value: string) => {
@@ -75,7 +94,8 @@ const QuotationForm: React.FC = () => {
             customerName,
             subject,
             date: newQuote.date,
-            items: newQuote.items
+            items: newQuote.items,
+            gstEnabled
         }, { ...settings, vehicleNumber: 'N/A' });
 
         // Clear draft after successful creation
@@ -137,6 +157,31 @@ const QuotationForm: React.FC = () => {
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl border border-slate-200">
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                                <Plus size={12} className="text-blue-600" />
+                            </div>
+                            <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider">Quick Fill</span>
+                        </div>
+                        <button
+                            onClick={() => applyTemplate('day_rental')}
+                            className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black text-blue-600 hover:bg-blue-50 transition-colors"
+                        >
+                            DAY RENTAL (₹4000)
+                        </button>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">Include 5% GST</span>
+                        <button
+                            onClick={() => setGstEnabled(!gstEnabled)}
+                            className={`w-10 h-5 rounded-full relative transition-colors ${gstEnabled ? 'bg-blue-600' : 'bg-slate-300'}`}
+                        >
+                            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${gstEnabled ? 'left-5.5' : 'left-0.5'}`} />
+                        </button>
                     </div>
                 </div>
 
