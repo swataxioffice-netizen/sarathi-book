@@ -637,8 +637,6 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
     const handleSave = () => {
         if (!result) return;
         const activeRate = (mode === 'distance' || mode === 'drop' || mode === 'outstation') ? customRate : (mode === 'hourly' ? settings.hourlyRate : 0);
-        const selectedVehObj = (settings.vehicles || []).find(v => v.id === selectedVehicleId) || currentVehicle;
-        const finalVehicleNum = selectedVehObj?.number || currentVehicle?.number || 'N/A';
 
         if (customerName) saveToHistory('customer_name', customerName);
         if (customerPhone) saveToHistory('customer_phone', customerPhone);
