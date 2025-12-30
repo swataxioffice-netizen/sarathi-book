@@ -3,7 +3,10 @@ import { useSettings } from '../contexts/SettingsContext';
 import { shareQuotation } from '../utils/pdf';
 import type { QuotationItem } from '../utils/pdf';
 import { safeJSONParse } from '../utils/storage';
-import { Send, User, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Send, User, Plus, Trash2, ChevronDown, ChevronUp, RefreshCw, MapPin, Landmark, Eye } from 'lucide-react';
+import { generateQuotationPDF } from '../utils/pdf';
+import PDFPreviewModal from './PDFPreviewModal';
+import { saveToHistory, getHistory } from '../utils/history';
 
 interface SavedQuotation {
     id: string;
@@ -17,15 +20,30 @@ interface SavedQuotation {
 const QuotationForm: React.FC = () => {
     const { settings } = useSettings();
     const [customerName, setCustomerName] = useState(() => safeJSONParse('draft-q-name', ''));
+    const [customerAddress, setCustomerAddress] = useState(() => safeJSONParse('draft-q-address', ''));
+    const [customerGstin, setCustomerGstin] = useState(() => safeJSONParse('draft-q-gstin', ''));
     const [subject, setSubject] = useState(() => safeJSONParse('draft-q-subject', ''));
     const [vehicleType, setVehicleType] = useState(() => safeJSONParse('draft-q-vehicle', 'Sedan'));
     const [items, setItems] = useState<QuotationItem[]>(() => safeJSONParse('draft-q-items', []));
     const [gstEnabled, setGstEnabled] = useState(() => safeJSONParse('draft-q-gst', false));
     const [showItems, setShowItems] = useState(false);
     const [quotations, setQuotations] = useState<SavedQuotation[]>(() => safeJSONParse('saved-quotations', []));
+    const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+    const [showPreview, setShowPreview] = useState(false);
+
+    // History States
+    const [history, setHistory] = useState({
+        names: getHistory('customer_name'),
+        addresses: getHistory('customer_address'),
+        gstins: getHistory('customer_gstin'),
+        subjects: getHistory('quotation_subject'),
+        descriptions: getHistory('item_description')
+    });
 
     // Auto-save draft changes
     useEffect(() => { localStorage.setItem('draft-q-name', JSON.stringify(customerName)); }, [customerName]);
+    useEffect(() => { localStorage.setItem('draft-q-address', JSON.stringify(customerAddress)); }, [customerAddress]);
+    useEffect(() => { localStorage.setItem('draft-q-gstin', JSON.stringify(customerGstin)); }, [customerGstin]);
     useEffect(() => { localStorage.setItem('draft-q-subject', JSON.stringify(subject)); }, [subject]);
     useEffect(() => { localStorage.setItem('draft-q-vehicle', JSON.stringify(vehicleType)); }, [vehicleType]);
     useEffect(() => { localStorage.setItem('draft-q-items', JSON.stringify(items)); }, [items]);
@@ -67,6 +85,27 @@ const QuotationForm: React.FC = () => {
         setItems(newItems);
     };
 
+    const handlePreview = () => {
+        if (!customerName?.trim()) { alert('Please enter Guest / Company Name'); return; }
+        if (!subject?.trim()) { alert('Please enter a Subject for the quotation'); return; }
+        if (items.length === 0) { alert('Please add at least one item to the quotation'); return; }
+
+        const doc = generateQuotationPDF({
+            customerName,
+            customerAddress,
+            customerGstin,
+            subject,
+            date: new Date().toISOString(),
+            items: items.map(item => ({ ...item, vehicleType })),
+            gstEnabled
+        }, { ...settings, vehicleNumber: 'N/A', signatureUrl: settings.signatureUrl });
+
+        const blob = doc.output('blob');
+        const url = URL.createObjectURL(blob);
+        setPreviewPdfUrl(url);
+        setShowPreview(true);
+    };
+
     const handleShareQuote = async () => {
         if (!customerName?.trim()) { alert('Please enter Guest / Company Name'); return; }
         if (!subject?.trim()) { alert('Please enter a Subject for the quotation'); return; }
@@ -92,46 +131,127 @@ const QuotationForm: React.FC = () => {
 
         await shareQuotation({
             customerName,
+            customerAddress,
+            customerGstin,
             subject,
             date: newQuote.date,
             items: newQuote.items,
             gstEnabled
-        }, { ...settings, vehicleNumber: 'N/A' });
+        }, { ...settings, vehicleNumber: 'N/A', signatureUrl: settings.signatureUrl });
 
         // Clear draft after successful creation
         setCustomerName('');
+        setCustomerAddress('');
+        setCustomerGstin('');
         setSubject('');
         setVehicleType('Sedan');
         setItems([]);
         localStorage.removeItem('draft-q-name');
+        localStorage.removeItem('draft-q-address');
+        localStorage.removeItem('draft-q-gstin');
         localStorage.removeItem('draft-q-subject');
         localStorage.removeItem('draft-q-vehicle');
         localStorage.removeItem('draft-q-items');
+        localStorage.removeItem('draft-q-gst');
+        // Save to History
+        if (customerName) saveToHistory('customer_name', customerName);
+        if (customerAddress) saveToHistory('customer_address', customerAddress);
+        if (customerGstin) saveToHistory('customer_gstin', customerGstin);
+        if (subject) saveToHistory('quotation_subject', subject);
+        items.forEach(i => { if (i.description) saveToHistory('item_description', i.description); });
+
+        // Update local history state
+        setHistory({
+            names: getHistory('customer_name'),
+            addresses: getHistory('customer_address'),
+            gstins: getHistory('customer_gstin'),
+            subjects: getHistory('quotation_subject'),
+            descriptions: getHistory('item_description')
+        });
+
+        setShowPreview(false);
     };
 
     return (
         <div className="space-y-2 pb-24">
             {/* Page Title */}
-            <div className="px-2 py-1 text-center">
+            <div className="px-2 py-1 text-center relative">
                 <h2 className="text-lg font-black uppercase tracking-wide text-slate-800 underline decoration-4 decoration-[#6366F1] underline-offset-4">QUOTATION</h2>
-                <p className="text-slate-600 text-[10px] font-medium mt-0.5">Create formal quotations</p>
+                <div className="flex items-center justify-center gap-2 mt-1">
+                    <p className="text-slate-600 text-[10px] font-medium">Create formal quotations</p>
+                    <span className="px-1.5 py-0.5 bg-blue-50 text-[#6366F1] text-[8px] font-black rounded uppercase border border-blue-100 mt-1">v2.1</span>
+                </div>
+
+                {/* Emergency Refresh for Cache issues */}
+                <button
+                    onClick={() => window.location.reload()}
+                    className="absolute right-2 top-2 p-2 text-slate-400 hover:text-blue-600 active:rotate-180 transition-all duration-500"
+                    title="Refresh App"
+                >
+                    <RefreshCw size={14} />
+                </button>
             </div>
 
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-2 space-y-2">
                 <div className="space-y-2">
-                    <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Guest / Company Name</label>
-                        <div className="relative">
-                            <User size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input
-                                type="text"
-                                value={customerName}
-                                onChange={(e) => setCustomerName(e.target.value)}
-                                className="tn-input h-8 pl-8 text-xs font-bold bg-slate-50 border-slate-200"
-                                placeholder="Client / Company Name"
-                            />
+                    <div className="space-y-2 mb-2">
+                        <div>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Guest / Company Name <span className="text-red-500">*</span></label>
+                            <div className="relative">
+                                <User size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    value={customerName}
+                                    onChange={(e) => setCustomerName(e.target.value)}
+                                    className="tn-input h-10 pl-8 text-xs font-bold bg-white border-slate-200 focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1]"
+                                    placeholder="Enter Client Name"
+                                    list="q-history-names"
+                                />
+                                <datalist id="q-history-names">
+                                    {history.names.map(name => <option key={name} value={name} />)}
+                                </datalist>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-2">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                    <MapPin size={10} className="text-red-500" /> Client Address
+                                </label>
+                                <input
+                                    type="text"
+                                    value={customerAddress}
+                                    onChange={(e) => setCustomerAddress(e.target.value)}
+                                    className="tn-input h-10 text-xs font-bold bg-white border-slate-200"
+                                    placeholder="City, State"
+                                    list="q-history-addresses"
+                                />
+                                <datalist id="q-history-addresses">
+                                    {history.addresses.map(addr => <option key={addr} value={addr} />)}
+                                </datalist>
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                    <Landmark size={10} className="text-blue-500" /> Client GSTIN (Optional)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={customerGstin}
+                                    onChange={(e) => setCustomerGstin(e.target.value.toUpperCase())}
+                                    className="tn-input h-10 text-xs font-bold bg-white border-slate-200"
+                                    placeholder="33XXXXX0000X1ZX"
+                                    maxLength={15}
+                                    list="q-history-gstins"
+                                />
+                                <datalist id="q-history-gstins">
+                                    {history.gstins.map(gst => <option key={gst} value={gst} />)}
+                                </datalist>
+                            </div>
                         </div>
                     </div>
+
+
 
                     <div>
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Subject</label>
@@ -141,7 +261,11 @@ const QuotationForm: React.FC = () => {
                             onChange={(e) => setSubject(e.target.value)}
                             className="tn-input h-8 text-xs font-bold bg-slate-50 border-slate-200"
                             placeholder="e.g. Airport Transfer"
+                            list="q-history-subjects"
                         />
+                        <datalist id="q-history-subjects">
+                            {history.subjects.map(s => <option key={s} value={s} />)}
+                        </datalist>
                     </div>
 
                     <div>
@@ -260,16 +384,32 @@ const QuotationForm: React.FC = () => {
                     )}
                 </div>
 
-                <div className="pt-1">
+                <div className="pt-1 flex gap-2">
+                    <button
+                        onClick={handlePreview}
+                        disabled={!customerName || items.length === 0}
+                        className="flex-1 bg-white border-2 border-slate-200 text-slate-700 font-black py-3 rounded-xl flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest active:scale-[0.98] transition-all disabled:opacity-50"
+                    >
+                        <Eye size={16} />
+                        Preview
+                    </button>
                     <button
                         onClick={handleShareQuote}
                         disabled={!customerName || items.length === 0}
-                        className="w-full bg-[#6366F1] text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest shadow-lg active:scale-[0.98] transition-all disabled:opacity-50"
+                        className="flex-[2] bg-[#6366F1] text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest shadow-lg active:scale-[0.98] transition-all disabled:opacity-50"
                     >
                         <Send size={16} />
-                        Share Quotation
+                        Share Quote
                     </button>
                 </div>
+
+                <PDFPreviewModal
+                    isOpen={showPreview}
+                    onClose={() => setShowPreview(false)}
+                    pdfUrl={previewPdfUrl || ''}
+                    onShare={handleShareQuote}
+                    title="Quotation Preview"
+                />
             </div>
 
 

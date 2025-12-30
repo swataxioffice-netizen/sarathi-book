@@ -81,6 +81,17 @@ const Profile: React.FC = () => {
         }
     };
 
+    const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                updateSettings({ signatureUrl: reader.result as string });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     // Fetch existing profile data (phone) on load
     React.useEffect(() => {
         const fetchProfile = async () => {
@@ -430,6 +441,35 @@ const Profile: React.FC = () => {
                                         className="tn-input h-10 font-bold placeholder:text-slate-500"
                                         placeholder="State, City"
                                     />
+                                </div>
+                                <div className="pt-2">
+                                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-1 block">Digital Signature (Recommended: 400x150 px, White BG)</label>
+                                    <div className="flex items-center gap-4 p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                                        <div className="flex-1">
+                                            {settings.signatureUrl ? (
+                                                <div className="relative group w-full h-20 bg-white border border-slate-200 rounded-lg overflow-hidden flex items-center justify-center p-2">
+                                                    <img src={settings.signatureUrl} alt="Signature" className="max-w-full max-h-full object-contain" />
+                                                    <button
+                                                        onClick={() => updateSettings({ signatureUrl: undefined })}
+                                                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <Trash2 size={10} />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="w-full h-20 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-white">
+                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">No Signature</div>
+                                                    <p className="text-[8px] text-slate-400 mt-1 uppercase">Max Size: 400x150 px</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <label className="flex-shrink-0 cursor-pointer">
+                                            <div className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:border-blue-400 transition-all active:scale-95">
+                                                {settings.signatureUrl ? 'Change' : 'Upload'}
+                                            </div>
+                                            <input type="file" accept="image/*" className="hidden" onChange={handleSignatureUpload} />
+                                        </label>
+                                    </div>
                                 </div>
                                 <div className="pt-2 flex justify-end">
                                     <button

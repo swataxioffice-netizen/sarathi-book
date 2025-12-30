@@ -10,8 +10,11 @@ import { calculateDistance } from '../utils/googleMaps';
 import { calculateAdvancedRoute } from '../utils/routesApi';
 import { estimatePermitCharge } from '../utils/permits';
 import { estimateParkingCharge } from '../utils/parking';
-import { Clock, Navigation, Save, UserPlus, Receipt, Star, History, MapPin, Camera, Mic, MessageCircle, Plus, Trash2, Edit, Moon } from 'lucide-react';
+import { Clock, Navigation, Save, UserPlus, Receipt, Star, History, MapPin, Camera, Mic, MessageCircle, Plus, Trash2, Edit, Moon, Eye } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
+import { generateReceiptPDF } from '../utils/pdf';
+import PDFPreviewModal from './PDFPreviewModal';
+import { saveToHistory, getHistory } from '../utils/history';
 
 // --- Zod Schemas (Defined Outside Component) ---
 
@@ -142,6 +145,17 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
     const [days, setDays] = useState<number>(1);
     const [customRate, setCustomRate] = useState<number>(14);
     const [currentStep, setCurrentStep] = useState(1);
+    const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+    const [showPreview, setShowPreview] = useState(false);
+
+    // History States
+    const [history, setHistory] = useState({
+        names: getHistory('customer_name'),
+        phones: getHistory('customer_phone'),
+        gstins: getHistory('customer_gstin'),
+        addresses: getHistory('customer_address'),
+        locations: getHistory('location')
+    });
 
     // Notify parent of step change
     useEffect(() => {
@@ -512,13 +526,140 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
         setIsCalculated(true);
     };
 
+    const handlePreview = () => {
+        if (!result) return;
+        const selectedVehObj = (settings.vehicles || []).find(v => v.id === selectedVehicleId) || currentVehicle;
+        const finalVehicleNum = selectedVehObj?.number || currentVehicle?.number || 'N/A';
+
+        const tripData: any = {
+            id: crypto.randomUUID(),
+            customerName: customerName || 'Valued Customer',
+            customerPhone,
+            customerGst,
+            billingAddress,
+            from: fromLoc,
+            to: toLoc,
+            date: new Date(invoiceDate).toISOString(),
+            mode,
+            totalFare: result.total,
+            fare: result.fare,
+            gst: result.gst,
+            startKm,
+            endKm,
+            waitingCharges: result.waitingCharges,
+            waitingHours,
+            hillStationCharges: result.hillStationCharges,
+            petCharges: result.petCharges,
+            permit: permitCharge,
+            ratePerKm: customRate,
+            baseFare: settings.baseFare,
+            nightBata: nightBata ? settings.nightBata : 0,
+            toll: toll,
+            parking: parking,
+            days: days,
+            driverBatta: result.driverBatta,
+            nightStay: nightStay,
+            extraItems: mode === 'custom' ? extraItems : undefined
+        };
+
+        const doc = generateReceiptPDF(tripData, {
+            companyName: settings.companyName,
+            companyAddress: settings.companyAddress,
+            driverPhone: settings.driverPhone,
+            gstin: settings.gstin,
+            vehicleNumber: finalVehicleNum,
+            gstEnabled: localGst,
+            vehicles: settings.vehicles,
+            signatureUrl: settings.signatureUrl
+        });
+
+        const blob = doc.output('blob');
+        const url = URL.createObjectURL(blob);
+        setPreviewPdfUrl(url);
+        setShowPreview(true);
+    };
+
+    const handleWhatsAppShare = () => {
+        if (!result) return;
+        const selectedVehObj = (settings.vehicles || []).find(v => v.id === selectedVehicleId) || currentVehicle;
+        const finalVehicleNum = selectedVehObj?.number || currentVehicle?.number || 'N/A';
+
+        const tripData: any = {
+            id: crypto.randomUUID(),
+            customerName: customerName || 'Valued Customer',
+            customerPhone,
+            customerGst,
+            billingAddress,
+            from: fromLoc,
+            to: toLoc,
+            date: new Date(invoiceDate).toISOString(),
+            mode,
+            totalFare: result.total,
+            fare: result.fare,
+            gst: result.gst,
+            startKm,
+            endKm,
+            waitingCharges: result.waitingCharges,
+            waitingHours,
+            hillStationCharges: result.hillStationCharges,
+            petCharges: result.petCharges,
+            permit: permitCharge,
+            ratePerKm: customRate,
+            baseFare: settings.baseFare,
+            nightBata: nightBata ? settings.nightBata : 0,
+            toll: toll,
+            parking: parking,
+            days: days,
+            driverBatta: result.driverBatta,
+            nightStay: nightStay,
+            extraItems: mode === 'custom' ? extraItems : undefined
+        };
+        if (customerName) saveToHistory('customer_name', customerName);
+        if (customerPhone) saveToHistory('customer_phone', customerPhone);
+        if (customerGst) saveToHistory('customer_gstin', customerGst);
+        if (billingAddress) saveToHistory('customer_address', billingAddress);
+        if (fromLoc) saveToHistory('location', fromLoc);
+        if (toLoc) saveToHistory('location', toLoc);
+
+        shareReceipt(tripData, {
+            companyName: settings.companyName,
+            companyAddress: settings.companyAddress,
+            driverPhone: settings.driverPhone,
+            gstin: settings.gstin,
+            vehicleNumber: finalVehicleNum,
+            gstEnabled: localGst,
+            vehicles: settings.vehicles,
+            signatureUrl: settings.signatureUrl
+        });
+        setShowPreview(false);
+    };
+
     const handleSave = () => {
         if (!result) return;
         const activeRate = (mode === 'distance' || mode === 'drop' || mode === 'outstation') ? customRate : (mode === 'hourly' ? settings.hourlyRate : 0);
+        const selectedVehObj = (settings.vehicles || []).find(v => v.id === selectedVehicleId) || currentVehicle;
+        const finalVehicleNum = selectedVehObj?.number || currentVehicle?.number || 'N/A';
+
+        if (customerName) saveToHistory('customer_name', customerName);
+        if (customerPhone) saveToHistory('customer_phone', customerPhone);
+        if (customerGst) saveToHistory('customer_gstin', customerGst);
+        if (billingAddress) saveToHistory('customer_address', billingAddress);
+        if (fromLoc) saveToHistory('location', fromLoc);
+        if (toLoc) saveToHistory('location', toLoc);
+
+        // Update local history state to reflect changes without reload
+        setHistory({
+            names: getHistory('customer_name'),
+            phones: getHistory('customer_phone'),
+            gstins: getHistory('customer_gstin'),
+            addresses: getHistory('customer_address'),
+            locations: getHistory('location')
+        });
 
         onSaveTrip({
             id: crypto.randomUUID(),
             customerName: customerName || 'Cash Guest',
+            customerPhone,
             customerGst,
             from: fromLoc,
             to: toLoc,
@@ -982,7 +1123,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                             placeholder="Guest Name"
                                             value={customerName}
                                             onChange={(e) => setCustomerName(e.target.value)}
+                                            list="history-names"
                                         />
+                                        <datalist id="history-names">
+                                            {history.names.map(name => <option key={name} value={name} />)}
+                                        </datalist>
                                         <button
                                             onClick={handleImportContact}
                                             className="absolute right-2 top-1/2 -translate-y-1/2 bg-slate-100 text-primary p-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-colors flex items-center gap-1"
@@ -999,7 +1144,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                         placeholder="e.g. 9876543210"
                                         value={customerPhone}
                                         onChange={(e) => setCustomerPhone(e.target.value)}
+                                        list="history-phones"
                                     />
+                                    <datalist id="history-phones">
+                                        {history.phones.map(phone => <option key={phone} value={phone} />)}
+                                    </datalist>
                                 </div>
                             </div>
 
@@ -1013,7 +1162,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                         value={customerGst}
                                         onChange={(e) => setCustomerGst(e.target.value.toUpperCase())}
                                         maxLength={15}
+                                        list="history-gstins"
                                     />
+                                    <datalist id="history-gstins">
+                                        {history.gstins.map(gst => <option key={gst} value={gst} />)}
+                                    </datalist>
                                     {customerGst && !validateGSTIN(customerGst) && (
                                         <p className="text-[9px] text-orange-600 font-bold mt-1 uppercase">Invalid GSTIN Format</p>
                                     )}
@@ -1026,7 +1179,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                         placeholder="Company Address or Local Address"
                                         value={billingAddress}
                                         onChange={(e) => setBillingAddress(e.target.value)}
+                                        list="history-addresses"
                                     />
+                                    <datalist id="history-addresses">
+                                        {history.addresses.map(addr => <option key={addr} value={addr} />)}
+                                    </datalist>
                                 </div>
                             </div>
 
@@ -1230,53 +1387,14 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                         <span>Save Invoice</span>
                                     </button>
                                     <button
-                                        onClick={() => {
-                                            if (!result) return;
-
-                                            // Correctly identify the selected vehicle for PDF
-                                            const selectedVehObj = (settings.vehicles || []).find(v => v.id === selectedVehicleId) || currentVehicle;
-                                            const finalVehicleNum = selectedVehObj?.number || currentVehicle?.number || 'N/A';
-
-                                            const tripData: any = {
-                                                id: crypto.randomUUID(),
-                                                customerName: customerName || 'Valued Customer',
-                                                customerPhone,
-                                                customerGst,
-                                                billingAddress,
-                                                from: fromLoc,
-                                                to: toLoc,
-                                                date: new Date(invoiceDate).toISOString(),
-                                                mode,
-                                                totalFare: result.total,
-                                                fare: result.fare,
-                                                gst: result.gst,
-                                                startKm,
-                                                endKm,
-                                                waitingCharges: result.waitingCharges,
-                                                waitingHours,
-                                                hillStationCharges: result.hillStationCharges,
-                                                petCharges: result.petCharges,
-                                                permit: permitCharge,
-                                                ratePerKm: customRate,
-                                                baseFare: settings.baseFare,
-                                                nightBata: nightBata ? settings.nightBata : 0,
-                                                toll: toll,
-                                                parking: parking,
-                                                days: days,
-                                                driverBatta: result.driverBatta,
-                                                nightStay: nightStay,
-                                                extraItems: mode === 'custom' ? extraItems : undefined
-                                            };
-                                            shareReceipt(tripData, {
-                                                companyName: settings.companyName,
-                                                companyAddress: settings.companyAddress,
-                                                driverPhone: settings.driverPhone,
-                                                gstin: settings.gstin,
-                                                vehicleNumber: finalVehicleNum,
-                                                gstEnabled: localGst,
-                                                vehicles: settings.vehicles
-                                            });
-                                        }}
+                                        onClick={handlePreview}
+                                        className="w-full py-4 rounded-2xl border-2 border-slate-200 bg-white font-black text-[11px] uppercase tracking-widest text-slate-700 flex items-center justify-center gap-2 hover:bg-slate-50 transition-all"
+                                    >
+                                        <Eye size={18} />
+                                        Preview Invoice
+                                    </button>
+                                    <button
+                                        onClick={handleWhatsAppShare}
                                         className="w-full py-4 rounded-2xl border-2 border-[#25D366] bg-[#25D366]/5 font-black text-[11px] uppercase tracking-widest text-[#25D366] flex items-center justify-center gap-2 hover:bg-[#25D366]/10"
                                     >
                                         <MessageCircle size={18} />
@@ -1311,6 +1429,14 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                     />
                 )
             }
+
+            <PDFPreviewModal
+                isOpen={showPreview}
+                onClose={() => setShowPreview(false)}
+                pdfUrl={previewPdfUrl || ''}
+                onShare={handleWhatsAppShare}
+                title="Invoice Preview"
+            />
         </div >
     );
 };

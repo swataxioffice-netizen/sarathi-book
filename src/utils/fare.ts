@@ -15,6 +15,7 @@ export interface VehicleType {
 export interface Trip {
     id: string;
     customerName: string;
+    customerPhone?: string;
     customerGst?: string;
     vehicleId?: string;
     passengers?: number;

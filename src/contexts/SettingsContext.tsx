@@ -35,6 +35,7 @@ interface Settings {
     upiId?: string;
     appColor?: string;
     services?: string[];
+    signatureUrl?: string;
 }
 
 interface SettingsContextType {
@@ -114,7 +115,7 @@ const translations = {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [docStats, setDocStats] = useState({ hasFullVehicle: false, hasFullDriver: false });
+    const [docStats, setDocStats] = useState(() => safeJSONParse('doc-stats', { hasFullVehicle: false, hasFullDriver: false }));
     const [driverCode, setDriverCode] = useState<number | null>(null);
 
     const [settings, setSettings] = useState<Settings>(() => {
@@ -177,6 +178,25 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                         if (data.settings) setSettings(prev => ({ ...prev, ...data.settings }));
                         if (data.driver_code) setDriverCode(data.driver_code);
                     }
+
+                    // 2. Fetch Document Stats
+                    const { data: docs } = await supabase.from('user_documents').select('type').eq('user_id', session.user.id);
+                    if (docs) {
+                        const types = new Set(docs.map(d => d.type));
+                        const hasFullVehicle = ['Insurance', 'Permit', 'Fitness', 'Pollution'].every(t => types.has(t));
+                        const hasFullDriver = ['License'].every(t => types.has(t));
+                        setDocStats({ hasFullVehicle, hasFullDriver });
+                    }
+                } else {
+                    // Local Storage Fallback for Stats
+                    const saved = localStorage.getItem('cab-docs');
+                    if (saved) {
+                        const docs = JSON.parse(saved);
+                        const types = new Set(docs.map((d: any) => d.type));
+                        const hasFullVehicle = ['Insurance', 'Permit', 'Fitness', 'Pollution'].every(t => types.has(t));
+                        const hasFullDriver = ['License'].every(t => types.has(t));
+                        setDocStats({ hasFullVehicle, hasFullDriver });
+                    }
                 }
             } catch (err) {
                 console.error('Settings sync failed:', err);
@@ -195,6 +215,15 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     } else if (data) {
                         if (data.settings) setSettings(prev => ({ ...prev, ...data.settings }));
                         if (data.driver_code) setDriverCode(data.driver_code);
+                    }
+
+                    // Fetch Docs on Sign In
+                    const { data: docs } = await supabase.from('user_documents').select('type').eq('user_id', session.user.id);
+                    if (docs) {
+                        const types = new Set(docs.map(d => d.type));
+                        const hasFullVehicle = ['Insurance', 'Permit', 'Fitness', 'Pollution'].every(t => types.has(t));
+                        const hasFullDriver = ['License'].every(t => types.has(t));
+                        setDocStats({ hasFullVehicle, hasFullDriver });
                     }
                 } catch (err) {
                     console.error('Settings fetch on sign in failed:', err);
@@ -250,6 +279,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Save to Cloud on Change (Debounced)
     useEffect(() => {
         localStorage.setItem('namma-cab-settings', JSON.stringify(settings));
+        localStorage.setItem('doc-stats', JSON.stringify(docStats));
         if (settings.theme === 'dark') {
             document.documentElement.classList.add('dark');
         } else {
@@ -270,7 +300,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }, 2000);
 
         return () => clearTimeout(saveToCloud);
-    }, [settings]);
+    }, [settings, docStats]);
 
     const updateSettings = (newSettings: Partial<Settings>) => {
         setSettings(prev => ({ ...prev, ...newSettings }));

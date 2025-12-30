@@ -259,19 +259,19 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                                     <span className="text-[9px] font-medium text-slate-500">Date: {existingDoc.expiryDate}</span>
                                 </div>
                             ) : (
-                                <div className="mt-1.5 flex items-center gap-2">
+                                <div className="mt-2 flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
                                     <input
                                         type="date"
                                         value={newDocDates[req.type] || ''}
                                         onChange={(e) => setNewDocDates(prev => ({ ...prev, [req.type]: e.target.value }))}
-                                        className="h-8 max-w-[130px] rounded border-slate-300 text-[10px] font-bold text-slate-600 focus:ring-blue-500 focus:border-blue-500"
+                                        className="h-10 flex-1 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm"
                                     />
                                     {newDocDates[req.type] && (
                                         <button
                                             onClick={() => handleSave(req.type, category, newDocDates[req.type])}
-                                            className="h-8 px-3 bg-green-600 text-white rounded text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-green-700 active:scale-95 animate-fade-in flex items-center gap-1"
+                                            className="h-10 px-4 bg-green-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md hover:bg-green-800 active:scale-95 flex items-center gap-2 transition-all"
                                         >
-                                            Save <CheckCircle size={10} />
+                                            <CheckCircle size={14} /> Save
                                         </button>
                                     )}
                                 </div>
