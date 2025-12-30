@@ -279,6 +279,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                             <div className="relative">
                                 <User size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input
+                                    id="quote_customer_name"
+                                    name="quote_customer_name"
                                     type="text"
                                     value={customerName}
                                     onChange={(e) => setCustomerName(e.target.value)}
@@ -299,6 +301,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                                     <MapPin size={10} className="text-red-500" /> Client Address
                                 </label>
                                 <input
+                                    id="quote_customer_address"
+                                    name="quote_customer_address"
                                     type="text"
                                     value={customerAddress}
                                     onChange={(e) => setCustomerAddress(e.target.value)}
@@ -317,6 +321,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                                     <Landmark size={10} className="text-blue-500" /> Client GSTIN (Optional)
                                 </label>
                                 <input
+                                    id="quote_customer_gstin"
+                                    name="quote_customer_gstin"
                                     type="text"
                                     value={customerGstin}
                                     onChange={(e) => setCustomerGstin(e.target.value.toUpperCase())}
@@ -337,6 +343,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                     <div>
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Subject</label>
                         <input
+                            id="quote_subject"
+                            name="quote_subject"
                             type="text"
                             value={subject}
                             onChange={(e) => setSubject(e.target.value)}
@@ -414,6 +422,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                                     <div>
                                         <label className="text-[9px] font-black text-slate-400 uppercase">Description</label>
                                         <input
+                                            id={`quote_item_desc_${index}`}
+                                            name={`quote_item_desc_${index}`}
                                             type="text"
                                             value={item.description}
                                             onChange={(e) => updateItem(index, 'description', e.target.value)}
@@ -427,6 +437,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                                         <div className="col-span-1">
                                             <label className="text-[9px] font-black text-slate-400 uppercase">Package</label>
                                             <input
+                                                id={`quote_item_pkg_${index}`}
+                                                name={`quote_item_pkg_${index}`}
                                                 type="text"
                                                 value={item.package}
                                                 onChange={(e) => updateItem(index, 'package', e.target.value)}
@@ -437,6 +449,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                                         <div>
                                             <label className="text-[9px] font-black text-slate-400 uppercase">Rate</label>
                                             <input
+                                                id={`quote_item_rate_${index}`}
+                                                name={`quote_item_rate_${index}`}
                                                 type="text"
                                                 value={item.rate}
                                                 onChange={(e) => updateItem(index, 'rate', e.target.value)}
@@ -447,6 +461,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                                         <div>
                                             <label className="text-[9px] font-black text-slate-400 uppercase">Amount</label>
                                             <input
+                                                id={`quote_item_amt_${index}`}
+                                                name={`quote_item_amt_${index}`}
                                                 type="text"
                                                 value={item.amount}
                                                 onChange={(e) => updateItem(index, 'amount', e.target.value)}
@@ -515,6 +531,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                     {/* Add Custom Term Input */}
                     <div className="flex gap-2 pb-2">
                         <input
+                            id="quote_custom_term"
+                            name="quote_custom_term"
                             type="text"
                             value={customTerm}
                             onChange={(e) => setCustomTerm(e.target.value)}

@@ -3,6 +3,7 @@ import { loadGoogleMaps } from '../utils/googleMaps';
 import { Map } from 'lucide-react';
 
 interface PlacesAutocompleteProps {
+    id?: string;
     value: string;
     onChange: (value: string) => void;
     onPlaceSelected?: (place: { address: string; lat: number; lng: number }) => void;
@@ -16,6 +17,7 @@ interface PlacesAutocompleteProps {
 }
 
 const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
+    id,
     value,
     onChange,
     onPlaceSelected,
@@ -77,7 +79,7 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
     return (
         <div className="space-y-1 w-full">
             {label && (
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+                <label htmlFor={id} className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
                     {icon} {label}
                 </label>
             )}
@@ -94,6 +96,8 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                 )}
 
                 <input
+                    id={id}
+                    name={id}
                     ref={inputRef}
                     type="text"
                     value={value}

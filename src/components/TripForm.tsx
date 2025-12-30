@@ -786,6 +786,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                             {extraItems.map((item, index) => (
                                                 <div key={index} className="flex gap-2">
                                                     <input
+                                                        id={`custom_item_desc_${index}`}
+                                                        name={`custom_item_desc_${index}`}
                                                         type="text"
                                                         placeholder="Description (e.g. Innova Rent)"
                                                         value={item.description}
@@ -804,6 +806,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                                     <div className="relative w-24">
                                                         <span className="absolute left-2 top-2.5 text-xs font-bold text-slate-400">₹</span>
                                                         <input
+                                                            id={`custom_item_amount_${index}`}
+                                                            name={`custom_item_amount_${index}`}
                                                             type="number"
                                                             placeholder="0"
                                                             value={item.amount || ''}
@@ -842,6 +846,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                             <div className="col-span-2">
                                 {mode !== 'custom' && (
                                     <PlacesAutocomplete
+                                        id="pickup_location"
                                         label="Pickup"
                                         icon={<MapPin size={16} />}
                                         value={fromLoc}
@@ -870,6 +875,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                             <div className="col-span-2">
                                 {mode !== 'custom' && (
                                     <PlacesAutocomplete
+                                        id="drop_location"
                                         label="Drop"
                                         icon={<MapPin size={16} />}
                                         value={toLoc}
@@ -918,6 +924,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                         </label>
                                         <div className="flex gap-2">
                                             <input
+                                                id="start_km"
+                                                name="start_km"
                                                 type="number"
                                                 className="tn-input flex-1"
                                                 value={startKm || ''}
@@ -926,6 +934,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                             />
                                             {mode === 'hourly' && (
                                                 <input
+                                                    id="start_time"
+                                                    name="start_time"
                                                     type="time"
                                                     className="tn-input w-24 px-1 text-center text-xs"
                                                     value={startTime}
@@ -945,6 +955,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                         </label>
                                         <div className="flex gap-2">
                                             <input
+                                                id="end_km"
+                                                name="end_km"
                                                 type="number"
                                                 className="tn-input flex-1"
                                                 value={endKm || ''}
@@ -953,6 +965,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                             />
                                             {mode === 'hourly' && (
                                                 <input
+                                                    id="end_time"
+                                                    name="end_time"
                                                     type="time"
                                                     className="tn-input w-24 px-1 text-center text-xs"
                                                     value={endTime}
@@ -970,6 +984,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                     <div className="relative">
                                         <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                         <input
+                                            id="trip_days"
+                                            name="trip_days"
                                             type="number"
                                             className="tn-input pl-11"
                                             placeholder="e.g. 2"
@@ -1061,6 +1077,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                                             <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-xl px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
                                                                 {!item.unit && <span className="text-slate-400 font-bold text-[10px]">₹</span>}
                                                                 <input
+                                                                    id={`charge_${item.id}`}
+                                                                    name={`charge_${item.id}`}
                                                                     type="number"
                                                                     className="w-14 text-right font-black text-sm text-slate-900 bg-transparent outline-none"
                                                                     placeholder="0"
@@ -1120,6 +1138,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                     <div className="relative">
                                         <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                         <input
+                                            id="customer_name"
+                                            name="customer_name"
                                             type="text"
                                             className="tn-input pl-11"
                                             placeholder="Guest Name"
@@ -1142,6 +1162,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                 <div>
                                     <label className="tn-label">Phone Number (Optional)</label>
                                     <input
+                                        id="customer_phone"
+                                        name="customer_phone"
                                         type="tel"
                                         className="tn-input"
                                         placeholder="e.g. 9876543210"
@@ -1159,6 +1181,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                 <div>
                                     <label className="tn-label">Customer GSTIN (For Corporate)</label>
                                     <input
+                                        id="customer_gstin"
+                                        name="customer_gstin"
                                         type="text"
                                         className={`tn-input uppercase ${customerGst && !validateGSTIN(customerGst) ? 'border-orange-300 bg-orange-50' : ''}`}
                                         placeholder="33XXXXX0000X1ZX"
@@ -1177,6 +1201,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                 <div>
                                     <label className="tn-label">Billing Address</label>
                                     <input
+                                        id="billing_address"
+                                        name="billing_address"
                                         type="text"
                                         className="tn-input"
                                         placeholder="Company Address or Local Address"
@@ -1240,6 +1266,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                         <div>
                                             <label className="tn-label">Rate/KM (Editable)</label>
                                             <input
+                                                id="vehicle_rate"
+                                                name="vehicle_rate"
                                                 type="number"
                                                 className="tn-input"
                                                 value={customRate || ''}
@@ -1258,6 +1286,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                     <label className={`w-full py-3 px-4 rounded-xl border-2 font-black text-[11px] uppercase tracking-wider transition-all cursor-pointer flex items-center justify-between ${localGst ? 'bg-green-600 border-green-600 text-white shadow-md' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
                                         <div className="flex items-center gap-2">
                                             <input
+                                                id="enable_gst"
+                                                name="enable_gst"
                                                 type="checkbox"
                                                 checked={localGst}
                                                 onChange={() => setLocalGst(!localGst)}
