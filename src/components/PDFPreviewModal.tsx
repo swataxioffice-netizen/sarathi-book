@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Share2, Download, Eye } from 'lucide-react';
+import { X, Share2, Eye } from 'lucide-react';
 
 interface PDFPreviewModalProps {
     isOpen: boolean;

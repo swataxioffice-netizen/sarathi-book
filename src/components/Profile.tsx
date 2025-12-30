@@ -7,6 +7,7 @@ import DocumentVault from './DocumentVault';
 import GoogleSignInButton from './GoogleSignInButton';
 import { supabase } from '../utils/supabase';
 import { VEHICLES } from '../utils/fare';
+import { toTitleCase, formatAddress } from '../utils/stringUtils';
 
 import BusinessCard from './BusinessCard';
 
@@ -407,6 +408,7 @@ const Profile: React.FC = () => {
                                         type="text"
                                         value={settings.companyName}
                                         onChange={(_) => updateSettings({ companyName: _.target.value })}
+                                        onBlur={(_) => updateSettings({ companyName: toTitleCase(_.target.value) })}
                                         className="tn-input h-10 font-bold placeholder:text-slate-500"
                                         placeholder="e.g. Saravana Travels"
                                     />
@@ -438,6 +440,7 @@ const Profile: React.FC = () => {
                                         type="text"
                                         value={settings.companyAddress}
                                         onChange={(_) => updateSettings({ companyAddress: _.target.value })}
+                                        onBlur={(_) => updateSettings({ companyAddress: formatAddress(_.target.value) })}
                                         className="tn-input h-10 font-bold placeholder:text-slate-500"
                                         placeholder="State, City"
                                     />
@@ -674,25 +677,16 @@ const Profile: React.FC = () => {
                                     <p className="text-[8px] text-slate-400 ml-1 mt-0.5 font-bold italic">Payments will be sent to this ID</p>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1">
                                     <div>
-                                        <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Account Name</label>
+                                        <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Account Holder Name</label>
                                         <input
                                             type="text"
                                             value={settings.holderName || ''}
                                             onChange={(_) => updateSettings({ holderName: _.target.value })}
-                                            className="tn-input h-9 font-bold placeholder:text-slate-500"
+                                            onBlur={(_) => updateSettings({ holderName: toTitleCase(_.target.value) })}
+                                            className="tn-input h-10 font-bold placeholder:text-slate-500"
                                             placeholder="Holder Name"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Bank Name</label>
-                                        <input
-                                            type="text"
-                                            value={settings.bankName || ''}
-                                            onChange={(_) => updateSettings({ bankName: _.target.value })}
-                                            className="tn-input h-9 font-bold"
-                                            placeholder="Bank Name"
                                         />
                                     </div>
                                 </div>

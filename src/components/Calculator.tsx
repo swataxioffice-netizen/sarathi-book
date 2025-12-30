@@ -152,43 +152,42 @@ const CabCalculator: React.FC = () => {
         const finalTotal = res.total + permitTotal;
 
         const currentVeh = VEHICLES.find(v => v.id === selectedVehicle);
-        const isLocal = mode === 'drop' && dist <= 30;
         const details = [];
 
-        details.push(`Trip: ${dist} KM (${tripType === 'oneway' ? 'One-Way' : 'Round Trip'})`);
+        details.push(`Trip: ${res.distance} KM (${res.mode === 'outstation' ? 'Round Trip' : 'Local Drop'})`);
 
-        if (isLocal) {
-            details.push(`Type: Chennai Association Local (2025)`);
-            const baseLocal = (currentVeh?.type === 'SUV' || currentVeh?.type === 'Van') ? 350 : 250;
-            const extraKm = Math.max(0, dist - 10);
-            const extraRate = (currentVeh?.type === 'SUV' || currentVeh?.type === 'Van') ? 35 : 25;
-            details.push(`Base Fare (First 10 KM): ₹${baseLocal}`);
+        if (res.mode === 'drop' && res.distance <= 30) {
+            details.push(`Type: Chennai Association Local (Standard)`);
+            const isLarge = currentVeh?.type === 'SUV' || currentVeh?.type === 'Van';
+            const baseFee = isLarge ? 350 : 250;
+            const extraRate = isLarge ? 35 : 25;
+            const extraKm = Math.max(0, res.distance - 10);
+
+            details.push(`Base Fare (First 10 KM): ₹${baseFee}`);
             if (extraKm > 0) {
                 details.push(`Extra Distance: ${extraKm.toFixed(1)} KM × ₹${extraRate} = ₹${(extraKm * extraRate).toFixed(0)}`);
             }
-        } else if (mode === 'outstation') {
-            const activeMinKm = 250;
-            const chargedDist = Math.max(dist, activeMinKm * tripDays);
-            details.push(`Outstation Round Trip (Min ${activeMinKm} KM/Day)`);
-            details.push(`Distance Charge: ${chargedDist} KM × ₹${customRate} = ₹${(chargedDist * customRate).toFixed(0)}`);
+        } else if (res.mode === 'outstation') {
+            const minKmDay = currentVeh?.minKm || 250;
+            details.push(`Outstation Round Trip (Min ${minKmDay} KM/Day)`);
+            details.push(`Distance Charge: ${res.effectiveDistance} KM × ₹${res.rateUsed} = ₹${res.distanceCharge}`);
             if (res.driverBatta > 0) {
-                details.push(`Driver Batta: ₹${res.driverBatta} × ${tripDays} Day(s) = ₹${res.driverBatta * tripDays}`);
+                details.push(`Driver Allowance: ₹${res.driverBatta}`);
             }
         } else {
-            // Drop > 30KM (Outstation Drop)
-            const activeMinKm = 130;
-            const chargedDist = Math.max(dist, activeMinKm);
-            const rateVal = (currentVeh?.type === 'SUV' || currentVeh?.type === 'Van') ? 19 : 14;
-            details.push(`Chennai Association Drop (Min ${activeMinKm} KM)`);
-            details.push(`Distance Charge: ${chargedDist} KM × ₹${rateVal} = ₹${(chargedDist * rateVal).toFixed(0)}`);
+            // Outstation Drop Trip (> 30KM)
+            details.push(`Outstation Drop Trip (Min 130 KM)`);
+            details.push(`Distance Charge: ${res.effectiveDistance} KM × ₹${res.rateUsed} = ₹${res.distanceCharge}`);
             if (res.driverBatta > 0) {
-                details.push(`Driver Batta: ₹${res.driverBatta}`);
+                details.push(`Driver Allowance: ₹${res.driverBatta}`);
             }
         }
 
         if (res.waitingCharges > 0) details.push(`Waiting Charge: ₹${res.waitingCharges}`);
         if (res.hillStationCharges > 0) details.push(`Hill Station: ₹${res.hillStationCharges}`);
         if (res.petCharges > 0) details.push(`Pet Charge: ₹${res.petCharges}`);
+        if (res.nightBata > 0) details.push(`Night Driver Allowance: ₹${res.nightBata}`);
+        if (res.nightStay > 0) details.push(`Night Stay: ₹${res.nightStay}`);
         if (parseFloat(toll) > 0) details.push(`Tolls: ₹${toll}`);
         if (parseFloat(parking) > 0) details.push(`Parking: ₹${parking}`);
         if (permitTotal > 0) details.push(`Permit: ₹${permitTotal}`);
@@ -208,7 +207,7 @@ const CabCalculator: React.FC = () => {
 
     const book = () => {
         const vehicle = VEHICLES.find(v => v.id === selectedVehicle);
-        const typeLabel = tripType === 'oneway' ? 'One Way / Drop' : 'Round Trip';
+        const typeLabel = tripType === 'oneway' ? 'Local Drop' : 'Round Trip';
         const msg = `*PICKUP:* ${pickup}\n` +
             `*DROP:* ${drop}\n\n` +
             `*VEHICLE:* ${vehicle?.name} (${passengers} Seats)\n` +
@@ -234,7 +233,7 @@ const CabCalculator: React.FC = () => {
                         aria-label={t === 'oneway' ? 'One Way or Drop Trip' : 'Round Trip'}
                         className={`flex-1 py-3 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${tripType === t ? 'bg-white text-[#0047AB] shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
                     >
-                        {t === 'oneway' ? 'One Way / Drop' : 'Outstation'}
+                        {t === 'oneway' ? 'Local Drop' : 'Outstation'}
                     </button>
                 ))}
             </div>

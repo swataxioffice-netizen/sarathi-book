@@ -12,6 +12,7 @@ interface PlacesAutocompleteProps {
     label?: string;
     icon?: React.ReactNode;
     rightContent?: React.ReactNode;
+    onBlur?: () => void;
 }
 
 const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
@@ -23,7 +24,8 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
     className,
     label,
     icon,
-    rightContent
+    rightContent,
+    onBlur
 }) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
@@ -96,6 +98,7 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                     type="text"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
+                    onBlur={onBlur}
                     className={className || `tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs ${onMapClick ? 'pl-10' : 'pl-3'} pr-10`}
                     placeholder={placeholder || "Start typing..."}
                 />

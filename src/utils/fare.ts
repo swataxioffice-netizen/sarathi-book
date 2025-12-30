@@ -115,25 +115,37 @@ export const calculateFare = (params: {
 
     // 1. DYNAMIC RATE SELECTION
     const activeRate = (ratePerKm && ratePerKm > 0) ? ratePerKm : (vehicle ? (mode === 'outstation' ? vehicle.roundRate : vehicle.dropRate) : 15);
-    const minKmRound = vehicle?.minKm || 250;
-    const minKmDrop = 130;
+    let minKmDrop = 0;
 
     let distCharge = 0;
     let bBatta = 0;
     let effKm = actualDist;
 
-    // 2. THE LOGIC ENGINE
+    // 2. THE LOGIC ENGINE (Chennai Association Standard 2025)
     if (mode === 'drop') {
-        // ONE-WAY TRIP
-        effKm = Math.max(minKmDrop, actualDist);
-        distCharge = effKm * activeRate;
-        bBatta = (vehicle?.batta || 500);
+        const isLocal = actualDist <= 30;
+        const isLarge = vehicle?.type === 'SUV' || vehicle?.type === 'Van';
+
+        if (isLocal) {
+            // LOCAL DROP: Tiered Pricing
+            const baseFee = isLarge ? 350 : 250;
+            const extraRate = isLarge ? 35 : 25;
+            const extraKm = Math.max(0, actualDist - 10);
+
+            distCharge = baseFee + (extraKm * extraRate);
+            bBatta = 0; // No batta for local
+            effKm = actualDist;
+        } else {
+            // OUTSTATION DROP: Min 130 KM
+            minKmDrop = 130;
+            effKm = Math.max(minKmDrop, actualDist);
+            distCharge = effKm * activeRate;
+            bBatta = (vehicle?.batta || 500);
+        }
     }
     else if (mode === 'outstation') {
-        // ROUND TRIP (Always charging for return distance)
-        // If the user entered start/end KM, we use that. 
-        // If it's a quote where they only entered one-way distance, we double it.
-        const minByDays = minKmRound * days;
+        // ROUND TRIP: Min 250 KM/Day
+        const minByDays = (vehicle?.minKm || 250) * days;
         effKm = Math.max(minByDays, actualDist);
         distCharge = effKm * activeRate;
         bBatta = (vehicle?.batta || 500) * days;
@@ -173,9 +185,12 @@ export const calculateFare = (params: {
         distanceCharge: Math.round(distCharge),
         driverBatta: bBatta,
         waitingCharges: (waitingHours * 150),
-        hillStationCharges: isHillStation ? (vehicle?.type === 'SUV' ? 500 : 300) : 0,
+        hillStationCharges: isHillStation ? (vehicle?.type === 'SUV' || vehicle?.type === 'Van' ? 500 : 300) : 0,
         petCharges: petCharge ? 500 : 0,
         taxableTotal: taxable,
-        exemptTotal: exempt
+        exemptTotal: exempt,
+        mode,
+        nightBata,
+        nightStay
     };
 };

@@ -1,6 +1,8 @@
 import { jsPDF } from 'jspdf';
+import QRCode from 'qrcode';
 import { type Trip, VEHICLES } from './fare';
 import { numberToWords } from './numberToWords';
+import { toTitleCase, formatAddress } from './stringUtils';
 
 export interface PDFSettings {
     companyName: string;
@@ -12,6 +14,14 @@ export interface PDFSettings {
     vehicles?: any[];
     driverCode?: number;
     signatureUrl?: string;
+    userId?: string;
+    bankName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
+    holderName?: string;
+    branchName?: string;
+    upiId?: string;
+    appColor?: string;
 }
 
 export interface QuotationItem {
@@ -30,10 +40,24 @@ export interface QuotationData {
     date: string;
     items: QuotationItem[];
     gstEnabled?: boolean;
+    quotationNo?: string;
+    terms?: string[];
 }
 
-export const generateReceiptPDF = (trip: Trip, settings: PDFSettings, isQuotation: boolean = false) => {
-    const doc = new jsPDF({ unit: 'mm', format: 'a4' } as any);
+export interface SavedQuotation {
+    id: string;
+    quotationNo: string;
+    customerName: string;
+    subject: string;
+    date: string;
+    items: QuotationItem[];
+    vehicleType: string;
+    gstEnabled?: boolean;
+    terms?: string[];
+}
+
+export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQuotation: boolean = false) => {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true } as any);
     const margin = 15;
     let y = 0;
 
@@ -43,14 +67,24 @@ export const generateReceiptPDF = (trip: Trip, settings: PDFSettings, isQuotatio
     const gstin = settings?.gstin ? String(settings.gstin) : '';
     const vehicleNumber = String(settings?.vehicleNumber || 'N/A');
     const gstEnabled = !!settings?.gstEnabled;
+    const themeColor = settings?.appColor || '#0047AB';
+    const rgb = hexToRgb(themeColor);
+
+    // Helper to apply theme color
+    const setThemeColor = () => doc.setTextColor(rgb.r, rgb.g, rgb.b);
+    const setDrawThemeColor = () => doc.setDrawColor(rgb.r, rgb.g, rgb.b);
 
     // --- ZONE 1: HEADER (Minimal / Sustainable) ---
     // No background fill - Saves Ink
 
-    doc.setTextColor(0, 0, 0); // Black text
+    setThemeColor();
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(24);
     doc.text(companyName.toUpperCase(), margin, 20);
+    doc.setTextColor(0, 0, 0); // Reset for others
+
+
+    doc.setFontSize(9);
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
@@ -58,21 +92,16 @@ export const generateReceiptPDF = (trip: Trip, settings: PDFSettings, isQuotatio
     doc.text(companyAddress, margin, 27, { maxWidth: 100 });
 
     doc.setFontSize(10);
-    doc.setFontSize(10);
-    doc.text(`Phone: ${driverPhone}`, margin, 42);
+    doc.text(`Contact: ${driverPhone}${gstin ? `  |  GSTIN: ${gstin}` : ''}`, margin, 42);
     if (settings?.driverCode) {
-        doc.text(`Driver ID: #${settings.driverCode}`, margin + 60, 42);
-    } else if (gstin) {
-        doc.text(`GSTIN: ${gstin}`, margin + 60, 42);
-    }
-    if (gstin && settings?.driverCode) {
-        doc.text(`GSTIN: ${gstin}`, margin + 110, 42);
+        doc.text(`Driver ID: #${settings.driverCode}`, 195, 42, { align: 'right' });
     }
 
     // Divider Line
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.5);
+    setDrawThemeColor();
+    doc.setLineWidth(0.6);
     doc.line(margin, 48, 195, 48);
+    doc.setDrawColor(200, 200, 200); // Reset
 
     // --- ZONE 2: INVOICE INFO ---
     y = 60;
@@ -155,19 +184,45 @@ export const generateReceiptPDF = (trip: Trip, settings: PDFSettings, isQuotatio
 
     y += 5;
     doc.setFont('helvetica', 'normal');
-    doc.text(String(trip.customerName || 'Customer'), leftColX, y);
+    doc.text(toTitleCase(String(trip.customerName || 'Customer')), leftColX, y);
 
     const fromAddr = String(trip.from || 'N/A');
     const toAddr = String(trip.to || 'N/A');
-    const journeyLines = doc.splitTextToSize(`${fromAddr} TO ${toAddr}`.toUpperCase(), 85);
+    const journeyLines = doc.splitTextToSize(toTitleCase(`${fromAddr} TO ${toAddr}`), 85);
     doc.text(journeyLines, rightColX, y);
 
     const leftStartY = y;
     let leftY = y + 5;
     if (trip.billingAddress) {
         doc.setFontSize(8);
-        doc.text(String(trip.billingAddress), leftColX, leftY, { maxWidth: 80 });
-        leftY += 8;
+        const addrText = formatAddress(String(trip.billingAddress));
+        // Split by comma, then group parts to stay within 3 lines max
+        const parts = addrText.split(',').map(p => p.trim());
+        let lines: string[] = [];
+        if (parts.length <= 3) {
+            lines = parts;
+        } else {
+            // Group first N-2 parts into first line, then next, then last
+            const line1 = parts.slice(0, parts.length - 2).join(', ');
+            const line2 = parts[parts.length - 2];
+            const line3 = parts[parts.length - 1];
+            lines = [line1, line2, line3];
+        }
+
+        let combinedLines: string[] = [];
+        lines.forEach((line, idx) => {
+            if (idx < 2) { // Only wrap first 2 lines if needed, 3rd is last
+                const wrapped = doc.splitTextToSize(line + (idx < lines.length - 1 ? ',' : ''), 55);
+                combinedLines = [...combinedLines, ...wrapped];
+            } else {
+                combinedLines.push(line);
+            }
+        });
+
+        // Final trim to exactly 3 lines if it exceeded due to wrapping
+        const finalLines = combinedLines.slice(0, 3);
+        doc.text(finalLines, leftColX, leftY);
+        leftY += (finalLines.length * 3.5) + 2;
     }
 
     if (trip.customerGst) {
@@ -248,40 +303,33 @@ export const generateReceiptPDF = (trip: Trip, settings: PDFSettings, isQuotatio
         addTableRow(String(trip.packageName || 'TOUR PACKAGE').toUpperCase(), '1', '-', trip.packagePrice || 0);
     } else if (trip.mode === 'drop') {
         if (dist <= 30) {
-            // Local Market Rate (Point-to-Point)
-            // Attempt to find vehicle type to determine base fare correctly
-            let isSuv = false;
+            let isLarge = false;
+            // Heuristic to check vehicle type
             if (trip.vehicleId) {
                 const combinedVehicles = [...(settings.vehicles || []), ...VEHICLES];
                 const v = combinedVehicles.find(x => x.id === trip.vehicleId);
-                // Check if type is SUV or if manual model suggests SUV (heuristic)
-                if (v && ((v as any).type === 'SUV' || (v as any).name?.includes('SUV') || (v as any).name?.includes('Innova'))) {
-                    isSuv = true;
+                if (v && ((v as any).type === 'SUV' || (v as any).type === 'Van' || (v as any).name?.includes('SUV') || (v as any).name?.includes('Innova'))) {
+                    isLarge = true;
                 }
-            } else if (trip.ratePerKm >= 18) {
-                // Fallback heuristic
-                isSuv = true;
             }
 
-            const baseFee = isSuv ? 350 : 250;
+            const baseFee = isLarge ? 350 : 250;
+            const extraRate = isLarge ? 35 : 25;
             const extraKm = Math.max(0, dist - 10);
-            const extraRate = isSuv ? 35 : 25;
 
             addTableRow('Local Drop (Base First 10 KM)', '10 KM', `${baseFee}`, baseFee);
             if (extraKm > 0) {
                 addTableRow('Extra Distance Charge', `${extraKm.toFixed(1)} KM`, `${extraRate}/KM`, extraKm * extraRate);
             }
         } else {
-            // Outstation Drop (130 KM Min)
             const chargedKm = Math.max(130, dist);
             const rate = trip.ratePerKm || 14;
-            addTableRow(`Drop Trip (Point-to-Point - ${dist} KM)`, `${chargedKm} KM (Min)`, `${rate}/KM`, chargedKm * rate);
+            addTableRow(`Outstation Drop Trip (${dist} KM)`, `${chargedKm} KM (Min)`, `${rate}/KM`, chargedKm * rate);
         }
     } else if (trip.mode === 'outstation') {
-        // Round Trip (300 KM/Day Min)
         const days = trip.days || 1;
-        const chargedKm = Math.max(300 * days, dist);
-        const rate = trip.ratePerKm || 12;
+        const chargedKm = Math.max((trip.mode === 'outstation' ? 250 : 300) * days, dist); // Syncing with 250KM min
+        const rate = trip.ratePerKm || 14;
         addTableRow(`Round Trip (${dist} KM)`, `${chargedKm} KM (Min)`, `${rate}/KM`, chargedKm * rate);
     }
 
@@ -403,61 +451,115 @@ export const generateReceiptPDF = (trip: Trip, settings: PDFSettings, isQuotatio
     doc.line(130, y - 6, 195, y - 6); // Top line of total
     doc.line(130, y + 4, 195, y + 4); // Bottom line of total
 
+    setThemeColor();
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text('GRAND TOTAL', 135, y);
     doc.text(`Rs. ${finalTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
+    doc.setTextColor(0, 0, 0);
 
     y += 18;
     doc.setFontSize(9);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(60, 60, 60);
-    doc.text(`Amount in Words: ${numberToWords(finalTotal).toUpperCase()}`, margin, y, { maxWidth: 180 });
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(31, 41, 55);
+    doc.text(`RUPEES IN WORDS: ${numberToWords(finalTotal).toUpperCase()}`, 105, y, { align: 'center', maxWidth: 180 });
+    doc.setTextColor(0, 0, 0);
+
+    y += 12;
+    // --- PAYMENT SECTION (UPI & Account Name) ---
+    const paymentY = y;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PAYMENT DETAILS:', margin, paymentY);
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    let bankInfoY = paymentY + 5;
+    if (settings.holderName) {
+        doc.text(`Account Name : ${settings.holderName}`, margin, bankInfoY);
+        bankInfoY += 4;
+    }
+    if (settings.upiId) {
+        doc.text(`UPI ID       : ${settings.upiId}`, margin, bankInfoY);
+    }
+
+    // Dynamic UPI QR Code for instant payment
 
     y += 10;
-    doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    doc.text('SAC 9966: Rental services of road vehicles with operators.', margin, y);
+    doc.setTextColor(150, 150, 150);
+    doc.text('Subject to Chennai Jurisdiction. Computer generated invoice, no signature required.', margin, y);
 
-    // --- SIGNATURES ---
+    y = 252; // Slightly lower
     if (settings?.signatureUrl) {
         try {
-            // Position signature above Authorized Signatory
-            // y is around 255 for the labels
-            doc.addImage(settings.signatureUrl, 'PNG', 160, 240, 35, 12);
+            // Positioned clearly above the line
+            doc.addImage(settings.signatureUrl, 'PNG', 158, y - 18, 35, 14, undefined, 'FAST');
         } catch (e) {
             console.error('Failed to add signature image', e);
         }
     }
 
-    y = 255;
-    doc.line(margin, y, 195, y);
-    y += 10;
+    doc.setDrawColor(rgb.r, rgb.g, rgb.b);
+    doc.setLineWidth(0.2);
+    doc.line(145, y, 195, y); // Local line for signature
+    y += 6;
 
     doc.setFontSize(9);
     doc.setTextColor(31, 41, 55);
+    doc.setFont('helvetica', 'bold');
     doc.text('Receiver\'s Signature', margin, y);
     doc.text('Authorized Signatory', 195, y, { align: 'right' });
 
-    y += 15;
-    doc.setFontSize(7);
-    doc.setTextColor(156, 163, 175);
-    doc.text('Subject to Chennai Jurisdiction. | Computer generated invoice, no signature required.', 105, y, { align: 'center' });
-    y += 4;
-    doc.text(`Generated by ${companyName} via Sarathi Book App`, 105, y, { align: 'center' });
-    y += 4;
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(37, 99, 235); // Blue
-    doc.text('SARATHIBOOK.COM', 105, y, { align: 'center' });
-    doc.setFontSize(6);
-    doc.text('GROW YOUR CAB BUSINESS ONLINE', 105, y + 3, { align: 'center' });
+    y = 278;
+    setDrawThemeColor();
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, 195, y);
+    y += 3; // Adjusted for logo
+
+    try {
+        // Brand Logo and Name in Footer
+        doc.addImage('/logo.png', 'PNG', margin, y, 10, 10, undefined, 'FAST');
+
+        doc.setFont('times', 'bold');
+        doc.setFontSize(10);
+        setThemeColor();
+        doc.text('SARATHI BOOK', margin + 12, y + 4.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6);
+        doc.setTextColor(100, 100, 100);
+        doc.text('Your digital office on car', margin + 12, y + 8);
+
+        doc.setFontSize(8);
+        setThemeColor();
+        doc.setFont('helvetica', 'bold');
+        doc.text('sarathibook.com', 195, y + 6, { align: 'right', url: 'https://sarathibook.com' } as any);
+        doc.link(175, y, 20, 10, { url: 'https://sarathibook.com' });
+    } catch (e) {
+        // Fallback if logo fails
+        doc.setFontSize(7);
+        setThemeColor();
+        doc.setFont('helvetica', 'bold');
+        doc.text('SARATHIBOOK.COM', 105, y + 2, {
+            align: 'center',
+            url: 'https://sarathibook.com'
+        } as any);
+
+        doc.setFontSize(4);
+        doc.setTextColor(150, 150, 150);
+        doc.setFont('helvetica', 'normal');
+        doc.text('PROFESSIONAL CAB BUSINESS SUITE | AUTOMATE YOUR GROWTH', 105, y + 5, { align: 'center' });
+
+        doc.link(90, y, 30, 5, { url: 'https://sarathibook.com' });
+    }
 
     return doc;
 };
 
 // Sustainable Quotation Design
-export const generateQuotationPDF = (data: QuotationData, settings: PDFSettings) => {
-    const doc = new jsPDF();
+export const generateQuotationPDF = async (data: QuotationData, settings: PDFSettings) => {
+    const doc = new jsPDF({ compress: true });
     const margin = 15;
     let y = 0;
 
@@ -465,25 +567,29 @@ export const generateQuotationPDF = (data: QuotationData, settings: PDFSettings)
     const companyAddress = String(settings?.companyAddress || '');
     const driverPhone = String(settings?.driverPhone || '');
     const gstin = String(settings?.gstin || '');
+    const themeColor = settings?.appColor || '#0047AB';
+    const rgb = hexToRgb(themeColor);
+    const setThemeColor = () => doc.setTextColor(rgb.r, rgb.g, rgb.b);
+    const setDrawColor = () => doc.setDrawColor(rgb.r, rgb.g, rgb.b);
 
     // --- HEADER (Minimal) ---
-    doc.setTextColor(0, 0, 0);
+    setThemeColor();
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(22);
     doc.text(companyName.toUpperCase(), margin, 20);
+    doc.setTextColor(0, 0, 0);
+
+
+    doc.setFontSize(9);
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    const lines = doc.splitTextToSize(companyAddress, 120);
-    doc.text(lines, margin, 28);
+    const addrLines = doc.splitTextToSize(companyAddress, 120);
+    doc.text(addrLines, margin, 27);
 
-    y = 38 + (lines.length > 1 ? (lines.length - 1) * 4 : 0);
+    y = 38 + (addrLines.length > 1 ? (addrLines.length - 1) * 4 : 0);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Contact  : ${driverPhone}`, margin, y);
-    if (gstin) {
-        y += 5;
-        doc.text(`GSTIN   : ${gstin}`, margin, y);
-    }
+    doc.text(`Contact: ${driverPhone}${gstin ? `  |  GSTIN: ${gstin}` : ''}`, margin, y);
 
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
@@ -491,7 +597,16 @@ export const generateQuotationPDF = (data: QuotationData, settings: PDFSettings)
 
     y += 12;
     doc.setFontSize(10);
-    doc.text(`DATE : ${new Date(data.date).toLocaleDateString('en-IN')}`, 195, y, { align: 'right' });
+    const dateObj = new Date(data.date);
+    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const yyyy = dateObj.getFullYear();
+
+    const qNo = data.quotationNo || `QT/${mm}${yyyy}/001`;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(`QUOT NO : ${qNo}`, margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`DATE : ${dateObj.toLocaleDateString('en-IN')}`, 195, y, { align: 'right' });
 
     y += 10;
     doc.setFontSize(14);
@@ -507,13 +622,37 @@ export const generateQuotationPDF = (data: QuotationData, settings: PDFSettings)
     doc.text('To,', margin, y);
     y += 7;
     doc.setFont('helvetica', 'bold');
-    doc.text(data.customerName || '[Client\'s Name]', margin, y);
+    doc.text(toTitleCase(data.customerName || '[Client\'s Name]'), margin, y);
 
     if (data.customerAddress) {
         y += 5;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
-        doc.text(data.customerAddress, margin, y);
+        const addrText = formatAddress(data.customerAddress);
+        const parts = addrText.split(',').map(p => p.trim());
+        let lines: string[] = [];
+        if (parts.length <= 3) {
+            lines = parts;
+        } else {
+            const line1 = parts.slice(0, parts.length - 2).join(', ');
+            const line2 = parts[parts.length - 2];
+            const line3 = parts[parts.length - 1];
+            lines = [line1, line2, line3];
+        }
+
+        let combinedLines: string[] = [];
+        lines.forEach((line, idx) => {
+            if (idx < 2) {
+                const wrapped = doc.splitTextToSize(line + (idx < lines.length - 1 ? ',' : ''), 70);
+                combinedLines = [...combinedLines, ...wrapped];
+            } else {
+                combinedLines.push(line);
+            }
+        });
+
+        const finalLines = combinedLines.slice(0, 3);
+        doc.text(finalLines, margin, y);
+        y += (finalLines.length * 4.5);
     }
 
     if (data.customerGstin) {
@@ -524,14 +663,15 @@ export const generateQuotationPDF = (data: QuotationData, settings: PDFSettings)
     }
 
     y += 10;
-    doc.setFont('helvetica', 'normal');
-    const subL = doc.splitTextToSize(`SUB : ${data.subject}`, 175);
-    doc.text(subL, margin, y);
-    y += subL.length * 5 + 5;
+    doc.setFont('helvetica', 'bold');
+    const subText = `SUB : ${toTitleCase(data.subject)} -reg.`;
+    const subLines = doc.splitTextToSize(subText, 175);
+    doc.text(subLines, 105, y, { align: 'center' });
+    y += subLines.length * 5 + 5;
 
     // --- TABLE (Clean, No Fill) ---
-    const headers = ['S.No', 'Description', 'Vehicle', 'Rate', 'Amount'];
-    const colWidths = [12, 80, 30, 25, 33];
+    const headers = ['S.No', 'Description', 'SAC', 'Vehicle', 'Rate', 'Amount'];
+    const colWidths = [10, 70, 15, 30, 25, 30];
     const tableX = margin;
 
     // Header Lines (Top/Bottom border for header row)
@@ -558,19 +698,23 @@ export const generateQuotationPDF = (data: QuotationData, settings: PDFSettings)
         doc.text((index + 1).toString(), x + (colWidths[0] / 2), y + 7, { align: 'center' });
         x += colWidths[0];
 
-        const descText = `${item.description} - ${item.package}`.toUpperCase();
+        const descText = toTitleCase(`${item.description} - ${item.package}`);
         const descLines = doc.splitTextToSize(descText, colWidths[1] - 4);
         doc.text(descLines, x + 2, y + 7);
         x += colWidths[1];
 
-        doc.text(item.vehicleType, x + (colWidths[2] / 2), y + 7, { align: 'center' });
+        // SAC Code
+        doc.text('9966', x + (colWidths[2] / 2), y + 7, { align: 'center' });
         x += colWidths[2];
 
-        doc.text(item.rate, x + (colWidths[3] / 2), y + 7, { align: 'center' });
+        doc.text(item.vehicleType, x + (colWidths[3] / 2), y + 7, { align: 'center' });
         x += colWidths[3];
 
+        doc.text(item.rate, x + (colWidths[4] / 2), y + 7, { align: 'center' });
+        x += colWidths[4];
+
         const amt = parseFloat(item.amount) || 0;
-        doc.text(`${amt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, x + colWidths[4] - 2, y + 7, { align: 'right' });
+        doc.text(`${amt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, x + colWidths[5] - 2, y + 7, { align: 'right' });
         totalAmount += amt;
 
         const rowHeight = Math.max(10, descLines.length * 6);
@@ -600,10 +744,36 @@ export const generateQuotationPDF = (data: QuotationData, settings: PDFSettings)
     }
 
     y += 8;
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+    doc.line(130, y - 6, 195, y - 6); // Top line for Grand Total
+    doc.line(130, y + 4, 195, y + 4); // Bottom line for Grand Total
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.text('GRAND TOTAL:', 140, y);
     doc.text(`Rs. ${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
+
+    // Payment Section for Quotation (Minimal) - Space Saving
+    const qPaymentY = y - (data.gstEnabled ? 18 : 6); // Align with totals
+    doc.setFontSize(9);
+    setThemeColor();
+    doc.text('PAYMENT OPTIONS:', margin, qPaymentY);
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    let qBankY = qPaymentY + 5;
+    if (settings.holderName) {
+        doc.text(`Account Name: ${settings.holderName}`, margin, qBankY);
+        qBankY += 4;
+    }
+    if (settings.upiId) {
+        doc.text(`UPI ID: ${settings.upiId}`, margin, qBankY);
+    }
+
+    y += 12;
+    doc.setFontSize(9);
+    doc.text(`RUPEES IN WORDS: ${numberToWords(grandTotal).toUpperCase()}`, 105, y, { align: 'center', maxWidth: 180 });
 
     y += 15;
     doc.setFontSize(10);
@@ -612,50 +782,110 @@ export const generateQuotationPDF = (data: QuotationData, settings: PDFSettings)
     y += 8;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    const notes = [
-        '• Driver Allowance, Toll, Permit, and Parking are additional based on actuals.',
-        '• Minimum running of 250 KM per day for outstation round trips.',
-        '• Subject to Chennai Jurisdiction.'
+    const notes = data.terms && data.terms.length > 0 ? data.terms : [
+        '• Toll, Parking, State Permit and Border Entry Fees are extra as per actual receipts.',
+        '• Driver Allowance, Night Batta and Hill Station charges extra if applicable.',
+        '• This quotation is valid for a period of 15 days from the date of issue.'
     ];
+
     notes.forEach(n => {
-        doc.text(n, margin, y);
-        y += 6;
+        const lines = doc.splitTextToSize(n, 180);
+        doc.text(lines, margin, y);
+        y += (lines.length * 5) + 1;
     });
 
-    y += 15;
-    // Box for sign
-    doc.setDrawColor(200, 200, 200);
-    doc.rect(margin, y, 180, 40);
+    y += 8;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text('For ' + companyName.toUpperCase(), 195, y, { align: 'right' });
 
+    y += 5;
     // Signature image if available
     if (settings?.signatureUrl) {
         try {
-            doc.addImage(settings.signatureUrl, 'PNG', 155, y + 10, 35, 12);
+            // Positioned clearly between "For" and "Signatory"
+            doc.addImage(settings.signatureUrl, 'PNG', 158, y, 35, 14, undefined, 'FAST');
+            y += 18;
         } catch (e) {
             console.error('Failed to add signature image to quotation', e);
+            y += 15;
         }
+    } else {
+        y += 15;
     }
 
-    y += 10;
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text('For ' + companyName.toUpperCase(), 195 - 5, y, { align: 'right' });
-    y += 22;
-    doc.text('Authorized Signatory', 195 - 5, y, { align: 'right' });
+    doc.text('Authorized Signatory', 195, y, { align: 'right' });
 
-    // Footer Watermark
-    y = 285;
+    // Center Footer Disclaimer
+    y = 282;
     doc.setFontSize(7);
-    doc.setTextColor(156, 163, 175);
-    doc.setFont('helvetica', 'bold');
-    doc.text('SARATHIBOOK.COM', 105, y, { align: 'center' });
-    doc.setFontSize(5);
-    doc.text('PROFESSIONAL CAB BUSINESS SUITE', 105, y + 3, { align: 'center' });
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(150, 150, 150);
+    const disclaimer = 'This is a computer-generated quotation and does not require a physical signature.';
+    const disclaimerLines = doc.splitTextToSize(disclaimer, 160);
+    doc.text(disclaimerLines, 105, y, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+
+    y = 278;
+    setDrawColor();
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, 195, y);
+    y += 3; // Adjusted for logo
+
+    try {
+        // Brand Logo and Name in Footer
+        doc.addImage('/logo.png', 'PNG', margin, y, 10, 10);
+
+        doc.setFont('times', 'bold');
+        doc.setFontSize(10);
+        setThemeColor();
+        doc.text('SARATHI BOOK', margin + 12, y + 4.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6);
+        doc.setTextColor(100, 100, 100);
+        doc.text('Your digital office on car', margin + 12, y + 8);
+
+        doc.setFontSize(8);
+        setThemeColor();
+        doc.setFont('helvetica', 'bold');
+        doc.text('sarathibook.com', 195, y + 6, { align: 'right', url: 'https://sarathibook.com' } as any);
+        doc.link(175, y, 20, 10, { url: 'https://sarathibook.com' });
+    } catch (e) {
+        // Fallback if logo fails
+        doc.setFontSize(7);
+        setThemeColor();
+        doc.setFont('helvetica', 'bold');
+        doc.text('SARATHIBOOK.COM', 105, y + 2, {
+            align: 'center',
+            url: 'https://sarathibook.com'
+        } as any);
+
+        doc.setFontSize(4);
+        doc.setTextColor(150, 150, 150);
+        doc.setFont('helvetica', 'normal');
+        doc.text('PROFESSIONAL CAB BUSINESS SUITE | AUTOMATE YOUR GROWTH', 105, y + 5, { align: 'center' });
+
+        doc.link(90, y, 30, 5, { url: 'https://sarathibook.com' });
+    }
 
     return doc;
 };
 
-export const shareReceipt = (trip: Trip, settings: PDFSettings) => {
-    const doc = generateReceiptPDF(trip, settings);
+// --- HELPER ---
+const hexToRgb = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : { r: 0, g: 71, b: 171 }; // Default blue
+};
+
+export const shareReceipt = async (trip: Trip, settings: PDFSettings) => {
+    const doc = await generateReceiptPDF(trip, settings);
     const pdfBlob = doc.output('blob');
     const file = new File([pdfBlob], `Invoice_${trip.customerName?.replace(/\s/g, '_') || 'Trip'}.pdf`, { type: 'application/pdf' });
 
@@ -674,12 +904,11 @@ export const shareReceipt = (trip: Trip, settings: PDFSettings) => {
 };
 
 export const shareQuotation = async (data: QuotationData, settings: PDFSettings) => {
-    const doc = generateQuotationPDF(data, settings);
+    const doc = await generateQuotationPDF(data, settings);
     const pdfBlob = doc.output('blob');
-    const filename = `Quotation_${data.customerName.replace(/\s/g, '_')}_${new Date().getTime()}.pdf`;
+    const qLabel = data.quotationNo ? data.quotationNo.replace(/\//g, '-') : new Date().getTime();
+    const filename = `Quotation_${data.customerName.replace(/\s/g, '_')}_${qLabel}.pdf`;
     const file = new File([pdfBlob], filename, { type: 'application/pdf' });
-
-    // ... (Existing shareQuotation code)
 
     if (navigator.share) {
         try {
@@ -697,32 +926,50 @@ export const shareQuotation = async (data: QuotationData, settings: PDFSettings)
     }
 };
 
-export const generateFinancialReportPDF = (trips: Trip[], expenses: any[], settings: PDFSettings, periodLabel: string) => {
-    const doc = new jsPDF();
+export const generateFinancialReportPDF = async (trips: Trip[], expenses: any[], settings: PDFSettings, periodLabel: string) => {
+    const doc = new jsPDF({ compress: true });
     const margin = 15;
     let y = 15;
+    const themeColor = settings?.appColor || '#0047AB';
+    const rgb = hexToRgb(themeColor);
+    const setThemeColor = () => doc.setTextColor(rgb.r, rgb.g, rgb.b);
+    const setDrawColor = () => doc.setDrawColor(rgb.r, rgb.g, rgb.b);
 
     // --- HEADER ---
-    doc.setTextColor(0, 0, 0);
+    setThemeColor();
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(22);
     doc.text((settings?.companyName || 'MY BUSINESS').toUpperCase(), margin, 20);
 
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
     doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`, 195, 20, { align: 'right' });
 
+    // --- QR CODE (Business Profile) ---
+    if (settings.userId) {
+        try {
+            const publicUrl = `${window.location.origin}/?u=${settings.userId}`;
+            const qrDataUrl = await QRCode.toDataURL(publicUrl, { margin: 1, width: 100 });
+            doc.addImage(qrDataUrl, 'PNG', 170, 8, 18, 18, undefined, 'FAST');
+        } catch (e) {
+            console.error('QR Generation failed', e);
+        }
+    }
+
     y = 30;
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.5);
+    setDrawColor();
+    doc.setLineWidth(0.6);
     doc.line(margin, y, 195, y);
 
     y += 10;
+    setThemeColor();
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.text('STATEMENT OF ACCOUNTS', 105, y, { align: 'center' });
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 80);
     doc.text(`Period: ${periodLabel}`, 105, y + 6, { align: 'center' });
 
     // --- FINANCIAL SUMMARY ---
@@ -731,15 +978,18 @@ export const generateFinancialReportPDF = (trips: Trip[], expenses: any[], setti
     const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
     const netProfit = totalIncome - totalExpense;
 
-    doc.setFillColor(245, 247, 250);
+    doc.setFillColor(rgb.r, rgb.g, rgb.b, 0.05);
     doc.rect(margin, y, 180, 40, 'F');
+    setDrawColor();
     doc.rect(margin, y, 180, 40, 'S');
 
     y += 10;
+    setThemeColor();
     doc.setFont('helvetica', 'bold');
     doc.text('FINANCIAL SUMMARY', margin + 5, y);
 
     y += 10;
+    doc.setTextColor(0, 0, 0);
     doc.setFontSize(11);
     doc.text('Total Income (Revenue)', margin + 10, y);
     doc.text(`${totalIncome.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}`, 185, y, { align: 'right' });
@@ -751,18 +1001,21 @@ export const generateFinancialReportPDF = (trips: Trip[], expenses: any[], setti
     y += 10;
     doc.setLineWidth(0.3);
     doc.line(margin + 5, y - 5, 185, y - 5);
+    setThemeColor();
     doc.setFontSize(12);
     doc.text('NET PROFIT / (LOSS)', margin + 10, y);
     doc.text(`${netProfit.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}`, 185, y, { align: 'right' });
 
     // --- INCOME BREAKDOWN (Simplified) ---
     y += 25;
+    setThemeColor();
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.text('INCOME STATISTICS', margin, y);
     doc.line(margin, y + 2, 195, y + 2);
 
     y += 10;
+    doc.setTextColor(0, 0, 0);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(`Total Trips Completed: ${trips.length}`, margin, y);
@@ -772,6 +1025,7 @@ export const generateFinancialReportPDF = (trips: Trip[], expenses: any[], setti
 
     // --- EXPENSE BREAKDOWN ---
     y += 15;
+    setThemeColor();
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.text('EXPENSE BREAKDOWN', margin, y);
@@ -786,9 +1040,11 @@ export const generateFinancialReportPDF = (trips: Trip[], expenses: any[], setti
 
     const categories = Object.keys(catTotals);
     if (categories.length === 0) {
+        doc.setTextColor(150, 150, 150);
         doc.setFont('helvetica', 'italic');
         doc.text('No expenses recorded for this period.', margin, y);
     } else {
+        doc.setTextColor(0, 0, 0);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         categories.forEach(cat => {
@@ -799,17 +1055,32 @@ export const generateFinancialReportPDF = (trips: Trip[], expenses: any[], setti
     }
 
     // --- FOOTER ---
-    y = 270;
-    doc.setFontSize(8);
+    y = 278;
+    setDrawColor();
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, 195, y);
+    y += 4;
+
+    doc.setFontSize(7);
+    setThemeColor();
+    doc.setFont('helvetica', 'bold');
+    doc.text('SARATHIBOOK.COM', 105, y + 2, {
+        align: 'center',
+        url: 'https://sarathibook.com'
+    } as any);
+
+    doc.setFontSize(4);
     doc.setTextColor(150, 150, 150);
-    doc.text('This is a computer-generated financial statement generated via Sarathi Book App.', 105, y, { align: 'center' });
-    doc.text('Useful for Income Tax Filing support and Bank Loan applications.', 105, y + 4, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.text('PROFESSIONAL CAB BUSINESS SUITE | AUTOMATE YOUR GROWTH', 105, y + 5, { align: 'center' });
+
+    doc.link(90, y, 30, 5, { url: 'https://sarathibook.com' });
 
     return doc;
 };
 
 export const shareFinancialReport = async (trips: Trip[], expenses: any[], settings: PDFSettings, periodLabel: string) => {
-    const doc = generateFinancialReportPDF(trips, expenses, settings, periodLabel);
+    const doc = await generateFinancialReportPDF(trips, expenses, settings, periodLabel);
     const pdfBlob = doc.output('blob');
     const filename = `Financial_Report_${periodLabel.replace(/\s/g, '_')}_${new Date().getTime()}.pdf`;
     const file = new File([pdfBlob], filename, { type: 'application/pdf' });

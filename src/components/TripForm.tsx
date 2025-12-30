@@ -15,6 +15,8 @@ import { validateGSTIN } from '../utils/validation';
 import { generateReceiptPDF } from '../utils/pdf';
 import PDFPreviewModal from './PDFPreviewModal';
 import { saveToHistory, getHistory } from '../utils/history';
+import { toTitleCase, formatAddress } from '../utils/stringUtils';
+import { useAuth } from '../contexts/AuthContext';
 
 // --- Zod Schemas (Defined Outside Component) ---
 
@@ -94,6 +96,7 @@ interface TripFormProps {
 
 const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
     const { settings, currentVehicle } = useSettings();
+    const { user } = useAuth();
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
@@ -110,7 +113,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
 
     const [result, setResult] = useState<{
         total: number; gst: number; fare: number; distance: number;
-        effectiveDistance: number; rateUsed: number;
+        effectiveDistance: number; rateUsed: number; distanceCharge: number;
         waitingCharges: number; waitingHours?: number;
         hillStationCharges: number; petCharges: number;
         driverBatta: number; nightStay?: number
@@ -193,21 +196,21 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
     // Sync Driver Batta when mode/days change (Auto-calc based on Vehicle)
     useEffect(() => {
         if (mode === 'outstation') {
-            const veh = (settings.vehicles || []).find(v => v.id === selectedVehicleId) || currentVehicle;
-            const model = (veh?.model || '').toLowerCase();
-            let batta = 500; // Default Sedan/Mid
-            if (model.includes('innova') || model.includes('suv') || model.includes('ertiga') || model.includes('xylo') || model.includes('tavera') || model.includes('marazzo') || model.includes('scorpio')) {
-                batta = 600;
-            } else if (model.includes('tempo') || model.includes('traveller')) {
-                batta = 800;
-            } else if (model.includes('hatchback') || model.includes('indica') || model.includes('wagon') || model.includes('celerio')) {
-                batta = 400;
-            }
+            const veh = (settings.vehicles || []).find(v => v.id === selectedVehicleId) || VEHICLES.find(v => v.id === selectedVehicleId);
+            const batta = (veh as any)?.batta || 500;
             setDriverBatta(days * batta);
+        } else if (mode === 'drop') {
+            const dist = Math.abs(endKm - startKm);
+            if (dist > 30) {
+                const veh = (settings.vehicles || []).find(v => v.id === selectedVehicleId) || VEHICLES.find(v => v.id === selectedVehicleId);
+                setDriverBatta((veh as any)?.batta || 500);
+            } else {
+                setDriverBatta(0);
+            }
         } else {
             setDriverBatta(0);
         }
-    }, [mode, days, selectedVehicleId, currentVehicle, settings.vehicles]);
+    }, [mode, days, selectedVehicleId, startKm, endKm]);
 
 
 
@@ -526,7 +529,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
         setIsCalculated(true);
     };
 
-    const handlePreview = () => {
+    const handlePreview = async () => {
         if (!result) return;
         const selectedVehObj = (settings.vehicles || []).find(v => v.id === selectedVehicleId) || currentVehicle;
         const finalVehicleNum = selectedVehObj?.number || currentVehicle?.number || 'N/A';
@@ -562,15 +565,12 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
             extraItems: mode === 'custom' ? extraItems : undefined
         };
 
-        const doc = generateReceiptPDF(tripData, {
-            companyName: settings.companyName,
-            companyAddress: settings.companyAddress,
-            driverPhone: settings.driverPhone,
-            gstin: settings.gstin,
+        const doc = await generateReceiptPDF(tripData, {
+            ...settings,
             vehicleNumber: finalVehicleNum,
             gstEnabled: localGst,
-            vehicles: settings.vehicles,
-            signatureUrl: settings.signatureUrl
+            userId: user?.id,
+            appColor: settings.appColor
         });
 
         const blob = doc.output('blob');
@@ -579,7 +579,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
         setShowPreview(true);
     };
 
-    const handleWhatsAppShare = () => {
+    const handleWhatsAppShare = async () => {
         if (!result) return;
         const selectedVehObj = (settings.vehicles || []).find(v => v.id === selectedVehicleId) || currentVehicle;
         const finalVehicleNum = selectedVehObj?.number || currentVehicle?.number || 'N/A';
@@ -621,15 +621,12 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
         if (fromLoc) saveToHistory('location', fromLoc);
         if (toLoc) saveToHistory('location', toLoc);
 
-        shareReceipt(tripData, {
-            companyName: settings.companyName,
-            companyAddress: settings.companyAddress,
-            driverPhone: settings.driverPhone,
-            gstin: settings.gstin,
+        await shareReceipt(tripData, {
+            ...settings,
             vehicleNumber: finalVehicleNum,
             gstEnabled: localGst,
-            vehicles: settings.vehicles,
-            signatureUrl: settings.signatureUrl
+            userId: user?.id,
+            appColor: settings.appColor
         });
         setShowPreview(false);
     };
@@ -727,7 +724,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
 
                         <div className="grid grid-cols-1 gap-3">
                             {[
-                                { id: 'drop', label: 'Outstation Drop (1-Way)', desc: 'One-way drop to other city', icon: Navigation },
+                                { id: 'drop', label: 'Local Drop', desc: 'Point-to-point drop within city', icon: Navigation },
                                 { id: 'outstation', label: 'Outstation Round Trip', desc: 'Return trip to origin city', icon: History },
                                 { id: 'hourly', label: 'Local Hourly', desc: 'City rental by hours', icon: Clock },
                                 { id: 'custom', label: 'Custom Invoice', desc: 'Create manual bill (Excel)', icon: Edit },
@@ -797,6 +794,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                                             newItems[index].description = e.target.value;
                                                             setExtraItems(newItems);
                                                         }}
+                                                        onBlur={(e) => {
+                                                            const newItems = [...extraItems];
+                                                            newItems[index].description = toTitleCase(e.target.value);
+                                                            setExtraItems(newItems);
+                                                        }}
                                                         className="tn-input h-9 flex-1 font-bold text-xs"
                                                     />
                                                     <div className="relative w-24">
@@ -845,9 +847,10 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                         value={fromLoc}
                                         onChange={setFromLoc}
                                         onPlaceSelected={(place) => {
-                                            setFromLoc(place.address);
+                                            setFromLoc(formatAddress(place.address));
                                             setPickupCoords({ lat: place.lat, lng: place.lng });
                                         }}
+                                        onBlur={() => setFromLoc(formatAddress(fromLoc))}
                                         onMapClick={() => { setActiveMapField('from'); setShowMap(true); }}
                                         placeholder="e.g. Chennai Airport"
                                         className="tn-input pl-10 pr-10 transition-all focus:ring-2 focus:ring-blue-500/20"
@@ -872,9 +875,10 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                         value={toLoc}
                                         onChange={setToLoc}
                                         onPlaceSelected={(place) => {
-                                            setToLoc(place.address);
+                                            setToLoc(formatAddress(place.address));
                                             setDropCoords({ lat: place.lat, lng: place.lng });
                                         }}
+                                        onBlur={() => setToLoc(formatAddress(toLoc))}
                                         onMapClick={() => { setActiveMapField('to'); setShowMap(true); }}
                                         placeholder="e.g. Pondicherry"
                                         className="tn-input pl-10 pr-10"
@@ -1121,6 +1125,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                             placeholder="Guest Name"
                                             value={customerName}
                                             onChange={(e) => setCustomerName(e.target.value)}
+                                            onBlur={(e) => setCustomerName(toTitleCase(e.target.value))}
                                             list="history-names"
                                         />
                                         <datalist id="history-names">
@@ -1177,6 +1182,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                         placeholder="Company Address or Local Address"
                                         value={billingAddress}
                                         onChange={(e) => setBillingAddress(e.target.value)}
+                                        onBlur={(e) => setBillingAddress(formatAddress(e.target.value))}
                                         list="history-addresses"
                                     />
                                     <datalist id="history-addresses">
@@ -1306,15 +1312,15 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                                     {mode === 'drop' ? (result.distance <= 30 ? 'Local Market Rate' : 'One Way (Empty Return Fee Included)') : mode === 'outstation' ? 'Round Trip (Return KM Included)' : mode}
                                                 </span>
                                             </div>
-                                            {result.distance <= 30 && mode === 'drop' ? (
+                                            {mode === 'drop' && result.distance <= 30 ? (
                                                 <div className="flex justify-between items-center text-[10px]">
-                                                    <span className="font-bold text-slate-400 uppercase">Local Base Fare</span>
-                                                    <span className="font-black text-white">₹{result.fare - result.waitingCharges - (toll + parking + permitCharge + result.petCharges + result.hillStationCharges)}</span>
+                                                    <span className="font-bold text-slate-400 uppercase">Local Base Fare (10KM)</span>
+                                                    <span className="font-black text-white">₹{result.distanceCharge >= 250 ? (selectedVehicleId.includes('suv') || selectedVehicleId.includes('tempo') ? 350 : 250) : result.distanceCharge}</span>
                                                 </div>
                                             ) : (
                                                 <div className="flex justify-between items-center text-[10px]">
                                                     <span className="font-bold text-slate-400 uppercase">
-                                                        {mode === 'hourly' ? 'Rental Charge' : (mode === 'custom' ? 'Custom Items' : 'Distance Charge')}
+                                                        {mode === 'hourly' ? 'Rental Charge' : (mode === 'custom' ? 'Custom Items' : (mode === 'drop' ? 'Outstation Drop' : 'Distance Charge'))}
                                                     </span>
 
                                                     {mode === 'custom' ? (
@@ -1325,15 +1331,17 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                                         <span className="font-black text-white">
                                                             {waitingHours} Hrs Package = ₹{result.fare.toLocaleString()}
                                                         </span>
-                                                    ) : mode === 'drop' ? (
-                                                        <span className="font-black text-white">
-                                                            {result.effectiveDistance} KM (Min 130) × ₹{result.rateUsed} = ₹{(result.effectiveDistance * result.rateUsed).toLocaleString()}
-                                                        </span>
                                                     ) : (
                                                         <span className="font-black text-white">
-                                                            {result.effectiveDistance} KM (Total Run) × ₹{result.rateUsed} = ₹{(result.effectiveDistance * result.rateUsed).toLocaleString()}
+                                                            {result.effectiveDistance} KM {mode === 'drop' && result.distance > 30 ? '(Min 130)' : (mode === 'outstation' ? `(Min ${days * 250})` : '')} × ₹{result.rateUsed} = ₹{result.distanceCharge.toLocaleString()}
                                                         </span>
                                                     )}
+                                                </div>
+                                            )}
+                                            {mode === 'drop' && result.distance <= 30 && result.distance > 10 && (
+                                                <div className="flex justify-between items-center text-[10px]">
+                                                    <span className="font-bold text-slate-400 uppercase">Extra Distance Charge</span>
+                                                    <span className="font-black text-white">₹{result.distanceCharge - (selectedVehicleId.includes('suv') || selectedVehicleId.includes('tempo') ? 350 : 250)}</span>
                                                 </div>
                                             )}
                                             {result.waitingCharges > 0 && (

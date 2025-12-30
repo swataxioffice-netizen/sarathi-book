@@ -1,24 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
-import { shareQuotation } from '../utils/pdf';
-import type { QuotationItem } from '../utils/pdf';
+import { shareQuotation, type SavedQuotation, type QuotationItem } from '../utils/pdf';
 import { safeJSONParse } from '../utils/storage';
 import { Send, User, Plus, Trash2, ChevronDown, ChevronUp, RefreshCw, MapPin, Landmark, Eye } from 'lucide-react';
 import { generateQuotationPDF } from '../utils/pdf';
 import PDFPreviewModal from './PDFPreviewModal';
 import { saveToHistory, getHistory } from '../utils/history';
+import { toTitleCase, formatAddress } from '../utils/stringUtils';
+import { useAuth } from '../contexts/AuthContext';
 
-interface SavedQuotation {
-    id: string;
-    customerName: string;
-    subject: string;
-    date: string;
-    items: QuotationItem[];
-    vehicleType: string;
+interface QuotationFormProps {
+    onSaveQuotation: (q: SavedQuotation) => void;
+    quotations?: SavedQuotation[];
 }
 
-const QuotationForm: React.FC = () => {
+const DEFAULT_TERMS = [
+    'Toll, Parking, State Permit and Border Entry Fees are extra as per actual receipts.',
+    'Driver Batta/Allowance will be charged extra as applicable.',
+    'Night Driving Allowance (10 PM to 6 AM) will be charged extra if applicable.',
+    'Starting and Ending KM/Time will be calculated from our office to office.',
+    'In case of any significant fuel price hike, the rates will be subject to revision.',
+    'This quotation is valid for a period of 15 days from the date of issue.'
+];
+
+const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotations = [] }) => {
     const { settings } = useSettings();
+    const { user } = useAuth();
     const [customerName, setCustomerName] = useState(() => safeJSONParse('draft-q-name', ''));
     const [customerAddress, setCustomerAddress] = useState(() => safeJSONParse('draft-q-address', ''));
     const [customerGstin, setCustomerGstin] = useState(() => safeJSONParse('draft-q-gstin', ''));
@@ -26,8 +33,9 @@ const QuotationForm: React.FC = () => {
     const [vehicleType, setVehicleType] = useState(() => safeJSONParse('draft-q-vehicle', 'Sedan'));
     const [items, setItems] = useState<QuotationItem[]>(() => safeJSONParse('draft-q-items', []));
     const [gstEnabled, setGstEnabled] = useState(() => safeJSONParse('draft-q-gst', false));
+    const [selectedTerms, setSelectedTerms] = useState<string[]>(() => safeJSONParse('draft-q-terms', DEFAULT_TERMS));
+    const [customTerm, setCustomTerm] = useState('');
     const [showItems, setShowItems] = useState(false);
-    const [quotations, setQuotations] = useState<SavedQuotation[]>(() => safeJSONParse('saved-quotations', []));
     const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
     const [showPreview, setShowPreview] = useState(false);
 
@@ -48,11 +56,9 @@ const QuotationForm: React.FC = () => {
     useEffect(() => { localStorage.setItem('draft-q-vehicle', JSON.stringify(vehicleType)); }, [vehicleType]);
     useEffect(() => { localStorage.setItem('draft-q-items', JSON.stringify(items)); }, [items]);
     useEffect(() => { localStorage.setItem('draft-q-gst', JSON.stringify(gstEnabled)); }, [gstEnabled]);
+    useEffect(() => { localStorage.setItem('draft-q-terms', JSON.stringify(selectedTerms)); }, [selectedTerms]);
 
 
-    useEffect(() => {
-        localStorage.setItem('saved-quotations', JSON.stringify(quotations));
-    }, [quotations]);
 
     const handleAddItem = () => {
         setItems([...items, { description: '', package: '', vehicleType: vehicleType, rate: '', amount: '' }]);
@@ -85,20 +91,76 @@ const QuotationForm: React.FC = () => {
         setItems(newItems);
     };
 
-    const handlePreview = () => {
+    const toggleTerm = (term: string) => {
+        if (selectedTerms.includes(term)) {
+            setSelectedTerms(selectedTerms.filter(t => t !== term));
+        } else {
+            setSelectedTerms([...selectedTerms, term]);
+        }
+    };
+
+    const addCustomTerm = () => {
+        if (!customTerm.trim()) return;
+        const newTerm = `• ${customTerm.trim()}`;
+        setSelectedTerms([...selectedTerms, newTerm]);
+        setCustomTerm('');
+    };
+
+    const removeTerm = (index: number) => {
+        setSelectedTerms(selectedTerms.filter((_, i) => i !== index));
+    };
+
+    const getNextQuotationNo = () => {
+        const dateObj = new Date();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const yyyy = dateObj.getFullYear();
+        const prefix = `QT/${mm}${yyyy}/`;
+
+        if (!quotations || quotations.length === 0) {
+            return `${prefix}01`;
+        }
+
+        // Find all quotations for the current month and get their serial numbers
+        const currentMonthSerials = quotations
+            .filter(q => q.quotationNo && q.quotationNo.startsWith(prefix))
+            .map(q => {
+                const parts = q.quotationNo.split('/');
+                const serialStr = parts[parts.length - 1];
+                return parseInt(serialStr) || 0;
+            });
+
+        const maxSerial = currentMonthSerials.length > 0 ? Math.max(...currentMonthSerials) : 0;
+        return `${prefix}${String(maxSerial + 1).padStart(2, '0')}`;
+    };
+
+    const handlePreview = async () => {
         if (!customerName?.trim()) { alert('Please enter Guest / Company Name'); return; }
         if (!subject?.trim()) { alert('Please enter a Subject for the quotation'); return; }
         if (items.length === 0) { alert('Please add at least one item to the quotation'); return; }
 
-        const doc = generateQuotationPDF({
+        const qNo = getNextQuotationNo();
+
+        const doc = await generateQuotationPDF({
             customerName,
             customerAddress,
             customerGstin,
             subject,
             date: new Date().toISOString(),
             items: items.map(item => ({ ...item, vehicleType })),
-            gstEnabled
-        }, { ...settings, vehicleNumber: 'N/A', signatureUrl: settings.signatureUrl });
+            gstEnabled,
+            quotationNo: qNo,
+            terms: selectedTerms
+        }, {
+            ...settings,
+            vehicleNumber: 'N/A',
+            signatureUrl: settings.signatureUrl,
+            userId: user?.id,
+            bankName: settings.bankName,
+            accountNumber: settings.accountNumber,
+            ifscCode: settings.ifscCode,
+            holderName: settings.holderName,
+            upiId: settings.upiId
+        });
 
         const blob = doc.output('blob');
         const url = URL.createObjectURL(blob);
@@ -118,16 +180,21 @@ const QuotationForm: React.FC = () => {
             return;
         }
 
+        const qNo = getNextQuotationNo();
+
         const newQuote: SavedQuotation = {
             id: Date.now().toString(),
+            quotationNo: qNo,
             customerName,
             subject,
             date: new Date().toISOString(),
             items: items.map(item => ({ ...item, vehicleType })),
-            vehicleType
+            vehicleType,
+            gstEnabled,
+            terms: selectedTerms
         };
 
-        setQuotations(prev => [newQuote, ...prev]);
+        onSaveQuotation(newQuote);
 
         await shareQuotation({
             customerName,
@@ -136,8 +203,20 @@ const QuotationForm: React.FC = () => {
             subject,
             date: newQuote.date,
             items: newQuote.items,
-            gstEnabled
-        }, { ...settings, vehicleNumber: 'N/A', signatureUrl: settings.signatureUrl });
+            gstEnabled,
+            quotationNo: qNo,
+            terms: selectedTerms
+        }, {
+            ...settings,
+            vehicleNumber: 'N/A',
+            signatureUrl: settings.signatureUrl,
+            userId: user?.id,
+            bankName: settings.bankName,
+            accountNumber: settings.accountNumber,
+            ifscCode: settings.ifscCode,
+            holderName: settings.holderName,
+            upiId: settings.upiId
+        });
 
         // Clear draft after successful creation
         setCustomerName('');
@@ -203,6 +282,7 @@ const QuotationForm: React.FC = () => {
                                     type="text"
                                     value={customerName}
                                     onChange={(e) => setCustomerName(e.target.value)}
+                                    onBlur={(e) => setCustomerName(toTitleCase(e.target.value))}
                                     className="tn-input h-10 pl-8 text-xs font-bold bg-white border-slate-200 focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1]"
                                     placeholder="Enter Client Name"
                                     list="q-history-names"
@@ -222,6 +302,7 @@ const QuotationForm: React.FC = () => {
                                     type="text"
                                     value={customerAddress}
                                     onChange={(e) => setCustomerAddress(e.target.value)}
+                                    onBlur={(e) => setCustomerAddress(formatAddress(e.target.value))}
                                     className="tn-input h-10 text-xs font-bold bg-white border-slate-200"
                                     placeholder="City, State"
                                     list="q-history-addresses"
@@ -259,6 +340,7 @@ const QuotationForm: React.FC = () => {
                             type="text"
                             value={subject}
                             onChange={(e) => setSubject(e.target.value)}
+                            onBlur={(e) => setSubject(toTitleCase(e.target.value))}
                             className="tn-input h-8 text-xs font-bold bg-slate-50 border-slate-200"
                             placeholder="e.g. Airport Transfer"
                             list="q-history-subjects"
@@ -335,6 +417,7 @@ const QuotationForm: React.FC = () => {
                                             type="text"
                                             value={item.description}
                                             onChange={(e) => updateItem(index, 'description', e.target.value)}
+                                            onBlur={(e) => updateItem(index, 'description', toTitleCase(e.target.value))}
                                             className="tn-input h-7 text-xs font-bold"
                                             placeholder="Service"
                                         />
@@ -382,6 +465,71 @@ const QuotationForm: React.FC = () => {
                             </button>
                         </div>
                     )}
+                </div>
+
+                {/* Terms and Conditions Selection */}
+                <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                        <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Select Terms</h4>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase">{selectedTerms.length} Selected</span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                        {DEFAULT_TERMS.map((term, i) => (
+                            <button
+                                key={i}
+                                type="button"
+                                onClick={() => toggleTerm(`• ${term}`)}
+                                className={`px-2.5 py-1.5 rounded-lg border text-[8.5px] font-bold transition-all text-left max-w-full ${selectedTerms.includes(`• ${term}`)
+                                    ? 'bg-blue-50 border-blue-200 text-[#0047AB]'
+                                    : 'bg-white border-slate-100 text-slate-500 hover:border-slate-300'
+                                    }`}
+                            >
+                                {term.length > 50 ? term.substring(0, 50) + '...' : term}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Custom Terms List */}
+                    {selectedTerms.filter(t => !DEFAULT_TERMS.some(dt => `• ${dt}` === t)).length > 0 && (
+                        <div className="space-y-1.5 mt-2 text-left">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest pl-1">Custom Terms</p>
+                            {selectedTerms.map((t, i) => {
+                                if (DEFAULT_TERMS.some(dt => `• ${dt}` === t)) return null;
+                                return (
+                                    <div key={i} className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-100 rounded-lg group">
+                                        <p className="flex-1 text-[9px] font-bold text-slate-600 leading-tight">{t.replace('• ', '')}</p>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeTerm(i)}
+                                            className="text-slate-300 hover:text-red-500 transition-colors"
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Add Custom Term Input */}
+                    <div className="flex gap-2 pb-2">
+                        <input
+                            type="text"
+                            value={customTerm}
+                            onChange={(e) => setCustomTerm(e.target.value)}
+                            placeholder="Add custom policy..."
+                            className="flex-1 tn-input h-8 text-[11px] font-bold"
+                            onKeyPress={(e) => e.key === 'Enter' && addCustomTerm()}
+                        />
+                        <button
+                            type="button"
+                            onClick={addCustomTerm}
+                            className="px-3 bg-blue-50 border border-blue-100 text-[#0047AB] rounded-lg hover:bg-blue-100 transition-all font-black text-[10px]"
+                        >
+                            <Plus size={14} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="pt-1 flex gap-2">

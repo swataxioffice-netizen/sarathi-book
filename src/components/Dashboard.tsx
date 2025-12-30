@@ -3,6 +3,7 @@ import { safeJSONParse } from '../utils/storage';
 import type { Trip, Expense } from '../utils/fare';
 import { IndianRupee, Globe, TrendingUp, StickyNote, Plus, Trash2, FileText } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
+import { useAuth } from '../contexts/AuthContext';
 import { shareFinancialReport } from '../utils/pdf';
 
 interface DashboardProps {
@@ -19,6 +20,7 @@ type TimeRange = 'today' | 'week' | 'month' | 'year';
 
 const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
     const { settings, currentVehicle } = useSettings();
+    const { user } = useAuth();
     const [range, setRange] = useState<TimeRange>('today');
     const [notes, setNotes] = useState<Note[]>(() => {
         const saved = safeJSONParse<Note[]>('driver-quick-notes', []);
@@ -136,7 +138,8 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
 
         const pdfSettings = {
             ...settings,
-            vehicleNumber: currentVehicle?.number || 'N/A'
+            vehicleNumber: currentVehicle?.number || 'N/A',
+            userId: user?.id
         };
 
         await shareFinancialReport(filteredTrips, filteredExpenses, pdfSettings, periodLabel);

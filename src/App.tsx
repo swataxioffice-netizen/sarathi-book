@@ -15,6 +15,7 @@ import SideNav from './components/SideNav';
 import { NotificationProvider } from './contexts/NotificationContext';
 import Notifications from './components/Notifications';
 import type { Trip } from './utils/fare';
+import type { SavedQuotation } from './utils/pdf';
 
 // Lazy load heavy components to reduce initial bundle size
 const History = lazy(() => import('./components/History'));
@@ -54,6 +55,7 @@ function AppContent() {
   const [invoiceStep, setInvoiceStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [trips, setTrips] = useState<Trip[]>(() => safeJSONParse<Trip[]>('namma-cab-trips', []));
+  const [quotations, setQuotations] = useState<SavedQuotation[]>(() => safeJSONParse<SavedQuotation[]>('saved-quotations', []));
   const [showLoginNudge, setShowLoginNudge] = useState(false);
 
   // Trigger login nudge after 2 minutes of roaming
@@ -69,6 +71,10 @@ function AppContent() {
   useEffect(() => {
     localStorage.setItem('namma-cab-trips', JSON.stringify(trips));
   }, [trips]);
+
+  useEffect(() => {
+    localStorage.setItem('saved-quotations', JSON.stringify(quotations));
+  }, [quotations]);
 
   // Sync Trips on Load/Login
   useEffect(() => {
@@ -135,20 +141,21 @@ function AppContent() {
 
   const handleDeleteTrip = async (tripId: string) => {
     if (!window.confirm("Are you sure you want to delete this invoice? This cannot be undone.")) return;
-
-    // 1. Optimistic Update
     setTrips(prev => prev.filter(t => t.id !== tripId));
-
-    // 2. Persistent Delete
     if (user) {
       try {
-        const { error } = await supabase.from('trips').delete().eq('id', tripId);
-        if (error) throw error;
-      } catch (err) {
-        console.error('Failed to delete trip from cloud:', err);
-        // Optionally revert optimistic update or notify user
-      }
+        await supabase.from('trips').delete().eq('id', tripId);
+      } catch (err) { console.error('Cloud delete failed', err); }
     }
+  };
+
+  const handleSaveQuotation = (q: SavedQuotation) => {
+    setQuotations(prev => [q, ...prev]);
+  };
+
+  const handleDeleteQuotation = (id: string) => {
+    if (!window.confirm("Delete this quotation?")) return;
+    setQuotations(prev => prev.filter(q => q.id !== id));
   };
 
   const { settings, docStats } = useSettings();
@@ -209,19 +216,26 @@ function AppContent() {
               {invoiceQuotationToggle === 'invoice' ? (
                 <div className="space-y-2">
                   <TripForm onSaveTrip={handleSaveTrip} onStepChange={setInvoiceStep} />
+
+                  {invoiceStep === 1 && (
+                    <div className="mt-8 pt-6 border-t border-slate-200">
+                      <Suspense fallback={<LoadingFallback />}>
+                        <History trips={trips} type="invoice" onDeleteTrip={handleDeleteTrip} />
+                      </Suspense>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <Suspense fallback={<LoadingFallback />}>
-                  <QuotationForm />
-                </Suspense>
-              )}
-
-              {/* Recent Invoices - Always Visible Below ONLY on Choose Service Screen (Step 1) */}
-              {invoiceStep === 1 && (
-                <div className="mt-8 pt-6 border-t border-slate-200">
+                <div className="space-y-2">
                   <Suspense fallback={<LoadingFallback />}>
-                    <History trips={trips} onDeleteTrip={handleDeleteTrip} />
+                    <QuotationForm onSaveQuotation={handleSaveQuotation} quotations={quotations} />
                   </Suspense>
+
+                  <div className="mt-8 pt-6 border-t border-slate-200 text-left">
+                    <Suspense fallback={<LoadingFallback />}>
+                      <History quotations={quotations} type="quotation" onDeleteQuotation={handleDeleteQuotation} />
+                    </Suspense>
+                  </div>
                 </div>
               )}
             </div>
