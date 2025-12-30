@@ -15,19 +15,7 @@ const BusinessCard: React.FC = () => {
     const publicUrl = user ? `${window.location.origin}?u=${user.id}` : window.location.origin;
 
     // Generate VCard Data (For "Add to Contacts")
-    const generateVCardData = () => {
-        const name = settings.companyName || 'Driver';
-        const phone = settings.driverPhone || '';
-        const org = 'Sarathi Book'; // Organization name for searching
 
-        return `BEGIN:VCARD
-VERSION:3.0
-FN:${name}
-ORG:${org};${name}
-TEL;TYPE=CELL:${phone}
-URL:${publicUrl}
-END:VCARD`;
-    };
 
     const generateImage = async (scale = 3) => {
         if (!cardRef.current) return null;
@@ -39,8 +27,8 @@ END:VCARD`;
             backgroundColor: null,
             logging: false,
             useCORS: true,
-            allowTaint: false // Prevent tainted canvas
-        });
+            allowTaint: false
+        } as any);
         return canvas;
     };
 

@@ -102,7 +102,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
     const [isCalculated, setIsCalculated] = useState(false);
     const [estimatedDistance, setEstimatedDistance] = useState<number | null>(null);
 
-    const [result, setResult] = useState<{ total: number; gst: number; fare: number; distance: number; waitingCharges: number; waitingHours?: number; hillStationCharges: number; petCharges: number; driverBatta: number } | null>(null);
+    const [result, setResult] = useState<{ total: number; gst: number; fare: number; distance: number; waitingCharges: number; waitingHours?: number; hillStationCharges: number; petCharges: number; driverBatta: number; nightStay?: number } | null>(null);
     const [notes, setNotes] = useState('');
     const [mode, setMode] = useState<Trip['mode']>('drop');
     const [fromLoc, setFromLoc] = useState('');
