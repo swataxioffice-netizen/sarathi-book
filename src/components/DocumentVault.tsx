@@ -110,12 +110,12 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                     user_id: user.id,
                     name: docName,
                     type,
-                    expiry_date: dateStr,
-                    updated_at: new Date().toISOString()
+                    expiry_date: dateStr
                 };
 
                 let res;
                 if (existing) {
+                    // Note: Ensure you have an UPDATE policy in Supabase for this to work
                     res = await supabase.from('user_documents').update(payload).eq('id', existing.id).select().single();
                 } else {
                     res = await supabase.from('user_documents').insert(payload).select().single();
@@ -132,7 +132,7 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
 
         } catch (error: any) {
             console.error(error);
-            alert('Save failed');
+            alert('Save failed: ' + (error.message || 'Unknown error'));
         } finally {
             setLoading(false);
         }
