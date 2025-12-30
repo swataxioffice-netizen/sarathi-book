@@ -57,13 +57,20 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
 
                 const mapInstance = new google.maps.Map(mapRef.current, {
                     center,
-                    zoom: 15, // Closer zoom for better precision
+                    zoom: 14,
+                    mapTypeId: 'roadmap',
                     mapTypeControl: false,
                     streetViewControl: false,
                     fullscreenControl: false,
-                    zoomControl: false, // Cleaner UI
-                    clickableIcons: false, // Prevent POI clicks
+                    zoomControl: false,
+                    clickableIcons: false,
+                    gestureHandling: 'greedy',
                 });
+
+                // Add a small delay and force a resize trigger
+                setTimeout(() => {
+                    google.maps.event.trigger(mapInstance, 'resize');
+                }, 500);
 
                 if (!isMounted) return;
                 setMap(mapInstance);

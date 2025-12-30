@@ -10,14 +10,13 @@ let googleMapsLoader: Loader | null = null;
  */
 export const initGoogleMaps = (): Loader => {
     if (!googleMapsLoader) {
-        if (!API_KEY || API_KEY.length < 30) {
-            console.error('Google Maps API Key is missing or invalid (too short). Please check your .env file.');
-            // Proceeding anyway might show watermarks, allowing dev to see UI at least.
+        if (!API_KEY) {
+            console.warn('[GoogleMaps] API Key is missing. Maps will run in development mode with watermarks.');
         }
         googleMapsLoader = new Loader({
             apiKey: API_KEY || '',
-            version: 'weekly',
-            libraries: ['places', 'geometry']
+            version: 'quarterly', // Use more stable version
+            libraries: ['places', 'geometry', 'marker']
         });
     }
     return googleMapsLoader;
