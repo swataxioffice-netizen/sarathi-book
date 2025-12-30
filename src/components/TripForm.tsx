@@ -1,20 +1,92 @@
 import React, { useState, useEffect } from 'react';
+import { z } from 'zod';
 import { useSettings } from '../contexts/SettingsContext';
-import { calculateFare } from '../utils/fare';
+import { calculateFare, VEHICLES } from '../utils/fare';
 import type { Trip } from '../utils/fare';
 import { shareReceipt } from '../utils/pdf';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
-import { Clock, Navigation, Save, UserPlus, ArrowLeft, Receipt, Star, History, MapPin, Camera, Mic, MessageCircle } from 'lucide-react';
+import { calculateDistance } from '../utils/googleMaps';
+import { Clock, Navigation, Save, UserPlus, Receipt, Star, History, MapPin, Camera, Mic, MessageCircle, Plus, Trash2, Edit, Moon } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
-import { VEHICLES } from '../utils/fare';
+
+// --- Zod Schemas (Defined Outside Component) ---
+
+const TripDetailsSchema = z.object({
+    fromLoc: z.string().min(1, 'Please enter Pickup Location'),
+    toLoc: z.string().min(1, 'Please enter Drop Location'),
+    startKm: z.number().min(0, 'Please enter valid Start KM'),
+    endKm: z.number().min(0, 'Please enter valid End KM'),
+    mode: z.string(),
+    days: z.number().optional(),
+}).refine((data) => data.endKm > data.startKm, {
+    message: "End KM must be greater than Start KM",
+    path: ["endKm"]
+}).refine((data) => {
+    if (data.endKm === data.startKm) return false;
+    return true;
+}, {
+    message: "Car has not moved? End KM is same as Start KM",
+    path: ["endKm"]
+}).refine((data) => {
+    // Outstation Round Trip Logic
+    if (data.mode === 'outstation') {
+        if (!data.days || data.days < 1) return false;
+    }
+    return true;
+}, {
+    message: "Please enter number of days for Outstation Trip",
+    path: ["days"]
+}).refine((data) => {
+    // Warning for short Outstation trips
+    if (data.mode === 'outstation' && (data.endKm - data.startKm) < 10) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Distance too short for Outstation (min 10 KM)",
+    path: ["endKm"]
+});
+
+const HourlySchema = z.object({
+    waitingHours: z.number().gt(0, 'Please enter valid Duration (Hours) for Hourly Rental')
+});
+
+const PackageSchema = z.object({
+    packageName: z.string().min(1, 'Please enter Package Name'),
+    packagePrice: z.number().gt(0, 'Please enter Valid Package Price')
+});
+
+const PassengerInfoSchema = z.object({
+    customerName: z.string().min(1, 'Please enter Customer Name'),
+    customerPhone: z.string().optional().refine((val) => {
+        if (!val) return true; // Optional
+        const clean = val.replace(/\D/g, '').slice(-10);
+        return clean.length === 10 && /^[6-9]\d{9}$/.test(clean);
+    }, 'Please enter a valid 10-digit Indian Mobile Number'),
+    customerGst: z.string().optional().refine((val) => {
+        if (!val) return true; // Optional
+        return validateGSTIN(val);
+    }, 'Invalid GSTIN Format'),
+    billingAddress: z.string().optional()
+}).refine((data) => {
+    // GST implies Mandatory Billing Address
+    if (data.customerGst && data.customerGst.length > 0) {
+        return !!data.billingAddress && data.billingAddress.trim().length > 0;
+    }
+    return true;
+}, {
+    message: "Billing Address is MANDATORY for B2B/GST Invoices",
+    path: ["billingAddress"]
+});
 
 interface TripFormProps {
     onSaveTrip: (trip: Trip) => void;
     onStatusChange?: (isOngoing: boolean) => void;
+    onStepChange?: (step: number) => void;
 }
 
-const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
+const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
     const { settings, currentVehicle } = useSettings();
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
     const [customerName, setCustomerName] = useState('');
@@ -22,14 +94,15 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     const [customerGst, setCustomerGst] = useState('');
     const [startKm, setStartKm] = useState<number>(0);
     const [endKm, setEndKm] = useState<number>(0);
-    const [startTime] = useState('');
-    const [endTime] = useState('');
+    const [startTime, setStartTime] = useState('');
+    const [endTime, setEndTime] = useState('');
     const [toll, setToll] = useState<number>(0);
     const [parking, setParking] = useState<number>(0);
     const [nightBata, setNightBata] = useState(false);
     const [isCalculated, setIsCalculated] = useState(false);
+    const [estimatedDistance, setEstimatedDistance] = useState<number | null>(null);
 
-    const [result, setResult] = useState<{ total: number; gst: number; fare: number; distance: number; waitingCharges: number; hillStationCharges: number; petCharges: number } | null>(null);
+    const [result, setResult] = useState<{ total: number; gst: number; fare: number; distance: number; waitingCharges: number; waitingHours?: number; hillStationCharges: number; petCharges: number; driverBatta: number } | null>(null);
     const [notes, setNotes] = useState('');
     const [mode, setMode] = useState<Trip['mode']>('drop');
     const [fromLoc, setFromLoc] = useState('');
@@ -42,6 +115,15 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     const [petCharge, setPetCharge] = useState(false);
 
     const [permitCharge, setPermitCharge] = useState(0);
+    const [nightStay, setNightStay] = useState(0);
+
+
+    // Custom Mode State
+
+    // Custom Mode State
+    const [extraItems, setExtraItems] = useState<{ description: string, amount: number }[]>([
+        { description: '', amount: 0 }
+    ]);
 
     // Package details
     const [packageName, setPackageName] = useState('');
@@ -51,20 +133,116 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
     const [days, setDays] = useState<number>(1);
     const [customRate, setCustomRate] = useState<number>(14);
     const [currentStep, setCurrentStep] = useState(1);
+
+    // Notify parent of step change
+    useEffect(() => {
+        if (onStepChange) onStepChange(currentStep);
+    }, [currentStep, onStepChange]);
+
     const totalSteps = 5;
 
     // Map State
     const [showMap, setShowMap] = useState(false);
     const [activeMapField, setActiveMapField] = useState<'from' | 'to'>('from');
+    const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
+    const [dropCoords, setDropCoords] = useState<{ lat: number; lng: number } | null>(null);
+    const [driverBatta, setDriverBatta] = useState<number>(0);
 
-    const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+    // Sync Driver Batta when mode/days change (Auto-calc based on Vehicle)
+    useEffect(() => {
+        if (mode === 'outstation') {
+            const veh = (settings.vehicles || []).find(v => v.id === selectedVehicleId) || currentVehicle;
+            const model = (veh?.model || '').toLowerCase();
+            let batta = 500; // Default Sedan/Mid
+            if (model.includes('innova') || model.includes('suv') || model.includes('ertiga') || model.includes('xylo') || model.includes('tavera') || model.includes('marazzo') || model.includes('scorpio')) {
+                batta = 600;
+            } else if (model.includes('tempo') || model.includes('traveller')) {
+                batta = 800;
+            } else if (model.includes('hatchback') || model.includes('indica') || model.includes('wagon') || model.includes('celerio')) {
+                batta = 400;
+            }
+            setDriverBatta(days * batta);
+        } else {
+            setDriverBatta(0);
+        }
+    }, [mode, days, selectedVehicleId, currentVehicle, settings.vehicles]);
+
+
+
+    const validateStep = (step: number) => {
+        try {
+            if (step === 2) {
+                // Pre-fill logic for schema validation
+                let effectiveToLoc = toLoc;
+                if (mode === 'outstation' && !toLoc?.trim()) {
+                    effectiveToLoc = fromLoc;
+                    setToLoc(fromLoc); // State update for UI
+                }
+
+                const data = {
+                    fromLoc: mode === 'custom' ? 'Custom' : fromLoc, // Bypass validation
+                    toLoc: mode === 'custom' ? 'Invoice' : effectiveToLoc,
+                    startKm: mode === 'custom' ? 0 : (startKm ?? -1),
+                    endKm: mode === 'custom' ? 1 : (endKm ?? -1),
+                    mode,
+                    days
+                };
+
+                TripDetailsSchema.parse(data);
+
+                // Mode specific sub-schemas
+                if (mode === 'hourly') HourlySchema.parse({ waitingHours });
+                if (mode === 'package' || mode === 'fixed') PackageSchema.parse({ packageName: mode === 'package' ? packageName : 'Fixed', packagePrice: mode === 'fixed' ? packagePrice : (mode === 'package' ? packagePrice : 1) }); // quick fix for shared schema
+                if (mode === 'fixed' && (!packagePrice || packagePrice <= 0)) throw new Error("Please enter Fixed Amount");
+
+                // Custom Mode Validation
+                if (mode === 'custom') {
+                    if (extraItems.length === 0 || extraItems.every(i => !i.description || i.amount <= 0)) {
+                        throw new Error("Please add at least one valid item");
+                    }
+                }
+            }
+
+            if (step === 4) {
+                PassengerInfoSchema.parse({
+                    customerName,
+                    customerPhone,
+                    customerGst,
+                    billingAddress
+                });
+            }
+
+            return true;
+        } catch (error) {
+            if (error instanceof z.ZodError) {
+                // ZodError contains an array of issues
+                alert(error.issues[0].message);
+            } else if (error instanceof Error) {
+                alert(error.message);
+            }
+            return false;
+        }
+    };
+
+    const nextStep = () => {
+        if (validateStep(currentStep)) {
+            // Recalculate if moving to Final Step (Step 5) to ensure latest values
+            if (currentStep === 4) {
+                handleCalculate();
+            }
+            setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+        }
+    };
     const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
-    const handleMapSelect = (pickupAddr: string, dropAddr: string, _dist: number) => {
+    const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number) => {
         if (activeMapField === 'from') {
             setFromLoc(pickupAddr);
         } else {
-            setToLoc(dropAddr || pickupAddr); // MapPicker returns both usually, but let's use what makes sense
+            setToLoc(dropAddr || pickupAddr);
+            if (dist > 0) {
+                setEndKm(startKm + dist);
+            }
         }
         setShowMap(false);
     };
@@ -88,6 +266,27 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
         return stateMap[stateCode] || '';
     };
 
+    // Auto-calculate distance from coords
+    useEffect(() => {
+        const autoDist = async () => {
+            if (pickupCoords && dropCoords) {
+                const result = await calculateDistance(pickupCoords, dropCoords);
+                if (result) {
+                    const finalDist = mode === 'outstation' ? result.distance * 2 : result.distance;
+                    setEstimatedDistance(finalDist);
+                }
+            }
+        };
+        autoDist();
+    }, [pickupCoords, dropCoords, mode]);
+
+    // Update End KM based on Estimated Distance
+    useEffect(() => {
+        if (estimatedDistance !== null) {
+            setEndKm(startKm + estimatedDistance);
+        }
+    }, [startKm, estimatedDistance]);
+
     useEffect(() => {
         if (customerGst.trim().length === 15 && validateGSTIN(customerGst)) {
             setLocalGst(true);
@@ -103,11 +302,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
         }
     }, [customerGst]);
 
-    useEffect(() => {
-        if (mode === 'outstation' && fromLoc) {
-            setToLoc(fromLoc);
-        }
-    }, [mode, fromLoc]);
+
 
     useEffect(() => {
         if (numPersons === 12) {
@@ -127,6 +322,24 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             setCustomRate(suggestedRate);
         }
     }, [selectedVehicleId, mode]);
+
+    // Auto-calculate duration for Hourly Mode
+    useEffect(() => {
+        if (mode === 'hourly' && startTime && endTime) {
+            const start = new Date(`2000-01-01T${startTime}`);
+            const end = new Date(`2000-01-01T${endTime}`);
+
+            // Handle cross-day (e.g., 10 PM to 2 AM)
+            if (end < start) {
+                end.setDate(end.getDate() + 1);
+            }
+
+            const diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60); // Hours
+            if (diff > 0) {
+                setWaitingHours(parseFloat(diff.toFixed(1))); // Set as duration
+            }
+        }
+    }, [startTime, endTime, mode]);
 
     const handleImportContact = async () => {
         try {
@@ -184,10 +397,6 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
         const activeRate = (mode === 'distance' || mode === 'drop' || mode === 'outstation') ? customRate : (mode === 'hourly' ? settings.hourlyRate : 0);
         const permit = permitCharge;
 
-        // For hourly rental, we use durationHours from a new state or manual input
-        // For now, let's assume we use waitingHours or a dedicated field if needed
-        // But the user complained about the formula, so let's make it robust.
-
         const res = calculateFare({
             startKm,
             endKm,
@@ -199,7 +408,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             mode,
             vehicleId: selectedVehicleId,
             hourlyRate: settings.hourlyRate,
-            durationHours: mode === 'hourly' ? waitingHours : 0, // Using waitingHours field as duration for hourly mode
+            durationHours: mode === 'hourly' ? waitingHours : 0,
             nightBata: nightBata ? settings.nightBata : 0,
             waitingHours: mode === 'hourly' ? 0 : waitingHours,
             isHillStation,
@@ -208,11 +417,21 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             days: mode === 'outstation' ? days : 1
         });
 
+        // Use Manual Batta if > 0, else use Calculated
+        const finalDriverBatta = driverBatta > 0 ? driverBatta : res.driverBatta;
+
+        // Recalculate totals with correct Batta
+        // Original res.total included res.driverBatta. We need to adjust.
+        const diffBatta = finalDriverBatta - res.driverBatta;
+        const totalWithNewBatta = res.total + diffBatta + permit + nightStay;
+
         setResult({
             ...res,
-            total: res.total + permit,
-            fare: res.fare + permit,
-            distance: res.distance ?? (endKm - startKm)
+            total: totalWithNewBatta,
+            fare: res.fare + permit + diffBatta + nightStay, // Fare usually includes taxable stuff? Or should stay be separate?
+            distance: res.distance ?? (endKm - startKm),
+            driverBatta: finalDriverBatta,
+            nightStay // Store it in result for later use
         });
         setIsCalculated(true);
     };
@@ -250,11 +469,15 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             petCharges: result.petCharges,
             packageName: mode === 'package' ? packageName : undefined,
             packagePrice: mode === 'package' ? packagePrice : undefined,
-            permit: permitCharge
+            permit: permitCharge,
+            days: days,
+            driverBatta: result.driverBatta,
+            extraItems: mode === 'custom' ? extraItems : undefined
         });
         setCustomerName(''); setCustomerPhone(''); setCustomerGst(''); setBillingAddress(''); setFromLoc(''); setToLoc(''); setNotes(''); setStartKm(0); setEndKm(0); setToll(0); setParking(0); setWaitingHours(0); setNightBata(false); setIsHillStation(false); setPetCharge(false); setPermitCharge(0); setIsCalculated(false); setResult(null);
         setPackageName(''); setNumPersons(1); setPackagePrice(0);
         setInvoiceDate(new Date().toISOString().split('T')[0]);
+        setCurrentStep(1);
     };
 
     const handleClear = () => {
@@ -290,28 +513,29 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                         <div className="grid grid-cols-1 gap-3">
                             {[
                                 { id: 'drop', label: 'One Way Drop', desc: 'Point to point travel', icon: Navigation },
-                                { id: 'outstation', label: 'Round Trip', desc: 'Multi-day outstation', icon: History },
+                                { id: 'outstation', label: 'Outstation', desc: 'Multi-day outstation', icon: History },
                                 { id: 'hourly', label: 'Local Hourly', desc: 'City rental by hours', icon: Clock },
-                                { id: 'package', label: 'Tour Package', desc: 'Fixed rate packages', icon: Star },
-                                { id: 'fixed', label: 'Fixed Price', desc: 'Pre-negotiated rate', icon: Receipt }
+                                { id: 'custom', label: 'Custom Invoice', desc: 'Create manual bill (Excel)', icon: Edit },
+                                // { id: 'package', label: 'Tour Package', desc: 'Fixed rate packages', icon: Star },
+                                // { id: 'fixed', label: 'Fixed Price', desc: 'Pre-negotiated rate', icon: Receipt }
                             ].map((s) => {
                                 const Icon = s.icon;
                                 return (
                                     <button
                                         key={s.id}
                                         onClick={() => { setMode(s.id as any); nextStep(); }}
-                                        className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${mode === s.id ? 'bg-blue-50 border-blue-600 shadow-sm' : 'bg-slate-50 border-transparent hover:border-slate-200'
+                                        className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${mode === s.id ? 'bg-slate-50 border-primary shadow-sm' : 'bg-slate-50 border-transparent hover:border-slate-200'
                                             }`}
                                     >
-                                        <div className={`p-3 rounded-xl ${mode === s.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 border border-slate-100'}`}>
+                                        <div className={`p-3 rounded-xl ${mode === s.id ? 'bg-primary text-white' : 'bg-white text-slate-400 border border-slate-100'}`}>
                                             <Icon size={20} />
                                         </div>
                                         <div className="flex-1">
-                                            <p className={`text-xs font-black uppercase tracking-wider ${mode === s.id ? 'text-blue-900' : 'text-slate-900'}`}>{s.label}</p>
+                                            <p className={`text-xs font-black uppercase tracking-wider ${mode === s.id ? 'text-primary' : 'text-slate-900'}`}>{s.label}</p>
                                             <p className="text-[10px] font-bold text-slate-400 mt-0.5 leading-tight">{s.desc}</p>
                                         </div>
                                         {mode === s.id && (
-                                            <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+                                            <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
                                                 <div className="w-2 h-2 bg-white rounded-full" />
                                             </div>
                                         )}
@@ -320,13 +544,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                             })}
                         </div>
 
-                        <button
-                            onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'dashboard' }))}
-                            className="w-full py-4 font-bold text-slate-400 uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:text-slate-600 transition-colors"
-                        >
-                            <ArrowLeft size={14} />
-                            Back to Dashboard
-                        </button>
+
                     </div>
                 )}
 
@@ -338,80 +556,194 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="col-span-2">
-                                <PlacesAutocomplete
-                                    label="Pickup"
-                                    icon={<MapPin size={16} />}
-                                    value={fromLoc}
-                                    onChange={setFromLoc}
-                                    onPlaceSelected={(place) => setFromLoc(place.address)}
-                                    onMapClick={() => { setActiveMapField('from'); setShowMap(true); }}
-                                    placeholder="e.g. Chennai Airport"
-                                    className="tn-input pl-10 pr-10 transition-all focus:ring-2 focus:ring-blue-500/20"
-                                    rightContent={
-                                        <button
-                                            onClick={() => startListening(setFromLoc)}
-                                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                            title="Voice Input"
-                                        >
-                                            <Mic size={16} />
-                                        </button>
-                                    }
-                                />
-                            </div>
+
+                            {/* CUSTOM INVOICE FORM */}
+                            {mode === 'custom' && (
+                                <div className="col-span-2 space-y-4">
+                                    <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <label className="text-xs font-black text-orange-800 uppercase tracking-widest">Bill Items</label>
+                                            <button
+                                                onClick={() => setExtraItems([...extraItems, { description: '', amount: 0 }])}
+                                                className="px-2 py-1 bg-white border border-orange-200 text-orange-600 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1 hover:bg-orange-100"
+                                            >
+                                                <Plus size={12} /> Add Row
+                                            </button>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {extraItems.map((item, index) => (
+                                                <div key={index} className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Description (e.g. Innova Rent)"
+                                                        value={item.description}
+                                                        onChange={(e) => {
+                                                            const newItems = [...extraItems];
+                                                            newItems[index].description = e.target.value;
+                                                            setExtraItems(newItems);
+                                                        }}
+                                                        className="tn-input h-9 flex-1 font-bold text-xs"
+                                                    />
+                                                    <div className="relative w-24">
+                                                        <span className="absolute left-2 top-2.5 text-xs font-bold text-slate-400">₹</span>
+                                                        <input
+                                                            type="number"
+                                                            placeholder="0"
+                                                            value={item.amount || ''}
+                                                            onChange={(e) => {
+                                                                const newItems = [...extraItems];
+                                                                newItems[index].amount = parseFloat(e.target.value) || 0;
+                                                                setExtraItems(newItems);
+                                                            }}
+                                                            className="tn-input h-9 pl-5 font-black text-xs"
+                                                        />
+                                                    </div>
+                                                    {extraItems.length > 1 && (
+                                                        <button
+                                                            onClick={() => {
+                                                                const newItems = extraItems.filter((_, i) => i !== index);
+                                                                setExtraItems(newItems);
+                                                            }}
+                                                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="mt-3 pt-3 border-t border-orange-200 flex justify-between items-center px-1">
+                                            <span className="text-xs font-bold text-orange-800 uppercase tracking-wide">Total</span>
+                                            <span className="text-lg font-black text-orange-900 tracking-tight">
+                                                ₹{extraItems.reduce((sum, i) => sum + i.amount, 0).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="col-span-2">
-                                <PlacesAutocomplete
-                                    label="Drop"
-                                    icon={<MapPin size={16} />}
-                                    value={toLoc}
-                                    onChange={setToLoc}
-                                    onPlaceSelected={(place) => setToLoc(place.address)}
-                                    onMapClick={() => { setActiveMapField('to'); setShowMap(true); }}
-                                    placeholder="e.g. Pondicherry"
-                                    className="tn-input pl-10 pr-10"
-                                    rightContent={
-                                        <button
-                                            onClick={() => startListening(setToLoc)}
-                                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                        >
-                                            <Mic size={16} />
-                                        </button>
-                                    }
-                                />
+                                {mode !== 'custom' && (
+                                    <PlacesAutocomplete
+                                        label="Pickup"
+                                        icon={<MapPin size={16} />}
+                                        value={fromLoc}
+                                        onChange={setFromLoc}
+                                        onPlaceSelected={(place) => {
+                                            setFromLoc(place.address);
+                                            setPickupCoords({ lat: place.lat, lng: place.lng });
+                                        }}
+                                        onMapClick={() => { setActiveMapField('from'); setShowMap(true); }}
+                                        placeholder="e.g. Chennai Airport"
+                                        className="tn-input pl-10 pr-10 transition-all focus:ring-2 focus:ring-blue-500/20"
+                                        rightContent={
+                                            <button
+                                                onClick={() => startListening(setFromLoc)}
+                                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                title="Voice Input"
+                                            >
+                                                <Mic size={16} />
+                                            </button>
+                                        }
+                                    />
+                                )}
                             </div>
 
-                            <div>
-                                <label className="tn-label flex items-center justify-between">
-                                    Start KM
-                                    <label className="text-[9px] text-blue-600 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100">
-                                        <Camera size={10} /> Photo
-                                        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={() => alert('Photo attached!')} />
-                                    </label>
-                                </label>
-                                <input
-                                    type="number"
-                                    className="tn-input"
-                                    value={startKm || ''}
-                                    onChange={(e) => setStartKm(Number(e.target.value))}
-                                />
+                            <div className="col-span-2">
+                                {mode !== 'custom' && (
+                                    <PlacesAutocomplete
+                                        label="Drop"
+                                        icon={<MapPin size={16} />}
+                                        value={toLoc}
+                                        onChange={setToLoc}
+                                        onPlaceSelected={(place) => {
+                                            setToLoc(place.address);
+                                            setDropCoords({ lat: place.lat, lng: place.lng });
+                                        }}
+                                        onMapClick={() => { setActiveMapField('to'); setShowMap(true); }}
+                                        placeholder="e.g. Pondicherry"
+                                        className="tn-input pl-10 pr-10"
+                                        rightContent={
+                                            <button
+                                                onClick={() => startListening(setToLoc)}
+                                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                            >
+                                                <Mic size={16} />
+                                            </button>
+                                        }
+                                    />
+                                )}
                             </div>
 
-                            <div>
-                                <label className="tn-label flex items-center justify-between">
-                                    End KM
-                                    <label className="text-[9px] text-blue-600 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100">
-                                        <Camera size={10} /> Photo
-                                        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={() => alert('Photo attached!')} />
-                                    </label>
-                                </label>
-                                <input
-                                    type="number"
-                                    className="tn-input"
-                                    value={endKm || ''}
-                                    onChange={(e) => setEndKm(Number(e.target.value))}
-                                />
-                            </div>
+                            {/* Distance Badge */}
+                            {estimatedDistance !== null && (
+                                <div className="col-span-2 flex justify-center -mt-2 mb-2 animate-in fade-in slide-in-from-top-2">
+                                    <div className="bg-blue-50 border border-blue-100 px-3 py-1 rounded-full flex items-center gap-2">
+                                        <MapPin size={12} className="text-blue-600" />
+                                        <span className="text-[10px] font-black uppercase tracking-wider text-blue-700">
+                                            Est. Distance: {estimatedDistance} KM {mode === 'outstation' ? '(Round Trip)' : ''}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {mode !== 'custom' && (
+                                <>
+                                    <div>
+                                        <label className="tn-label flex items-center justify-between">
+                                            Start KM
+                                            <label className="text-[9px] text-blue-600 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100">
+                                                <Camera size={10} /> Photo
+                                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={() => alert('Photo attached!')} />
+                                            </label>
+                                        </label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="number"
+                                                className="tn-input flex-1"
+                                                value={startKm || ''}
+                                                onChange={(e) => setStartKm(Number(e.target.value))}
+                                                placeholder="KM"
+                                            />
+                                            {mode === 'hourly' && (
+                                                <input
+                                                    type="time"
+                                                    className="tn-input w-24 px-1 text-center text-xs"
+                                                    value={startTime}
+                                                    onChange={(e) => setStartTime(e.target.value)}
+                                                />
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="tn-label flex items-center justify-between">
+                                            End KM
+                                            <label className="text-[9px] text-blue-600 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100">
+                                                <Camera size={10} /> Photo
+                                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={() => alert('Photo attached!')} />
+                                            </label>
+                                        </label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="number"
+                                                className="tn-input flex-1"
+                                                value={endKm || ''}
+                                                onChange={(e) => setEndKm(Number(e.target.value))}
+                                                placeholder="KM"
+                                            />
+                                            {mode === 'hourly' && (
+                                                <input
+                                                    type="time"
+                                                    className="tn-input w-24 px-1 text-center text-xs"
+                                                    value={endTime}
+                                                    onChange={(e) => setEndTime(e.target.value)}
+                                                />
+                                            )}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
 
                             {mode === 'outstation' && (
                                 <div className="col-span-2">
@@ -453,40 +785,69 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                 </p>
                             </div>
 
-                            {[
-                                { id: 'toll', label: 'Toll Fees', input: toll, setInput: setToll },
-                                { id: 'parking', label: 'Parking Fees', input: parking, setInput: setParking },
-                                { id: 'waiting', label: 'Waiting Time', input: waitingHours, setInput: setWaitingHours, unit: 'Hrs' },
-                                { id: 'permit', label: 'Permit Charge', input: permitCharge, setInput: setPermitCharge }
-                            ].map((item) => (
-                                <div key={item.id} className={`p-4 rounded-2xl border-2 transition-all ${Number(item.input) > 0 ? 'bg-blue-50 border-blue-600 shadow-sm' : 'bg-white border-slate-100'}`}>
-                                    <div className="flex items-center justify-between gap-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${Number(item.input) > 0 ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-400'}`}>
-                                                <Receipt size={18} />
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className={`text-[13px] font-black uppercase tracking-wider ${Number(item.input) > 0 ? 'text-blue-900' : 'text-slate-900'}`}>{item.label}</span>
-                                                <span className="text-[9px] font-bold text-slate-400">{Number(item.input) > 0 ? 'Active' : 'Not Added'}</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {Number(item.input) > 0 && <span className="text-[11px] font-black text-blue-900 opacity-60">₹</span>}
-                                            <input
-                                                type="number"
-                                                className={`tn-input w-24 text-right font-black ${Number(item.input) > 0 ? 'text-blue-900 bg-white border-blue-200' : 'text-slate-400 bg-slate-50 border-transparent'}`}
-                                                placeholder="0"
-                                                value={item.input || ''}
-                                                onChange={(e) => item.setInput(Number(e.target.value))}
-                                                onFocus={(e) => e.target.select()}
-                                            />
-                                            {item.unit && <span className="text-[10px] font-bold text-slate-400 w-6">{item.unit}</span>}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
 
+                            {mode === 'custom' ? (
+                                <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 text-center mb-6">
+                                    <p className="text-xs font-bold text-orange-400 uppercase tracking-widest mb-1">Total Bill Amount</p>
+                                    <p className="text-3xl font-black text-orange-900 tracking-tighter">
+                                        ₹{extraItems.reduce((sum, i) => sum + i.amount, 0).toLocaleString()}
+                                    </p>
+                                    <p className="text-[10px] text-orange-400 font-bold mt-2 uppercase tracking-wide">
+                                        {extraItems.length} items added
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3 mb-6">
+                                    {[
+                                        { id: 'toll', label: 'Toll Fees', input: toll, setInput: setToll, icon: Receipt },
+                                        { id: 'parking', label: 'Parking Fees', input: parking, setInput: setParking, icon: MapPin },
+                                        { id: 'batta', label: 'Driver Batta', input: driverBatta, setInput: setDriverBatta, icon: UserPlus, hint: 'Daily Food Allowance' },
+                                        { id: 'stay', label: 'Night Stay', input: nightStay, setInput: setNightStay, icon: Moon, hint: 'Hotel/Accommodation Charge' },
+                                        { id: 'waiting', label: mode === 'hourly' ? 'Total Duration' : 'Waiting Time', input: waitingHours, setInput: setWaitingHours, unit: 'Hrs', icon: Clock },
+                                        { id: 'permit', label: 'Permit Charge', input: permitCharge, setInput: setPermitCharge, icon: Star }
+                                    ].filter(item => {
+                                        if (mode === 'outstation') return item.id !== 'waiting';
+                                        return true; // Show everything else (including stay) for all modes
+                                    }).map((item) => {
+                                        const Icon = item.icon;
+                                        return (
+                                            <div key={item.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${Number(item.input) > 0 ? 'bg-blue-50/50 border-blue-200' : 'bg-white border-slate-100'}`}>
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${Number(item.input) > 0 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                                        <Icon size={18} />
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className={`text-sm font-bold ${Number(item.input) > 0 ? 'text-blue-900' : 'text-slate-600'}`}>
+                                                            {item.label}
+                                                        </span>
+                                                        {/* @ts-ignore */}
+                                                        {item.hint && !Number(item.input) && <span className="text-[9px] text-slate-400">{item.hint}</span>}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500">
+                                                    {!item.unit && <span className="text-slate-400 font-bold text-sm">₹</span>}
+                                                    <input
+                                                        type="number"
+                                                        inputMode="decimal"
+                                                        className="w-20 text-right font-black text-lg text-slate-900 placeholder:text-slate-300 outline-none bg-transparent"
+                                                        placeholder="0"
+                                                        value={item.input || ''}
+                                                        onChange={(e) => item.setInput(Number(e.target.value))}
+                                                        onFocus={(e) => e.target.select()}
+                                                    />
+                                                    {item.unit && <span className="text-xs font-bold text-slate-400">{item.unit}</span>}
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+
+                                    {/* Night Batta Toggle Removed as per request */}
+
+                                </div>
+                            )}
+
+                        </div>
                         <div className="flex gap-3">
                             <button onClick={prevStep} className="flex-1 py-4 font-bold text-slate-400 uppercase tracking-widest text-[11px] border-2 border-slate-100 rounded-2xl">Back</button>
                             <button onClick={nextStep} className="flex-[2] tn-button-primary">Continue</button>
@@ -502,92 +863,150 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                         </div>
 
                         <div className="space-y-4">
-                            <div>
-                                <label className="tn-label">Customer Name</label>
-                                <div className="relative">
-                                    <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="tn-label">Customer Name</label>
+                                    <div className="relative">
+                                        <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                        <input
+                                            type="text"
+                                            className="tn-input pl-11"
+                                            placeholder="Guest Name"
+                                            value={customerName}
+                                            onChange={(e) => setCustomerName(e.target.value)}
+                                        />
+                                        <button
+                                            onClick={handleImportContact}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-slate-100 text-primary p-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-colors flex items-center gap-1"
+                                        >
+                                            <UserPlus size={14} /> Pick Contact
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="tn-label">Phone Number (Optional)</label>
+                                    <input
+                                        type="tel"
+                                        className="tn-input"
+                                        placeholder="e.g. 9876543210"
+                                        value={customerPhone}
+                                        onChange={(e) => setCustomerPhone(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="tn-label">Customer GSTIN (For Corporate)</label>
                                     <input
                                         type="text"
-                                        className="tn-input pl-11"
-                                        placeholder="Guest Name"
-                                        value={customerName}
-                                        onChange={(e) => setCustomerName(e.target.value)}
+                                        className={`tn-input uppercase ${customerGst && !validateGSTIN(customerGst) ? 'border-orange-300 bg-orange-50' : ''}`}
+                                        placeholder="33XXXXX0000X1ZX"
+                                        value={customerGst}
+                                        onChange={(e) => setCustomerGst(e.target.value.toUpperCase())}
+                                        maxLength={15}
                                     />
-                                    <button
-                                        onClick={handleImportContact}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-50 text-blue-600 p-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors flex items-center gap-1"
-                                    >
-                                        <UserPlus size={14} /> Pick Contact
-                                    </button>
+                                    {customerGst && !validateGSTIN(customerGst) && (
+                                        <p className="text-[9px] text-orange-600 font-bold mt-1 uppercase">Invalid GSTIN Format</p>
+                                    )}
                                 </div>
-                            </div>
-
-                            <div>
-                                <label className="tn-label">Select Vehicle from Fleet</label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {(settings.vehicles.length > 0 ? settings.vehicles : VEHICLES).map((v) => {
-                                        // Find rate info based on categoryId if it's a saved vehicle, or use v directly if it's from VEHICLES
-                                        const vInfo = 'categoryId' in v
-                                            ? VEHICLES.find(cat => cat.id === v.categoryId) || VEHICLES[1] // Fallback to Sedan
-                                            : v as typeof VEHICLES[0];
-
-                                        const isActive = selectedVehicleId === v.id;
-                                        const rate = mode === 'outstation' ? vInfo.roundRate : vInfo.dropRate;
-
-                                        return (
-                                            <button
-                                                key={v.id}
-                                                onClick={() => {
-                                                    setSelectedVehicleId(v.id);
-                                                    setCustomRate(rate);
-                                                }}
-                                                className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${isActive ? 'bg-blue-50 border-blue-600 text-blue-900 shadow-sm' : 'bg-slate-50 border-transparent text-slate-400'}`}
-                                            >
-                                                <span className="text-[10px] font-black uppercase tracking-widest truncate w-full text-center">
-                                                    {'number' in v ? v.number : v.name}
-                                                </span>
-                                                <span className="text-[11px] font-bold">
-                                                    {'number' in v ? (v as any).model : `₹${rate}/KM`}
-                                                </span>
-                                                {'number' in v && (
-                                                    <span className="text-[9px] font-black text-blue-600 uppercase">₹{rate}/KM</span>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                {settings.vehicles.length === 0 && (
-                                    <p className="text-[9px] text-orange-500 font-bold mt-2 uppercase tracking-wide">
-                                        Tip: Add your vehicles in Profile for faster selection
-                                    </p>
-                                )}
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="tn-label">Rate/KM (Editable)</label>
+                                    <label className="tn-label">Billing Address</label>
                                     <input
-                                        type="number"
+                                        type="text"
                                         className="tn-input"
-                                        value={customRate || ''}
-                                        onChange={(e) => setCustomRate(Number(e.target.value))}
+                                        placeholder="Company Address or Local Address"
+                                        value={billingAddress}
+                                        onChange={(e) => setBillingAddress(e.target.value)}
                                     />
                                 </div>
-                                <div className="flex items-end h-full pb-1">
-                                    <label className={`w-full py-3 px-4 rounded-xl border-2 font-black text-[11px] uppercase tracking-wider transition-all cursor-pointer flex items-center justify-between ${nightBata ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                            </div>
+
+
+
+                            {mode !== 'custom' && (
+                                <>
+                                    <div>
+                                        <label className="tn-label">Select Vehicle from Fleet</label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {(settings.vehicles.length > 0 ? settings.vehicles : VEHICLES).map((v) => {
+                                                // Find rate info based on categoryId if it's a saved vehicle, or use v directly if it's from VEHICLES
+                                                const vInfo = 'categoryId' in v
+                                                    ? VEHICLES.find(cat => cat.id === v.categoryId) || VEHICLES[1] // Fallback to Sedan
+                                                    : v as typeof VEHICLES[0];
+
+                                                const isActive = selectedVehicleId === v.id;
+                                                const rate = mode === 'outstation' ? vInfo.roundRate : vInfo.dropRate;
+
+                                                return (
+                                                    <button
+                                                        key={v.id}
+                                                        onClick={() => {
+                                                            setSelectedVehicleId(v.id);
+                                                            setCustomRate(rate);
+                                                        }}
+                                                        className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${isActive ? 'bg-slate-50 border-primary text-primary shadow-sm' : 'bg-slate-50 border-transparent text-slate-400'}`}
+                                                    >
+                                                        <span className="text-[10px] font-black uppercase tracking-widest truncate w-full text-center">
+                                                            {'number' in v ? v.number : v.name}
+                                                        </span>
+                                                        <span className="text-[11px] font-bold">
+                                                            {'number' in v ? (v as any).model : `₹${rate}/KM`}
+                                                        </span>
+                                                        {'number' in v && (
+                                                            <span className="text-[9px] font-black text-primary uppercase">₹{rate}/KM</span>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        {settings.vehicles.length === 0 && (
+                                            <p className="text-[9px] text-orange-500 font-bold mt-2 uppercase tracking-wide">
+                                                Tip: Add your vehicles in Profile for faster selection
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="tn-label">Rate/KM (Editable)</label>
+                                            <input
+                                                type="number"
+                                                className="tn-input"
+                                                value={customRate || ''}
+                                                onChange={(e) => setCustomRate(Number(e.target.value))}
+                                            />
+                                        </div>
+                                        <div className="flex items-end h-full pb-1">
+                                            {/* Night Batta was here, moved to Step 3 */}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {settings.gstin ? (
+                                <div className="flex items-end h-full">
+                                    <label className={`w-full py-3 px-4 rounded-xl border-2 font-black text-[11px] uppercase tracking-wider transition-all cursor-pointer flex items-center justify-between ${localGst ? 'bg-green-600 border-green-600 text-white shadow-md' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
                                         <div className="flex items-center gap-2">
                                             <input
                                                 type="checkbox"
-                                                checked={nightBata}
-                                                onChange={() => setNightBata(!nightBata)}
-                                                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                                checked={localGst}
+                                                onChange={() => setLocalGst(!localGst)}
+                                                className="w-4 h-4 rounded border-slate-300 text-green-600 focus:ring-green-500"
                                             />
-                                            <span>Night Batta</span>
+                                            <span>Apply GST (5.0%)</span>
                                         </div>
-                                        <span>₹{settings.nightBata}</span>
+                                        <Receipt size={14} />
                                     </label>
                                 </div>
-                            </div>
+                            ) : customerGst ? (
+                                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                                    <p className="text-[10px] font-bold text-primary uppercase tracking-tight flex items-center gap-2">
+                                        <Star size={12} fill="currentColor" />
+                                        Corporate Client: RCM Label will be auto-added
+                                    </p>
+                                </div>
+                            ) : null}
                         </div>
 
                         <div className="flex gap-3">
@@ -610,43 +1029,110 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                     {/* Glassmorphism Effect */}
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full -mr-10 -mt-10" />
 
-                                    <div className="relative z-10 flex flex-col items-center text-center">
-                                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-400 mb-2">Final Amount</p>
-                                        <h4 className="text-5xl font-black mb-1">₹{result.total.toLocaleString()}</h4>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Includes Distance & All Taxes</p>
+                                    <div className="relative z-10">
+                                        <div className="flex flex-col items-center text-center mb-6">
+                                            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-400 mb-2">Final Amount</p>
+                                            <h4 className="text-5xl font-black mb-1">₹{result.total.toLocaleString()}</h4>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Includes Distance & All Taxes</p>
+                                        </div>
 
-                                        <div className="w-full h-px bg-white/10 my-6" />
+                                        <div className="space-y-3 bg-white/5 p-4 rounded-2xl border border-white/10 mb-6">
+                                            <div className="flex justify-between items-center text-[10px]">
+                                                <span className="font-bold text-slate-400 uppercase">Trip Type</span>
+                                                <span className="font-black text-white uppercase">{mode === 'drop' ? (result.distance <= 30 ? 'Local (Market Rate)' : 'One Way / Drop') : mode === 'outstation' ? 'Round Trip' : mode}</span>
+                                            </div>
+                                            {result.distance <= 30 && mode === 'drop' ? (
+                                                <div className="flex justify-between items-center text-[10px]">
+                                                    <span className="font-bold text-slate-400 uppercase">Local Base Fare</span>
+                                                    <span className="font-black text-white">₹{result.fare - result.waitingCharges - (toll + parking + permitCharge + result.petCharges + result.hillStationCharges)}</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex justify-between items-center text-[10px]">
+                                                    <span className="font-bold text-slate-400 uppercase">
+                                                        {mode === 'hourly' ? 'Rental Charge' : (mode === 'custom' ? 'Custom Items' : 'Distance Charge')}
+                                                    </span>
+
+                                                    {mode === 'custom' ? (
+                                                        <span className="font-black text-white">
+                                                            {extraItems.length} Items = ₹{extraItems.reduce((acc, i) => acc + i.amount, 0).toLocaleString()}
+                                                        </span>
+                                                    ) : mode === 'hourly' ? (
+                                                        <span className="font-black text-white">
+                                                            {waitingHours} Hrs Package = ₹{result.fare.toLocaleString()}
+                                                        </span>
+                                                    ) : mode === 'drop' ? (
+                                                        <span className="font-black text-white">
+                                                            {Math.max(130, result.distance)} KM (Min 130) × ₹{(customRate || 14)} = ₹{(Math.max(130, result.distance) * (customRate || 14)).toLocaleString()}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="font-black text-white">
+                                                            {Math.max(300 * (days || 1), result.distance)} KM × ₹{customRate} = ₹{(Math.max(300 * (days || 1), result.distance) * customRate).toLocaleString()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {result.waitingCharges > 0 && (
+                                                <div className="flex justify-between items-center text-[10px]">
+                                                    <span className="font-bold text-slate-400 uppercase">Waiting Charges</span>
+                                                    <span className="font-black text-white">₹{result.waitingCharges}</span>
+                                                </div>
+                                            )}
+                                            {result.driverBatta > 0 && (
+                                                <div className="flex justify-between items-center text-[10px]">
+                                                    <span className="font-bold text-slate-400 uppercase">Driver Batta</span>
+                                                    <span className="font-black text-white">₹{result.driverBatta}</span>
+                                                </div>
+                                            )}
+                                            {(toll > 0 || parking > 0 || permitCharge > 0) && (
+                                                <div className="flex justify-between items-center text-[10px]">
+                                                    <span className="font-bold text-slate-400 uppercase">Tolls & Other</span>
+                                                    <span className="font-black text-white">₹{toll + parking + permitCharge}</span>
+                                                </div>
+                                            )}
+                                            {result.gst > 0 && (
+                                                <div className="flex justify-between items-center text-[10px]">
+                                                    <span className="font-bold text-slate-400 uppercase">GST (5%)</span>
+                                                    <span className="font-black text-white">₹{result.gst}</span>
+                                                </div>
+                                            )}
+                                        </div>
 
                                         <div className="grid grid-cols-3 w-full gap-4">
                                             <div className="text-center">
-                                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Distance</p>
+                                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Actual KM</p>
                                                 <p className="text-sm font-bold text-white">{result.distance} KM</p>
                                             </div>
                                             <div className="text-center border-x border-white/10">
-                                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Fare</p>
-                                                <p className="text-sm font-bold text-white">₹{result.fare}</p>
+                                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Fare/KM</p>
+                                                <p className="text-sm font-bold text-white">₹{customRate}</p>
                                             </div>
                                             <div className="text-center">
-                                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">GST (5%)</p>
-                                                <p className="text-sm font-bold text-white">₹{result.gst}</p>
+                                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Status</p>
+                                                <p className="text-sm font-bold text-green-400 uppercase">Calculated</p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-3">
-                                    <button onClick={handleSave} className="tn-button-primary w-full bg-[#0047AB] hover:bg-blue-700 h-16 rounded-2xl shadow-lg border-b-4 border-blue-900 active:border-b-0 active:translate-y-1">
+                                    <button onClick={handleSave} className="tn-button-primary w-full bg-primary hover:bg-blue-600 h-16 rounded-2xl shadow-lg border-b-4 border-blue-700 active:border-b-0 active:translate-y-1">
                                         <Save size={20} />
                                         <span>Save Invoice</span>
                                     </button>
                                     <button
                                         onClick={() => {
                                             if (!result) return;
+
+                                            // Correctly identify the selected vehicle for PDF
+                                            const selectedVehObj = (settings.vehicles || []).find(v => v.id === selectedVehicleId) || currentVehicle;
+                                            const finalVehicleNum = selectedVehObj?.number || currentVehicle?.number || 'N/A';
+
                                             const tripData: any = {
                                                 id: crypto.randomUUID(),
                                                 customerName: customerName || 'Valued Customer',
                                                 customerPhone,
                                                 customerGst,
+                                                billingAddress,
                                                 from: fromLoc,
                                                 to: toLoc,
                                                 date: new Date(invoiceDate).toISOString(),
@@ -661,15 +1147,24 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
                                                 hillStationCharges: result.hillStationCharges,
                                                 petCharges: result.petCharges,
                                                 permit: permitCharge,
-                                                ratePerKm: customRate
+                                                ratePerKm: customRate,
+                                                baseFare: settings.baseFare,
+                                                nightBata: nightBata ? settings.nightBata : 0,
+                                                toll: toll,
+                                                parking: parking,
+                                                days: days,
+                                                driverBatta: result.driverBatta,
+                                                nightStay: nightStay,
+                                                extraItems: mode === 'custom' ? extraItems : undefined
                                             };
                                             shareReceipt(tripData, {
                                                 companyName: settings.companyName,
                                                 companyAddress: settings.companyAddress,
                                                 driverPhone: settings.driverPhone,
                                                 gstin: settings.gstin,
-                                                vehicleNumber: currentVehicle?.number || '',
-                                                gstEnabled: localGst
+                                                vehicleNumber: finalVehicleNum,
+                                                gstEnabled: localGst,
+                                                vehicles: settings.vehicles
                                             });
                                         }}
                                         className="w-full py-4 rounded-2xl border-2 border-[#25D366] bg-[#25D366]/5 font-black text-[11px] uppercase tracking-widest text-[#25D366] flex items-center justify-center gap-2 hover:bg-[#25D366]/10"
@@ -698,13 +1193,15 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip }) => {
             </div>
 
 
-            {showMap && (
-                <MapPicker
-                    onLocationSelect={handleMapSelect}
-                    onClose={() => setShowMap(false)}
-                />
-            )}
-        </div>
+            {
+                showMap && (
+                    <MapPicker
+                        onLocationSelect={handleMapSelect}
+                        onClose={() => setShowMap(false)}
+                    />
+                )
+            }
+        </div >
     );
 };
 

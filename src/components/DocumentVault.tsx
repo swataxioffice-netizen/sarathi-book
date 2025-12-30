@@ -27,13 +27,13 @@ const REQUIRED_VEHICLE_DOCS = [
 
 const REQUIRED_DRIVER_DOCS = [
     { type: 'License', label: 'Driving License', helper: 'Original or DigiLocker copy' },
-    { type: 'Badge', label: 'Driver Badge', helper: 'Public Service Badge' },
-    { type: 'Police', label: 'Police Verification', helper: 'Safety Background Check' }
+    { type: 'Badge', label: 'Driver Badge (Optional)', helper: 'Public Service Badge' },
+    { type: 'Police', label: 'Police Verification (Optional)', helper: 'Safety Background Check' }
 ];
 
 const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
     const { user } = useAuth();
-    const { settings } = useSettings();
+    const { settings, setDocStats } = useSettings();
     const [loading, setLoading] = useState(false);
     const [docs, setDocs] = useState<Document[]>([]);
 
@@ -54,14 +54,16 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
 
     // Stats Effect
     useEffect(() => {
-        if (!onStatsUpdate) return;
         const vehicleTypes = REQUIRED_VEHICLE_DOCS.map(d => d.type);
-        const driverTypes = REQUIRED_DRIVER_DOCS.map(d => d.type);
+        const mandatoryDriverTypes = REQUIRED_DRIVER_DOCS.filter(d => d.type === 'License').map(d => d.type);
         const currentTypes = new Set(docs.map(d => d.type));
+
         const hasFullVehicle = vehicleTypes.every(t => currentTypes.has(t as any));
-        const hasFullDriver = driverTypes.every(t => currentTypes.has(t as any));
-        onStatsUpdate({ hasFullVehicle, hasFullDriver });
-    }, [docs, onStatsUpdate]);
+        const hasFullDriver = mandatoryDriverTypes.every(t => currentTypes.has(t as any));
+
+        setDocStats({ hasFullVehicle, hasFullDriver });
+        if (onStatsUpdate) onStatsUpdate({ hasFullVehicle, hasFullDriver });
+    }, [docs, onStatsUpdate, setDocStats]);
 
     const loadDocs = async () => {
         if (user) {
@@ -101,12 +103,26 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
             };
 
             if (user) {
-                const { data, error } = await supabase.from('user_documents').insert({
-                    user_id: user.id, name: docName, type, expiry_date: dateStr,
-                    file_url: null, file_path: null
-                }).select().single();
-                if (error) throw error;
-                newDoc = { ...newDoc, id: data.id };
+                // Check if we need to update or insert
+                const existing = docs.find(d => d.type === type && d.name === docName);
+
+                const payload = {
+                    user_id: user.id,
+                    name: docName,
+                    type,
+                    expiry_date: dateStr,
+                    updated_at: new Date().toISOString()
+                };
+
+                let res;
+                if (existing) {
+                    res = await supabase.from('user_documents').update(payload).eq('id', existing.id).select().single();
+                } else {
+                    res = await supabase.from('user_documents').insert(payload).select().single();
+                }
+
+                if (res.error) throw res.error;
+                if (res.data) newDoc = { ...newDoc, id: res.data.id };
             }
 
             const updatedDocs = docs.filter(d => !(d.type === type && d.name === docName));
@@ -179,17 +195,34 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                             <div className="relative">
                                 <input
                                     type="date"
+                                    id={`date-input-${category}-${req.type}`}
+                                    className="absolute w-[1px] h-[1px] opacity-0 pointer-events-none"
                                     onChange={(e) => {
-                                        if (e.target.value) {
-                                            saveDoc(req.type, category, e.target.value);
+                                        const val = e.target.value;
+                                        if (val) {
+                                            saveDoc(req.type, category, val);
                                         }
                                     }}
-                                    className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
                                 />
                                 <button
-                                    className="px-4 py-1.5 rounded-lg border border-[#0047AB] bg-[#0047AB] text-white shadow-md text-[10px] font-black uppercase tracking-wider flex items-center gap-2 active:scale-95"
+                                    type="button"
+                                    onClick={() => {
+                                        const input = document.getElementById(`date-input-${category}-${req.type}`) as any;
+                                        if (input) {
+                                            try {
+                                                if (input.showPicker) {
+                                                    input.showPicker();
+                                                } else {
+                                                    input.click();
+                                                }
+                                            } catch (e) {
+                                                input.click();
+                                            }
+                                        }
+                                    }}
+                                    className="px-3 py-1.5 rounded-lg border border-[#0047AB] bg-[#0047AB] text-white shadow-md text-[9px] font-black uppercase tracking-wider flex items-center gap-2 active:scale-95"
                                 >
-                                    Set Date
+                                    Add Expiry Date
                                 </button>
                             </div>
                         )}

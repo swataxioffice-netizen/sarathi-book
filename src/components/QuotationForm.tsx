@@ -3,7 +3,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { shareQuotation } from '../utils/pdf';
 import type { QuotationItem } from '../utils/pdf';
 import { safeJSONParse } from '../utils/storage';
-import { Send, User, Plus, Trash2, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { Send, User, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface SavedQuotation {
     id: string;
@@ -22,7 +22,6 @@ const QuotationForm: React.FC = () => {
     const [items, setItems] = useState<QuotationItem[]>(() => safeJSONParse('draft-q-items', []));
     const [showItems, setShowItems] = useState(false);
     const [quotations, setQuotations] = useState<SavedQuotation[]>(() => safeJSONParse('saved-quotations', []));
-    const [showAllHistory, setShowAllHistory] = useState(false);
 
     // Auto-save draft changes
     useEffect(() => { localStorage.setItem('draft-q-name', JSON.stringify(customerName)); }, [customerName]);
@@ -50,7 +49,16 @@ const QuotationForm: React.FC = () => {
     };
 
     const handleShareQuote = async () => {
-        if (!customerName || items.length === 0) return;
+        if (!customerName?.trim()) { alert('Please enter Guest / Company Name'); return; }
+        if (!subject?.trim()) { alert('Please enter a Subject for the quotation'); return; }
+        if (items.length === 0) { alert('Please add at least one item to the quotation'); return; }
+
+        // Validate Item Details
+        const invalidItems = items.filter(i => !i.description?.trim() || !i.amount || Number(i.amount) <= 0);
+        if (invalidItems.length > 0) {
+            alert('Please ensure all items have a Description and valid Amount');
+            return;
+        }
 
         const newQuote: SavedQuotation = {
             id: Date.now().toString(),
@@ -81,22 +89,11 @@ const QuotationForm: React.FC = () => {
         localStorage.removeItem('draft-q-items');
     };
 
-    const handleReshare = async (quote: SavedQuotation) => {
-        await shareQuotation({
-            customerName: quote.customerName,
-            subject: quote.subject,
-            date: quote.date,
-            items: quote.items
-        }, { ...settings, vehicleNumber: 'N/A' });
-    };
-
-    const displayHistory = showAllHistory ? quotations : quotations.slice(0, 3);
-
     return (
         <div className="space-y-2 pb-24">
             {/* Page Title */}
             <div className="px-2 py-1 text-center">
-                <h2 className="text-lg font-black uppercase tracking-wide text-slate-800 underline decoration-4 decoration-blue-500 underline-offset-4">QUOTATION</h2>
+                <h2 className="text-lg font-black uppercase tracking-wide text-slate-800 underline decoration-4 decoration-[#6366F1] underline-offset-4">QUOTATION</h2>
                 <p className="text-slate-600 text-[10px] font-medium mt-0.5">Create formal quotations</p>
             </div>
 
@@ -146,7 +143,7 @@ const QuotationForm: React.FC = () => {
                 <div className="space-y-2 pt-1">
                     <button
                         onClick={() => setShowItems(!showItems)}
-                        className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-black text-[#0047AB] uppercase tracking-widest"
+                        className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-black text-[#6366F1] uppercase tracking-widest"
                     >
                         <span>Edit Items ({items.length})</span>
                         {showItems ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -222,7 +219,7 @@ const QuotationForm: React.FC = () => {
                     <button
                         onClick={handleShareQuote}
                         disabled={!customerName || items.length === 0}
-                        className="w-full bg-[#0047AB] text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest shadow-lg active:scale-[0.98] transition-all disabled:opacity-50"
+                        className="w-full bg-[#6366F1] text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest shadow-lg active:scale-[0.98] transition-all disabled:opacity-50"
                     >
                         <Send size={16} />
                         Share Quotation
@@ -230,57 +227,7 @@ const QuotationForm: React.FC = () => {
                 </div>
             </div>
 
-            {/* Quotation History */}
-            <div className="space-y-2 pt-2">
-                <div className="flex justify-between items-center px-1">
-                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Recent Quotations</h3>
-                    {quotations.length > 3 && (
-                        <button
-                            onClick={() => setShowAllHistory(!showAllHistory)}
-                            className="text-[9px] font-black uppercase tracking-tight text-[#0047AB] bg-blue-50 px-2 py-1 rounded-full border border-blue-100"
-                        >
-                            {showAllHistory ? 'Show Less' : 'View All'}
-                        </button>
-                    )}
-                </div>
 
-                {quotations.length === 0 ? (
-                    <div className="bg-white border border-slate-200 border-dashed rounded-xl py-6 flex flex-col items-center justify-center text-center">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No quotations yet</p>
-                    </div>
-                ) : (
-                    <div className="space-y-2">
-                        {displayHistory.map((quote) => (
-                            <div key={quote.id} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-sm relative overflow-hidden group">
-                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-purple-500/20"></div>
-                                <div className="flex items-center gap-3 pl-1">
-                                    <div className="p-2 bg-purple-50 border border-purple-100 rounded-lg text-purple-500">
-                                        <FileText size={16} />
-                                    </div>
-                                    <div className="leading-tight">
-                                        <h4 className="text-xs font-black text-slate-900">{quote.customerName}</h4>
-                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                            <span className="text-[9px] font-bold text-slate-400">
-                                                {new Date(quote.date).toLocaleDateString()}
-                                            </span>
-                                            <span className="w-0.5 h-0.5 rounded-full bg-slate-300"></span>
-                                            <span className="text-[8px] font-black text-purple-600 uppercase">
-                                                {quote.items.length} Items
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => handleReshare(quote)}
-                                    className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-[#0047AB] hover:text-white transition-colors"
-                                >
-                                    <Send size={14} />
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
         </div>
     );
 };

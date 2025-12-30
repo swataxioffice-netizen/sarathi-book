@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
-import { MapPin, Users, Car, Clock, CheckCircle2, MessageCircle, AlertCircle, UserCheck, Truck, Hash } from 'lucide-react';
+import { MapPin, Users, Car, Clock, CheckCircle2, MessageCircle, AlertCircle, UserCheck, Truck, Hash, Plus } from 'lucide-react';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
 import { calculateDistance } from '../utils/googleMaps';
@@ -24,6 +24,14 @@ const CabCalculator: React.FC = () => {
     const [result, setResult] = useState<any>(null);
     const [calculatingDistance, setCalculatingDistance] = useState(false);
     const [showMap, setShowMap] = useState(false);
+
+    // Additional Charges State
+    const [waitingHours, setWaitingHours] = useState<number>(0);
+    const [isHillStation, setIsHillStation] = useState(false);
+    const [petCharge, setPetCharge] = useState(false);
+    const [toll, setToll] = useState<string>('0');
+    const [permit, setPermit] = useState<string>('0');
+    const [parking, setParking] = useState<string>('0');
 
     const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number) => {
         setPickup(pickupAddr);
@@ -74,61 +82,83 @@ const CabCalculator: React.FC = () => {
 
     const calculate = () => {
         const dist = parseFloat(distance);
-        if (!dist) return;
-
-        // Detect inter-state travel for permit charges
-        const pickupLower = pickup.toLowerCase();
-        const dropLower = drop.toLowerCase();
-        const interstateStates = ['karnataka', 'bangalore', 'bengaluru', 'mysore', 'kerala', 'kochi', 'trivandrum', 'andhra', 'hyderabad', 'tirupati', 'puducherry', 'pondicherry'];
-
-        const isInterstate = interstateStates.some(s => pickupLower.includes(s) || dropLower.includes(s));
-        const permitCharge = isInterstate ? 800 : 0;
-
-        // Estimate tolls (rough estimate: ₹250 per 100 KM)
-        const estimatedTolls = Math.ceil(dist / 100) * 250;
+        if (!dist && tripType !== 'airport') return;
 
         const mode: FareMode = tripType === 'roundtrip' ? 'outstation' : 'drop';
         const tripDays = parseInt(days) || 1;
 
         const fareParams = {
             startKm: 0,
-            endKm: mode === 'outstation' ? dist * 2 : dist,
+            endKm: mode === 'outstation' ? dist : dist, // distance is one-way for round trips usually? Wait, let's keep it consistent.
             baseFare: 0,
             ratePerKm: customRate,
-            toll: estimatedTolls,
-            parking: 0,
-            gstEnabled: false, // Calculator usually shows base estimate
+            toll: parseFloat(toll) || 0,
+            parking: parseFloat(parking) || 0,
+            gstEnabled: false,
             mode: mode,
             vehicleId: selectedVehicle,
             days: tripDays,
-            nightBata: 0 // Will use vehicle default since it's 0
+            nightBata: 0,
+            waitingHours: waitingHours,
+            isHillStation,
+            petCharge
         };
 
         const res = calculateFare(fareParams);
-        const totalWithPermit = res.total + permitCharge;
+        const permitTotal = parseFloat(permit) || 0;
+        const finalTotal = res.total + permitTotal;
 
-        const vehicle = VEHICLES.find(v => v.id === selectedVehicle) || VEHICLES[0];
-        const activeMinKm = vehicle.minKm;
-        const chargedDist = mode === 'outstation' ? Math.max(dist * 2, activeMinKm * tripDays) : Math.max(100, dist);
+        const currentVeh = VEHICLES.find(v => v.id === selectedVehicle);
+        const isLocal = mode === 'drop' && dist <= 30;
+        const details = [];
 
-        const details = [
-            `${tripType === 'oneway' ? 'One-Way / Drop' : 'Round Trip'} Trip: ${dist} KM`,
-            mode === 'outstation' ? `Duration: ${tripDays} Day(s) (Min ${activeMinKm} KM/Day)` : `Minimum 100 KM Chargeable`,
-            `Chargeable Distance: ${chargedDist} KM`,
-            `Distance Charge: ${chargedDist} KM × ₹${customRate}/KM = ₹${(chargedDist * customRate).toFixed(0)}`,
-            `Driver Batta: ₹${res.fare - (chargedDist * customRate) - estimatedTolls - (res.gst || 0)}`,
-            isInterstate ? `Inter-state Permit: ₹${permitCharge}` : '',
-            `Toll Estimate: ₹${estimatedTolls}`,
-            ``,
-            `TOTAL ESTIMATED FARE: ₹${Math.round(totalWithPermit)}`
-        ].filter(Boolean);
+        details.push(`Trip: ${dist} KM (${tripType === 'oneway' ? 'One-Way' : 'Round Trip'})`);
+
+        if (isLocal) {
+            details.push(`Type: Chennai Association Local (2025)`);
+            const baseLocal = (currentVeh?.type === 'SUV' || currentVeh?.type === 'Van') ? 350 : 250;
+            const extraKm = Math.max(0, dist - 10);
+            const extraRate = (currentVeh?.type === 'SUV' || currentVeh?.type === 'Van') ? 35 : 25;
+            details.push(`Base Fare (First 10 KM): ₹${baseLocal}`);
+            if (extraKm > 0) {
+                details.push(`Extra Distance: ${extraKm.toFixed(1)} KM × ₹${extraRate} = ₹${(extraKm * extraRate).toFixed(0)}`);
+            }
+        } else if (mode === 'outstation') {
+            const activeMinKm = 250;
+            const chargedDist = Math.max(dist, activeMinKm * tripDays);
+            details.push(`Outstation Round Trip (Min ${activeMinKm} KM/Day)`);
+            details.push(`Distance Charge: ${chargedDist} KM × ₹${customRate} = ₹${(chargedDist * customRate).toFixed(0)}`);
+            if (res.driverBatta > 0) {
+                details.push(`Driver Batta: ₹${res.driverBatta} × ${tripDays} Day(s) = ₹${res.driverBatta * tripDays}`);
+            }
+        } else {
+            // Drop > 30KM (Outstation Drop)
+            const activeMinKm = 130;
+            const chargedDist = Math.max(dist, activeMinKm);
+            const rateVal = (currentVeh?.type === 'SUV' || currentVeh?.type === 'Van') ? 19 : 14;
+            details.push(`Chennai Association Drop (Min ${activeMinKm} KM)`);
+            details.push(`Distance Charge: ${chargedDist} KM × ₹${rateVal} = ₹${(chargedDist * rateVal).toFixed(0)}`);
+            if (res.driverBatta > 0) {
+                details.push(`Driver Batta: ₹${res.driverBatta}`);
+            }
+        }
+
+        if (res.waitingCharges > 0) details.push(`Waiting Charge: ₹${res.waitingCharges}`);
+        if (res.hillStationCharges > 0) details.push(`Hill Station: ₹${res.hillStationCharges}`);
+        if (res.petCharges > 0) details.push(`Pet Charge: ₹${res.petCharges}`);
+        if (parseFloat(toll) > 0) details.push(`Tolls: ₹${toll}`);
+        if (parseFloat(parking) > 0) details.push(`Parking: ₹${parking}`);
+        if (permitTotal > 0) details.push(`Permit: ₹${permitTotal}`);
+
+        details.push(``);
+        details.push(`TOTAL ESTIMATED FARE: ₹${Math.round(finalTotal)}`);
 
         setResult({
-            fare: Math.round(totalWithPermit),
+            fare: Math.round(finalTotal),
             details,
             breakdown: {
                 ...res,
-                total: totalWithPermit
+                total: finalTotal
             }
         });
     };
@@ -244,6 +274,50 @@ const CabCalculator: React.FC = () => {
                         </select>
                     </div>
                     <Input label="Rate/Km" icon={<Hash size={10} aria-hidden="true" />} value={customRate} onChange={setCustomRate} type="number" highlight />
+                </div>
+
+                {/* Additional Charges Section */}
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <Plus size={12} className="text-blue-500" /> Additional Charges
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Waiting (Hrs)</label>
+                            <input type="number" value={waitingHours || ''} onChange={e => setWaitingHours(Number(e.target.value))} className="tn-input h-8 text-xs bg-white" placeholder="0" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Toll Charges</label>
+                            <input type="number" value={toll} onChange={e => setToll(e.target.value)} className="tn-input h-8 text-xs bg-white" placeholder="0" />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Parking</label>
+                            <input type="number" value={parking} onChange={e => setParking(e.target.value)} className="tn-input h-8 text-xs bg-white" placeholder="0" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Permit Charges</label>
+                            <input type="number" value={permit} onChange={e => setPermit(e.target.value)} className="tn-input h-8 text-xs bg-white" placeholder="0" />
+                        </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setIsHillStation(!isHillStation)}
+                            className={`flex-1 py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${isHillStation ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
+                        >
+                            ⛰️ Hill Station
+                        </button>
+                        <button
+                            onClick={() => setPetCharge(!petCharge)}
+                            className={`flex-1 py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${petCharge ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
+                        >
+                            🐾 Pet Charge
+                        </button>
+                    </div>
                 </div>
             </div>
 

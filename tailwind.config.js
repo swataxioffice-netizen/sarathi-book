@@ -1,3 +1,5 @@
+const colors = require('tailwindcss/colors')
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class',
@@ -11,19 +13,8 @@ export default {
         sans: ['Korkai', 'Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
-        'brand': {
-          50: '#f0f4fa',
-          100: '#dde6f3',
-          200: '#c2d2ea',
-          300: '#99b5dc',
-          400: '#6a91cb',
-          500: '#486fba',
-          600: '#3858a7',
-          700: '#2f4789',
-          800: '#2a3d70',
-          900: '#26355e',
-          950: '#19213c',
-        },
+        'primary': 'var(--primary)',
+        'brand': colors.blue, // Alias brand to standard blue to match 500 scale request
         'heritage-brand': '#0747A6',
         'heritage-accent': '#FFC107',
         'heritage-bg': '#F8F9FA',

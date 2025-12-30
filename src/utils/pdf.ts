@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import type { Trip } from './fare';
+import { type Trip, VEHICLES } from './fare';
 import { numberToWords } from './numberToWords';
 
 export interface PDFSettings {
@@ -9,6 +9,7 @@ export interface PDFSettings {
     gstin: string;
     vehicleNumber: string;
     gstEnabled: boolean;
+    vehicles?: any[];
 }
 
 export interface QuotationItem {
@@ -27,7 +28,7 @@ export interface QuotationData {
 }
 
 export const generateReceiptPDF = (trip: Trip, settings: PDFSettings, isQuotation: boolean = false) => {
-    const doc = new jsPDF();
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' } as any);
     const margin = 15;
     let y = 0;
 
@@ -38,48 +39,69 @@ export const generateReceiptPDF = (trip: Trip, settings: PDFSettings, isQuotatio
     const vehicleNumber = String(settings?.vehicleNumber || 'N/A');
     const gstEnabled = !!settings?.gstEnabled;
 
-    // --- ZONE 1: HEADER (Blue) ---
-    doc.setFillColor(30, 58, 138); // Premium Blue
-    doc.rect(0, 0, 210, 45, 'F');
+    // --- ZONE 1: HEADER (Minimal / Sustainable) ---
+    // No background fill - Saves Ink
 
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(0, 0, 0); // Black text
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
+    doc.setFontSize(24);
     doc.text(companyName.toUpperCase(), margin, 20);
 
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     const companyAddress = String(settings?.companyAddress || '');
-    doc.text(companyAddress, margin, 28, { maxWidth: 100 });
+    doc.text(companyAddress, margin, 27, { maxWidth: 100 });
 
-    doc.setFontSize(11);
-    doc.text(`Phone: ${driverPhone}`, margin, 38);
+    doc.setFontSize(10);
+    doc.text(`Phone: ${driverPhone}`, margin, 42);
     if (gstin) {
-        doc.text(`GSTIN: ${gstin}`, 80, 38);
+        doc.text(`GSTIN: ${gstin}`, margin + 60, 42);
     }
 
+    // Divider Line
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.5);
+    doc.line(margin, 48, 195, 48);
+
     // --- ZONE 2: INVOICE INFO ---
-    y = 55;
-    doc.setTextColor(31, 41, 55);
+    y = 60;
+    doc.setTextColor(0, 0, 0);
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     if (isQuotation) {
         doc.text('QUOTATION / PROFORMA', margin, y);
     } else {
-        doc.text(gstEnabled ? 'TAX INVOICE' : 'TRIP RECEIPT', margin, y);
+        const isRegistered = !!gstin;
+        const title = (isRegistered && gstEnabled) ? 'TAX INVOICE' : 'TRIP RECEIPT';
+        doc.text(title, margin, y);
     }
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
 
-    // GST Compliant Invoice numbering (Max 16 chars, alphanumeric)
+    // GST Compliant Invoice numbering (Simplified for Filing)
     const date = new Date(trip.date || Date.now());
-    const yearPart = date.getFullYear().toString().substring(2);
-    const monthPart = (date.getMonth() + 1).toString().padStart(2, '0');
-    const dayPart = date.getDate().toString().padStart(2, '0');
-    const serialPart = (trip.id || '0000').substring(0, 4).toUpperCase();
+    const yearPart = date.getFullYear().toString().substring(2); // e.g. 25
+    const monthPart = (date.getMonth() + 1).toString().padStart(2, '0'); // e.g. 12
+    const serialPart = (trip.id || '0000').substring(0, 4).toUpperCase(); // Unique Hash
 
-    const invoiceNo = isQuotation ? `QTN/${yearPart}${monthPart}${dayPart}/${serialPart}` : `INV/${yearPart}${monthPart}${dayPart}/${serialPart}`;
+    let vehSuffix = 'TX';
+    if (vehicleNumber && vehicleNumber !== 'N/A') {
+        // Extract last 4 digits (e.g. TN01AB1234 -> 1234)
+        const digits = vehicleNumber.replace(/[^0-9]/g, '');
+        if (digits.length >= 4) {
+            vehSuffix = digits.substring(digits.length - 4);
+        } else {
+            // Fallback to first 4 chars if no digits found
+            vehSuffix = vehicleNumber.replace(/[^A-Za-z0-9]/g, '').substring(0, 4).toUpperCase();
+        }
+    }
+
+    // Format: 1234/2512/001A (Vehicle/YYMM/ID)
+    const invoiceNo = isQuotation
+        ? `QTN/${yearPart}${monthPart}/${serialPart}`
+        : `${vehSuffix}/${yearPart}${monthPart}/${serialPart}`;
+
     doc.text(`${isQuotation ? 'Quotation' : 'Invoice'} No: ${invoiceNo}`, 195, y, { align: 'right' });
 
     y += 5;
@@ -94,172 +116,321 @@ export const generateReceiptPDF = (trip: Trip, settings: PDFSettings, isQuotatio
     doc.text(`Vehicle No: ${vehicleNumber}`, 195, y, { align: 'right' });
     y += 5;
     doc.text(`Place of Supply: Tamil Nadu (33)`, 195, y, { align: 'right' });
+    if (gstin) {
+        y += 5;
+        doc.setFont('helvetica', 'bold');
+        doc.text(`GSTIN: ${gstin}`, 195, y, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+    }
+
+    // RCM Declaration
+    y += 5;
+    const isReverseCharge = (!gstEnabled && gstin && trip.customerGst) ? 'YES' : 'NO';
+    doc.text(`Tax Payable on Reverse Charge: ${gstEnabled ? 'NO' : 'YES'}`, 195, y, { align: 'right' }); // Logic simplified: If GST enabled (Forward Charge), RCM is NO. If not enabled but invoice generated by registered person to registered person, likely RCM YES or just Exempt. For now, simplistic.
 
     // --- ZONE 3: CUSTOMER & JOURNEY ---
     y += 12;
-    doc.setDrawColor(229, 231, 235);
+    doc.setDrawColor(200, 200, 200);
     doc.line(margin, y, 195, y);
     y += 8;
 
+    const leftColX = margin;
+    const rightColX = 110;
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.text('BILL TO:', margin, y);
-    doc.text('PICKUP & DROP:', 110, y);
+    doc.text('BILL TO:', leftColX, y);
+    doc.text('PICKUP & DROP:', rightColX, y);
 
     y += 5;
     doc.setFont('helvetica', 'normal');
-    doc.text(String(trip.customerName || 'Customer'), margin, y);
+    doc.text(String(trip.customerName || 'Customer'), leftColX, y);
 
-    const journeyText = `${String(trip.from || 'N/A')} TO ${String(trip.to || 'N/A')}`;
-    doc.text(journeyText.toUpperCase(), 110, y, { maxWidth: 85 });
+    const fromAddr = String(trip.from || 'N/A');
+    const toAddr = String(trip.to || 'N/A');
+    const journeyLines = doc.splitTextToSize(`${fromAddr} TO ${toAddr}`.toUpperCase(), 85);
+    doc.text(journeyLines, rightColX, y);
 
+    const leftStartY = y;
+    let leftY = y + 5;
     if (trip.billingAddress) {
-        y += 5;
         doc.setFontSize(8);
-        doc.text(String(trip.billingAddress), margin, y, { maxWidth: 80 });
+        doc.text(String(trip.billingAddress), leftColX, leftY, { maxWidth: 80 });
+        leftY += 8;
     }
 
     if (trip.customerGst) {
-        y += 5;
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
-        doc.text(`GSTIN: ${trip.customerGst}`, margin, y);
-        doc.setFont('helvetica', 'normal');
+        doc.text(`GSTIN: ${trip.customerGst}`, leftColX, leftY);
+        leftY += 5;
     }
 
-    y = Math.max(y + 15, 105);
+    const journeyHeight = journeyLines.length * 5;
+    y = Math.max(leftY, leftStartY + journeyHeight) + 10;
 
-    // --- TABLE HEADER ---
-    doc.setFillColor(31, 41, 55);
-    doc.rect(margin, y, 180, 10, 'F');
-    doc.setTextColor(255, 255, 255);
+    // --- ZONE 4: TABLE (Clean Lines) ---
+    // Header Line Top
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.1);
+    doc.line(margin, y, 195, y);
+
+    y += 5;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
-    doc.text(trip.mode === 'package' ? 'TOUR PACKAGE' : 'DESCRIPTION', margin + 3, y + 6.5);
-    doc.text(trip.mode === 'package' ? 'PERSONS' : 'QTY', 105, y + 6.5);
-    doc.text('RATE', 135, y + 6.5);
-    doc.text('AMOUNT', 190, y + 6.5, { align: 'right' });
+    doc.setTextColor(0, 0, 0);
+    doc.text('DESCRIPTION', margin + 2, y);
+    doc.text('SAC', 95, y); // NEW COLUMN
+    doc.text('QTY', 115, y);
+    doc.text('RATE', 145, y);
+    doc.text('AMOUNT', 195, y, { align: 'right' });
 
-    y += 16;
+    y += 3;
+    // Header Line Bottom
+    doc.line(margin, y, 195, y);
+    y += 8;
+
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
 
-    let subtotalItems = 0;
+    let runningSubtotal = 0;
     const addTableRow = (label: string, qty: string, rate: string, amount: number) => {
         const safeAmount = isNaN(amount) ? 0 : amount;
-        doc.text(label, margin + 3, y);
-        doc.text(qty, 105, y);
-        doc.text(rate, 135, y);
-        doc.text(`Rs. ${safeAmount.toFixed(2)}`, 190, y, { align: 'right' });
-        subtotalItems += safeAmount;
-        y += 8;
+
+        // Description wrapping
+        const descLines = doc.splitTextToSize(label, 75); // Reduced width for Desc to fit SAC
+        doc.text(descLines, margin + 2, y);
+
+        doc.text('9966', 95, y); // SAC Code Fixed
+        doc.text(qty, 115, y);
+        doc.text(rate, 145, y);
+        doc.text(`${safeAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
+
+        runningSubtotal += safeAmount;
+        y += Math.max(8, descLines.length * 5); // Dynamic height
     };
 
-    if (trip.mode === 'hourly') {
+    // --- CHENNAI ASSOCIATION 2025 LOGIC SYNC ---
+    const dist = Math.max(0, (trip.endKm || 0) - (trip.startKm || 0));
+
+    if (trip.mode === 'custom') {
+        // --- CUSTOM INVOICE ITEMS ---
+        if (trip.extraItems && trip.extraItems.length > 0) {
+            trip.extraItems.forEach(item => {
+                const desc = item.description || 'Service Charge';
+                const amt = item.amount || 0;
+                addTableRow(desc, '1', '-', amt);
+            });
+        } else {
+            addTableRow('Custom Service', '1', '-', trip.baseFare || 0);
+        }
+    } else if (trip.mode === 'hourly') {
         const hrs = trip.durationHours || 0;
-        const rate = trip.hourlyRate || 0;
-        addTableRow('Local Rental (Hourly)', `${hrs} Hrs`, `Rs. ${rate}/Hr`, hrs * rate);
+        if (hrs <= 5) {
+            addTableRow('Rental Package (5 Hours / 50 KM)', '1', '-', trip.hourlyRate || 1500);
+        } else if (hrs <= 10) {
+            addTableRow('Rental Package (10 Hours / 100 KM)', '1', '-', trip.hourlyRate || 2800);
+        } else {
+            addTableRow('Local Rental (Hourly)', `${hrs} Hrs`, `${trip.hourlyRate}/Hr`, hrs * (trip.hourlyRate || 0));
+        }
     } else if (trip.mode === 'package') {
-        const pkgName = trip.packageName || 'Tour Package';
-        const persons = trip.numberOfPersons || 1;
-        const rate = trip.packagePrice || 0;
-        addTableRow(pkgName.toUpperCase(), persons.toString(), `Rs. ${rate}`, rate);
-    } else {
-        const km = Math.max(0, (trip.endKm || 0) - (trip.startKm || 0));
-        const rate = trip.ratePerKm || 0;
-        addTableRow('Transport Service', `${km} KM`, `Rs. ${rate}/KM`, km * rate);
+        addTableRow(String(trip.packageName || 'TOUR PACKAGE').toUpperCase(), '1', '-', trip.packagePrice || 0);
+    } else if (trip.mode === 'drop') {
+        if (dist <= 30) {
+            // Local Market Rate (Point-to-Point)
+            // Attempt to find vehicle type to determine base fare correctly
+            let isSuv = false;
+            if (trip.vehicleId) {
+                const combinedVehicles = [...(settings.vehicles || []), ...VEHICLES];
+                const v = combinedVehicles.find(x => x.id === trip.vehicleId);
+                // Check if type is SUV or if manual model suggests SUV (heuristic)
+                if (v && ((v as any).type === 'SUV' || (v as any).name?.includes('SUV') || (v as any).name?.includes('Innova'))) {
+                    isSuv = true;
+                }
+            } else if (trip.ratePerKm >= 18) {
+                // Fallback heuristic
+                isSuv = true;
+            }
+
+            const baseFee = isSuv ? 350 : 250;
+            const extraKm = Math.max(0, dist - 10);
+            const extraRate = isSuv ? 35 : 25;
+
+            addTableRow('Local Drop (Base First 10 KM)', '10 KM', `${baseFee}`, baseFee);
+            if (extraKm > 0) {
+                addTableRow('Extra Distance Charge', `${extraKm.toFixed(1)} KM`, `${extraRate}/KM`, extraKm * extraRate);
+            }
+        } else {
+            // Outstation Drop (130 KM Min)
+            const chargedKm = Math.max(130, dist);
+            const rate = trip.ratePerKm || 14;
+            addTableRow(`Drop Trip (Point-to-Point - ${dist} KM)`, `${chargedKm} KM (Min)`, `${rate}/KM`, chargedKm * rate);
+        }
+    } else if (trip.mode === 'outstation') {
+        // Round Trip (300 KM/Day Min)
+        const days = trip.days || 1;
+        const chargedKm = Math.max(300 * days, dist);
+        const rate = trip.ratePerKm || 12;
+        addTableRow(`Round Trip (${dist} KM)`, `${chargedKm} KM (Min)`, `${rate}/KM`, chargedKm * rate);
     }
 
-    if ((trip.baseFare || 0) > 0) addTableRow('Base Fare / Minimum Charge', '1', `Rs. ${trip.baseFare}`, trip.baseFare || 0);
-    if ((trip.nightBata || 0) > 0) addTableRow('Night / Stay Charge', '1', `Rs. ${trip.nightBata}`, trip.nightBata || 0);
-    if ((trip.waitingCharges || 0) > 0) addTableRow(`Waiting Time (${trip.waitingHours} Hrs)`, trip.waitingHours ? `${trip.waitingHours} Hrs` : '1', 'Rs. 150/Hr', trip.waitingCharges || 0);
-    if ((trip.hillStationCharges || 0) > 0) addTableRow('Hill Station Trip Charge', '1', `Rs. ${trip.hillStationCharges}`, trip.hillStationCharges || 0);
-    if ((trip.petCharges || 0) > 0) addTableRow('Pet Carrying Charge', '1', `Rs. ${trip.petCharges}`, trip.petCharges || 0);
 
-    let extraChargesExempt = 0;
-    if ((trip.toll || 0) > 0 || (trip.parking || 0) > 0) {
-        y += 2;
-        doc.setFont('helvetica', 'italic');
-        doc.setFontSize(8);
-        doc.text('Extra Charges (GST Exempt):', margin + 3, y);
-        y += 6;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        if ((trip.toll || 0) > 0) {
-            addTableRow('Toll Charges', 'Actuals', '-', trip.toll || 0);
-            extraChargesExempt += (trip.toll || 0);
-        }
-        if ((trip.parking || 0) > 0) {
-            addTableRow('Parking Charges', 'Actuals', '-', trip.parking || 0);
-            extraChargesExempt += (trip.parking || 0);
-        }
+
+    // Night Batta (if separate) or additional allowance
+    if ((trip.nightBata || 0) > 0) {
+        // Night Batta is usually per night for outstation
+        const payDays = (trip.mode === 'outstation' ? trip.days : 1) || 1;
+        const nLabel = payDays > 1 ? `Night Allowance (${payDays} Nights)` : 'Night Allowance';
+        addTableRow(nLabel, `${payDays}`, `${trip.nightBata}`, (trip.nightBata || 0) * payDays);
     }
 
-    y += 5;
-    doc.line(130, y, 195, y);
-    y += 10;
+    // Driver Batta
+    if ((trip.driverBatta || 0) > 0) {
+        const payDays = (trip.mode === 'outstation' ? trip.days : 1) || 1;
+        const bLabel = payDays > 1 ? `Driver Batta (${payDays} Days)` : 'Driver Batta';
+        addTableRow(bLabel, `${payDays}`, `${trip.driverBatta}`, (trip.driverBatta || 0) * payDays);
+    }
+
+    // Night Stay (Outstation)
+    if ((trip.nightStay || 0) > 0) {
+        addTableRow('Night Stay Charge', '-', `${trip.nightStay}`, trip.nightStay || 0);
+    }
+
+    if ((trip.waitingCharges || 0) > 0) addTableRow('Waiting Charges', `${trip.waitingHours} Hrs`, '150/Hr', trip.waitingCharges || 0);
+    if ((trip.hillStationCharges || 0) > 0) addTableRow('Hill Station Charges', '1', '-', trip.hillStationCharges || 0);
+    if ((trip.petCharges || 0) > 0) addTableRow('Pet Carrying Charges', '1', '-', trip.petCharges || 0);
+
+    // --- EXEMPT CHARGES (Reimbursements) ---
+    // We calculate these separately to not confuse the "Taxable Value"
+    let reimbursements = 0;
 
     // --- TOTALS SECTION ---
+    y += 5;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(110, y, 195, y); // Partial line
+    y += 8;
+
+    const taxableValue = runningSubtotal; // Items added so far are taxable (Fare, Batta, Waiting)
     const gstValue = trip.gst || 0;
-    const finalTotal = subtotalItems + gstValue;
 
+    // 1. Show Taxable Value
     doc.setFontSize(10);
-    doc.text('Subtotal:', 140, y);
-    doc.text(`Rs. ${subtotalItems.toFixed(2)}`, 190, y, { align: 'right' });
-    y += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.text('Taxable Amount:', 135, y);
+    doc.text(`${taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
+    y += 8;
 
-    if (gstEnabled && gstValue > 0) {
-        doc.text('CGST (2.5%):', 140, y);
-        doc.text(`Rs. ${(gstValue / 2).toFixed(2)}`, 190, y, { align: 'right' });
+    const isDriverRegistered = !!gstin;
+    const isCorporateClient = !!trip.customerGst;
+
+    // 2. Add GST
+    if (isDriverRegistered && gstValue > 0) {
+        // SCENARIO 1: Registered Driver + GST Enabled
+        const halfGst = gstValue / 2;
+        doc.text('CGST (2.5%):', 135, y);
+        doc.text(`${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
         y += 6;
-        doc.text('SGST (2.5%):', 140, y);
-        doc.text(`Rs. ${(gstValue / 2).toFixed(2)}`, 190, y, { align: 'right' });
+        doc.text('SGST (2.5%):', 135, y);
+        doc.text(`${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
         y += 8;
-    } else {
+    } else if (trip.customerGst && !gstEnabled) {
+        // SCENARIO 2: RCM Applicable (Registered Customer, but Forward Charge not collected)
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Tax Payable on Reverse Charge:', 135, y);
+        doc.text('YES', 195, y, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        y += 8;
+    } else if (isDriverRegistered && gstValue === 0 && gstEnabled) {
+        // SCENARIO 3: Nil Rated
         doc.setFontSize(8);
-        doc.text('GST Reverse Charge Applicable', 140, y);
+        doc.setTextColor(100, 100, 100);
+        doc.text('Tax: 0.00 (Nil Rated)', 135, y);
+        doc.setTextColor(0, 0, 0);
+        y += 8;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+    } else if (isDriverRegistered && isCorporateClient && !gstEnabled) {
+        // SCENARIO 4: Registered Driver (e.g. 5% RCM Schema) -> RCM YES
+        // We already showed RCM Yes in Header. Maybe add note here?
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
+        doc.text('Tax Payable on RCM by Recipient', 135, y);
         y += 8;
     }
 
-    doc.setFillColor(254, 240, 138); // Soft Yellow
-    doc.rect(130, y - 6, 75, 12, 'F');
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('GRAND TOTAL:', 135, y + 2);
-    doc.text(`Rs. ${finalTotal.toFixed(2)}`, 195, y + 2, { align: 'right' });
+    // 3. Add Reimbursements (Toll/Parking) AFTER Tax
+    if ((trip.toll || 0) > 0 || (trip.parking || 0) > 0 || (trip.permit || 0) > 0) {
+        y += 2;
+        if ((trip.toll || 0) > 0) {
+            doc.text('Toll Charges:', 135, y);
+            doc.text(`${trip.toll}`, 195, y, { align: 'right' });
+            reimbursements += trip.toll || 0;
+            y += 6;
+        }
+        if ((trip.parking || 0) > 0) {
+            doc.text('Parking Charges:', 135, y);
+            doc.text(`${trip.parking}`, 195, y, { align: 'right' });
+            reimbursements += trip.parking || 0;
+            y += 6;
+        }
+        if ((trip.permit || 0) > 0) {
+            doc.text('Permit Charges:', 135, y);
+            doc.text(`${trip.permit}`, 195, y, { align: 'right' });
+            reimbursements += trip.permit || 0;
+            y += 8;
+        }
+    }
 
-    y += 15;
+    const finalTotal = taxableValue + gstValue + reimbursements;
+
+    // Grand Total Box (Clean Border, No Fill)
+    y += 2;
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+    doc.line(130, y - 6, 195, y - 6); // Top line of total
+    doc.line(130, y + 4, 195, y + 4); // Bottom line of total
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('GRAND TOTAL', 135, y);
+    doc.text(`Rs. ${finalTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
+
+    y += 18;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'italic');
-    doc.setTextColor(75, 85, 99);
-    const words = numberToWords(finalTotal);
-    const cleanWords = String(words).toUpperCase().replace('RUPEES ONLY', '').trim();
-    doc.text(`Amount in Words: ${cleanWords} RUPEES ONLY`, margin, y);
+    doc.setTextColor(60, 60, 60);
+    doc.text(`Amount in Words: ${numberToWords(finalTotal).toUpperCase()}`, margin, y, { maxWidth: 180 });
 
     y += 10;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.text('SAC 9966: Rental services of road vehicles with operators.', margin, y);
 
-    y = 250;
+    y = 255;
     doc.line(margin, y, 195, y);
     y += 10;
 
     doc.setFontSize(9);
+    doc.setTextColor(31, 41, 55);
     doc.text('Receiver\'s Signature', margin, y);
     doc.text('Authorized Signatory', 195, y, { align: 'right' });
 
-    y += 20;
+    y += 18;
     doc.setFontSize(7);
     doc.setTextColor(156, 163, 175);
-    doc.text('Subject to Chennai Jurisdiction. | Computer generated invoice no signature required.', 105, y, { align: 'center' });
+    doc.text('Subject to Chennai Jurisdiction. | Computer generated invoice, no signature required.', 105, y, { align: 'center' });
     y += 4;
-    doc.text(`Generated by Namma Cab Office App for ${companyName}`, 105, y, { align: 'center' });
+    doc.text(`Generated by ${companyName} via Sarathi Book App`, 105, y, { align: 'center' });
+    y += 4;
+    doc.setTextColor(37, 99, 235); // Blue
+    doc.textWithLink('Manage your taxi business at https://sarathibook.com/', 105, y, { url: 'https://sarathibook.com/', align: 'center' });
 
     return doc;
 };
 
+// Sustainable Quotation Design
 export const generateQuotationPDF = (data: QuotationData, settings: PDFSettings) => {
     const doc = new jsPDF();
     const margin = 15;
@@ -270,18 +441,18 @@ export const generateQuotationPDF = (data: QuotationData, settings: PDFSettings)
     const driverPhone = String(settings?.driverPhone || '');
     const gstin = String(settings?.gstin || '');
 
-    // --- HEADER ---
-    doc.setTextColor(30, 58, 138); // Blue
+    // --- HEADER (Minimal) ---
+    doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(22);
     doc.text(companyName.toUpperCase(), margin, 20);
 
-    doc.setTextColor(50, 50, 50);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(companyAddress, margin, 28, { maxWidth: 120 });
+    const lines = doc.splitTextToSize(companyAddress, 120);
+    doc.text(lines, margin, 28);
 
-    y = 38;
+    y = 38 + (lines.length > 1 ? (lines.length - 1) * 4 : 0);
     doc.setFont('helvetica', 'bold');
     doc.text(`Contact  : ${driverPhone}`, margin, y);
     if (gstin) {
@@ -289,7 +460,8 @@ export const generateQuotationPDF = (data: QuotationData, settings: PDFSettings)
         doc.text(`GSTIN   : ${gstin}`, margin, y);
     }
 
-    doc.setDrawColor(150, 150, 150);
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
     doc.line(margin, y + 5, 195, y + 5);
 
     y += 12;
@@ -299,8 +471,10 @@ export const generateQuotationPDF = (data: QuotationData, settings: PDFSettings)
     y += 10;
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('QUOTATION', 105, y, { align: 'center' });
-    doc.line(90, y + 1, 120, y + 1);
+    doc.text('QUOTATION / COST ESTIMATION', 105, y, { align: 'center' });
+    // Minimal underline
+    doc.setLineWidth(0.2);
+    doc.line(80, y + 1, 130, y + 1);
 
     y += 15;
     doc.setFontSize(10);
@@ -312,163 +486,257 @@ export const generateQuotationPDF = (data: QuotationData, settings: PDFSettings)
 
     y += 10;
     doc.setFont('helvetica', 'normal');
-    doc.text(`SUB : ${data.subject}`, 105, y, { align: 'center', maxWidth: 160 });
+    const subL = doc.splitTextToSize(`SUB : ${data.subject}`, 175);
+    doc.text(subL, margin, y);
+    y += subL.length * 5 + 5;
 
-    y += 10;
-    // --- TABLE ---
-    const headers = ['S.No', 'Description of Service', 'Package', 'Vehicle', 'Rate', 'Amount'];
-    const colWidths = [12, 60, 40, 25, 20, 23];
+    // --- TABLE (Clean, No Fill) ---
+    const headers = ['S.No', 'Description', 'Vehicle', 'Rate', 'Amount'];
+    const colWidths = [12, 80, 30, 25, 33];
     const tableX = margin;
 
-    // Header Fill
-    doc.setFillColor(255, 255, 255);
-    doc.rect(tableX, y, 180, 10);
+    // Header Lines (Top/Bottom border for header row)
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.1);
+    doc.line(tableX, y, tableX + 180, y);
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
 
-    let currentX = tableX;
+    let xVal = tableX;
     headers.forEach((h, i) => {
-        doc.text(h, currentX + (colWidths[i] / 2), y + 6.5, { align: 'center' });
-        currentX += colWidths[i];
+        doc.text(h, xVal + (colWidths[i] / 2), y + 6.5, { align: 'center' });
+        xVal += colWidths[i];
     });
 
-    // Draw table lines
-    const startY = y;
     y += 10;
+    doc.line(tableX, y - 2, tableX + 180, y - 2); // Bottom header line
 
     data.items.forEach((item, index) => {
         doc.setFont('helvetica', 'normal');
-        let currentX = tableX;
+        let x = tableX;
+        doc.text((index + 1).toString(), x + (colWidths[0] / 2), y + 7, { align: 'center' });
+        x += colWidths[0];
 
-        // S.No
-        doc.text((index + 1).toString(), currentX + (colWidths[0] / 2), y + 6, { align: 'center' });
-        currentX += colWidths[0];
+        const descText = `${item.description} - ${item.package}`.toUpperCase();
+        const descLines = doc.splitTextToSize(descText, colWidths[1] - 4);
+        doc.text(descLines, x + 2, y + 7);
+        x += colWidths[1];
 
-        // Desc
-        doc.text(item.description, currentX + 2, y + 6, { maxWidth: colWidths[1] - 4 });
-        currentX += colWidths[1];
+        doc.text(item.vehicleType, x + (colWidths[2] / 2), y + 7, { align: 'center' });
+        x += colWidths[2];
 
-        // Package
-        doc.text(item.package, currentX + (colWidths[2] / 2), y + 6, { align: 'center' });
-        currentX += colWidths[2];
+        doc.text(item.rate, x + (colWidths[3] / 2), y + 7, { align: 'center' });
+        x += colWidths[3];
 
-        // Vehicle
-        doc.text(item.vehicleType, currentX + (colWidths[3] / 2), y + 6, { align: 'center' });
-        currentX += colWidths[3];
+        doc.text(`${item.amount}`, x + colWidths[4] - 2, y + 7, { align: 'right' });
 
-        // Rate
-        doc.text(item.rate, currentX + (colWidths[4] / 2), y + 6, { align: 'center' });
-        currentX += colWidths[4];
-
-        // Amount
-        doc.text(item.amount, currentX + (colWidths[5] - 2), y + 6, { align: 'right' });
-
-        doc.rect(tableX, y, 180, 10); // Row border
-        y += 10;
+        const rowHeight = Math.max(10, descLines.length * 6);
+        // Minimal row separator (optional, or just whitespace)
+        // doc.line(tableX, y + rowHeight, tableX + 180, y + rowHeight); 
+        y += rowHeight;
     });
 
-    // Vertical lines for the table
-    let xv = tableX;
-    doc.line(xv, startY, xv, y); // left
-    colWidths.forEach(w => {
-        xv += w;
-        doc.line(xv, startY, xv, y);
-    });
-
+    y += 5;
+    // Bottom table closure line
+    doc.line(tableX, y, tableX + 180, y);
     y += 10;
+
     doc.setFont('helvetica', 'bold');
-    doc.text('Note:', margin, y);
+    doc.text('Terms & Conditions:', margin, y);
     y += 8;
-    doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
     const notes = [
-        '• Driver Beta, Toll, Permit, and Parking are additional charges and will be calculated based on actuals.',
-        `• Rates are applicable for items listed above.`,
-        '• Minimum 4 hours and 40 km apply for local usage.'
+        '• Driver Allowance, Toll, Permit, and Parking are additional based on actuals.',
+        '• Minimum running of 250 KM per day for outstation round trips.',
+        '• Subject to Chennai Jurisdiction.'
     ];
     notes.forEach(n => {
         doc.text(n, margin, y);
-        y += 5;
+        y += 6;
     });
 
-    y += 20;
-    doc.setFont('helvetica', 'normal');
-    doc.text('Yours Sincerely,', 195, y, { align: 'right' });
-    y += 8;
-    doc.setFont('helvetica', 'bold');
-    doc.text(`For ${companyName}`, 195, y, { align: 'right' });
-
-    // Graphic at bottom
-    doc.setFillColor(219, 39, 119); // Pinkish red
-    doc.triangle(150, 297, 210, 297, 210, 260, 'F');
-    doc.setFillColor(157, 23, 77); // Darker pink
-    doc.triangle(170, 297, 210, 297, 210, 275, 'F');
+    y = 255;
+    doc.text('For ' + companyName.toUpperCase(), 195, y, { align: 'right' });
+    y += 15;
+    doc.text('Authorized Signatory', 195, y, { align: 'right' });
 
     return doc;
 };
 
-export const shareQuotation = async (data: QuotationData, settings: PDFSettings) => {
-    try {
-        const doc = generateQuotationPDF(data, settings);
-        const pdfBlob = doc.output('blob');
-        const safeName = (data.customerName || 'customer').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        const filename = `Quotation_${safeName}.pdf`;
-        const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+export const shareReceipt = (trip: Trip, settings: PDFSettings) => {
+    const doc = generateReceiptPDF(trip, settings);
+    const pdfBlob = doc.output('blob');
+    const file = new File([pdfBlob], `Invoice_${trip.customerName?.replace(/\s/g, '_') || 'Trip'}.pdf`, { type: 'application/pdf' });
 
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    if (navigator.share) {
+        navigator.share({
+            files: [file],
+            title: 'Trip Invoice',
+            text: `Invoice for trip by ${trip.customerName}`
+        }).catch(err => {
+            console.error('Error sharing invoice:', err);
+            doc.save(`Invoice_${trip.customerName?.replace(/\s/g, '_') || 'Trip'}.pdf`);
+        });
+    } else {
+        doc.save(`Invoice_${trip.customerName?.replace(/\s/g, '_') || 'Trip'}.pdf`);
+    }
+};
+
+export const shareQuotation = async (data: QuotationData, settings: PDFSettings) => {
+    const doc = generateQuotationPDF(data, settings);
+    const pdfBlob = doc.output('blob');
+    const filename = `Quotation_${data.customerName.replace(/\s/g, '_')}_${new Date().getTime()}.pdf`;
+    const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+    // ... (Existing shareQuotation code)
+
+    if (navigator.share) {
+        try {
             await navigator.share({
                 files: [file],
-                title: 'Travel Quotation',
-                text: `Quotation for ${data.customerName}`,
+                title: 'Trip Quotation',
+                text: `Quotation for ${data.customerName} - ${data.subject}`
             });
-        } else {
-            const url = URL.createObjectURL(pdfBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            link.click();
-            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Error sharing quotation:', err);
+            doc.save(filename);
         }
-    } catch (error) {
-        console.error('Failed to share quotation:', error);
+    } else {
+        doc.save(filename);
     }
 };
 
-export const shareReceipt = async (trip: Trip, settings: PDFSettings, isQuotation: boolean = false) => {
-    try {
-        const doc = generateReceiptPDF(trip, settings, isQuotation);
-        const pdfBlob = doc.output('blob');
-        const safeName = (trip.customerName || 'customer').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        const tripId = (trip.id || '0000').substring(0, 4);
-        const filename = `${isQuotation ? 'Quotation' : 'Invoice'}_${safeName}_${tripId}.pdf`;
-        const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+export const generateFinancialReportPDF = (trips: Trip[], expenses: any[], settings: PDFSettings, periodLabel: string) => {
+    const doc = new jsPDF();
+    const margin = 15;
+    let y = 15;
 
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-            try {
-                const pickup = trip.from || 'N/A';
-                const drop = trip.to || 'N/A';
-                await navigator.share({
-                    files: [file],
-                    title: `${settings.companyName} ${isQuotation ? 'Quotation' : 'Invoice'}`,
-                    text: `${isQuotation ? 'Quotation' : 'Invoice'} for ${trip.customerName} - Total: Rs. ${trip.totalFare}\nPickup: ${pickup}\nDrop: ${drop}`,
-                });
-                return;
-            } catch (shareError) {
-                console.warn('Web Share failed, falling back to download', shareError);
-            }
-        }
+    // --- HEADER ---
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.text((settings?.companyName || 'MY BUSINESS').toUpperCase(), margin, 20);
 
-        const url = URL.createObjectURL(pdfBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-    } catch (error) {
-        console.error('Failed to generate or share PDF:', error);
-        alert('Could not generate PDF. Please check your profile settings.');
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`, 195, 20, { align: 'right' });
+
+    y = 30;
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, 195, y);
+
+    y += 10;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text('STATEMENT OF ACCOUNTS', 105, y, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Period: ${periodLabel}`, 105, y + 6, { align: 'center' });
+
+    // --- FINANCIAL SUMMARY ---
+    y += 20;
+    const totalIncome = trips.reduce((sum, t) => sum + t.totalFare, 0);
+    const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const netProfit = totalIncome - totalExpense;
+
+    doc.setFillColor(245, 247, 250);
+    doc.rect(margin, y, 180, 40, 'F');
+    doc.rect(margin, y, 180, 40, 'S');
+
+    y += 10;
+    doc.setFont('helvetica', 'bold');
+    doc.text('FINANCIAL SUMMARY', margin + 5, y);
+
+    y += 10;
+    doc.setFontSize(11);
+    doc.text('Total Income (Revenue)', margin + 10, y);
+    doc.text(`${totalIncome.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}`, 185, y, { align: 'right' });
+
+    y += 8;
+    doc.text('Total Expenses', margin + 10, y);
+    doc.text(`- ${totalExpense.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}`, 185, y, { align: 'right' });
+
+    y += 10;
+    doc.setLineWidth(0.3);
+    doc.line(margin + 5, y - 5, 185, y - 5);
+    doc.setFontSize(12);
+    doc.text('NET PROFIT / (LOSS)', margin + 10, y);
+    doc.text(`${netProfit.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}`, 185, y, { align: 'right' });
+
+    // --- INCOME BREAKDOWN (Simplified) ---
+    y += 25;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('INCOME STATISTICS', margin, y);
+    doc.line(margin, y + 2, 195, y + 2);
+
+    y += 10;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Total Trips Completed: ${trips.length}`, margin, y);
+    y += 6;
+    const totalKms = trips.reduce((sum, t) => sum + (t.endKm - t.startKm), 0);
+    doc.text(`Total Distance Covered: ${totalKms.toLocaleString()} KM`, margin, y);
+
+    // --- EXPENSE BREAKDOWN ---
+    y += 15;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('EXPENSE BREAKDOWN', margin, y);
+    doc.line(margin, y + 2, 195, y + 2);
+    y += 10;
+
+    // Group expenses properly
+    const catTotals: Record<string, number> = {};
+    expenses.forEach(e => {
+        catTotals[e.category] = (catTotals[e.category] || 0) + e.amount;
+    });
+
+    const categories = Object.keys(catTotals);
+    if (categories.length === 0) {
+        doc.setFont('helvetica', 'italic');
+        doc.text('No expenses recorded for this period.', margin, y);
+    } else {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        categories.forEach(cat => {
+            doc.text(cat.toUpperCase(), margin, y);
+            doc.text(`${catTotals[cat].toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}`, 195, y, { align: 'right' });
+            y += 6;
+        });
     }
+
+    // --- FOOTER ---
+    y = 270;
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('This is a computer-generated financial statement generated via Sarathi Book App.', 105, y, { align: 'center' });
+    doc.text('Useful for Income Tax Filing support and Bank Loan applications.', 105, y + 4, { align: 'center' });
+
+    return doc;
 };
 
+export const shareFinancialReport = async (trips: Trip[], expenses: any[], settings: PDFSettings, periodLabel: string) => {
+    const doc = generateFinancialReportPDF(trips, expenses, settings, periodLabel);
+    const pdfBlob = doc.output('blob');
+    const filename = `Financial_Report_${periodLabel.replace(/\s/g, '_')}_${new Date().getTime()}.pdf`;
+    const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                files: [file],
+                title: 'Business Financial Report',
+                text: `Find attached the financial statement for ${periodLabel}`
+            });
+        } catch (err) {
+            console.error('Error sharing report:', err);
+            doc.save(filename);
+        }
+    } else {
+        doc.save(filename);
+    }
+};

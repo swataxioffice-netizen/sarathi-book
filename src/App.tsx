@@ -2,13 +2,12 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { safeJSONParse } from './utils/storage';
 import { supabase } from './utils/supabase';
 import UpdateWatcher from './components/UpdateWatcher';
-import { SettingsProvider } from './contexts/SettingsContext';
+import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import { X, RefreshCw } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useUpdate, UpdateProvider } from './contexts/UpdateContext';
 import Header from './components/Header';
 import TripForm from './components/TripForm';
-import History from './components/History';
 import BottomNav from './components/BottomNav';
 import Dashboard from './components/Dashboard';
 import GoogleSignInButton from './components/GoogleSignInButton';
@@ -18,12 +17,15 @@ import Notifications from './components/Notifications';
 import type { Trip } from './utils/fare';
 
 // Lazy load heavy components to reduce initial bundle size
+const History = lazy(() => import('./components/History'));
 const Profile = lazy(() => import('./components/Profile'));
 const ExpenseTracker = lazy(() => import('./components/ExpenseTracker'));
 const Calculator = lazy(() => import('./components/Calculator'));
 const QuotationForm = lazy(() => import('./components/QuotationForm'));
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
+const PublicProfile = lazy(() => import('./components/PublicProfile'));
 
+// Loading fallback component
 // Loading fallback component
 const LoadingFallback = () => (
   <div className="flex items-center justify-center h-64">
@@ -49,6 +51,7 @@ function AppContent() {
   }, [activeTab]);
 
   const [invoiceQuotationToggle, setInvoiceQuotationToggle] = useState<'invoice' | 'quotation'>('invoice');
+  const [invoiceStep, setInvoiceStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [trips, setTrips] = useState<Trip[]>(() => safeJSONParse<Trip[]>('namma-cab-trips', []));
   const [showLoginNudge, setShowLoginNudge] = useState(false);
@@ -130,47 +133,147 @@ function AppContent() {
     }
   };
 
+  const handleDeleteTrip = async (tripId: string) => {
+    if (!window.confirm("Are you sure you want to delete this invoice? This cannot be undone.")) return;
+
+    // 1. Optimistic Update
+    setTrips(prev => prev.filter(t => t.id !== tripId));
+
+    // 2. Persistent Delete
+    if (user) {
+      try {
+        const { error } = await supabase.from('trips').delete().eq('id', tripId);
+        if (error) throw error;
+      } catch (err) {
+        console.error('Failed to delete trip from cloud:', err);
+        // Optionally revert optimistic update or notify user
+      }
+    }
+  };
+
+  const { settings, docStats } = useSettings();
+
+  const getCompletion = () => {
+    let score = 0;
+    const totalSteps = 5;
+    if (settings.companyName && settings.companyAddress && settings.driverPhone) score++;
+    const hasBank = settings.bankName && settings.accountNumber && settings.ifscCode && settings.holderName;
+    const hasUPI = !!settings.upiId;
+    if (hasBank || hasUPI) score++;
+    if (settings.vehicles.length > 0) score++;
+    if (docStats.hasFullVehicle) score++;
+    if (docStats.hasFullDriver) score++;
+    return Math.min(100, Math.round((score / totalSteps) * 100));
+  };
+
+  const completion = getCompletion();
+  const isLocked = invoiceStep > 1 && invoiceQuotationToggle === 'invoice';
+
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard trips={trips} />;
       case 'trips':
         return (
-          <div className="space-y-2">
-            {/* Toggle between Invoice and Quotation */}
-            <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex gap-1">
-              <button
-                onClick={() => setInvoiceQuotationToggle('invoice')}
-                className={`flex-1 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${invoiceQuotationToggle === 'invoice'
-                  ? 'bg-[#0047AB] text-white shadow-md'
-                  : 'text-slate-400 hover:bg-slate-50'
-                  }`}
-              >
-                Invoice
-              </button>
-              <button
-                onClick={() => setInvoiceQuotationToggle('quotation')}
-                className={`flex-1 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${invoiceQuotationToggle === 'quotation'
-                  ? 'bg-[#0047AB] text-white shadow-md'
-                  : 'text-slate-400 hover:bg-slate-50'
-                  }`}
-              >
-                Quotation
-              </button>
+          <div className="relative min-h-[500px]">
+            {/* Blurred Content Preview - Adjusted for higher visibility */}
+            <div className={`space-y-4 transition-all duration-700 ${completion < 100 ? 'blur-[4px] pointer-events-none select-none opacity-70' : ''}`}>
+
+              {!isLocked && (
+                <div className="flex items-center gap-2">
+                  {/* Toggle between Invoice and Quotation */}
+                  <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex gap-1 relative overflow-auto flex-1">
+                    <button
+                      onClick={() => setInvoiceQuotationToggle('invoice')}
+                      className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all ${invoiceQuotationToggle === 'invoice'
+                        ? 'bg-[#0047AB] text-white shadow-md'
+                        : 'text-slate-400 hover:bg-slate-50'
+                        }`}
+                    >
+                      New Invoice
+                    </button>
+                    <button
+                      onClick={() => setInvoiceQuotationToggle('quotation')}
+                      className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all ${invoiceQuotationToggle === 'quotation'
+                        ? 'bg-[#6366F1] text-white shadow-md'
+                        : 'text-slate-400 hover:bg-slate-50'
+                        }`}
+                    >
+                      Quotation
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Show Invoice or Quotation based on toggle */}
+              {invoiceQuotationToggle === 'invoice' ? (
+                <div className="space-y-2">
+                  <TripForm onSaveTrip={handleSaveTrip} onStepChange={setInvoiceStep} />
+                </div>
+              ) : (
+                <Suspense fallback={<LoadingFallback />}>
+                  <QuotationForm />
+                </Suspense>
+              )}
+
+              {/* Recent Invoices - Always Visible Below ONLY on Choose Service Screen (Step 1) */}
+              {invoiceStep === 1 && (
+                <div className="mt-8 pt-6 border-t border-slate-200">
+                  <Suspense fallback={<LoadingFallback />}>
+                    <History trips={trips} onDeleteTrip={handleDeleteTrip} />
+                  </Suspense>
+                </div>
+              )}
             </div>
 
-            {/* Show Invoice or Quotation based on toggle */}
-            {invoiceQuotationToggle === 'invoice' ? (
-              <div className="space-y-2">
-                <TripForm onSaveTrip={handleSaveTrip} />
-                <History trips={trips} />
-              </div>
-            ) : (
-              <Suspense fallback={<LoadingFallback />}>
-                <QuotationForm />
-              </Suspense>
-            )}
-          </div>
+            {/* Incomplete Profile Overlay */}
+            {
+              completion < 100 && (
+                <div className="absolute inset-0 z-30 flex items-center justify-center p-6 animate-fade-in">
+                  <div className="bg-white/90 backdrop-blur-xl w-full max-w-[340px] p-10 rounded-[40px] border border-white shadow-2xl text-center ring-1 ring-black/5">
+                    <div className="w-20 h-20 bg-blue-50/50 rounded-full flex items-center justify-center mb-8 mx-auto relative">
+                      <svg className="w-16 h-16 transform -rotate-90">
+                        <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-blue-100/50" />
+                        <circle
+                          cx="32"
+                          cy="32"
+                          r="28"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                          fill="transparent"
+                          strokeDasharray={175.9}
+                          strokeDashoffset={175.9 * (1 - completion / 100)}
+                          strokeLinecap="round"
+                          className="text-green-500 transition-all duration-1500 ease-out"
+                        />
+                      </svg>
+                      <span className="absolute inset-0 flex items-center justify-center text-xl font-black tracking-tighter text-slate-900">{completion}%</span>
+                    </div>
+
+                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-3">Profile Incomplete</h3>
+                    <p className="text-[11px] text-slate-500 font-bold leading-relaxed mb-8">
+                      You must complete your 100% profile details including business info, fleet, and documents to access invoicing features.
+                    </p>
+
+                    <button
+                      onClick={() => setActiveTab('profile')}
+                      className="w-full py-4 bg-[#0047AB] text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.1em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all hover:bg-blue-700"
+                    >
+                      Setup My Profile
+                    </button>
+
+                    <div className="mt-6 pt-6 border-t border-slate-100">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-loose">
+                        {settings.companyName ? '✅ Business Info' : '❌ Business Info'}<br />
+                        {settings.vehicles.length > 0 ? '✅ Fleet Added' : '❌ Fleet Added'}<br />
+                        {docStats.hasFullVehicle && docStats.hasFullDriver ? '✅ Documents Verified' : '❌ Documents Missing'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            }
+          </div >
         );
       case 'expenses':
         return (
@@ -201,6 +304,19 @@ function AppContent() {
     }
   };
 
+  /* Public Profile Route */
+  const params = new URLSearchParams(window.location.search);
+  const publicProfileId = params.get('u');
+
+  if (publicProfileId) {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        {/* Dynamically import PublicProfile to avoid bundling it for admins if possible, though needed here */}
+        <PublicProfile userId={publicProfileId} />
+      </Suspense>
+    );
+  }
+
   return (
     <>
       <UpdateWatcher />
@@ -208,7 +324,7 @@ function AppContent() {
       <div className="hidden md:flex h-screen w-full bg-slate-100 overflow-hidden">
         <SideNav activeTab={activeTab} setActiveTab={setActiveTab} />
         <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-[#F5F7FA]">
-          <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10">
+          <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10">
             <h2 className="text-xl font-bold text-slate-800 capitalize tracking-wide">{activeTab === 'trips' ? 'Invoices & Trips' : activeTab}</h2>
             <div className="flex items-center gap-4">
               {needRefresh ? (

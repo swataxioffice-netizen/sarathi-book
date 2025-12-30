@@ -32,6 +32,7 @@ interface Settings {
     branchName?: string;
     holderName?: string;
     upiId?: string;
+    appColor?: string;
 }
 
 interface SettingsContextType {
@@ -40,6 +41,8 @@ interface SettingsContextType {
     currentVehicle: Vehicle | undefined;
     t: (key: string) => string;
     saveSettings: () => Promise<boolean>;
+    docStats: { hasFullVehicle: boolean; hasFullDriver: boolean };
+    setDocStats: React.Dispatch<React.SetStateAction<{ hasFullVehicle: boolean; hasFullDriver: boolean }>>;
 }
 
 const translations = {
@@ -108,6 +111,8 @@ const translations = {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const [docStats, setDocStats] = useState({ hasFullVehicle: false, hasFullDriver: false });
+
     const [settings, setSettings] = useState<Settings>(() => {
         const parsed = safeJSONParse<Settings | null>('namma-cab-settings', null);
         if (parsed) {
@@ -119,6 +124,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             if (!parsed.theme) {
                 parsed.theme = 'light';
             }
+            parsed.appColor = parsed.appColor || '#0047AB';
             // Force English to fix corrupted state
             parsed.language = 'en';
             return parsed;
@@ -143,7 +149,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             ifscCode: '',
             branchName: '',
             holderName: '',
-            upiId: ''
+            upiId: '',
+            appColor: '#0047AB'
         };
     });
 
@@ -189,7 +196,6 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, []);
 
     // Save to Cloud on Change (Debounced)
-    // Manual Save Function
     // Manual Save Function
     const saveSettings = async (): Promise<boolean> => {
         try {
@@ -240,6 +246,14 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             document.documentElement.classList.remove('dark');
         }
 
+        // Apply Color Theme
+        if (settings.appColor) {
+            document.documentElement.style.setProperty('--primary', settings.appColor);
+            // Also update safe-area/meta theme color if possible
+            const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+            if (metaThemeColor) metaThemeColor.setAttribute('content', settings.appColor);
+        }
+
         // Debounced Cloud Save
         const saveToCloud = setTimeout(async () => {
             await saveSettings();
@@ -261,7 +275,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     return (
-        <SettingsContext.Provider value={{ settings, updateSettings, currentVehicle, t, saveSettings }}>
+        <SettingsContext.Provider value={{ settings, updateSettings, currentVehicle, t, saveSettings, docStats, setDocStats }}>
             {children}
         </SettingsContext.Provider>
     );

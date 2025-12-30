@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { Trash2, Plus, User as UserIcon, CheckCircle, Circle, Globe, Camera, LogOut, Landmark, MessageCircle, RefreshCw } from 'lucide-react';
+import { Trash2, Plus, User as UserIcon, CheckCircle, Circle, Globe, Camera, LogOut, Landmark, MessageCircle, RefreshCw, Phone, Contact, X } from 'lucide-react';
 import { validateGSTIN } from '../utils/validation';
 import DocumentVault from './DocumentVault';
 import GoogleSignInButton from './GoogleSignInButton';
 import { supabase } from '../utils/supabase';
 import { VEHICLES } from '../utils/fare';
 
+import BusinessCard from './BusinessCard';
+
 const Profile: React.FC = () => {
     const { user, signOut, loading: authLoading } = useAuth();
-    const { settings, updateSettings, saveSettings } = useSettings();
+    const { settings, updateSettings, saveSettings, docStats } = useSettings();
     const [newVehicleNumber, setNewVehicleNumber] = useState('');
     const [selectedCategoryId, setSelectedCategoryId] = useState(VEHICLES[0].id);
     const [newVehicleModel, setNewVehicleModel] = useState('');
@@ -18,12 +20,12 @@ const Profile: React.FC = () => {
     const [isEditingPhoto, setIsEditingPhoto] = useState(false);
     const [customPhotoUrl, setCustomPhotoUrl] = useState('');
     const [savingSection, setSavingSection] = useState<'business' | 'banking' | 'fleet' | 'language' | null>(null);
-    const [selectedLanguage, setSelectedLanguage] = useState<any>(settings.language || 'en'); // Use any to avoid import issue for now, or just string.
+    const [selectedLanguage, setSelectedLanguage] = useState<any>(settings.language || 'en');
     const [profileLoading, setProfileLoading] = useState(false);
     const [loadingTimeout, setLoadingTimeout] = useState(false);
+    const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | 'support' | null>(null);
+    const [showCard, setShowCard] = useState(false);
 
-    // Stats for Completion
-    const [docStats, setDocStats] = useState({ hasFullVehicle: false, hasFullDriver: false });
 
     const addVehicle = () => {
         if (!newVehicleNumber || !selectedCategoryId || (!newVehicleModel && !isCustomModel)) return;
@@ -44,10 +46,13 @@ const Profile: React.FC = () => {
     };
 
     const deleteVehicle = (id: string) => {
-        if (settings.vehicles.length <= 1) return;
+        if (!window.confirm('Are you sure you want to delete this vehicle?')) return;
+        const newVehicles = settings.vehicles.filter(v => v.id !== id);
         updateSettings({
-            vehicles: settings.vehicles.filter(v => v.id !== id),
-            currentVehicleId: settings.currentVehicleId === id ? settings.vehicles[0].id : settings.currentVehicleId
+            vehicles: newVehicles,
+            currentVehicleId: settings.currentVehicleId === id
+                ? (newVehicles.length > 0 ? newVehicles[0].id : '')
+                : settings.currentVehicleId
         });
     };
 
@@ -105,8 +110,10 @@ const Profile: React.FC = () => {
         // 1. Business Profile
         if (settings.companyName && settings.companyAddress && settings.driverPhone) score++;
 
-        // 2. Legal & Banking (Bank Details)
-        if (settings.bankName && settings.accountNumber && settings.ifscCode && settings.holderName) score++;
+        // 2. Legal & Banking (Bank Account OR UPI ID)
+        const hasBank = settings.bankName && settings.accountNumber && settings.ifscCode && settings.holderName;
+        const hasUPI = !!settings.upiId;
+        if (hasBank || hasUPI) score++;
 
         // 3. Fleet Manager (At least 1 vehicle)
         if (settings.vehicles.length > 0) score++;
@@ -175,26 +182,23 @@ const Profile: React.FC = () => {
                         {/* Avatar */}
                         <div className="relative group flex-shrink-0">
                             <div className="w-16 h-16 rounded-full border-2 border-white shadow-md overflow-hidden bg-slate-50 flex items-center justify-center">
-                                {(customPhotoUrl || user?.user_metadata?.avatar_url) ? (
+                                {user?.user_metadata?.avatar_url || customPhotoUrl ? (
                                     <img
-                                        src={customPhotoUrl || user?.user_metadata?.avatar_url}
+                                        src={user?.user_metadata?.avatar_url || customPhotoUrl}
                                         alt="Profile"
                                         className="w-full h-full object-cover"
-                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                        referrerPolicy="no-referrer"
                                     />
-                                ) : null}
-                                {(!customPhotoUrl && !user?.user_metadata?.avatar_url) && (
+                                ) : (
                                     <UserIcon size={24} className="text-slate-300" />
                                 )}
                             </div>
-                            {user && (
-                                <button
-                                    onClick={() => setIsEditingPhoto(!isEditingPhoto)}
-                                    className="absolute bottom-0 right-0 p-1 bg-[#0047AB] text-white rounded-full shadow-md hover:bg-blue-700 transition-colors"
-                                >
-                                    <Camera size={10} />
-                                </button>
-                            )}
+                            <button
+                                onClick={() => setIsEditingPhoto(!isEditingPhoto)}
+                                className="absolute bottom-0 right-0 p-1 bg-[#0047AB] text-white rounded-full shadow-md hover:bg-blue-700 transition-colors"
+                            >
+                                <Camera size={10} />
+                            </button>
                             {isEditingPhoto && (
                                 <div className="absolute top-full left-0 mt-2 bg-white p-2 rounded-xl shadow-xl border border-slate-100 z-50 w-32 animate-fade-in">
                                     <label className="block text-[9px] font-bold text-center py-2 text-slate-600 hover:bg-slate-50 cursor-pointer rounded-lg uppercase tracking-wider">
@@ -212,43 +216,81 @@ const Profile: React.FC = () => {
                             <h2 className="text-base font-black text-slate-900 uppercase tracking-tight truncate">
                                 {user?.user_metadata?.full_name || 'Guest Driver'}
                             </h2>
-                            <div className="inline-block mt-1 px-2 py-0.5 bg-slate-50 rounded-md border border-slate-100">
-                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
-                                    ID: <span className="text-[#0047AB]">{operatorId}</span>
-                                </p>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <div className="inline-block px-2 py-0.5 bg-slate-50 rounded-md border border-slate-100">
+                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                                        ID: <span className="text-[#0047AB]">{operatorId}</span>
+                                    </p>
+                                </div>
+                                {completion === 100 && (
+                                    <button
+                                        onClick={() => setShowCard(true)}
+                                        className="px-2 py-0.5 bg-[#0047AB] text-white rounded-md flex items-center gap-1 hover:bg-blue-700 transition-colors shadow-sm active:scale-95"
+                                    >
+                                        <Contact size={10} />
+                                        <span className="text-[8px] font-black uppercase tracking-wider">View Card</span>
+                                    </button>
+                                )}
                             </div>
                         </div>
 
-                        {/* Sign Out / Google - Compact */}
-                        <div>
-                            {user ? (
+                        {/* Circular Progress */}
+                        <div className="relative flex-shrink-0 w-14 h-14 flex items-center justify-center">
+                            <svg className="w-full h-full transform -rotate-90 circle-progress">
+                                <circle
+                                    cx="28"
+                                    cy="28"
+                                    r="24"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                    fill="transparent"
+                                    className="text-slate-100"
+                                />
+                                <circle
+                                    cx="28"
+                                    cy="28"
+                                    r="24"
+                                    stroke="currentColor"
+                                    strokeWidth="5"
+                                    fill="transparent"
+                                    strokeDasharray={150.8}
+                                    strokeDashoffset={150.8 * (1 - completion / 100)}
+                                    strokeLinecap="round"
+                                    className={`transition-all duration-1000 ease-out text-green-500`}
+                                />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center leading-none">
+                                <span className={`text-[16px] font-black tracking-tighter ${completion === 100 ? 'text-green-600' : 'text-slate-900'}`}>{completion}%</span>
+                            </div>
+                        </div>
+
+                        {/* Sign Out - Only show if logged in */}
+                        {user && (
+                            <div>
                                 <button
                                     onClick={signOut}
                                     className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-all"
                                 >
                                     <LogOut size={16} />
                                 </button>
-                            ) : (
-                                <GoogleSignInButton variant="compact" />
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Completion Bar - Slim */}
-                    <div className="w-full mt-4">
-                        <div className="flex justify-between items-end mb-1 px-1">
-                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Complete Profile</span>
-                            <span className={`text-[9px] font-black ${completion === 100 ? 'text-green-500' : 'text-[#0047AB]'}`}>{completion}%</span>
+                    {/* New Row for Google Sign In if Guest */}
+                    {!user && (
+                        <div className="mt-4 pt-4 border-t border-slate-100">
+                            <GoogleSignInButton
+                                variant="full"
+                                text="Sign in to save records"
+                                className="!w-full !shadow-sm !border-slate-200 hover:!border-blue-400"
+                            />
                         </div>
-                        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                                className={`h-full rounded-full transition-all duration-1000 ease-out ${completion === 100 ? 'bg-green-500' : 'bg-[#0047AB]'}`}
-                                style={{ width: `${completion}%` }}
-                            ></div>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
+
+
 
             {/* Business Profile */}
             <div className="space-y-2">
@@ -345,6 +387,36 @@ const Profile: React.FC = () => {
                             <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${settings.gstEnabled ? 'left-6' : 'left-1'}`}></div>
                         </div>
                     </div>
+
+                    {!settings.gstEnabled && (
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 p-3 rounded-xl animate-fade-in relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <Landmark size={48} className="text-blue-600" />
+                            </div>
+                            <h4 className="text-[10px] font-black text-blue-800 uppercase tracking-widest mb-1 flex items-center gap-1">
+                                Need GST Registration?
+                            </h4>
+                            <p className="text-[9px] text-blue-600 font-bold mb-2 w-3/4">
+                                Get your GSTIN quickly to serve corporate clients and grow your business.
+                            </p>
+                            <div className="flex gap-2">
+                                <a
+                                    href="https://wa.me/919941033990?text=Hi, I am running a Cab Transport Business and need help with GST Registration and Tax Filing."
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1 bg-[#25D366] text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider hover:bg-green-600 transition-colors shadow-sm"
+                                >
+                                    WhatsApp <MessageCircle size={10} />
+                                </a>
+                                <a
+                                    href="tel:+919941033990"
+                                    className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider hover:bg-blue-700 transition-colors shadow-sm"
+                                >
+                                    Call Now <Phone size={10} />
+                                </a>
+                            </div>
+                        </div>
+                    )}
 
                     {settings.gstEnabled && (
                         <div className="space-y-2 animate-fade-in pl-1">
@@ -445,7 +517,7 @@ const Profile: React.FC = () => {
                     <div className="space-y-2">
                         {settings.vehicles.map((v) => (
                             <div key={v.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-xl group relative overflow-hidden">
-                                <div className={`absolute left - 0 top - 0 bottom - 0 w - 1 ${settings.currentVehicleId === v.id ? 'bg-[#0047AB]' : 'bg-slate-300'} `}></div>
+                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${settings.currentVehicleId === v.id ? 'bg-primary' : 'bg-slate-300'}`}></div>
                                 <div
                                     className="flex-1 pl-2 cursor-pointer"
                                     onClick={() => updateSettings({ currentVehicleId: v.id })}
@@ -456,17 +528,15 @@ const Profile: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {settings.vehicles.length > 1 && (
-                                    <button
-                                        onClick={() => deleteVehicle(v.id)}
-                                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
-                                )}
+                                <button
+                                    onClick={() => deleteVehicle(v.id)}
+                                    className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
 
                                 {settings.currentVehicleId === v.id && (
-                                    <div className="mr-2 px-2 py-0.5 bg-[#0047AB] text-white text-[8px] font-black uppercase rounded-full tracking-widest">
+                                    <div className="mr-2 px-2 py-0.5 bg-primary text-white text-[8px] font-black uppercase rounded-full tracking-widest">
                                         Active
                                     </div>
                                 )}
@@ -540,7 +610,7 @@ const Profile: React.FC = () => {
                                         />
                                         <button
                                             onClick={() => { setIsCustomModel(false); setNewVehicleModel(''); }}
-                                            className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-blue-600 uppercase"
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-primary uppercase"
                                         >
                                             Back
                                         </button>
@@ -584,6 +654,8 @@ const Profile: React.FC = () => {
                 </div>
             </div>
 
+
+
             {settings.websiteUrl && (
                 <div className="space-y-2">
                     <div className="flex items-center gap-2 px-1">
@@ -616,7 +688,7 @@ const Profile: React.FC = () => {
                 </div>
                 <div className="pt-0">
                     <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                        <DocumentVault onStatsUpdate={setDocStats} />
+                        <DocumentVault />
                     </div>
                 </div>
             </div>
@@ -727,37 +799,97 @@ const Profile: React.FC = () => {
             </div>
 
             {/* 10. Legal & Compliance Footer */}
-            <div className="pt-8 pb-4 text-center space-y-3">
-                <div className="flex justify-center flex-wrap gap-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-full">
-                    <span className="cursor-pointer hover:text-slate-600">Terms</span>
-                    <span className="text-slate-200">•</span>
-                    <span className="cursor-pointer hover:text-slate-600">Privacy</span>
-                    <span className="text-slate-200">•</span>
-                    <span className="cursor-pointer hover:text-slate-600">Compliance</span>
-                </div>
-
-                <div className="space-y-1 w-full">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-4">
-                        Designed for Indian Transport Operations
-                    </p>
-                    <p className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter max-w-[250px] mx-auto leading-relaxed">
-                        In compliance with Ministry of Road Transport & Highways (MoRTH) digital documentation guidelines.
-                    </p>
+            <div className="pt-12 pb-8 px-4 border-t border-slate-100 mt-8 text-center space-y-4">
+                <div className="flex justify-center flex-wrap gap-x-6 gap-y-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <button onClick={() => setActiveModal('terms')} className="hover:text-blue-600 transition-colors">Terms</button>
+                    <button onClick={() => setActiveModal('privacy')} className="hover:text-blue-600 transition-colors">Privacy</button>
+                    <button onClick={() => setActiveModal('support')} className="hover:text-blue-600 transition-colors">Support</button>
                 </div>
 
                 <div className="pt-2">
-                    <p className="text-[11px] font-black text-slate-900 tracking-tight">
+                    <p className="text-[10px] font-black text-slate-800 tracking-wider">
                         © {new Date().getFullYear()} SARATHI BOOK
                     </p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                        All Rights Reserved
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">
+                        Professional Driver Solutions
                     </p>
                 </div>
-
-                <p className="text-[9px] text-slate-300 font-medium italic">
-                    v1.0.5 - Heavy Duty Construction
-                </p>
             </div>
+
+            {/* Global Modal Overlay */}
+            {activeModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden animate-slide-up border border-slate-100">
+                        <div className="p-6">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">
+                                    {activeModal === 'terms' && 'Terms of Service'}
+                                    {activeModal === 'privacy' && 'Privacy Policy'}
+                                    {activeModal === 'support' && 'Official Support'}
+                                </h3>
+                                <button
+                                    onClick={() => setActiveModal(null)}
+                                    className="w-8 h-8 flex items-center justify-center bg-slate-100 text-slate-400 rounded-full hover:bg-slate-200"
+                                >
+                                    <Trash2 size={16} className="rotate-45" /> {/* Use Trash icon as a close X if X is not imported, but X is imported in Profile */}
+                                </button>
+                            </div>
+
+                            <div className="space-y-4 text-xs font-bold text-slate-600 leading-relaxed max-h-[60vh] overflow-y-auto pr-2 scrollbar-hide">
+                                {activeModal === 'terms' && (
+                                    <>
+                                        <p>1. Sarathi Book is a digital documentation tool for individual taxi operators and fleet owners. It is not a transport service provider.</p>
+                                        <p>2. Users are responsible for the accuracy of invoices and trip sheets generated. We are not liable for any legal or tax misuse.</p>
+                                        <p>3. While we strive for 100% uptime, Sarathi Book is provided "as is" without warranty for data loss due to browser cache clearing.</p>
+                                    </>
+                                )}
+                                {activeModal === 'privacy' && (
+                                    <>
+                                        <p>1. <strong>Local First:</strong> Your trip data and documents are primarily stored in your phone's secure local storage.</p>
+                                        <p>2. <strong>Cloud Sync:</strong> If you sign in with Google, your data is encrypted and synced to our secure database for multi-device access.</p>
+                                        <p>3. <strong>Data Handling:</strong> We do not sell or share your billing information, passenger details, or personal ID documents with any advertising agencies.</p>
+                                    </>
+                                )}
+                                {activeModal === 'support' && (
+                                    <>
+                                        <p>For any technical issues or feature requests, contact our engineering team directly.</p>
+                                        <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 mt-2">
+                                            <p className="text-blue-900 mb-1">WhatsApp Support:</p>
+                                            <p className="text-lg text-[#0047AB] font-black">+91 99527 49408</p>
+                                            <p className="text-[10px] text-blue-400 mt-1 italic">Response time: Usually within 2 hours</p>
+                                        </div>
+                                        <p className="mt-4">If the app is acting slow or not updating, please use the <strong>Repair & Hard Refresh</strong> button in the System Health section.</p>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                        <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-center">
+                            <button
+                                onClick={() => setActiveModal(null)}
+                                className="px-8 py-3 bg-[#0047AB] text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md active:scale-95 transition-all"
+                            >
+                                Got it
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Business Card Modal */}
+            {showCard && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setShowCard(false)}>
+                    <div className="bg-white p-4 rounded-3xl w-full max-w-sm relative shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+                        <button
+                            onClick={() => setShowCard(false)}
+                            className="absolute top-3 right-3 p-1.5 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition-colors z-[60]"
+                        >
+                            <X size={16} />
+                        </button>
+                        <div className="mt-4">
+                            <BusinessCard />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };

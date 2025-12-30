@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { safeJSONParse } from '../utils/storage';
 import type { Trip, Expense } from '../utils/fare';
 import { IndianRupee, Globe, TrendingUp, StickyNote, Plus, Trash2, FileText } from 'lucide-react';
+import { useSettings } from '../contexts/SettingsContext';
+import { shareFinancialReport } from '../utils/pdf';
 
 interface DashboardProps {
     trips: Trip[];
@@ -16,10 +18,10 @@ interface Note {
 type TimeRange = 'today' | 'week' | 'month' | 'year';
 
 const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
+    const { settings, currentVehicle } = useSettings();
     const [range, setRange] = useState<TimeRange>('today');
     const [notes, setNotes] = useState<Note[]>(() => {
         const saved = safeJSONParse<Note[]>('driver-quick-notes', []);
-        // If no notes exist, create one default note for new users
         if (saved.length === 0) {
             return [{
                 id: Date.now().toString(),
@@ -32,12 +34,10 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
     const now = new Date();
     const today = now.toISOString().split('T')[0];
 
-    // Save notes to localStorage whenever they change
     React.useEffect(() => {
         localStorage.setItem('driver-quick-notes', JSON.stringify(notes));
     }, [notes]);
 
-    // Add new note
     const addNote = () => {
         const newNote: Note = {
             id: Date.now().toString(),
@@ -47,19 +47,16 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
         setNotes(prev => [newNote, ...prev]);
     };
 
-    // Update note content
     const updateNote = (id: string, content: string) => {
         setNotes(prev => prev.map(note =>
             note.id === id ? { ...note, content } : note
         ));
     };
 
-    // Delete note
     const deleteNote = (id: string) => {
         setNotes(prev => prev.filter(note => note.id !== id));
     };
 
-    // Helper for date ranges
     const isThisWeek = (dateStr: string) => {
         const d = new Date(dateStr);
         const diff = now.getTime() - d.getTime();
@@ -76,7 +73,6 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
 
     const expenses = safeJSONParse<Expense[]>('cab-expenses', []);
 
-    // Selection Logic
     const getStats = () => {
         let income = 0;
         let spending = 0;
@@ -108,6 +104,43 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
     };
 
     const stats = getStats();
+
+    // Handle Report Download
+    const handleDownloadReport = async () => {
+        let filteredTrips = trips;
+        let filteredExpenses = expenses;
+        let periodLabel = 'All Time';
+
+        switch (range) {
+            case 'today':
+                filteredTrips = trips.filter(t => t.date.startsWith(today));
+                filteredExpenses = expenses.filter(e => e.date.startsWith(today));
+                periodLabel = `Today (${new Date().toLocaleDateString('en-IN')})`;
+                break;
+            case 'week':
+                filteredTrips = trips.filter(t => isThisWeek(t.date));
+                filteredExpenses = expenses.filter(e => isThisWeek(e.date));
+                periodLabel = 'This Week';
+                break;
+            case 'month':
+                filteredTrips = trips.filter(t => isThisMonth(t.date));
+                filteredExpenses = expenses.filter(e => isThisMonth(e.date));
+                periodLabel = 'This Month';
+                break;
+            case 'year':
+                filteredTrips = trips.filter(t => isThisYear(t.date));
+                filteredExpenses = expenses.filter(e => isThisYear(e.date));
+                periodLabel = 'This Year';
+                break;
+        }
+
+        const pdfSettings = {
+            ...settings,
+            vehicleNumber: currentVehicle?.number || 'N/A'
+        };
+
+        await shareFinancialReport(filteredTrips, filteredExpenses, pdfSettings, periodLabel);
+    };
 
     return (
         <div className="space-y-4 pb-24">
@@ -155,15 +188,22 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                 </div>
             </div>
 
-            {/* GST Report Banner */}
-            <div className="p-4 bg-gradient-to-r from-blue-900 to-blue-800 rounded-2xl shadow-lg relative overflow-hidden group cursor-pointer active:scale-98 transition-all">
+            {/* GST Report Banner - Connected */}
+            <div
+                onClick={handleDownloadReport}
+                className="p-4 bg-gradient-to-r from-blue-900 to-blue-800 rounded-2xl shadow-lg relative overflow-hidden group cursor-pointer active:scale-98 transition-all"
+            >
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl"></div>
                 <div className="relative z-10 flex items-center justify-between">
                     <div>
-                        <h4 className="text-white font-black text-xs uppercase tracking-widest mb-1">Monthly Report</h4>
-                        <p className="text-blue-200 text-[10px] font-medium max-w-[200px]">Download GST-ready PDF report for all trips in one click.</p>
+                        <h4 className="text-white font-black text-xs uppercase tracking-widest mb-1">
+                            Download {range === 'today' ? 'Daily' : range === 'year' ? 'Annual' : range === 'week' ? 'Weekly' : 'Monthly'} Report
+                        </h4>
+                        <p className="text-blue-200 text-[10px] font-medium max-w-[200px]">
+                            Get {range}ly P&L statement for income tax & loan applications.
+                        </p>
                     </div>
-                    <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/20">
+                    <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/20 group-hover:bg-white/20 transition-all">
                         <FileText className="text-white" size={20} />
                     </div>
                 </div>
