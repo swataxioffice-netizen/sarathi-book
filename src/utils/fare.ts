@@ -96,7 +96,7 @@ export const PERMIT_CHARGES: Record<string, Record<string, number>> = {
 export const calculateFare = (params: {
     startKm: number;
     endKm: number;
-    ratePerKm: number;
+    ratePerKm?: number;
     mode: FareMode;
     vehicleId?: string;
     days?: number;
