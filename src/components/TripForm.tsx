@@ -5,7 +5,7 @@ import { calculateFare, VEHICLES } from '../utils/fare';
 import type { Trip } from '../utils/fare';
 import { shareReceipt, type SavedQuotation } from '../utils/pdf';
 import PlacesAutocomplete from './PlacesAutocomplete';
-import MapPicker from './MapPicker';
+const MapPicker = React.lazy(() => import('./MapPicker'));
 import { calculateDistance } from '../utils/googleMaps';
 import { calculateAdvancedRoute } from '../utils/routesApi';
 import { estimatePermitCharge } from '../utils/permits';
@@ -1530,10 +1530,12 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
             {
                 showMap && (
-                    <MapPicker
-                        onLocationSelect={handleMapSelect}
-                        onClose={() => setShowMap(false)}
-                    />
+                    <React.Suspense fallback={<div className="fixed inset-0 bg-white z-[60] flex items-center justify-center font-bold">Loading Map...</div>}>
+                        <MapPicker
+                            onLocationSelect={handleMapSelect}
+                            onClose={() => setShowMap(false)}
+                        />
+                    </React.Suspense>
                 )
             }
 

@@ -34,7 +34,7 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                         />
                     </div>
                     <div>
-                        <h1 className="text-xl font-black text-[#0047AB] leading-none tracking-tight mb-0.5" style={{ fontFamily: 'Korkai', letterSpacing: '-0.02em' }}>
+                        <h1 className="text-xl font-black text-[#0047AB] leading-none tracking-tight mb-0.5" style={{ letterSpacing: '-0.02em' }}>
                             SARATHI BOOK
                         </h1>
                         <p className="text-[10px] font-semibold text-slate-500 leading-none tracking-wide" style={{ fontFamily: 'Noto Sans, sans-serif' }}>

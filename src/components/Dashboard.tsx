@@ -4,7 +4,7 @@ import type { Trip, Expense } from '../utils/fare';
 import { IndianRupee, Globe, TrendingUp, StickyNote, Plus, Trash2, FileText } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
-import { shareFinancialReport } from '../utils/pdf';
+
 
 interface DashboardProps {
     trips: Trip[];
@@ -142,7 +142,8 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
             userId: user?.id
         };
 
-        await shareFinancialReport(filteredTrips, filteredExpenses, pdfSettings, periodLabel);
+        const pdfModule = await import('../utils/pdf');
+        await pdfModule.shareFinancialReport(filteredTrips, filteredExpenses, pdfSettings, periodLabel);
     };
 
     return (

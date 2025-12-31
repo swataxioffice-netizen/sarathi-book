@@ -7,7 +7,6 @@ import { X, RefreshCw } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useUpdate, UpdateProvider } from './contexts/UpdateContext';
 import Header from './components/Header';
-import TripForm from './components/TripForm';
 import BottomNav from './components/BottomNav';
 import Dashboard from './components/Dashboard';
 import GoogleSignInButton from './components/GoogleSignInButton';
@@ -18,6 +17,7 @@ import type { Trip } from './utils/fare';
 import type { SavedQuotation } from './utils/pdf';
 
 // Lazy load heavy components to reduce initial bundle size
+const TripForm = lazy(() => import('./components/TripForm'));
 const History = lazy(() => import('./components/History'));
 const Profile = lazy(() => import('./components/Profile'));
 const ExpenseTracker = lazy(() => import('./components/ExpenseTracker'));
@@ -234,7 +234,9 @@ function AppContent() {
               {/* Show Invoice or Quotation based on toggle */}
               {invoiceQuotationToggle === 'invoice' ? (
                 <div className="space-y-2">
-                  <TripForm onSaveTrip={handleSaveTrip} onStepChange={setInvoiceStep} invoiceTemplate={selectedQuotation} trips={trips} />
+                  <Suspense fallback={<LoadingFallback />}>
+                    <TripForm onSaveTrip={handleSaveTrip} onStepChange={setInvoiceStep} invoiceTemplate={selectedQuotation} trips={trips} />
+                  </Suspense>
 
                   {invoiceStep === 1 && (
                     <div className="mt-8 pt-6 border-t border-slate-200">
