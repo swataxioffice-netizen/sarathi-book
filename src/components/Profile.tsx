@@ -42,7 +42,7 @@ const Profile: React.FC = () => {
 
         // Validate Vehicle Number
         if (!validateVehicleNumber(newVehicleNumber)) {
-            alert('Invalid Vehicle Number. Please enter a valid Indian Vehicle Number (e.g., TN01AB1234).');
+            alert('Invalid Vehicle Number. Please enter a valid Indian Vehicle Number (e.g., MH01AB1234).');
             return;
         }
 
@@ -781,7 +781,7 @@ const Profile: React.FC = () => {
                                             value={newVehicleNumber}
                                             onChange={(e) => setNewVehicleNumber(e.target.value.toUpperCase())}
                                             className="tn-input font-bold uppercase w-full placeholder:text-slate-500"
-                                            placeholder="TN-00-AA-0000"
+                                            placeholder="MH-01-AB-1234"
                                         />
                                     </div>
                                     <div>

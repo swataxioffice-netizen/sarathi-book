@@ -1,7 +1,7 @@
 # Sarathi Book Promotion Strategy
 
 A comprehensive plan to promote **Sarathi Book - The Digital Office for Cab Drivers**.  
-*Target Audience: Cab Drivers, Travel Agency Owners (Tamil Nadu, India)*
+*Target Audience: Cab Drivers, Travel Agency Owners (India)*
 
 ---
 
@@ -38,18 +38,19 @@ Drivers live on WhatsApp. This is the #1 growth channel.
         > ✅ Calculate Fare (Round Trip/Drop)
         > ✅ Send PDF Invoice on WhatsApp
         > ✅ Track Expenses
+        > ✅ Document Expiry Alerts & Offers
         >
         > 👇 Install Free:
         > https://sarathibook.com"
 
 ### 2. Facebook Groups (High Volume)
-Tamil Nadu has massive driver union groups on Facebook (e.g., "Chennai Call Taxi Drivers", "TamilNadu Tourism Drivers").
+India has massive driver union groups on Facebook (e.g., "All India Tourist Permit Drivers", "Drivers of India", "Chennai Call Taxi Drivers").
 
 *   **Strategy:** Don't just spam links. Solve problems.
 *   **Post Type 1 (The Question):**
-    > "Brothers, which app are you using for GST bills? I found this new free website sarathibook.com, it's very fast for creating PDF receipts."
+    > "Brothers, which app are you using for GST bills? I found this new free website sarathibook.com, it's very fast for creating PDF receipts and alerting about insurance expiry."
 *   **Post Type 2 (The Value):**
-    > "Share the fare calculation screenshot for a generic rote (e.g., Chennai to Trichy) and ask: 'Is this rate correct?' - Use the screenshot from Sarathi Book to subtly promote the tool."
+    > "Share the fare calculation screenshot for a generic rote (e.g., Delhi to Agra or Chennai to Trichy) and ask: 'Is this rate correct?' - Use the screenshot from Sarathi Book to subtly promote the tool."
 
 ### 3. YouTube Shorts / Reels (Visual Demo)
 Drivers watch YouTube/Reels while waiting.
@@ -57,8 +58,8 @@ Drivers watch YouTube/Reels while waiting.
 *   **Content Ideas:**
     *   "How to create a Cab Bill in 10 seconds" (Screen recording)
     *   "Round Trip Calculation - Correct Method vs Wrong Method"
-    *   "Acting Driver Salary Calculation" (Use the Acting Driver Tool)
-*   **Keywords:** `#TaxiDriver #Chennai #CabBusiness #SarathiBook #TamilNadu`
+    *   "Never miss an Insurance Expiry Date again"
+*   **Keywords:** `#TaxiDriver #India #CabBusiness #SarathiBook #DriverApp`
 
 ---
 
@@ -78,7 +79,7 @@ Drivers watch YouTube/Reels while waiting.
 ## 🤝 Phase 4: Community & Partnerships (Scaling)
 
 ### 1. Taxi Stands & Unions
-*   Visit major taxi stands (Airport, Central Station).
+*   Visit major taxi stands (Airport, Railway Stations).
 *   Demo the "Fare Calculator" to the *Union Leader* or key influencers at the stand.
 *   If the leader uses it, everyone else will follow.
 
@@ -90,17 +91,17 @@ Drivers watch YouTube/Reels while waiting.
 
 ## 📊 Phase 5: SEO Strategy (Long Term)
 
-**Keywords to Target (mix of English & Tamil):**
-1.  "Cab bill generator Tamil Nadu"
-2.  "Taxi fare calculator Chennai"
+**Keywords to Target (mix of English & Regional):**
+1.  "Cab bill generator India"
+2.  "Taxi fare calculator"
 3.  "Call taxi billing software free"
 4.  "Driver daily collection app"
-5.  "Acting driver salary calculator"
+5.  "Cab Invoice Generator"
 
 **Blog/Content:**
 *   Create a simple blog page later (or use social media posts) answering common questions:
-    *   "Current Driver Batta rates in TN"
-    *   "How to calculate Round Trip Km"
+    *   "Current Driver Batta rates"
+    *   "How to calculated Round Trip Km"
     *   "Toll charges list 2024"
 
 ---

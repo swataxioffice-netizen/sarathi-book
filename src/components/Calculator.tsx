@@ -159,7 +159,7 @@ const CabCalculator: React.FC = () => {
         details.push(`Trip: ${res.distance} KM (${res.mode === 'outstation' ? 'Round Trip' : 'Local Drop'})`);
 
         if (res.mode === 'drop' && res.distance <= 30) {
-            details.push(`Type: Chennai Association Local (Standard)`);
+            details.push(`Type: City Local Trip (Standard)`);
             const isLarge = currentVeh?.type === 'SUV' || currentVeh?.type === 'Van';
             const baseFee = isLarge ? 350 : 250;
             const extraRate = isLarge ? 35 : 25;

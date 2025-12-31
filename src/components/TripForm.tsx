@@ -931,7 +931,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                     }}
                                     onBlur={() => setFromLoc(formatAddress(fromLoc))}
                                     onMapClick={() => { setActiveMapField('from'); setShowMap(true); }}
-                                    placeholder="e.g. Chennai Airport"
+                                    placeholder="e.g. Pickup Location"
                                     className="tn-input pl-10 pr-10 transition-all focus:ring-2 focus:ring-blue-500/20"
                                     rightContent={
                                         <button
@@ -958,7 +958,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                     }}
                                     onBlur={() => setToLoc(formatAddress(toLoc))}
                                     onMapClick={() => { setActiveMapField('to'); setShowMap(true); }}
-                                    placeholder="e.g. Pondicherry"
+                                    placeholder="e.g. Drop Location"
                                     className="tn-input pl-10 pr-10"
                                     rightContent={
                                         <button
