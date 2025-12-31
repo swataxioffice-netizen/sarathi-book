@@ -104,33 +104,78 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
         };
     }, []);
 
-    // Initialize Autocomplete
-    useEffect(() => {
-        if (!map || !searchInputRef.current) return;
 
-        const initAutocomplete = async () => {
+    const [inputValue, setInputValue] = useState('');
+    const [predictions, setPredictions] = useState<google.maps.places.AutocompletePrediction[]>([]);
+    const [showPredictions, setShowPredictions] = useState(false);
+
+    // Initialize Autocomplete Service Logic (Replacing Deprecated Widget)
+    const handleSearchInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        setInputValue(val);
+
+        if (!val || val.length < 3) {
+            setPredictions([]);
+            setShowPredictions(false);
+            return;
+        }
+
+        try {
             const google = await loadGoogleMaps();
-            const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current!, {
-                fields: ['geometry', 'formatted_address'],
-                componentRestrictions: { country: 'in' }, // Restrict to India
-            });
-            autocomplete.bindTo('bounds', map);
+            const service = new google.maps.places.AutocompleteService();
+            const request: google.maps.places.AutocompletionRequest = {
+                input: val,
+                componentRestrictions: { country: 'in' },
+            };
 
-            autocomplete.addListener('place_changed', () => {
-                const place = autocomplete.getPlace();
-                if (!place.geometry || !place.geometry.location) return;
+            // Bias towards map view if available
+            if (map) {
+                const bounds = map.getBounds();
+                if (bounds) {
+                    request.bounds = bounds;
+                }
+            }
 
-                if (place.geometry.viewport) {
-                    map.fitBounds(place.geometry.viewport);
+            service.getPlacePredictions(request, (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+                    setPredictions(results);
+                    setShowPredictions(true);
                 } else {
-                    map.setCenter(place.geometry.location);
-                    map.setZoom(17);
+                    setPredictions([]);
+                    setShowPredictions(false);
                 }
             });
-        };
+        } catch (error) {
+            console.error('Error fetching predictions:', error);
+        }
+    };
 
-        initAutocomplete();
-    }, [map]);
+    const handlePredictionSelect = async (placeId: string, description: string) => {
+        setInputValue(description);
+        setShowPredictions(false);
+        setPredictions([]);
+
+        try {
+            const google = await loadGoogleMaps();
+            const geocoder = new google.maps.Geocoder();
+
+            geocoder.geocode({ placeId: placeId }, (results, status) => {
+                if (status === 'OK' && results && results[0]) {
+                    const place = results[0];
+                    if (!place.geometry || !place.geometry.location) return;
+
+                    if (place.geometry.viewport && map) {
+                        map.fitBounds(place.geometry.viewport);
+                    } else if (map) {
+                        map.setCenter(place.geometry.location);
+                        map.setZoom(17);
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error geocoding place:', error);
+        }
+    };
 
     // Handle Map Events (Center Pin Logic)
     useEffect(() => {
@@ -365,10 +410,27 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
                         <input
                             ref={searchInputRef}
                             type="text"
+                            value={inputValue}
+                            onChange={handleSearchInput}
                             placeholder="Search places..."
-                            className="flex-1 outline-none text-slate-700 placeholder:text-slate-400 text-sm font-medium"
+                            className="flex-1 outline-none text-slate-700 placeholder:text-slate-400 text-sm font-medium bg-transparent"
                         />
                     </div>
+                    {/* Predictions Dropdown */}
+                    {showPredictions && predictions.length > 0 && (
+                        <div className="bg-white mt-1 rounded-xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto">
+                            {predictions.map((prediction) => (
+                                <button
+                                    key={prediction.place_id}
+                                    onClick={() => handlePredictionSelect(prediction.place_id, prediction.description)}
+                                    className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-50 last:border-0 transition-colors"
+                                >
+                                    <p className="text-sm font-bold text-slate-700">{prediction.structured_formatting.main_text}</p>
+                                    <p className="text-xs text-slate-500">{prediction.structured_formatting.secondary_text}</p>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Map Div */}

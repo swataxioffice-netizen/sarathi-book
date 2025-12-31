@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { loadGoogleMaps } from '../utils/googleMaps';
-import { Map } from 'lucide-react';
+import { Map, Loader2, MapPin } from 'lucide-react';
 
 interface PlacesAutocompleteProps {
     id?: string;
@@ -29,61 +29,107 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
     rightContent,
     onBlur
 }) => {
-    const inputRef = useRef<HTMLInputElement>(null);
-    const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+    const [inputValue, setInputValue] = useState(value);
+    const [predictions, setPredictions] = useState<google.maps.places.AutocompletePrediction[]>([]);
+    const [isOpen, setIsOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const wrapperRef = useRef<HTMLDivElement>(null);
 
+    // Sync internal state with prop value
     useEffect(() => {
-        const initAutocomplete = async () => {
-            try {
-                const google = await loadGoogleMaps();
+        setInputValue(value);
+    }, [value]);
 
-                if (!inputRef.current) return;
-
-                // Initialize autocomplete
-                autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
-                    componentRestrictions: { country: 'in' }, // Restrict to India
-                    fields: ['formatted_address', 'geometry', 'name'],
-                });
-
-                // Listen for place selection
-                autocompleteRef.current.addListener('place_changed', () => {
-                    const place = autocompleteRef.current?.getPlace();
-
-                    if (place && place.geometry && place.geometry.location) {
-                        const address = place.formatted_address || place.name || '';
-                        const lat = place.geometry.location.lat();
-                        const lng = place.geometry.location.lng();
-
-                        onChange(address);
-
-                        if (onPlaceSelected) {
-                            onPlaceSelected({ address, lat, lng });
-                        }
-                    }
-                });
-
-            } catch (error) {
-                console.error('Failed to initialize Places Autocomplete:', error);
+    // Close dropdown on click outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
             }
         };
-
-        initAutocomplete();
-
-        return () => {
-            if (autocompleteRef.current) {
-                google.maps.event.clearInstanceListeners(autocompleteRef.current);
-            }
-        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        setInputValue(val);
+        onChange(val);
+
+        if (!val || val.length < 3) {
+            setPredictions([]);
+            setIsOpen(false);
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const google = await loadGoogleMaps();
+            const service = new google.maps.places.AutocompleteService();
+
+            const request: google.maps.places.AutocompletionRequest = {
+                input: val,
+                componentRestrictions: { country: 'in' },
+            };
+
+            service.getPlacePredictions(request, (results, status) => {
+                setIsLoading(false);
+                if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+                    setPredictions(results);
+                    setIsOpen(true);
+                } else {
+                    setPredictions([]);
+                    setIsOpen(false);
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching predictions:', error);
+            setIsLoading(false);
+        }
+    };
+
+    const handlePlaceSelect = async (placeId: string, description: string) => {
+        setInputValue(description);
+        onChange(description);
+        setIsOpen(false);
+        setPredictions([]);
+
+        if (onPlaceSelected) {
+            try {
+                const google = await loadGoogleMaps();
+                const geocoder = new google.maps.Geocoder();
+
+                geocoder.geocode({ placeId: placeId }, (results, status) => {
+                    if (status === 'OK' && results && results[0]) {
+                        const lat = results[0].geometry.location.lat();
+                        const lng = results[0].geometry.location.lng();
+                        const formattedAddress = results[0].formatted_address || description;
+
+                        onPlaceSelected({
+                            address: formattedAddress,
+                            lat,
+                            lng
+                        });
+
+                        // Update input with full formatted address if available
+                        setInputValue(formattedAddress);
+                        onChange(formattedAddress);
+                    }
+                });
+            } catch (error) {
+                console.error('Error fetching place details:', error);
+            }
+        }
+    };
+
     return (
-        <div className="space-y-1 w-full">
+        <div className="space-y-1 w-full" ref={wrapperRef}>
             {label && (
                 <label htmlFor={id} className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
                     {icon} {label}
                 </label>
             )}
-            <div className="relative">
+            <div className="relative group">
                 {onMapClick && (
                     <button
                         type="button"
@@ -98,18 +144,47 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                 <input
                     id={id}
                     name={id}
-                    ref={inputRef}
                     type="text"
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    onBlur={onBlur}
+                    value={inputValue}
+                    onChange={handleInputChange}
+                    onFocus={() => inputValue && predictions.length > 0 && setIsOpen(true)}
+                    onBlur={onBlur} // Note: This might conflict with click selection if not handled carefully, but mousedown listener helps
                     className={className || `tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs ${onMapClick ? 'pl-10' : 'pl-3'} pr-10`}
                     placeholder={placeholder || "Start typing..."}
+                    autoComplete="off"
                 />
 
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {isLoading && <Loader2 size={14} className="animate-spin text-slate-400" />}
                     {rightContent}
                 </div>
+
+                {/* Custom Dropdown */}
+                {isOpen && predictions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-slate-100 z-50 max-h-60 overflow-y-auto">
+                        {predictions.map((prediction) => (
+                            <button
+                                key={prediction.place_id}
+                                type="button"
+                                onClick={() => handlePlaceSelect(prediction.place_id, prediction.description)}
+                                className="w-full text-left px-3 py-2.5 hover:bg-blue-50 flex items-start gap-3 transition-colors border-b border-slate-50 last:border-0"
+                            >
+                                <MapPin size={14} className="mt-0.5 text-slate-400 shrink-0" />
+                                <div>
+                                    <p className="text-xs font-bold text-slate-700 leading-tight">
+                                        {prediction.structured_formatting.main_text}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">
+                                        {prediction.structured_formatting.secondary_text}
+                                    </p>
+                                </div>
+                            </button>
+                        ))}
+                        <div className="px-3 py-1 bg-slate-50 text-[9px] text-slate-400 text-right uppercase tracking-widest font-bold">
+                            Powered by Google
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
