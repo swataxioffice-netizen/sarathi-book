@@ -18,6 +18,13 @@ export const UpdateProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } = useRegisterSW({
         onRegistered(r) {
             console.log('SW Registered: ' + r);
+            if (r) {
+                // Check for updates every 15 minutes
+                setInterval(() => {
+                    console.log('Checking for SW update...');
+                    r.update();
+                }, 15 * 60 * 1000);
+            }
         },
         onRegisterError(error) {
             console.log('SW registration error', error);
