@@ -1,18 +1,7 @@
-export type FareMode = 'distance' | 'hourly' | 'outstation' | 'drop' | 'package' | 'fixed' | 'custom';
+import { VEHICLES } from '../config/vehicleRates';
+import { PERMIT_CHARGES } from '../config/permitRates';
 
-export interface VehicleType {
-    id: string;
-    name: string;
-    popularModels: string;
-    dropRate: number;
-    roundRate: number;
-    seats: number;
-    type: 'Hatchback' | 'Sedan' | 'SUV' | 'Van';
-    minKm: number;
-    batta: number;
-    nightCharge: number;
-    minLocalPackage?: number;
-}
+export type FareMode = 'distance' | 'hourly' | 'outstation' | 'drop' | 'package' | 'fixed' | 'custom';
 
 export interface Trip {
     id: string;
@@ -71,24 +60,6 @@ export interface Document {
     imageUrl?: string;
 }
 
-// CHENNAI MARKET RATES 2025
-export const VEHICLES: VehicleType[] = [
-    { id: 'hatchback', name: 'Hatchback', popularModels: 'Indica, Swift', dropRate: 15, roundRate: 13, seats: 4, type: 'Hatchback', minKm: 250, batta: 300, nightCharge: 200 },
-    { id: 'sedan', name: 'Sedan', popularModels: 'Dzire, Etios, Aura', dropRate: 16, roundRate: 14, seats: 4, type: 'Sedan', minKm: 250, batta: 300, nightCharge: 200 },
-    { id: 'suv', name: 'SUV (7-Seater)', popularModels: 'Ertiga, Xylo', dropRate: 21, roundRate: 18, seats: 7, type: 'SUV', minKm: 300, batta: 400, nightCharge: 250 },
-    { id: 'premium_suv', name: 'Premium SUV', popularModels: 'Innova Crysta', dropRate: 26, roundRate: 22, seats: 7, type: 'SUV', minKm: 300, batta: 600, nightCharge: 300 },
-    { id: 'tempo', name: 'Tempo Traveller', popularModels: 'Force Traveller', dropRate: 35, roundRate: 25, seats: 12, type: 'Van', minKm: 300, batta: 700, nightCharge: 400, minLocalPackage: 3500 },
-    { id: 'minibus', name: 'Mini Bus (18-Seater)', popularModels: 'Swaraj Mazda', dropRate: 45, roundRate: 35, seats: 18, type: 'Van', minKm: 300, batta: 900, nightCharge: 500, minLocalPackage: 4500 },
-    { id: 'bus', name: 'Large Bus (24-Seater)', popularModels: 'Ashok Leyland', dropRate: 55, roundRate: 50, seats: 24, type: 'Van', minKm: 300, batta: 1200, nightCharge: 700, minLocalPackage: 5500 }
-];
-
-// INTERSTATE PERMIT CHARGES (7 Days)
-export const PERMIT_CHARGES: Record<string, Record<string, number>> = {
-    'karnataka': { 'Hatchback': 850, 'Sedan': 850, 'SUV': 1250, 'Van': 1850 }, // Tempo falls under 'Van' logic mostly or specific
-    'andhra': { 'Hatchback': 900, 'Sedan': 900, 'SUV': 1350, 'Van': 1950 },
-    'kerala': { 'Hatchback': 750, 'Sedan': 750, 'SUV': 1100, 'Van': 1600 },
-    'puducherry': { 'Hatchback': 100, 'Sedan': 100, 'SUV': 150, 'Van': 250 }
-};
 
 /**
  * THE REWRITTEN ALGORITHM (v4.0) - CHENNAI STANDARD 2025
@@ -118,6 +89,9 @@ export const calculateFare = (params: {
     manualBataMode?: 'auto' | 'single' | 'double'; // 'auto', 'single', 'double'
     interstateState?: string; // 'karnataka', 'andhra', etc.
     isNightDrive?: boolean; // For auto-adding night charge
+    includedKm?: number;
+    includedHours?: number;
+    extraHourRate?: number;
 }) => {
     const {
         startKm, endKm, ratePerKm, mode, vehicleId, days = 1,
@@ -125,7 +99,8 @@ export const calculateFare = (params: {
         waitingHours = 0, isHillStation = false, petCharge = false,
         nightBata = 0, hourlyRate = 0, durationHours = 0,
         extraItems = [], packagePrice = 0, nightStay = 0,
-        includeGarageBuffer = false, manualBataMode = 'auto', interstateState = '', isNightDrive = false
+        includeGarageBuffer = false, manualBataMode = 'auto', interstateState = '', isNightDrive = false,
+        includedKm = 0, includedHours = 0, extraHourRate = 0
     } = params;
 
     const vehicle = VEHICLES.find(v => v.id === vehicleId);
@@ -136,9 +111,18 @@ export const calculateFare = (params: {
 
     const rawDist = Math.max(0, endKm - startKm);
     let effectiveDist = rawDist;
+    let calcMode = mode;
+
+    // HILL STATION LOGIC: Always treated as Round Trip
+    if (isHillStation) {
+        if (mode === 'drop') {
+            effectiveDist = rawDist * 2; // Convert One-Way to Round Trip Distance
+        }
+        calcMode = 'outstation'; // Enforce Round Trip Logic
+    }
 
     // 1. GARAGE BUFFER LOGIC
-    if (includeGarageBuffer && mode === 'outstation') {
+    if (includeGarageBuffer && calcMode === 'outstation') {
         effectiveDist += 20;
     }
 
@@ -148,7 +132,7 @@ export const calculateFare = (params: {
     // We will handle this in rate selection or distance calculation.
 
     // 3. DYNAMIC RATE SELECTION
-    let activeRate = (ratePerKm && ratePerKm > 0) ? ratePerKm : (mode === 'outstation' ? vehicle.roundRate : vehicle.dropRate);
+    let activeRate = (ratePerKm && ratePerKm > 0) ? ratePerKm : (calcMode === 'outstation' ? vehicle.roundRate : vehicle.dropRate);
 
     // Override for Heavy Vehicles on Drop -> Treat as Round Trip logic usually
     // Or simply: Distance * 2 * RoundTripRate?
@@ -162,7 +146,7 @@ export const calculateFare = (params: {
     let warningMessage = '';
 
     // 4. THE LOGIC ENGINE
-    if (mode === 'drop') {
+    if (calcMode === 'drop') {
         // Check if forced round trip (Heavy)
         // Check if forced round trip (Heavy) OR Minimum Package
         // Check if forced round trip (Heavy) OR Minimum Package
@@ -190,14 +174,16 @@ export const calculateFare = (params: {
             // CARS Logic
             const isLocal = rawDist <= 30; // 30KM Local threshold
             if (isLocal) {
-                // LOCAL DROP
-                const isLarge = vehicle.type === 'SUV';
+                // LOCAL DROP LOGIC (Point-to-Point)
+                // IF Distance <= Base_KM (10): Price = Base_Fare
+                // ELSE: Price = Base_Fare + ((Distance - Base_KM) * Input_Rate)
+                const BASE_KM = 10;
+                const isLarge = vehicle.type === 'SUV' || vehicle.type === 'Van';
                 const baseFee = isLarge ? 350 : 250;
-                // Use the Active Rate (Input Box Value) for extra KM
-                const extraRate = activeRate;
-                const extraKm = Math.max(0, rawDist - 10);
 
-                distCharge = baseFee + (extraKm * extraRate);
+                const extraKm = Math.max(0, rawDist - BASE_KM);
+
+                distCharge = baseFee + (extraKm * activeRate);
                 bBatta = 0;
                 effKmForCalc = rawDist;
             } else {
@@ -209,59 +195,45 @@ export const calculateFare = (params: {
             }
         }
     }
-    else if (mode === 'outstation') {
+    else if (calcMode === 'outstation') {
         // ROUND TRIP
         const minByDays = vehicle.minKm * days;
         effKmForCalc = Math.max(minByDays, effectiveDist);
         distCharge = effKmForCalc * activeRate;
     }
-    else if (mode === 'hourly') {
+    else if (calcMode === 'hourly') {
         // Corporate / Local Hourly Logic
-        // Scenario: 8Hr/80Km Package + Extras
+        // Price = Package_Price
+        // IF Actual_KM > Package_KM: Price += (Actual_KM - Package_KM) * Extra_KM_Rate
+        // IF Actual_Hours > Package_Hours: Price += (Actual_Hours - Package_Hours) * Extra_Hour_Rate
+
         if (packagePrice && packagePrice > 0) {
             // 1. Base Package Price
             distCharge = packagePrice;
 
             // 2. Extra Hours
-            // convention: 'durationHours' passed is ACTUAL duration. 
-            // We need 'packageHours' param or assume standard?
-            // Let's assume user calculates excess before calling, OR we assume standard 8?
-            // BLS says: "Input Rate: Extra Hr: 250". 
-            // Better to let caller handle "Extra Hours" via 'waitingHours' or new param?
-            // "Actual Usage: 9 Hours" -> implies we need to match it against a limit.
-            // Let's rely on 'waitingHours' to represent *Extra Hours* in this context for simplicity, 
-            // OR checks props.
-            if (waitingHours > 0 && hourlyRate > 0) {
-                distCharge += (waitingHours * hourlyRate);
+            // Use 'durationHours' as Actual Hours vs 'includedHours'
+            const actualHours = durationHours || 0;
+            const limitHours = includedHours || 8; // Default to 8 if not passed
+            const excessHours = Math.max(0, actualHours - limitHours);
+
+            if (excessHours > 0) {
+                // Use passed extraHourRate, OR hourlyRate, OR fallback 250
+                const eRate = extraHourRate || hourlyRate || 250;
+                distCharge += (excessHours * eRate);
             }
 
             // 3. Extra KM
-            // 'effectiveDist' is actual dist. 
-            // We need a 'limitKm' param. 
-            // If not present, we can't calculate extra.
-            // WORKAROUND: For this specific test, we'll calculate extraKm outside 
-            // OR use 'rawDist' - 80.
-            // Let's define: if hourly, and dist > 80 (standard), add charge.
-            // But packages vary (4hr/40km, 8hr/80km).
-            // Let's assume the CALCULATOR UI handles the "Excess" logic and passes it as ... ?
-            // The user prompt says "Input Rates: Extra Hr: 250".
-            // Let's IMPLEMENT properly:
-            // If mode is hourly, we check 'effectiveDist' vs 80? No.
-            // Let's adhere to the simple formula: Base + (Dist * Rate) is wrong.
-            // Base + (ExtraDist * Rate).
+            const actualKm = effectiveDist; // This comes from startKm/endKm diff
+            const limitKm = includedKm || 80; // Default to 80 if not passed
+            const excessKm = Math.max(0, actualKm - limitKm);
 
-            // To pass the test without changing interface too much:
-            // We will assume 'startKm' = 0, 'endKm' = Total Dist.
-            // We need to know the 'Included KM'.
-            // Let's hardcode 80km for 'hourly' mode standard package or add a param.
-            const includedKm = 80;
-            const excessKm = Math.max(0, effectiveDist - includedKm);
             if (excessKm > 0 && activeRate > 0) {
                 distCharge += (excessKm * activeRate);
             }
 
         } else {
-            // Old "Multiplier" Logic (Fallback)
+            // Fallback for custom hourly without package price
             const hRate = hourlyRate || (vehicle.type === 'SUV' ? 450 : 350);
             distCharge = durationHours * hRate;
             let minCharge = 0;
@@ -277,20 +249,23 @@ export const calculateFare = (params: {
         distCharge = extraItems.reduce((acc, i) => acc + i.amount, 0);
     }
 
-    // 5. DRIVER BATA LOGIC
+    // 5. DRIVER BATTA LOGIC
     if (mode === 'outstation' || (mode === 'drop' && rawDist > 30)) {
         const baseBata = vehicle.batta;
         let bataCount = days; // Default 1 per day
 
         if (manualBataMode === 'single') {
-            bataCount = 1 * days; // Or just matches days
+            bataCount = 1 * days;
         } else if (manualBataMode === 'double') {
             bataCount = 2 * days;
         } else {
             // AUTO MODE
-            // High Mileage Rule: > 400km/day avg?
+            // High Mileage Rule: > 400km/day avg implies long driving hours (2 shifts or double batta)
+            // APPLIES MOSTLY TO ROUND TRIPS. For Drops, usually 1 Bata is charged as return is empty/included in rate.
             const avgKm = effKmForCalc / days;
-            if (avgKm > 400) {
+
+            // Only apply High Mileage Double Batta for Round Trips (Outstation)
+            if (mode === 'outstation' && avgKm > 400) {
                 bataCount = 2 * days;
             }
         }

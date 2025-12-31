@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useSettings } from '../contexts/SettingsContext';
-import { calculateFare, VEHICLES } from '../utils/fare';
+import { calculateFare } from '../utils/fare';
+import { VEHICLES } from '../config/vehicleRates';
 import type { Trip } from '../utils/fare';
 import { shareReceipt, type SavedQuotation } from '../utils/pdf';
 import PlacesAutocomplete from './PlacesAutocomplete';

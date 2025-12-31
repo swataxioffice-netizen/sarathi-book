@@ -93,4 +93,28 @@ describe('Master Test Plan - 2025 Market Rates', () => {
         expect(total).toBe(16400);
     });
 
+    // Test 5: The "Hatchback Min Rule" (250 KM Verification)
+    it('Scenario 5: Hatchback 2-Day Round Trip (Min 250km verification)', () => {
+        // Hatchback Round Rate: 13. Min : 250/day.
+        // Days: 2.
+        // Actual Distance: 400 KM.
+        // Min Billable: 2 * 250 = 500 KM. (NOT 600).
+        // Billable: Max(400, 500) = 500 KM.
+        // Expected Fare: 500 * 13 = 6500.
+        // Batta: 300 * 2 = 600.
+        // Total: 7100.
+        const result = calculateFare({
+            startKm: 0,
+            endKm: 400,
+            mode: 'outstation',
+            vehicleId: 'hatchback',
+            days: 2
+        });
+
+        const total = result.distanceCharge + result.driverBatta;
+        expect(result.distanceCharge).toBe(6500);
+        expect(result.driverBatta).toBe(600);
+        expect(total).toBe(7100);
+    });
+
 });

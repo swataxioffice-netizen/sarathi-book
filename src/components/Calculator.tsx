@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
-import { MapPin, Users, Car, Clock, CheckCircle2, MessageCircle, AlertCircle, UserCheck, Truck, Hash, Plus } from 'lucide-react';
+import { MapPin, Clock, Car, AlertCircle, CheckCircle2, Plus, Hash, Users, RotateCcw, ChevronUp, ChevronDown, Share2, UserCheck, Truck } from 'lucide-react';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
 import { calculateDistance } from '../utils/googleMaps';
 import { calculateAdvancedRoute } from '../utils/routesApi';
 import { estimatePermitCharge } from '../utils/permits';
 import { estimateParkingCharge } from '../utils/parking';
-import { calculateFare, VEHICLES, FareMode } from '../utils/fare';
+import { calculateFare, FareMode } from '../utils/fare';
+import { VEHICLES } from '../config/vehicleRates';
 import { Analytics } from '../utils/monitoring';
 
-// Using central VEHICLES from fare.ts
+
+// Define result type based on calculation output
+type FareResult = ReturnType<typeof calculateFare>;
 
 // --- 1. Cab Calculator Component ---
 const CabCalculator: React.FC = () => {
     useSettings();
-    const [tripType, setTripType] = useState<'oneway' | 'roundtrip' | 'airport'>('oneway');
+    const [tripType, setTripType] = useState<'oneway' | 'roundtrip' | 'local' | 'airport'>('oneway');
     const [pickup, setPickup] = useState('');
     const [drop, setDrop] = useState('');
     const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -25,9 +28,13 @@ const CabCalculator: React.FC = () => {
     const [passengers, setPassengers] = useState<number>(4);
     const [selectedVehicle, setSelectedVehicle] = useState<string>('hatchback');
     const [customRate, setCustomRate] = useState<number>(14);
-    const [result, setResult] = useState<any>(null);
+    const [result, setResult] = useState<{ fare: number; details: string[]; breakdown: FareResult & { total: number } } | null>(null);
     const [calculatingDistance, setCalculatingDistance] = useState(false);
     const [showMap, setShowMap] = useState(false);
+
+    // Hourly / Local Package State
+    const [hourlyPackage, setHourlyPackage] = useState<string>('8hr_80km');
+    const [durationHours, setDurationHours] = useState<number>(8); // Default 8
 
     // Additional Charges State
     const [waitingHours, setWaitingHours] = useState<number>(0);
@@ -44,6 +51,10 @@ const CabCalculator: React.FC = () => {
     const [interstateState, setInterstateState] = useState('');
     const [isNightDrive, setIsNightDrive] = useState(false);
 
+    const [manualToll, setManualToll] = useState(false);
+    const [manualPermit, setManualPermit] = useState(false);
+    const [manualParking, setManualParking] = useState(false);
+
     const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number, tollAmt?: number) => {
         setPickup(pickupAddr);
         setDrop(dropAddr);
@@ -57,31 +68,64 @@ const CabCalculator: React.FC = () => {
     // Auto-calculate distance, TOLLS, PERMITS AND PARKING when both locations are selected via autocomplete
     useEffect(() => {
         const autoCalculateTrip = async () => {
+            if (tripType === 'local') {
+                // For Local Hourly, distance is technically 0 at start, or user inputs usage?
+                // Actually, initially we just set distance to 0 or package limit?
+                // Let's rely on manual input or package default.
+                // We'll calculate fare based on package.
+                return;
+            }
+
             if (pickupCoords && dropCoords) {
                 setCalculatingDistance(true);
                 try {
                     // 1. Estimate Permit based on states & vehicle
-                    const permitEst = estimatePermitCharge(pickup, drop, selectedVehicle);
-                    if (permitEst) {
-                        setPermit(permitEst.amount.toString());
-                    } else {
-                        setPermit('0');
+                    if (!manualPermit) {
+                        const permitEst = estimatePermitCharge(pickup, drop, selectedVehicle);
+                        if (permitEst) {
+                            setPermit(permitEst.amount.toString());
+                        } else {
+                            setPermit('0');
+                        }
                     }
 
+                    // Reset Toll/Days to avoid stale data (ONLY if not manual)
+                    if (!manualToll) setToll('0');
+                    if (tripType !== 'roundtrip') setDays('1'); // Days logic remains auto for now
+
                     // 2. Estimate Parking based on location keywords
-                    const pickupParking = estimateParkingCharge(pickup);
-                    const dropParking = estimateParkingCharge(drop);
-                    const totalParking = (pickupParking?.amount || 0) + (dropParking?.amount || 0);
-                    setParking(totalParking.toString());
+                    if (!manualParking) {
+                        const pickupParking = estimateParkingCharge(pickup);
+                        const dropParking = estimateParkingCharge(drop);
+                        const totalParking = (pickupParking?.amount || 0) + (dropParking?.amount || 0);
+                        setParking(totalParking.toString());
+                    }
 
                     // 3. Try Advanced Routes API first (for tolls)
                     const advanced = await calculateAdvancedRoute(pickupCoords, dropCoords);
                     if (advanced) {
                         const multiplier = tripType === 'roundtrip' ? 2 : 1;
                         setDistance((advanced.distanceKm * multiplier).toString());
-                        if (advanced.tollPrice > 0) {
-                            // Doubling toll for Round Trip
-                            setToll((advanced.tollPrice * multiplier).toString());
+
+                        if (advanced.tollPrice > 0 && !manualToll) {
+                            // HEURISTIC FIX: API often returns valid Round Trip Toll. 
+                            // For One Way, if high (>800), assume it includes return and take 60% approx? 
+                            // User says "Your One Way: 1570 (2x)". Actual ~800.
+                            // So if One Way, we might need to halve it?
+                            // Let's rely on user feedback: "If tripType === 'round_trip', use as is". 
+                            // Implies for One Way we might need to adjust if it seems double.
+                            let finalToll = advanced.tollPrice;
+                            if (tripType === 'oneway' && finalToll > 1000) {
+                                finalToll = Math.round(finalToll * 0.6); // 60% as safe bet (One Way usually ~50-60%)
+                            }
+                            setToll(finalToll.toString());
+                        }
+
+                        // Auto-Calculate Days for Rounds Trips (Min 300km/day rule)
+                        if (tripType === 'roundtrip') {
+                            const totalDist = advanced.distanceKm * multiplier;
+                            const estDays = Math.max(1, Math.ceil(totalDist / 300));
+                            setDays(estDays.toString());
                         }
                     } else {
                         // 4. Fallback to basic distance matrix
@@ -100,7 +144,7 @@ const CabCalculator: React.FC = () => {
         };
 
         autoCalculateTrip();
-    }, [pickupCoords, dropCoords, pickup, drop, selectedVehicle, tripType]);
+    }, [pickupCoords, dropCoords, pickup, drop, selectedVehicle, tripType, manualToll, manualPermit, manualParking]);
 
     useEffect(() => {
         if (passengers > 18) {
@@ -127,21 +171,55 @@ const CabCalculator: React.FC = () => {
 
     // AUTO-CALCULATE FARE INSTANTLY
     useEffect(() => {
-        if (distance) {
+        // For Local Hourly, we calculate even without distance
+        if (distance || tripType === 'local') {
             calculate();
         }
-    }, [distance, tripType, days, passengers, selectedVehicle, customRate, waitingHours, isHillStation, petCharge, toll, permit, parking, garageBuffer, manualBata, interstateState, isNightDrive]);
+    }, [distance, tripType, days, passengers, selectedVehicle, customRate, waitingHours, isHillStation, petCharge, toll, permit, parking, garageBuffer, manualBata, interstateState, isNightDrive, hourlyPackage, durationHours]);
 
     const calculate = () => {
-        const dist = parseFloat(distance);
-        if (!dist && tripType !== 'airport') return;
+        const dist = parseFloat(distance) || 0;
+        if (!dist && tripType !== 'airport' && tripType !== 'local') return;
 
-        const mode: FareMode = tripType === 'roundtrip' ? 'outstation' : 'drop';
+        let mode: FareMode = 'drop';
+        if (tripType === 'roundtrip') mode = 'outstation';
+        if (tripType === 'local') mode = 'hourly';
+
         const tripDays = parseInt(days) || 1;
+        let packagePrice = 0;
+        let pDuration = 8;
+        let pKm = 80;
+
+        // Determine Package Price based on Selection
+        if (mode === 'hourly') {
+            const vehicle = VEHICLES.find(v => v.id === selectedVehicle);
+
+            // Standard Market Rates (Approx) - Hardcoded for MVP or look up?
+            // Let's assume Sedan: 4hr/40km=1300, 8hr/80km=2300, 12hr/120km=3200
+            // SUV: +30-40%
+            // Implementation: Simple mapping
+            if (hourlyPackage === '4hr_40km') {
+                pDuration = 4; pKm = 40;
+                packagePrice = vehicle?.type === 'SUV' ? 1800 : 1300;
+                // Adjust for larger vehicles?
+                if (['tempo', 'minibus', 'bus'].includes(selectedVehicle)) packagePrice = 3500; // Tempo min
+            } else if (hourlyPackage === '8hr_80km') {
+                pDuration = 8; pKm = 80;
+                packagePrice = vehicle?.type === 'SUV' ? 3000 : 2300;
+                if (['tempo', 'minibus', 'bus'].includes(selectedVehicle)) packagePrice = 5500;
+            } else { // 12hr
+                pDuration = 12; pKm = 120;
+                packagePrice = vehicle?.type === 'SUV' ? 4200 : 3200;
+                if (['tempo', 'minibus', 'bus'].includes(selectedVehicle)) packagePrice = 7500;
+            }
+
+            // Sync with state defaults if not manual
+            // setDurationHours(pDuration); // Careful with loop?
+        }
 
         const fareParams = {
             startKm: 0,
-            endKm: mode === 'outstation' ? dist : dist, // distance is one-way for round trips usually? Wait, let's keep it consistent.
+            endKm: mode === 'outstation' ? dist : dist,
             baseFare: 0,
             ratePerKm: customRate,
             toll: parseFloat(toll) || 0,
@@ -151,13 +229,19 @@ const CabCalculator: React.FC = () => {
             vehicleId: selectedVehicle,
             days: tripDays,
             nightBata: 0,
-            waitingHours: waitingHours,
+            // For Local Hourly, we handle extra hours via 'includedHours' vs 'durationHours' inside fare.ts logic now.
+            // So we set waitingHours to 0 here to prevent separate 'Waiting Charge'.
+            waitingHours: tripType === 'local' ? 0 : waitingHours,
             isHillStation,
             petCharge,
             includeGarageBuffer: garageBuffer,
             manualBataMode: manualBata,
             interstateState: interstateState,
-            isNightDrive: isNightDrive
+            isNightDrive: isNightDrive,
+            packagePrice: packagePrice,
+            includedKm: pKm,
+            includedHours: pDuration,
+            extraHourRate: 250 // Standard Extra Hour Rate
         };
 
         const res = calculateFare(fareParams);
@@ -169,20 +253,35 @@ const CabCalculator: React.FC = () => {
 
         if (pickup) details.push(`Pickup: ${pickup}`);
         if (drop) details.push(`Drop: ${drop}`);
-        details.push(`Trip: ${res.distance} KM (${res.mode === 'outstation' ? 'Round Trip' : 'Local Drop'})`);
+
+        if (mode === 'hourly') {
+            details.push(`Package: ${pDuration} Hrs / ${pKm} KM`);
+            details.push(`Base Fare: ₹${packagePrice}`);
+            // Add excess details
+            const excessKm = Math.max(0, dist - pKm); // dist is actual usage for hourly
+            const excessHr = Math.max(0, durationHours - pDuration);
+
+            if (excessKm > 0) details.push(`Extra Distance: ${excessKm} KM × ₹${customRate} = ₹${(excessKm * customRate).toFixed(0)}`);
+            if (excessHr > 0) details.push(`Extra Hours: ${excessHr} Hr × ₹250 = ₹${excessHr * 250}`); // Hardcoded 250 for now or fetch
+        } else {
+            details.push(`Trip: ${res.distance} KM (${res.mode === 'outstation' ? 'Round Trip' : 'Local Drop'})`);
+        }
 
         if (res.warningMessage) {
             details.push(`⚠️ ${res.warningMessage}`);
         }
 
         if (res.mode === 'drop' && res.distance <= 30) {
-            details.push(`Type: City Local Trip (Standard)`);
+            details.push(`Type: City Local Trip`);
+
             const isLarge = currentVeh?.type === 'SUV' || currentVeh?.type === 'Van';
             const baseFee = isLarge ? 350 : 250;
-            const extraRate = res.rateUsed;
-            const extraKm = Math.max(0, res.distance - 10);
+            const BASE_KM = 10;
 
-            details.push(`Base Fare (First 10 KM): ₹${baseFee}`);
+            const extraRate = res.rateUsed;
+            const extraKm = Math.max(0, res.distance - BASE_KM);
+
+            details.push(`Base Fare (First ${BASE_KM} KM): ₹${baseFee}`);
             if (extraKm > 0) {
                 details.push(`Extra Distance: ${extraKm.toFixed(1)} KM × ₹${extraRate} = ₹${(extraKm * extraRate).toFixed(0)}`);
             }
@@ -193,7 +292,7 @@ const CabCalculator: React.FC = () => {
             if (res.driverBatta > 0) {
                 details.push(`Driver Allowance: ₹${res.driverBatta}`);
             }
-        } else {
+        } else if (res.mode !== 'hourly') {
             // Outstation Drop Trip (> 30KM)
             details.push(`Outstation Drop Trip (Min 130 KM)`);
             details.push(`Distance Charge: ${res.effectiveDistance} KM × ₹${res.rateUsed} = ₹${res.distanceCharge}`);
@@ -202,7 +301,7 @@ const CabCalculator: React.FC = () => {
             }
         }
 
-        if (res.waitingCharges > 0) details.push(`Waiting Charge: ₹${res.waitingCharges}`);
+        if (res.waitingCharges > 0 && mode !== 'hourly') details.push(`Waiting Charge: ₹${res.waitingCharges}`); // Hourly includes it in extra
         if (res.hillStationCharges > 0) details.push(`Hill Station: ₹${res.hillStationCharges}`);
         if (res.petCharges > 0) details.push(`Pet Charge: ₹${res.petCharges}`);
         if (res.nightBata > 0) details.push(`Night Driver Allowance: ₹${res.nightBata}`);
@@ -226,48 +325,28 @@ const CabCalculator: React.FC = () => {
         });
     };
 
-    const book = () => {
-        const vehicle = VEHICLES.find(v => v.id === selectedVehicle);
-        let typeLabel = 'Local Drop';
-        if (tripType === 'roundtrip') {
-            typeLabel = 'Round Trip';
-        } else if (parseFloat(distance) > 30) {
-            typeLabel = 'Outstation Drop';
-        }
 
-        const msg = `*PICKUP:* ${pickup}\n` +
-            `*DROP:* ${drop}\n\n` +
-            `*VEHICLE:* ${vehicle?.name} (${passengers} Seats)\n` +
-            `*TRIP TYPE:* ${typeLabel}\n` +
-            `*DISTANCE:* ${distance} km\n` +
-            (tripType === 'roundtrip' ? `*DURATION:* ${days} Day(s)\n` : '') +
-            `\n` +
-            `*ESTIMATED FARE: ₹${result.fare}*\n` +
-            `_(Includes Approx Tolls & Permits)_`;
-
-        const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
-        window.open(url, '_blank');
-    };
 
     return (
         <div className="space-y-4">
             <div className="flex p-1 bg-slate-50 rounded-xl" role="group" aria-label="Trip type selection">
-                {['oneway', 'roundtrip'].map((t: any) => {
+                {(['oneway', 'roundtrip', 'local'] as const).map((t) => {
                     return (
                         <button
                             key={t}
                             onClick={() => setTripType(t)}
                             aria-pressed={tripType === t}
-                            aria-label={t === 'oneway' ? 'One Way or Drop Trip' : 'Round Trip'}
+                            aria-label={t === 'oneway' ? 'One Way or Drop Trip' : (t === 'local' ? 'Local Hourly Rental' : 'Round Trip')}
                             className={`flex-1 py-3 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all 
-                                ${tripType === t ? 'bg-white text-[#0047AB] shadow-sm' : 'text-slate-600 hover:text-slate-900'}
+                                ${tripType === t ? 'bg-white text-[#0047AB] shadow-sm border-2 border-[#0047AB]' : 'text-slate-600 hover:text-slate-900 border-2 border-transparent'}
                             `}
                         >
-                            {t === 'oneway' ? 'One Way' : 'Round Trip'}
+                            {t === 'oneway' ? 'One Way' : (t === 'local' ? 'Local Hourly' : 'Round Trip')}
                         </button>
                     );
                 })}
             </div>
+
 
             <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
@@ -283,58 +362,113 @@ const CabCalculator: React.FC = () => {
                         onMapClick={() => setShowMap(true)}
                         placeholder="Start typing..."
                     />
-                    <PlacesAutocomplete
-                        label="Drop"
-                        icon={<MapPin size={10} aria-hidden="true" />}
-                        value={drop}
-                        onChange={setDrop}
-                        onPlaceSelected={(place) => {
-                            setDrop(place.address);
-                            setDropCoords({ lat: place.lat, lng: place.lng });
-                        }}
-                        onMapClick={() => setShowMap(true)}
-                        placeholder="Start typing..."
-                    />
-                </div>
 
-                <div className="space-y-1">
-                    <div className="flex justify-between items-center">
-                        <Label icon={<AlertCircle size={10} aria-hidden="true" />} text="Distance (Km)" htmlFor="cab-distance" />
-                        {tripType === 'oneway' && distance && !isNaN(parseFloat(distance)) && (
-                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${parseFloat(distance) <= 30 ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
-                                {parseFloat(distance) <= 30 ? 'Local' : 'Outstation Drop'}
-                            </span>
-                        )}
-                        {(tripType === 'roundtrip' || (tripType === 'oneway' && parseFloat(distance) > 30)) && (
-                            <label className="flex items-center gap-1.5 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={garageBuffer}
-                                    onChange={(e) => setGarageBuffer(e.target.checked)}
-                                    className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                                />
-                                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight">+ Garage Buffer (20km)</span>
-                            </label>
-                        )}
-                    </div>
-                    <div className="relative">
-                        <input
-                            id="cab-distance"
-                            type="number"
-                            value={distance}
-                            onChange={(e) => setDistance(e.target.value)}
-                            className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs"
-                            placeholder={calculatingDistance ? "Calculating..." : "Auto-calculated"}
-                            disabled={calculatingDistance}
+                    {tripType !== 'local' && (
+                        <PlacesAutocomplete
+                            label="Drop"
+                            icon={<MapPin size={10} aria-hidden="true" />}
+                            value={drop}
+                            onChange={setDrop}
+                            onPlaceSelected={(place) => {
+                                setDrop(place.address);
+                                setDropCoords({ lat: place.lat, lng: place.lng });
+                            }}
+                            onMapClick={() => setShowMap(true)}
+                            placeholder="Start typing..."
                         />
-                        {calculatingDistance && (
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" aria-hidden="true"></div>
-                            </div>
-                        )}
-                    </div>
+                    )}
+
+                    {tripType === 'local' && (
+                        <div className="space-y-1 w-full">
+                            <Label icon={<Clock size={10} aria-hidden="true" />} text="Total Hours" htmlFor="duration-hours" />
+                            <select
+                                id="duration-hours"
+                                value={durationHours}
+                                onChange={(e) => setDurationHours(parseInt(e.target.value))}
+                                className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs"
+                            >
+                                {[4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map(h => (
+                                    <option key={h} value={h}>{h} Hours</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                 </div>
 
+                {tripType === 'local' && (
+                    <div className="space-y-1">
+                        <Label icon={<Hash size={10} aria-hidden="true" />} text="Package" htmlFor="hourly-package" />
+                        <div className="grid grid-cols-3 gap-2">
+                            {[
+                                { id: '4hr_40km', label: '4 Hr / 40 KM' },
+                                { id: '8hr_80km', label: '8 Hr / 80 KM' },
+                                { id: '12hr_120km', label: '12 Hr / 120 KM' }
+                            ].map((p) => (
+                                <button
+                                    key={p.id}
+                                    onClick={() => setHourlyPackage(p.id)}
+                                    className={`py-2 px-1 rounded-lg text-[9px] font-bold border transition-all ${hourlyPackage === p.id ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-600'}`}
+                                >
+                                    {p.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Row 2: Distance + (Duration or Rate) */}
+                <div className="grid grid-cols-2 gap-3 items-end">
+                    {tripType !== 'local' && (
+                        <div className="space-y-1">
+                            <div className="flex justify-between items-center">
+                                <Label icon={<AlertCircle size={10} aria-hidden="true" />} text="Distance (Km)" htmlFor="cab-distance" />
+                                {tripType === 'oneway' && distance && !isNaN(parseFloat(distance)) && (
+                                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${parseFloat(distance) <= 30 ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+                                        {parseFloat(distance) <= 30 ? 'Local' : 'Drop'}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="relative">
+                                <input
+                                    id="cab-distance"
+                                    type="number"
+                                    value={distance}
+                                    onChange={(e) => setDistance(e.target.value)}
+                                    className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs"
+                                    placeholder={calculatingDistance ? "..." : "0"}
+                                    disabled={calculatingDistance}
+                                />
+                                {calculatingDistance && (
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" aria-hidden="true"></div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Secondary Input for Row 2 */}
+                    {tripType === 'roundtrip' && (
+                        <div className="space-y-1">
+                            <Label icon={<Clock size={10} aria-hidden="true" />} text="Trip Duration" htmlFor="cab-days" />
+                            <select id="cab-days" value={days} onChange={e => setDays(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
+                                {[1, 2, 3, 4, 5, 6, 7, 10, 15].map(n => <option key={n} value={n}>{n} {n === 1 ? 'Day' : 'Days'}</option>)}
+                            </select>
+                        </div>
+                    )}
+                    {tripType === 'oneway' && (
+                        <Input label="Rate/Km" icon={<Hash size={10} aria-hidden="true" />} value={customRate} onChange={(val) => setCustomRate(Number(val))} type="number" highlight />
+                    )}
+                </div>
+
+                {/* Rate/Km for Roundtrip */}
+                {tripType === 'roundtrip' && (
+                    <div className="grid grid-cols-1">
+                        <Input label="Rate/Km" icon={<Hash size={10} aria-hidden="true" />} value={customRate} onChange={(val) => setCustomRate(Number(val))} type="number" highlight />
+                    </div>
+                )}
+
+                {/* Row 3: Passengers + Vehicle */}
                 <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                         <Label icon={<Users size={10} aria-hidden="true" />} text="Passengers" htmlFor="cab-passengers" />
@@ -357,17 +491,19 @@ const CabCalculator: React.FC = () => {
                     </div>
                 </div>
 
-                <div className={`grid ${tripType === 'roundtrip' ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
-                    {tripType === 'roundtrip' && (
-                        <div className="space-y-1">
-                            <Label icon={<Clock size={10} aria-hidden="true" />} text="Trip Duration" htmlFor="cab-days" />
-                            <select id="cab-days" value={days} onChange={e => setDays(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
-                                {[1, 2, 3, 4, 5, 6, 7, 10, 15].map(n => <option key={n} value={n}>{n} {n === 1 ? 'Day' : 'Days'}</option>)}
-                            </select>
-                        </div>
-                    )}
-                    <Input label="Rate/Km" icon={<Hash size={10} aria-hidden="true" />} value={customRate} onChange={setCustomRate} type="number" highlight />
-                </div>
+                {/* Row 4: Garage Buffer */}
+                {(tripType === 'roundtrip' || (tripType === 'oneway' && parseFloat(distance) > 30)) && (
+                    <label className="flex items-center gap-1.5 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        <input
+                            type="checkbox"
+                            checked={garageBuffer}
+                            onChange={(e) => setGarageBuffer(e.target.checked)}
+                            className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Add Garage Buffer (20km)</span>
+                    </label>
+                )}
+
 
                 {/* Additional Charges Section - ACCORDION */}
                 <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
@@ -378,28 +514,30 @@ const CabCalculator: React.FC = () => {
                     >
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                             <Plus size={12} className={`text-blue-500 transition-transform ${showAdditional ? 'rotate-45' : ''}`} />
-                            Additional Charges
+                            {showAdditional ? 'Additional Charges' : 'Add Tolls / Parking / Batta'}
                         </p>
                         <Plus size={12} className={`text-slate-400 transition-transform duration-200 ${showAdditional ? 'rotate-180 opacity-0' : 'rotate-0'}`} />
                     </button>
 
                     {showAdditional && (
                         <div className="p-3 pt-0 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                            {/* Interstate Permit */}
-                            <div className="space-y-1">
-                                <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Interstate Permit</label>
-                                <select
-                                    value={interstateState}
-                                    onChange={(e) => setInterstateState(e.target.value)}
-                                    className="tn-input h-8 text-xs bg-white w-full"
-                                >
-                                    <option value="">None (State Only)</option>
-                                    <option value="kerala">Kerala Entry</option>
-                                    <option value="karnataka">Karnataka Entry</option>
-                                    <option value="andhra">Andhra Entry</option>
-                                    <option value="puducherry">Puducherry Entry</option>
-                                </select>
-                            </div>
+                            {/* Interstate Permit - Only for Outstation/Drop */}
+                            {tripType !== 'local' && (
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Interstate Permit</label>
+                                    <select
+                                        value={interstateState}
+                                        onChange={(e) => setInterstateState(e.target.value)}
+                                        className="tn-input h-8 text-xs bg-white w-full"
+                                    >
+                                        <option value="">None (State Only)</option>
+                                        <option value="kerala">Kerala Entry</option>
+                                        <option value="karnataka">Karnataka Entry</option>
+                                        <option value="andhra">Andhra Entry</option>
+                                        <option value="puducherry">Puducherry Entry</option>
+                                    </select>
+                                </div>
+                            )}
 
                             {/* Driver Bata Controls for Outstation */}
                             {(tripType === 'roundtrip' || (parseFloat(distance) > 30)) && (
@@ -428,19 +566,58 @@ const CabCalculator: React.FC = () => {
                                     <input type="number" value={waitingHours || ''} onChange={e => setWaitingHours(Number(e.target.value))} className="tn-input h-8 text-xs bg-white" placeholder="0" />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Toll Charges</label>
-                                    <input type="number" value={toll} onChange={e => setToll(e.target.value)} className="tn-input h-8 text-xs bg-white" placeholder="0" />
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Toll Charges</label>
+                                        {manualToll && (
+                                            <button onClick={() => setManualToll(false)} className="text-[9px] text-blue-600 flex items-center gap-1 hover:underline" title="Reset to Auto">
+                                                <RotateCcw size={8} /> Reset
+                                            </button>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="number"
+                                        value={toll}
+                                        onChange={e => { setToll(e.target.value); setManualToll(true); }}
+                                        className={`tn-input h-8 text-xs w-full ${manualToll ? 'bg-yellow-50 border-yellow-400 text-yellow-800' : 'bg-white'}`}
+                                        placeholder="0"
+                                    />
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Parking</label>
-                                    <input type="number" value={parking} onChange={e => setParking(e.target.value)} className="tn-input h-8 text-xs bg-white" placeholder="0" />
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Parking</label>
+                                        {manualParking && (
+                                            <button onClick={() => setManualParking(false)} className="text-[9px] text-blue-600 flex items-center gap-1 hover:underline" title="Reset to Auto">
+                                                <RotateCcw size={8} /> Reset
+                                            </button>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="number"
+                                        value={parking}
+                                        onChange={e => { setParking(e.target.value); setManualParking(true); }}
+                                        className={`tn-input h-8 text-xs w-full ${manualParking ? 'bg-yellow-50 border-yellow-400 text-yellow-800' : 'bg-white'}`}
+                                        placeholder="0"
+                                    />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Permit (Manual)</label>
-                                    <input type="number" value={permit} onChange={e => setPermit(e.target.value)} className="tn-input h-8 text-xs bg-white" placeholder="0" />
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Permit (Manual)</label>
+                                        {manualPermit && (
+                                            <button onClick={() => setManualPermit(false)} className="text-[9px] text-blue-600 flex items-center gap-1 hover:underline" title="Reset to Auto">
+                                                <RotateCcw size={8} /> Reset
+                                            </button>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="number"
+                                        value={permit}
+                                        onChange={e => { setPermit(e.target.value); setManualPermit(true); }}
+                                        className={`tn-input h-8 text-xs w-full ${manualPermit ? 'bg-yellow-50 border-yellow-400 text-yellow-800' : 'bg-white'}`}
+                                        placeholder="0"
+                                    />
                                 </div>
                             </div>
 
@@ -449,19 +626,19 @@ const CabCalculator: React.FC = () => {
                                     onClick={() => setIsHillStation(!isHillStation)}
                                     className={`py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${isHillStation ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
                                 >
-                                    🏔️ Hill Station
+                                    Hill Station
                                 </button>
                                 <button
                                     onClick={() => setPetCharge(!petCharge)}
                                     className={`py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${petCharge ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
                                 >
-                                    🐾 Pet Charge
+                                    Pet Charge
                                 </button>
                                 <button
                                     onClick={() => setIsNightDrive(!isNightDrive)}
                                     className={`col-span-2 py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${isNightDrive ? 'bg-indigo-900 border-indigo-900 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
                                 >
-                                    🌙 Night Drive (11 PM - 5 AM)
+                                    Night Drive (11 PM - 5 AM)
                                 </button>
                             </div>
                         </div>
@@ -469,8 +646,8 @@ const CabCalculator: React.FC = () => {
                 </div>
             </div>
 
-            <Button onClick={calculate} disabled={!distance} text="Calculate Fare" ariaLabel="Calculate Cab Fare" />
-            {result && <ResultCard title="Cab Fare" amount={result.fare} details={result.details} sub="Tolls & Permits Included (Approx)" onBook={book} />}
+            {/* Sticky Result Card Replacement */}
+            {result && <ResultCard title="Cab Fare" amount={result.fare} details={result.details} sub="Tolls & Permits Included (Approx)" />}
 
             {showMap && (
                 <MapPicker
@@ -490,7 +667,7 @@ const ActingDriverCalculator: React.FC = () => {
     const [days, setDays] = useState('1');
     const [stayProvided, setStayProvided] = useState(false);
     const [foodProvided, setFoodProvided] = useState(false);
-    const [result, setResult] = useState<any>(null);
+    const [result, setResult] = useState<{ fare: number; details: string[] } | null>(null);
 
     const calculate = () => {
         const numDays = parseInt(days) || 1;
@@ -529,33 +706,11 @@ const ActingDriverCalculator: React.FC = () => {
 
         setResult({
             fare: totalFare,
-            details,
-            breakdown: {
-                driverCharge,
-                bata: bataCharge,
-                accommodation: accommodationCharge,
-                returnCharge
-            }
+            details
         });
     };
 
-    const book = () => {
-        const serviceNames = {
-            local8: 'Local Driver (8 hrs/80 KM)',
-            local12: 'Local Driver (12 hrs/120 KM)',
-            outstation: 'Outstation Driver'
-        };
-        const msg = `*SERVICE:* ${serviceNames[serviceType]}\n` +
-            `*DURATION:* ${days} Day(s)\n` +
-            (serviceType === 'outstation' ?
-                `*FOOD:* ${foodProvided ? 'Provided' : 'Not Provided'}\n` +
-                `*STAY:* ${stayProvided ? 'Provided' : 'Not Provided'}\n` : '') +
-            `\n` +
-            `*ESTIMATED COST: ₹${result.fare}*`;
 
-        const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
-        window.open(url, '_blank');
-    };
 
     return (
         <div className="space-y-4">
@@ -626,7 +781,7 @@ const ActingDriverCalculator: React.FC = () => {
             </div>
 
             <Button onClick={calculate} disabled={!days} text="Calculate Driver Cost" ariaLabel="Calculate Acting Driver Cost" />
-            {result && <ResultCard title="Acting Driver Cost" amount={result.fare} details={result.details} sub={serviceType === 'outstation' ? 'Fuel & Vehicle by Customer' : 'Extra hours/Night charges (₹200) extra'} onBook={book} />}
+            {result && <ResultCard title="Estimated Fare" amount={result.fare} details={result.details} sub={serviceType === 'outstation' ? 'Driver Bata/Night charges extra' : 'Extra Hr/Km charges apply'} />}
         </div>
     );
 };
@@ -648,7 +803,7 @@ const RelocationCalculator: React.FC = () => {
     const [tollsIncluded, setTollsIncluded] = useState(false);
     const [driverReturnIncluded, setDriverReturnIncluded] = useState(false);
 
-    const [result, setResult] = useState<any>(null);
+    const [result, setResult] = useState<{ fare: number; details: string[] } | null>(null);
 
     // Auto-calculate distance
     useEffect(() => {
@@ -670,7 +825,7 @@ const RelocationCalculator: React.FC = () => {
         autoCalculateDistance();
     }, [pickupCoords, dropCoords]);
 
-    const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number, _tollAmt?: number) => {
+    const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number) => {
         setPickup(pickupAddr);
         setDrop(dropAddr);
         setDistance(dist.toString());
@@ -770,27 +925,7 @@ const RelocationCalculator: React.FC = () => {
         });
     };
 
-    const book = () => {
-        const serviceNames = {
-            carrier: 'Professional Carrier',
-            driver: 'Driver-Driven'
-        };
-        const vehicleNames = {
-            car: 'Car/Sedan',
-            van: 'Van/SUV',
-            bus: 'Bus/Large Vehicle'
-        };
-        const msg = `*PICKUP:* ${pickup}\n` +
-            `*DROP:* ${drop}\n\n` +
-            `*VEHICLE:* ${vehicleNames[vehicleType]}\n` +
-            `*SERVICE:* ${serviceNames[serviceType]}\n` +
-            `*DISTANCE:* ${distance} km\n` +
-            `\n` +
-            `*ESTIMATED COST: ₹${result.fare.toFixed(0)}*`;
 
-        const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
-        window.open(url, '_blank');
-    };
 
     return (
         <div className="space-y-4">
@@ -823,11 +958,13 @@ const RelocationCalculator: React.FC = () => {
             <div className="space-y-2">
                 <p className="text-xs font-bold text-slate-700 pl-3 border-l-4 border-blue-500">Vehicle Type</p>
                 <div className="grid grid-cols-3 gap-2" role="group" aria-label="Relocation vehicle type">
-                    {[
-                        { id: 'car', label: 'Car/Sedan', icon: '🚗' },
-                        { id: 'van', label: 'Van/SUV', icon: '🚐' },
-                        { id: 'bus', label: 'Bus', icon: '🚌' }
-                    ].map((v: any) => (
+                    {(
+                        [
+                            { id: 'car', label: 'Car/Sedan', icon: '🚗' },
+                            { id: 'van', label: 'Van/SUV', icon: '🚐' },
+                            { id: 'bus', label: 'Bus', icon: '🚌' }
+                        ] as const
+                    ).map((v) => (
                         <button
                             key={v.id}
                             onClick={() => setVehicleType(v.id)}
@@ -929,7 +1066,7 @@ const RelocationCalculator: React.FC = () => {
             </div>
 
             <Button onClick={calculate} disabled={!distance} text="Calculate Relocation Cost" ariaLabel="Calculate Vehicle Relocation Cost" />
-            {result && <ResultCard title="Vehicle Relocation" amount={result.fare} details={result.details} sub={serviceType === 'carrier' ? 'Fully Insured Transport' : 'Safe & Professional Driver'} onBook={book} />}
+            {result && <ResultCard title="Vehicle Relocation" amount={result.fare} details={result.details} sub={serviceType === 'carrier' ? 'Fully Insured Transport' : 'Safe & Professional Driver'} />}
 
             {showMap && (
                 <MapPicker
@@ -942,7 +1079,16 @@ const RelocationCalculator: React.FC = () => {
 };
 
 // --- Helper Components ---
-const Input = ({ label, icon, value, onChange, type = 'text', highlight = false }: any) => {
+interface InputProps {
+    label: string;
+    icon: React.ReactNode;
+    value: string | number;
+    onChange: (value: string) => void;
+    type?: string;
+    highlight?: boolean;
+}
+
+const Input = ({ label, icon, value, onChange, type = 'text', highlight = false }: InputProps) => {
     const id = React.useId();
     return (
         <div className="space-y-1 w-full">
@@ -952,69 +1098,145 @@ const Input = ({ label, icon, value, onChange, type = 'text', highlight = false 
     );
 };
 
-const Label = ({ icon, text, htmlFor }: any) => (
+interface LabelProps {
+    icon: React.ReactNode;
+    text: string;
+    htmlFor: string;
+}
+
+const Label = ({ icon, text, htmlFor }: LabelProps) => (
     <label htmlFor={htmlFor} className="text-[9px] font-black text-slate-500 uppercase ml-1 flex items-center gap-1.5">{icon} {text}</label>
 );
 
-const Button = ({ onClick, disabled, text, ariaLabel }: any) => (
+interface ButtonProps {
+    onClick?: () => void;
+    disabled?: boolean;
+    text: string;
+    ariaLabel?: string;
+}
+
+const Button = ({ onClick, disabled, text, ariaLabel }: ButtonProps) => (
     <button onClick={onClick} disabled={disabled} aria-label={ariaLabel || text} className="w-full py-4 bg-[#0047AB] text-white font-black uppercase tracking-widest rounded-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 text-[10px]">
         {text}
     </button>
 );
 
-const ResultCard = ({ title, amount, details, sub, onBook }: any) => {
-    const [copied, setCopied] = useState(false);
+interface ResultCardProps {
+    title: string;
+    amount: number;
+    details: string[] | string;
+    sub: string;
+}
 
-    const copyToClipboard = () => {
-        const text = `*${title}*\n\n${Array.isArray(details) ? details.join('\n') : details}\n\nNote: ${sub}\n\nBook Now: Contact us for confirmation`;
-        navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+const ResultCard = ({ title, amount, details, sub }: ResultCardProps) => {
+    const [expanded, setExpanded] = useState(false);
+
+    const shareToWhatsApp = () => {
+        const cleanDetails = Array.isArray(details)
+            ? details.map(line => line.replace(/[*_]/g, '').replace(/⚠️/g, '').trim()).join('\n')
+            : details;
+        const text = `*${title}*\n\n${cleanDetails}\n\nNote: ${sub}\n\n*Total Estimate: ₹${amount.toLocaleString()}*`;
+        const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank');
     };
 
+    if (!amount) return null;
+
     return (
-        <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-xl animate-fade-in relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/20 rounded-full blur-2xl -mr-8 -mt-8" aria-hidden="true"></div>
-            <div className="relative z-10 space-y-3">
-                <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{title}</span>
-                    <span className="text-xl font-black text-[#4ade80]">₹{amount.toLocaleString()}</span>
-                </div>
-                <div className="font-mono text-[10px] text-slate-300 whitespace-pre-wrap leading-relaxed bg-white/5 p-2.5 rounded-xl">
-                    {Array.isArray(details) ? (
-                        details.map((line: string, i: number) => {
-                            let emoji = '🔹';
-                            if (line.includes('Trip')) emoji = '🚐';
-                            if (line.includes('Charge')) emoji = '💰';
-                            if (line.includes('Toll')) emoji = '🛣️';
-                            if (line.includes('TOTAL')) emoji = '💵';
-                            if (line.includes('Bata')) emoji = '🍽️';
-                            return <div key={i} className="flex gap-2 mb-1"><span>{emoji}</span><span>{line}</span></div>;
-                        })
-                    ) : details}
-                </div>
-                <div className="flex items-center gap-2 text-amber-500 bg-amber-500/10 p-2 rounded-lg">
-                    <AlertCircle size={12} aria-hidden="true" /> <span className="text-[9px] font-bold uppercase">{sub}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                    <button
-                        onClick={copyToClipboard}
-                        aria-label={copied ? "Copied to clipboard" : "Copy to clipboard"}
-                        className="py-3 bg-slate-700 hover:bg-slate-600 text-white font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-lg text-[10px]"
+        <>
+            {/* Overlay for Expanded State */}
+            {expanded && (
+                <div
+                    className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-[90] transition-opacity duration-300"
+                    onClick={() => setExpanded(false)}
+                    aria-hidden="true"
+                />
+            )}
+
+            {/* Sticky Floating Card */}
+            <div className={`fixed bottom-[90px] left-3 right-3 md:left-auto md:right-6 md:w-96 bg-white text-slate-800 z-[100] transition-all duration-300 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.15)] border border-slate-200 flex flex-col overflow-hidden ${expanded ? 'max-h-[60vh]' : 'h-auto'}`}>
+
+                {/* Visual Drag Handle (only visible when expanded) */}
+                {expanded && (
+                    <div
+                        className="flex flex-col items-center pt-2 pb-1 cursor-pointer bg-slate-50 border-b border-slate-100"
+                        onClick={() => setExpanded(false)}
                     >
-                        {copied ? <CheckCircle2 size={16} aria-hidden="true" /> : <MessageCircle size={16} aria-hidden="true" />}
-                        {copied ? 'Copied' : 'Copy'}
-                    </button>
-                    <button
-                        onClick={onBook}
-                        aria-label="Contact us on WhatsApp"
-                        className="py-3 bg-[#25D366] hover:bg-[#128c7e] text-white font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-lg text-[10px]"
-                    >
-                        <MessageCircle size={16} aria-hidden="true" /> WhatsApp
-                    </button>
+                        <div className="w-10 h-1 bg-slate-300 rounded-full" />
+                    </div>
+                )}
+
+                <div className="p-4 flex-1 flex flex-col">
+                    {/* Header: Amount & Actions */}
+                    <div className="flex justify-between items-center gap-3">
+                        <div className="flex-1">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">{title}</p>
+                            <div className="flex items-baseline gap-1.5">
+                                <h2 className="text-2xl font-black text-[#0047AB]">₹{amount.toLocaleString()}</h2>
+                                <span className="text-[10px] text-slate-400 font-medium">approx</span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0 mr-1">
+                            <button
+                                onClick={() => setExpanded(!expanded)}
+                                className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border whitespace-nowrap flex items-center gap-2 ${expanded ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-slate-50 text-[#0047AB] border-slate-200 hover:bg-slate-100'}`}
+                            >
+                                {expanded ? 'Close' : 'View Price Breakdown'}
+                                {expanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                            </button>
+
+                            <button
+                                onClick={shareToWhatsApp}
+                                className="p-2.5 rounded-xl bg-[#25D366] text-white hover:bg-[#20bd5a] transition-all shadow-md active:scale-95 flex items-center justify-center aspect-square"
+                                aria-label="Share via WhatsApp"
+                            >
+                                <Share2 size={20} className="text-white relative left-[-1px]" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Expanded Content */}
+                    {expanded && (
+                        <div className="mt-4 flex-1 flex flex-col min-h-0 animate-in slide-in-from-bottom-2 fade-in duration-200">
+                            <div className="h-px bg-slate-100 w-full mb-3" />
+
+                            {/* Scrollable Details */}
+                            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-2">
+                                {Array.isArray(details) ? (
+                                    details.map((line: string, i: number) => {
+                                        const cleanLine = line.replace(/[*_]/g, '').replace(/⚠️/g, '').trim();
+                                        const isTotal = line.toLowerCase().includes('total');
+
+                                        if (!cleanLine) return null;
+
+                                        return (
+                                            <div
+                                                key={i}
+                                                className={`flex justify-between items-start gap-3 text-xs py-1.5 border-b border-dashed border-slate-100 last:border-0 ${isTotal ? 'font-bold text-slate-900 bg-slate-50 px-2 rounded' : 'text-slate-600'}`}
+                                            >
+                                                <span>{cleanLine}</span>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <p className="text-xs text-slate-600 leading-relaxed">{details}</p>
+                                )}
+
+                                {/* Notes Box */}
+                                <div className="mt-3 bg-blue-50 border border-blue-100 p-3 rounded-lg flex gap-2">
+                                    <AlertCircle size={14} className="text-blue-600 shrink-0 mt-0.5" />
+                                    <div className="space-y-0.5">
+                                        <p className="text-[9px] font-bold text-blue-700 uppercase tracking-wider">Note</p>
+                                        <p className="text-[10px] text-blue-600/80 leading-relaxed font-medium">{sub}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
-        </div>
+        </>
     );
 };
 
@@ -1029,12 +1251,15 @@ const Calculator: React.FC = () => {
                 <p className="text-slate-600 text-[10px] font-medium mt-0.5">Select a service to calculate cost</p>
             </div>
 
+            {/* Calculator Mode Tabs */}
             <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex gap-1 overflow-x-auto" role="tablist" aria-label="Calculator Mode">
-                {[
-                    { id: 'cab', label: 'Cab Booking', icon: Car },
-                    { id: 'driver', label: 'Acting Driver', icon: UserCheck },
-                    { id: 'relocation', label: 'Car Relocation', icon: Truck },
-                ].map((m: any) => (
+                {(
+                    [
+                        { id: 'cab', label: 'Cab Booking', icon: Car },
+                        { id: 'driver', label: 'Acting Driver', icon: UserCheck },
+                        { id: 'relocation', label: 'Car Relocation', icon: Truck },
+                    ] as const
+                ).map((m) => (
                     <button
                         key={m.id}
                         role="tab"

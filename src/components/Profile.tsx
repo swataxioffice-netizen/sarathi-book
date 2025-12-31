@@ -6,7 +6,7 @@ import { validateGSTIN, validateVehicleNumber } from '../utils/validation';
 import DocumentVault from './DocumentVault';
 import GoogleSignInButton from './GoogleSignInButton';
 import { supabase } from '../utils/supabase';
-import { VEHICLES } from '../utils/fare';
+import { VEHICLES } from '../config/vehicleRates';
 import { toTitleCase, formatAddress } from '../utils/stringUtils';
 
 import BusinessCard from './BusinessCard';

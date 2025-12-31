@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
-import { type Trip, VEHICLES } from './fare';
+import { type Trip } from './fare';
+import { VEHICLES } from '../config/vehicleRates';
 import { numberToWords } from './numberToWords';
 import { toTitleCase, formatAddress } from './stringUtils';
 
