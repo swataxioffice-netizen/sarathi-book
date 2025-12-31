@@ -38,6 +38,12 @@ const CabCalculator: React.FC = () => {
     const [parking, setParking] = useState<string>('0');
     const [showAdditional, setShowAdditional] = useState(false);
 
+    // New Business Logic State
+    const [garageBuffer, setGarageBuffer] = useState(false);
+    const [manualBata, setManualBata] = useState<'auto' | 'single' | 'double'>('auto');
+    const [interstateState, setInterstateState] = useState('');
+    const [isNightDrive, setIsNightDrive] = useState(false);
+
     const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number, tollAmt?: number) => {
         setPickup(pickupAddr);
         setDrop(dropAddr);
@@ -117,12 +123,14 @@ const CabCalculator: React.FC = () => {
         }
     }, [selectedVehicle, tripType]);
 
+    // Auto-switch removed for Heavy Vehicles (Now allowing Package Price for Drops)
+
     // AUTO-CALCULATE FARE INSTANTLY
     useEffect(() => {
         if (distance) {
             calculate();
         }
-    }, [distance, tripType, days, passengers, selectedVehicle, customRate, waitingHours, isHillStation, petCharge, toll, permit, parking]);
+    }, [distance, tripType, days, passengers, selectedVehicle, customRate, waitingHours, isHillStation, petCharge, toll, permit, parking, garageBuffer, manualBata, interstateState, isNightDrive]);
 
     const calculate = () => {
         const dist = parseFloat(distance);
@@ -145,7 +153,11 @@ const CabCalculator: React.FC = () => {
             nightBata: 0,
             waitingHours: waitingHours,
             isHillStation,
-            petCharge
+            petCharge,
+            includeGarageBuffer: garageBuffer,
+            manualBataMode: manualBata,
+            interstateState: interstateState,
+            isNightDrive: isNightDrive
         };
 
         const res = calculateFare(fareParams);
@@ -159,11 +171,15 @@ const CabCalculator: React.FC = () => {
         if (drop) details.push(`Drop: ${drop}`);
         details.push(`Trip: ${res.distance} KM (${res.mode === 'outstation' ? 'Round Trip' : 'Local Drop'})`);
 
+        if (res.warningMessage) {
+            details.push(`⚠️ ${res.warningMessage}`);
+        }
+
         if (res.mode === 'drop' && res.distance <= 30) {
             details.push(`Type: City Local Trip (Standard)`);
             const isLarge = currentVeh?.type === 'SUV' || currentVeh?.type === 'Van';
             const baseFee = isLarge ? 350 : 250;
-            const extraRate = isLarge ? 35 : 25;
+            const extraRate = res.rateUsed;
             const extraKm = Math.max(0, res.distance - 10);
 
             details.push(`Base Fare (First 10 KM): ₹${baseFee}`);
@@ -236,17 +252,21 @@ const CabCalculator: React.FC = () => {
     return (
         <div className="space-y-4">
             <div className="flex p-1 bg-slate-50 rounded-xl" role="group" aria-label="Trip type selection">
-                {['oneway', 'roundtrip'].map((t: any) => (
-                    <button
-                        key={t}
-                        onClick={() => setTripType(t)}
-                        aria-pressed={tripType === t}
-                        aria-label={t === 'oneway' ? 'One Way or Drop Trip' : 'Round Trip'}
-                        className={`flex-1 py-3 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${tripType === t ? 'bg-white text-[#0047AB] shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                    >
-                        {t === 'oneway' ? 'One Way' : 'Round Trip'}
-                    </button>
-                ))}
+                {['oneway', 'roundtrip'].map((t: any) => {
+                    return (
+                        <button
+                            key={t}
+                            onClick={() => setTripType(t)}
+                            aria-pressed={tripType === t}
+                            aria-label={t === 'oneway' ? 'One Way or Drop Trip' : 'Round Trip'}
+                            className={`flex-1 py-3 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all 
+                                ${tripType === t ? 'bg-white text-[#0047AB] shadow-sm' : 'text-slate-600 hover:text-slate-900'}
+                            `}
+                        >
+                            {t === 'oneway' ? 'One Way' : 'Round Trip'}
+                        </button>
+                    );
+                })}
             </div>
 
             <div className="space-y-3">
@@ -284,6 +304,17 @@ const CabCalculator: React.FC = () => {
                             <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${parseFloat(distance) <= 30 ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
                                 {parseFloat(distance) <= 30 ? 'Local' : 'Outstation Drop'}
                             </span>
+                        )}
+                        {(tripType === 'roundtrip' || (tripType === 'oneway' && parseFloat(distance) > 30)) && (
+                            <label className="flex items-center gap-1.5 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={garageBuffer}
+                                    onChange={(e) => setGarageBuffer(e.target.checked)}
+                                    className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight">+ Garage Buffer (20km)</span>
+                            </label>
                         )}
                     </div>
                     <div className="relative">
@@ -354,6 +385,43 @@ const CabCalculator: React.FC = () => {
 
                     {showAdditional && (
                         <div className="p-3 pt-0 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                            {/* Interstate Permit */}
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Interstate Permit</label>
+                                <select
+                                    value={interstateState}
+                                    onChange={(e) => setInterstateState(e.target.value)}
+                                    className="tn-input h-8 text-xs bg-white w-full"
+                                >
+                                    <option value="">None (State Only)</option>
+                                    <option value="kerala">Kerala Entry</option>
+                                    <option value="karnataka">Karnataka Entry</option>
+                                    <option value="andhra">Andhra Entry</option>
+                                    <option value="puducherry">Puducherry Entry</option>
+                                </select>
+                            </div>
+
+                            {/* Driver Bata Controls for Outstation */}
+                            {(tripType === 'roundtrip' || (parseFloat(distance) > 30)) && (
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Driver Bata Mode</label>
+                                    <div className="grid grid-cols-3 gap-1">
+                                        <button
+                                            onClick={() => setManualBata('auto')}
+                                            className={`text-[9px] font-bold py-1.5 rounded border ${manualBata === 'auto' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-500 border-slate-200'}`}
+                                        >Auto</button>
+                                        <button
+                                            onClick={() => setManualBata('single')}
+                                            className={`text-[9px] font-bold py-1.5 rounded border ${manualBata === 'single' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-500 border-slate-200'}`}
+                                        >1x</button>
+                                        <button
+                                            onClick={() => setManualBata('double')}
+                                            className={`text-[9px] font-bold py-1.5 rounded border ${manualBata === 'double' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-500 border-slate-200'}`}
+                                        >2x</button>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Waiting (Hrs)</label>
@@ -371,23 +439,29 @@ const CabCalculator: React.FC = () => {
                                     <input type="number" value={parking} onChange={e => setParking(e.target.value)} className="tn-input h-8 text-xs bg-white" placeholder="0" />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Permit Charges</label>
+                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Permit (Manual)</label>
                                     <input type="number" value={permit} onChange={e => setPermit(e.target.value)} className="tn-input h-8 text-xs bg-white" placeholder="0" />
                                 </div>
                             </div>
 
-                            <div className="flex gap-2">
+                            <div className="grid grid-cols-2 gap-2">
                                 <button
                                     onClick={() => setIsHillStation(!isHillStation)}
-                                    className={`flex-1 py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${isHillStation ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
+                                    className={`py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${isHillStation ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
                                 >
                                     🏔️ Hill Station
                                 </button>
                                 <button
                                     onClick={() => setPetCharge(!petCharge)}
-                                    className={`flex-1 py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${petCharge ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
+                                    className={`py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${petCharge ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
                                 >
                                     🐾 Pet Charge
+                                </button>
+                                <button
+                                    onClick={() => setIsNightDrive(!isNightDrive)}
+                                    className={`col-span-2 py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${isNightDrive ? 'bg-indigo-900 border-indigo-900 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
+                                >
+                                    🌙 Night Drive (11 PM - 5 AM)
                                 </button>
                             </div>
                         </div>
