@@ -408,7 +408,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     totalsY += 8;
 
     const isDriverRegistered = !!gstin;
-    const isCorporateClient = !!trip.customerGst;
+    // const isCorporateClient = !!trip.customerGst; // Removed unused variable which caused build failure
 
     if (isDriverRegistered && gstValue > 0) {
         const halfGst = gstValue / 2;
