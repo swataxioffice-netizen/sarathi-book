@@ -8,6 +8,7 @@ import { calculateAdvancedRoute } from '../utils/routesApi';
 import { estimatePermitCharge } from '../utils/permits';
 import { estimateParkingCharge } from '../utils/parking';
 import { calculateFare, VEHICLES, FareMode } from '../utils/fare';
+import { Analytics } from '../utils/monitoring';
 
 // Using central VEHICLES from fare.ts
 
@@ -196,6 +197,8 @@ const CabCalculator: React.FC = () => {
 
         details.push(``);
         details.push(`TOTAL ESTIMATED FARE: ₹${Math.round(finalTotal)}`);
+
+        Analytics.calculateFare(res.mode, selectedVehicle, res.distance);
 
         setResult({
             fare: Math.round(finalTotal),

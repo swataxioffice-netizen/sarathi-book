@@ -1,6 +1,7 @@
 import { useUpdate } from '../contexts/UpdateContext';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Share2 } from 'lucide-react';
 import Notifications from './Notifications';
+import { Analytics } from '../utils/monitoring';
 
 const Header: React.FC = () => {
     const { needRefresh, updateServiceWorker } = useUpdate();
@@ -48,6 +49,28 @@ const Header: React.FC = () => {
                             <RefreshCw size={14} aria-hidden="true" />
                         </button>
                     )}
+                    <button
+                        onClick={async () => {
+                            Analytics.shareApp('header');
+                            if (navigator.share) {
+                                try {
+                                    await navigator.share({
+                                        title: 'Sarathi Book',
+                                        text: 'Driver Anna! Stop writing bills by hand. Use Sarathi Book app for professional invoices & fare calculation. Free app!',
+                                        url: 'https://sarathibook.com'
+                                    });
+                                } catch (error) {
+                                    console.log('Error sharing:', error);
+                                }
+                            } else {
+                                alert('Share not supported on this device/browser');
+                            }
+                        }}
+                        aria-label="Share App"
+                        className="w-9 h-9 flex items-center justify-center bg-blue-50 text-[#0047AB] rounded-full border border-blue-100 hover:bg-blue-100 transition-colors"
+                    >
+                        <Share2 size={16} strokeWidth={2.5} aria-hidden="true" />
+                    </button>
                     <Notifications />
                 </div>
             </div>

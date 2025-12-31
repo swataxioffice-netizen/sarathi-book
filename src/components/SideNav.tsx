@@ -1,6 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Wallet, User, LogOut, Calculator, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, FileText, Wallet, User, LogOut, Calculator, ShieldCheck, Share2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { Analytics } from '../utils/monitoring';
 
 interface SideNavProps {
     activeTab: string;
@@ -61,6 +62,28 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                         )}
                     </button>
                 ))}
+                <button
+                    onClick={async () => {
+                        Analytics.shareApp('sidenav');
+                        if (navigator.share) {
+                            try {
+                                await navigator.share({
+                                    title: 'Sarathi Book',
+                                    text: 'Driver Anna! Stop writing bills by hand. Use Sarathi Book app for professional invoices & fare calculation. Free app!',
+                                    url: 'https://sarathibook.com'
+                                });
+                            } catch (error) {
+                                console.log('Error sharing:', error);
+                            }
+                        } else {
+                            alert('Share not supported on this device/browser');
+                        }
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm text-[#0047AB] bg-blue-50/50 hover:bg-blue-50 hover:text-blue-700 mt-4 border border-blue-100 border-dashed"
+                >
+                    <Share2 size={20} />
+                    <span>Share App</span>
+                </button>
             </nav>
 
             <div className="p-4 border-t border-slate-100">

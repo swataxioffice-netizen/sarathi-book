@@ -13,6 +13,7 @@ import GoogleSignInButton from './components/GoogleSignInButton';
 import SideNav from './components/SideNav';
 import { NotificationProvider } from './contexts/NotificationContext';
 import Notifications from './components/Notifications';
+import { Analytics } from './utils/monitoring';
 import type { Trip } from './utils/fare';
 import type { SavedQuotation } from './utils/pdf';
 
@@ -55,6 +56,9 @@ function AppContent() {
 
   useEffect(() => {
     localStorage.setItem('nav-active-tab', activeTab);
+
+    // Track Page View
+    Analytics.viewPage(activeTab);
 
     // Check if the current hash is an auth redirect from Supabase
     // If so, DO NOT overwrite it, otherwise auth will fail
