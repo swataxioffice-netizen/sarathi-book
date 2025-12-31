@@ -154,6 +154,8 @@ const CabCalculator: React.FC = () => {
         const currentVeh = VEHICLES.find(v => v.id === selectedVehicle);
         const details = [];
 
+        if (pickup) details.push(`Pickup: ${pickup}`);
+        if (drop) details.push(`Drop: ${drop}`);
         details.push(`Trip: ${res.distance} KM (${res.mode === 'outstation' ? 'Round Trip' : 'Local Drop'})`);
 
         if (res.mode === 'drop' && res.distance <= 30) {
@@ -207,7 +209,13 @@ const CabCalculator: React.FC = () => {
 
     const book = () => {
         const vehicle = VEHICLES.find(v => v.id === selectedVehicle);
-        const typeLabel = tripType === 'oneway' ? 'Local Drop' : 'Round Trip';
+        let typeLabel = 'Local Drop';
+        if (tripType === 'roundtrip') {
+            typeLabel = 'Round Trip';
+        } else if (parseFloat(distance) > 30) {
+            typeLabel = 'Outstation Drop';
+        }
+
         const msg = `*PICKUP:* ${pickup}\n` +
             `*DROP:* ${drop}\n\n` +
             `*VEHICLE:* ${vehicle?.name} (${passengers} Seats)\n` +
@@ -233,7 +241,7 @@ const CabCalculator: React.FC = () => {
                         aria-label={t === 'oneway' ? 'One Way or Drop Trip' : 'Round Trip'}
                         className={`flex-1 py-3 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${tripType === t ? 'bg-white text-[#0047AB] shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
                     >
-                        {t === 'oneway' ? 'Local Drop' : 'Outstation'}
+                        {t === 'oneway' ? 'One Way' : 'Round Trip'}
                     </button>
                 ))}
             </div>
@@ -267,7 +275,14 @@ const CabCalculator: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                    <Label icon={<AlertCircle size={10} aria-hidden="true" />} text="Distance (Km)" htmlFor="cab-distance" />
+                    <div className="flex justify-between items-center">
+                        <Label icon={<AlertCircle size={10} aria-hidden="true" />} text="Distance (Km)" htmlFor="cab-distance" />
+                        {tripType === 'oneway' && distance && !isNaN(parseFloat(distance)) && (
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${parseFloat(distance) <= 30 ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+                                {parseFloat(distance) <= 30 ? 'Local' : 'Outstation Drop'}
+                            </span>
+                        )}
+                    </div>
                     <div className="relative">
                         <input
                             id="cab-distance"

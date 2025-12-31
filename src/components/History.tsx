@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import type { Trip } from '../utils/fare';
 import { shareReceipt, shareQuotation, type SavedQuotation } from '../utils/pdf';
-import { FileText, Share2, Eye, Trash2, Quote, Receipt } from 'lucide-react';
+import { FileText, Share2, Eye, Trash2, Quote, ArrowRightLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface HistoryProps {
@@ -179,7 +179,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                                     className="p-2 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white transition-all border border-orange-100"
                                                     title="Convert to Invoice"
                                                 >
-                                                    <Receipt size={14} />
+                                                    <ArrowRightLeft size={14} />
                                                 </button>
                                             )}
 
