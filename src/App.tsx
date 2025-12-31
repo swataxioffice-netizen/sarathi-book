@@ -39,7 +39,13 @@ function AppContent() {
   const { user, isAdmin } = useAuth();
   const { needRefresh, updateServiceWorker } = useUpdate();
 
-  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('nav-active-tab') || 'dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    // Priority: 1. URL Hash, 2. Local Storage, 3. Default 'dashboard'
+    const hash = window.location.hash.slice(1);
+    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin'];
+    if (hash && validTabs.includes(hash)) return hash;
+    return localStorage.getItem('nav-active-tab') || 'dashboard';
+  });
 
   useEffect(() => {
     const handleNav = (e: any) => setActiveTab(e.detail);
@@ -49,6 +55,8 @@ function AppContent() {
 
   useEffect(() => {
     localStorage.setItem('nav-active-tab', activeTab);
+    // Update URL without reloading to support deep linking
+    window.history.replaceState(null, '', `#${activeTab}`);
   }, [activeTab]);
 
   const [invoiceQuotationToggle, setInvoiceQuotationToggle] = useState<'invoice' | 'quotation'>('invoice');
