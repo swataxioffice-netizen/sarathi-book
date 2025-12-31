@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { useSettings } from '../contexts/SettingsContext';
 import { calculateFare, VEHICLES } from '../utils/fare';
 import type { Trip } from '../utils/fare';
-import { shareReceipt } from '../utils/pdf';
+import { shareReceipt, type SavedQuotation } from '../utils/pdf';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
 import { calculateDistance } from '../utils/googleMaps';
@@ -92,9 +92,11 @@ interface TripFormProps {
     onSaveTrip: (trip: Trip) => void;
     onStatusChange?: (isOngoing: boolean) => void;
     onStepChange?: (step: number) => void;
+    invoiceTemplate?: SavedQuotation | null;
+    trips?: Trip[];
 }
 
-const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
+const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTemplate, trips = [] }) => {
     const { settings, currentVehicle } = useSettings();
     const { user } = useAuth();
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
@@ -159,6 +161,31 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
         addresses: getHistory('customer_address'),
         locations: getHistory('location')
     });
+
+    // Populate from Quotation Template
+    useEffect(() => {
+        if (invoiceTemplate) {
+            setMode('custom');
+            setCustomerName(invoiceTemplate.customerName);
+            setBillingAddress(invoiceTemplate.customerAddress || '');
+            setCustomerGst(invoiceTemplate.customerGstin || '');
+            setLocalGst(invoiceTemplate.gstEnabled || false);
+
+            // Map Items
+            const newItems = invoiceTemplate.items.map(item => ({
+                description: item.package ? `${item.description} (${item.package})` : item.description,
+                amount: parseFloat(item.amount) || 0
+            }));
+
+            if (newItems.length > 0) {
+                setExtraItems(newItems);
+            }
+
+            // Move to details step
+            setCurrentStep(2);
+            if (onStepChange) onStepChange(2);
+        }
+    }, [invoiceTemplate]);
 
     // Notify parent of step change
     useEffect(() => {
@@ -225,8 +252,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                 }
 
                 const data = {
-                    fromLoc: mode === 'custom' ? 'Custom' : fromLoc, // Bypass validation
-                    toLoc: mode === 'custom' ? 'Invoice' : effectiveToLoc,
+                    fromLoc: mode === 'custom' ? (fromLoc || 'Custom') : fromLoc,
+                    toLoc: mode === 'custom' ? (toLoc || 'Invoice') : effectiveToLoc,
                     startKm: mode === 'custom' ? 0 : (startKm ?? -1),
                     endKm: mode === 'custom' ? 1 : (endKm ?? -1),
                     mode,
@@ -236,7 +263,14 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                 TripDetailsSchema.parse(data);
 
                 // Mode specific sub-schemas
-                if (mode === 'hourly') HourlySchema.parse({ waitingHours });
+                if (mode === 'hourly') {
+                    // Hourly/Day Rental logic
+                    if (!fromLoc?.trim()) throw new Error("Please enter Rental Details / Location");
+                    // Auto-fill toLoc if empty to pass schema
+                    if (!toLoc?.trim()) setToLoc('Local Usage');
+
+                    HourlySchema.parse({ waitingHours });
+                }
                 if (mode === 'package' || mode === 'fixed') PackageSchema.parse({ packageName: mode === 'package' ? packageName : 'Fixed', packagePrice: mode === 'fixed' ? packagePrice : (mode === 'package' ? packagePrice : 1) }); // quick fix for shared schema
                 if (mode === 'fixed' && (!packagePrice || packagePrice <= 0)) throw new Error("Please enter Fixed Amount");
 
@@ -488,6 +522,28 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
 
 
 
+    const getNextInvoiceSequence = () => {
+        const dateObj = new Date(invoiceDate);
+        const currentYear = dateObj.getFullYear();
+        const currentMonth = dateObj.getMonth();
+
+        let maxSeq = 0;
+        if (trips && trips.length > 0) {
+            trips.forEach(t => {
+                try {
+                    const tDate = new Date(t.date);
+                    if (tDate.getFullYear() === currentYear && tDate.getMonth() === currentMonth) {
+                        if (t.invoiceNo) {
+                            const seq = parseInt(t.invoiceNo, 10);
+                            if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+                        }
+                    }
+                } catch (e) { }
+            });
+        }
+        return (maxSeq + 1).toString().padStart(3, '0');
+    };
+
     const handleCalculate = () => {
         const activeRate = (mode === 'distance' || mode === 'drop' || mode === 'outstation') ? customRate : (mode === 'hourly' ? settings.hourlyRate : 0);
 
@@ -534,8 +590,10 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
         const selectedVehObj = (settings.vehicles || []).find(v => v.id === selectedVehicleId) || currentVehicle;
         const finalVehicleNum = selectedVehObj?.number || currentVehicle?.number || 'N/A';
 
+        const nextSeq = getNextInvoiceSequence();
         const tripData: any = {
             id: crypto.randomUUID(),
+            invoiceNo: nextSeq,
             customerName: customerName || 'Valued Customer',
             customerPhone,
             customerGst,
@@ -584,8 +642,10 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
         const selectedVehObj = (settings.vehicles || []).find(v => v.id === selectedVehicleId) || currentVehicle;
         const finalVehicleNum = selectedVehObj?.number || currentVehicle?.number || 'N/A';
 
+        const nextSeq = getNextInvoiceSequence();
         const tripData: any = {
             id: crypto.randomUUID(),
+            invoiceNo: nextSeq,
             customerName: customerName || 'Valued Customer',
             customerPhone,
             customerGst,
@@ -651,8 +711,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
             locations: getHistory('location')
         });
 
+        const nextSeq = getNextInvoiceSequence();
+
         onSaveTrip({
             id: crypto.randomUUID(),
+            invoiceNo: nextSeq,
             customerName: customerName || 'Cash Guest',
             customerPhone,
             customerGst,
@@ -770,6 +833,18 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                         <div className="grid grid-cols-2 gap-4">
 
                             {/* CUSTOM INVOICE FORM */}
+                            {mode === 'hourly' && (
+                                <div className="col-span-2 mb-2">
+                                    <label className="tn-label">Trip Date</label>
+                                    <input
+                                        type="date"
+                                        value={invoiceDate}
+                                        onChange={(e) => setInvoiceDate(e.target.value)}
+                                        className="tn-input"
+                                    />
+                                </div>
+                            )}
+
                             {mode === 'custom' && (
                                 <div className="col-span-2 space-y-4">
                                     <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl">
@@ -844,60 +919,56 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                             )}
 
                             <div className="col-span-2">
-                                {mode !== 'custom' && (
-                                    <PlacesAutocomplete
-                                        id="pickup_location"
-                                        label="Pickup"
-                                        icon={<MapPin size={16} />}
-                                        value={fromLoc}
-                                        onChange={setFromLoc}
-                                        onPlaceSelected={(place) => {
-                                            setFromLoc(formatAddress(place.address));
-                                            setPickupCoords({ lat: place.lat, lng: place.lng });
-                                        }}
-                                        onBlur={() => setFromLoc(formatAddress(fromLoc))}
-                                        onMapClick={() => { setActiveMapField('from'); setShowMap(true); }}
-                                        placeholder="e.g. Chennai Airport"
-                                        className="tn-input pl-10 pr-10 transition-all focus:ring-2 focus:ring-blue-500/20"
-                                        rightContent={
-                                            <button
-                                                onClick={() => startListening(setFromLoc)}
-                                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                title="Voice Input"
-                                            >
-                                                <Mic size={16} />
-                                            </button>
-                                        }
-                                    />
-                                )}
+                                <PlacesAutocomplete
+                                    id="pickup_location"
+                                    label="Pickup (Optional)"
+                                    icon={<MapPin size={16} />}
+                                    value={fromLoc}
+                                    onChange={setFromLoc}
+                                    onPlaceSelected={(place) => {
+                                        setFromLoc(formatAddress(place.address));
+                                        setPickupCoords({ lat: place.lat, lng: place.lng });
+                                    }}
+                                    onBlur={() => setFromLoc(formatAddress(fromLoc))}
+                                    onMapClick={() => { setActiveMapField('from'); setShowMap(true); }}
+                                    placeholder="e.g. Chennai Airport"
+                                    className="tn-input pl-10 pr-10 transition-all focus:ring-2 focus:ring-blue-500/20"
+                                    rightContent={
+                                        <button
+                                            onClick={() => startListening(setFromLoc)}
+                                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                            title="Voice Input"
+                                        >
+                                            <Mic size={16} />
+                                        </button>
+                                    }
+                                />
                             </div>
 
                             <div className="col-span-2">
-                                {mode !== 'custom' && (
-                                    <PlacesAutocomplete
-                                        id="drop_location"
-                                        label="Drop"
-                                        icon={<MapPin size={16} />}
-                                        value={toLoc}
-                                        onChange={setToLoc}
-                                        onPlaceSelected={(place) => {
-                                            setToLoc(formatAddress(place.address));
-                                            setDropCoords({ lat: place.lat, lng: place.lng });
-                                        }}
-                                        onBlur={() => setToLoc(formatAddress(toLoc))}
-                                        onMapClick={() => { setActiveMapField('to'); setShowMap(true); }}
-                                        placeholder="e.g. Pondicherry"
-                                        className="tn-input pl-10 pr-10"
-                                        rightContent={
-                                            <button
-                                                onClick={() => startListening(setToLoc)}
-                                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                            >
-                                                <Mic size={16} />
-                                            </button>
-                                        }
-                                    />
-                                )}
+                                <PlacesAutocomplete
+                                    id="drop_location"
+                                    label="Drop (Optional)"
+                                    icon={<MapPin size={16} />}
+                                    value={toLoc}
+                                    onChange={setToLoc}
+                                    onPlaceSelected={(place) => {
+                                        setToLoc(formatAddress(place.address));
+                                        setDropCoords({ lat: place.lat, lng: place.lng });
+                                    }}
+                                    onBlur={() => setToLoc(formatAddress(toLoc))}
+                                    onMapClick={() => { setActiveMapField('to'); setShowMap(true); }}
+                                    placeholder="e.g. Pondicherry"
+                                    className="tn-input pl-10 pr-10"
+                                    rightContent={
+                                        <button
+                                            onClick={() => startListening(setToLoc)}
+                                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                        >
+                                            <Mic size={16} />
+                                        </button>
+                                    }
+                                />
                             </div>
 
                             {/* Distance Badge */}
@@ -1224,14 +1295,16 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                     <div>
                                         <label className="tn-label">Select Vehicle from Fleet</label>
                                         <div className="grid grid-cols-2 gap-3">
-                                            {(settings.vehicles.length > 0 ? settings.vehicles : VEHICLES).map((v) => {
-                                                // Find rate info based on categoryId if it's a saved vehicle, or use v directly if it's from VEHICLES
-                                                const vInfo = 'categoryId' in v
+                                            {(settings.vehicles && settings.vehicles.length > 0 ? settings.vehicles : VEHICLES).map((v: any) => {
+                                                // Normalize vehicle object
+                                                // If 'v' is a user vehicle (has categoryId), merge with base VEHICLE data
+                                                // else 'v' is a base VEHICLE object
+                                                const vInfo = 'categoryId' in v && v.categoryId
                                                     ? VEHICLES.find(cat => cat.id === v.categoryId) || VEHICLES[1] // Fallback to Sedan
-                                                    : v as typeof VEHICLES[0];
+                                                    : v;
 
                                                 const isActive = selectedVehicleId === v.id;
-                                                const rate = mode === 'outstation' ? vInfo.roundRate : vInfo.dropRate;
+                                                const rate = mode === 'outstation' ? (vInfo as any).roundRate : (vInfo as any).dropRate;
 
                                                 return (
                                                     <button
@@ -1243,14 +1316,12 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange }) => {
                                                         className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${isActive ? 'bg-slate-50 border-primary text-primary shadow-sm' : 'bg-slate-50 border-transparent text-slate-400'}`}
                                                     >
                                                         <span className="text-[10px] font-black uppercase tracking-widest truncate w-full text-center">
-                                                            {'number' in v ? v.number : v.name}
+                                                            {v.number || v.name}
                                                         </span>
                                                         <span className="text-[11px] font-bold">
-                                                            {'number' in v ? (v as any).model : `₹${rate}/KM`}
+                                                            {v.model || v.name || 'Vehicle'}
                                                         </span>
-                                                        {'number' in v && (
-                                                            <span className="text-[9px] font-black text-primary uppercase">₹{rate}/KM</span>
-                                                        )}
+                                                        <span className="text-[9px] font-black text-primary uppercase">₹{rate}/KM</span>
                                                     </button>
                                                 );
                                             })}

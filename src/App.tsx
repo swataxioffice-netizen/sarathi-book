@@ -56,6 +56,7 @@ function AppContent() {
   const [loading, setLoading] = useState(false);
   const [trips, setTrips] = useState<Trip[]>(() => safeJSONParse<Trip[]>('namma-cab-trips', []));
   const [quotations, setQuotations] = useState<SavedQuotation[]>(() => safeJSONParse<SavedQuotation[]>('saved-quotations', []));
+  const [selectedQuotation, setSelectedQuotation] = useState<SavedQuotation | null>(null);
   const [showLoginNudge, setShowLoginNudge] = useState(false);
 
   // Trigger login nudge after 2 minutes of roaming
@@ -116,6 +117,7 @@ function AppContent() {
   const handleSaveTrip = async (trip: Trip) => {
     // 1. Optimistic Update
     setTrips(prev => [trip, ...prev]);
+    setSelectedQuotation(null); // Clear any active template
 
     // 2. Persistent Save
     if (user) {
@@ -158,6 +160,12 @@ function AppContent() {
     setQuotations(prev => prev.filter(q => q.id !== id));
   };
 
+  const handleConvertQuotation = (q: SavedQuotation) => {
+    setSelectedQuotation(q);
+    setInvoiceQuotationToggle('invoice');
+    window.scrollTo({ top: 380, behavior: 'smooth' }); // Scroll to form (approx pos)
+  };
+
   const { settings, docStats } = useSettings();
 
   const getCompletion = () => {
@@ -191,7 +199,10 @@ function AppContent() {
                   {/* Toggle between Invoice and Quotation */}
                   <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex gap-1 relative overflow-auto flex-1">
                     <button
-                      onClick={() => setInvoiceQuotationToggle('invoice')}
+                      onClick={() => {
+                        setInvoiceQuotationToggle('invoice');
+                        setSelectedQuotation(null);
+                      }}
                       className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all ${invoiceQuotationToggle === 'invoice'
                         ? 'bg-[#0047AB] text-white shadow-md'
                         : 'text-slate-400 hover:bg-slate-50'
@@ -215,7 +226,7 @@ function AppContent() {
               {/* Show Invoice or Quotation based on toggle */}
               {invoiceQuotationToggle === 'invoice' ? (
                 <div className="space-y-2">
-                  <TripForm onSaveTrip={handleSaveTrip} onStepChange={setInvoiceStep} />
+                  <TripForm onSaveTrip={handleSaveTrip} onStepChange={setInvoiceStep} invoiceTemplate={selectedQuotation} trips={trips} />
 
                   {invoiceStep === 1 && (
                     <div className="mt-8 pt-6 border-t border-slate-200">
@@ -233,7 +244,12 @@ function AppContent() {
 
                   <div className="mt-8 pt-6 border-t border-slate-200 text-left">
                     <Suspense fallback={<LoadingFallback />}>
-                      <History quotations={quotations} type="quotation" onDeleteQuotation={handleDeleteQuotation} />
+                      <History
+                        quotations={quotations}
+                        type="quotation"
+                        onDeleteQuotation={handleDeleteQuotation}
+                        onConvertQuotation={handleConvertQuotation}
+                      />
                     </Suspense>
                   </div>
                 </div>

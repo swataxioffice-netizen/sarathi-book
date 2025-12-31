@@ -33,6 +33,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
     const [vehicleType, setVehicleType] = useState(() => safeJSONParse('draft-q-vehicle', 'Sedan'));
     const [items, setItems] = useState<QuotationItem[]>(() => safeJSONParse('draft-q-items', []));
     const [gstEnabled, setGstEnabled] = useState(() => safeJSONParse('draft-q-gst', false));
+    const [rcmEnabled, setRcmEnabled] = useState(() => safeJSONParse('draft-q-rcm', false)); // Reverse Charge
     const [selectedTerms, setSelectedTerms] = useState<string[]>(() => safeJSONParse('draft-q-terms', DEFAULT_TERMS));
     const [customTerm, setCustomTerm] = useState('');
     const [showItems, setShowItems] = useState(false);
@@ -56,6 +57,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
     useEffect(() => { localStorage.setItem('draft-q-vehicle', JSON.stringify(vehicleType)); }, [vehicleType]);
     useEffect(() => { localStorage.setItem('draft-q-items', JSON.stringify(items)); }, [items]);
     useEffect(() => { localStorage.setItem('draft-q-gst', JSON.stringify(gstEnabled)); }, [gstEnabled]);
+    useEffect(() => { localStorage.setItem('draft-q-rcm', JSON.stringify(rcmEnabled)); }, [rcmEnabled]);
     useEffect(() => { localStorage.setItem('draft-q-terms', JSON.stringify(selectedTerms)); }, [selectedTerms]);
 
 
@@ -148,6 +150,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
             date: new Date().toISOString(),
             items: items.map(item => ({ ...item, vehicleType })),
             gstEnabled,
+            rcmEnabled, // Pass RCM flag
             quotationNo: qNo,
             terms: selectedTerms
         }, {
@@ -186,11 +189,14 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
             id: Date.now().toString(),
             quotationNo: qNo,
             customerName,
+            customerAddress,
+            customerGstin,
             subject,
             date: new Date().toISOString(),
             items: items.map(item => ({ ...item, vehicleType })),
             vehicleType,
             gstEnabled,
+            rcmEnabled, // Save to history
             terms: selectedTerms
         };
 
@@ -204,6 +210,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
             date: newQuote.date,
             items: newQuote.items,
             gstEnabled,
+            rcmEnabled, // Pass RCM flag
             quotationNo: qNo,
             terms: selectedTerms
         }, {
@@ -395,6 +402,16 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                             className={`w-10 h-5 rounded-full relative transition-colors ${gstEnabled ? 'bg-blue-600' : 'bg-slate-300'}`}
                         >
                             <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${gstEnabled ? 'left-5.5' : 'left-0.5'}`} />
+                        </button>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">Reverse Charge (RCM)</span>
+                        <button
+                            onClick={() => setRcmEnabled(!rcmEnabled)}
+                            className={`w-10 h-5 rounded-full relative transition-colors ${rcmEnabled ? 'bg-orange-600' : 'bg-slate-300'}`}
+                        >
+                            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${rcmEnabled ? 'left-5.5' : 'left-0.5'}`} />
                         </button>
                     </div>
                 </div>

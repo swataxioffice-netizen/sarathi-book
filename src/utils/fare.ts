@@ -14,6 +14,7 @@ export interface VehicleType {
 
 export interface Trip {
     id: string;
+    invoiceNo?: string; // Sequential invoice Number
     customerName: string;
     customerPhone?: string;
     customerGst?: string;

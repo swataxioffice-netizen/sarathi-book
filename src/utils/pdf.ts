@@ -40,6 +40,7 @@ export interface QuotationData {
     date: string;
     items: QuotationItem[];
     gstEnabled?: boolean;
+    rcmEnabled?: boolean;
     quotationNo?: string;
     terms?: string[];
 }
@@ -48,11 +49,14 @@ export interface SavedQuotation {
     id: string;
     quotationNo: string;
     customerName: string;
+    customerAddress?: string; // Added
+    customerGstin?: string;   // Added
     subject: string;
     date: string;
     items: QuotationItem[];
     vehicleType: string;
     gstEnabled?: boolean;
+    rcmEnabled?: boolean;
     terms?: string[];
 }
 
@@ -123,21 +127,20 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     const date = new Date(trip.date || Date.now());
     const yearPart = date.getFullYear().toString().substring(2); // e.g. 25
     const monthPart = (date.getMonth() + 1).toString().padStart(2, '0'); // e.g. 12
-    const serialPart = (trip.id || '0000').substring(0, 4).toUpperCase(); // Unique Hash
+    // Use sequential number if available, else fallback to ID hash
+    const serialPart = trip.invoiceNo || (trip.id || '0000').substring(0, 4).toUpperCase();
 
     let vehSuffix = 'TX';
     if (vehicleNumber && vehicleNumber !== 'N/A') {
-        // Extract last 4 digits (e.g. TN01AB1234 -> 1234)
         const digits = vehicleNumber.replace(/[^0-9]/g, '');
         if (digits.length >= 4) {
             vehSuffix = digits.substring(digits.length - 4);
         } else {
-            // Fallback to first 4 chars if no digits found
             vehSuffix = vehicleNumber.replace(/[^A-Za-z0-9]/g, '').substring(0, 4).toUpperCase();
         }
     }
 
-    // Format: 1234/2512/001A (Vehicle/YYMM/ID)
+    // Format: 1234/2512/001 (Vehicle/YYMM/SEQ)
     const invoiceNo = isQuotation
         ? `QTN/${yearPart}${monthPart}/${serialPart}`
         : `${vehSuffix}/${yearPart}${monthPart}/${serialPart}`;
@@ -363,153 +366,155 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     // We calculate these separately to not confuse the "Taxable Value"
     let reimbursements = 0;
 
-    // --- TOTALS SECTION ---
+    // --- TOTALS & PAYMENT SECTION (Side-by-Side) ---
     y += 5;
     doc.setDrawColor(200, 200, 200);
-    doc.line(110, y, 195, y); // Partial line
+    doc.line(margin, y, 195, y); // Start of new section
     y += 8;
 
-    const taxableValue = runningSubtotal; // Items added so far are taxable (Fare, Batta, Waiting)
+    const sectionsStartY = y;
+
+    // 1. Render Payment Details (Left Side)
+    let paymentY = sectionsStartY;
+    if (settings.holderName || settings.upiId) {
+        doc.setFontSize(9);
+        setThemeColor();
+        doc.setFont('helvetica', 'bold');
+        doc.text('PAYMENT DETAILS:', margin, paymentY);
+        doc.setTextColor(0, 0, 0);
+
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        paymentY += 5;
+        if (settings.holderName) {
+            doc.text(`Account Name : ${settings.holderName}`, margin, paymentY);
+            paymentY += 4;
+        }
+        if (settings.upiId) {
+            doc.text(`UPI ID       : ${settings.upiId}`, margin, paymentY);
+            paymentY += 4;
+        }
+    }
+
+    // 2. Render Totals (Right Side)
+    let totalsY = sectionsStartY;
+    const taxableValue = runningSubtotal;
     const gstValue = trip.gst || 0;
 
-    // 1. Show Taxable Value
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('Taxable Amount:', 135, y);
-    doc.text(`${taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
-    y += 8;
+    doc.text('Taxable Amount:', 135, totalsY);
+    doc.text(`${taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, totalsY, { align: 'right' });
+    totalsY += 8;
 
     const isDriverRegistered = !!gstin;
     const isCorporateClient = !!trip.customerGst;
 
-    // 2. Add GST
     if (isDriverRegistered && gstValue > 0) {
-        // SCENARIO 1: Registered Driver + GST Enabled
         const halfGst = gstValue / 2;
-        doc.text('CGST (2.5%):', 135, y);
-        doc.text(`${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
-        y += 6;
-        doc.text('SGST (2.5%):', 135, y);
-        doc.text(`${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
-        y += 8;
+        doc.text('CGST (2.5%):', 135, totalsY);
+        doc.text(`${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, totalsY, { align: 'right' });
+        totalsY += 6;
+        doc.text('SGST (2.5%):', 135, totalsY);
+        doc.text(`${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, totalsY, { align: 'right' });
+        totalsY += 8;
     } else if (trip.customerGst && !gstEnabled) {
-        // SCENARIO 2: RCM Applicable (Registered Customer, but Forward Charge not collected)
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
-        doc.text('Tax Payable on Reverse Charge:', 135, y);
-        doc.text('YES', 195, y, { align: 'right' });
+        doc.text('Tax Payable on Reverse Charge:', 135, totalsY);
+        doc.text('YES', 195, totalsY, { align: 'right' });
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        y += 8;
+        totalsY += 8;
     } else if (isDriverRegistered && gstValue === 0 && gstEnabled) {
-        // SCENARIO 3: Nil Rated
         doc.setFontSize(8);
         doc.setTextColor(100, 100, 100);
-        doc.text('Tax: 0.00 (Nil Rated)', 135, y);
+        doc.text('Tax: 0.00 (Nil Rated)', 135, totalsY);
         doc.setTextColor(0, 0, 0);
-        y += 8;
+        totalsY += 8;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-    } else if (isDriverRegistered && isCorporateClient && !gstEnabled) {
-        // SCENARIO 4: Registered Driver (e.g. 5% RCM Schema) -> RCM YES
-        // We already showed RCM Yes in Header. Maybe add note here?
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'italic');
-        doc.text('Tax Payable on RCM by Recipient', 135, y);
-        y += 8;
     }
 
-    // 3. Add Reimbursements (Toll/Parking) AFTER Tax
+    // Add Reimbursements
     if ((trip.toll || 0) > 0 || (trip.parking || 0) > 0 || (trip.permit || 0) > 0) {
-        y += 2;
+        totalsY += 2;
         if ((trip.toll || 0) > 0) {
-            doc.text('Toll Charges:', 135, y);
-            doc.text(`${trip.toll}`, 195, y, { align: 'right' });
+            doc.text('Toll Charges:', 135, totalsY);
+            doc.text(`${trip.toll}`, 195, totalsY, { align: 'right' });
             reimbursements += trip.toll || 0;
-            y += 6;
+            totalsY += 6;
         }
         if ((trip.parking || 0) > 0) {
-            doc.text('Parking Charges:', 135, y);
-            doc.text(`${trip.parking}`, 195, y, { align: 'right' });
+            doc.text('Parking Charges:', 135, totalsY);
+            doc.text(`${trip.parking}`, 195, totalsY, { align: 'right' });
             reimbursements += trip.parking || 0;
-            y += 6;
+            totalsY += 6;
         }
         if ((trip.permit || 0) > 0) {
-            doc.text('Permit Charges:', 135, y);
-            doc.text(`${trip.permit}`, 195, y, { align: 'right' });
+            doc.text('Permit Charges:', 135, totalsY);
+            doc.text(`${trip.permit}`, 195, totalsY, { align: 'right' });
             reimbursements += trip.permit || 0;
-            y += 8;
+            totalsY += 8;
         }
     }
 
     const finalTotal = taxableValue + gstValue + reimbursements;
 
-    // Grand Total Box (Clean Border, No Fill)
-    y += 2;
+    // Grand Total Box
+    totalsY += 2;
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.3);
-    doc.line(130, y - 6, 195, y - 6); // Top line of total
-    doc.line(130, y + 4, 195, y + 4); // Bottom line of total
+    doc.line(130, totalsY - 6, 195, totalsY - 6);
+    doc.line(130, totalsY + 4, 195, totalsY + 4);
 
     setThemeColor();
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('GRAND TOTAL', 135, y);
-    doc.text(`Rs. ${finalTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
+    doc.text('GRAND TOTAL', 135, totalsY);
+    doc.text(`Rs. ${finalTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, totalsY, { align: 'right' });
     doc.setTextColor(0, 0, 0);
+    totalsY += 12;
 
-    y += 18;
+    // Use max Y from both sides
+    y = Math.max(paymentY, totalsY) + 5;
+
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(31, 41, 55);
+    // Center the Rupees in Words
     doc.text(`RUPEES IN WORDS: ${numberToWords(finalTotal).toUpperCase()}`, 105, y, { align: 'center', maxWidth: 180 });
     doc.setTextColor(0, 0, 0);
 
-    y += 12;
-    // --- PAYMENT SECTION (UPI & Account Name) ---
-    const paymentY = y;
-    doc.setFontSize(10);
+    y = 252;
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text('PAYMENT DETAILS:', margin, paymentY);
+    doc.text('For ' + companyName.toUpperCase(), 195, y, { align: 'right' });
 
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    let bankInfoY = paymentY + 5;
-    if (settings.holderName) {
-        doc.text(`Account Name : ${settings.holderName}`, margin, bankInfoY);
-        bankInfoY += 4;
-    }
-    if (settings.upiId) {
-        doc.text(`UPI ID       : ${settings.upiId}`, margin, bankInfoY);
-    }
-
-    // Dynamic UPI QR Code for instant payment
-
-    y += 10;
-    doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
-    doc.text('Subject to Chennai Jurisdiction. Computer generated invoice, no signature required.', margin, y);
-
-    y = 252; // Slightly lower
     if (settings?.signatureUrl) {
         try {
-            // Positioned clearly above the line
-            doc.addImage(settings.signatureUrl, 'PNG', 158, y - 18, 35, 14, undefined, 'FAST');
+            // Positioned clearly between lines (For @ 252, Auth @ 268)
+            doc.addImage(settings.signatureUrl, 'PNG', 160, 253, 35, 14, undefined, 'FAST');
         } catch (e) {
             console.error('Failed to add signature image', e);
         }
     }
 
-    doc.setDrawColor(rgb.r, rgb.g, rgb.b);
-    doc.setLineWidth(0.2);
-    doc.line(145, y, 195, y); // Local line for signature
-    y += 6;
+    // Removed blue line as requested
 
+    y = 268;
     doc.setFontSize(9);
     doc.setTextColor(31, 41, 55);
     doc.setFont('helvetica', 'bold');
     doc.text('Receiver\'s Signature', margin, y);
     doc.text('Authorized Signatory', 195, y, { align: 'right' });
+
+    // Footer Disclaimer - Centered
+    y = 276;
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Subject to Chennai Jurisdiction. Computer generated invoice, no signature required.', 105, y, { align: 'center' }); // Centered
 
     y = 278;
     setDrawThemeColor();
@@ -754,32 +759,26 @@ export const generateQuotationPDF = async (data: QuotationData, settings: PDFSet
     doc.text('GRAND TOTAL:', 140, y);
     doc.text(`Rs. ${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
 
-    // Payment Section for Quotation (Minimal) - Space Saving
-    const qPaymentY = y - (data.gstEnabled ? 18 : 6); // Align with totals
-    doc.setFontSize(9);
-    setThemeColor();
-    doc.text('PAYMENT OPTIONS:', margin, qPaymentY);
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    let qBankY = qPaymentY + 5;
-    if (settings.holderName) {
-        doc.text(`Account Name: ${settings.holderName}`, margin, qBankY);
-        qBankY += 4;
-    }
-    if (settings.upiId) {
-        doc.text(`UPI ID: ${settings.upiId}`, margin, qBankY);
+    // --- RCM Section ---
+    if (data.rcmEnabled) {
+        y += 8;
+        doc.setFont('helvetica', 'italic'); // Changed to italic as per preference
+        doc.setFontSize(9);
+        doc.text('Tax Payable on Reverse Charge: YES', margin, y);
     }
 
-    y += 12;
     doc.setFontSize(9);
-    doc.text(`RUPEES IN WORDS: ${numberToWords(grandTotal).toUpperCase()}`, 105, y, { align: 'center', maxWidth: 180 });
+    doc.setFont('helvetica', 'italic');
+    doc.text(`( ${numberToWords(grandTotal).toUpperCase()} )`, 105, y + 8, { align: 'center', maxWidth: 180 });
 
-    y += 15;
+    y += 18;
+
+    // Terms & Conditions
+    y += 5;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text('Terms & Conditions:', margin, y);
-    y += 8;
+    y += 6;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     const notes = data.terms && data.terms.length > 0 ? data.terms : [
@@ -794,38 +793,65 @@ export const generateQuotationPDF = async (data: QuotationData, settings: PDFSet
         y += (lines.length * 5) + 1;
     });
 
-    y += 8;
+    // Signature
+    y += 5;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.text('For ' + companyName.toUpperCase(), 195, y, { align: 'right' });
 
     y += 5;
-    // Signature image if available
     if (settings?.signatureUrl) {
         try {
-            // Positioned clearly between "For" and "Signatory"
             doc.addImage(settings.signatureUrl, 'PNG', 158, y, 35, 14, undefined, 'FAST');
             y += 18;
         } catch (e) {
-            console.error('Failed to add signature image to quotation', e);
             y += 15;
         }
     } else {
         y += 15;
     }
-
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
     doc.text('Authorized Signatory', 195, y, { align: 'right' });
+
+
+    // --- PAYMENT DETAILS CENTERED BOTTOM ---
+    if (settings.holderName || settings.upiId) {
+        const bottomY = 262; // Fixed position near footer
+        doc.setFontSize(9);
+        setThemeColor();
+        doc.text('PAYMENT DETAILS', 105, bottomY, { align: 'center' });
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+
+        let py = bottomY + 5;
+        if (settings.holderName) {
+            doc.text(`Account Name: ${settings.holderName}`, 105, py, { align: 'center' });
+            py += 4;
+        }
+        if (settings.upiId) {
+            doc.text(`UPI ID: ${settings.upiId}`, 105, py, { align: 'center' });
+            py += 4;
+        }
+        if (settings.bankName) {
+            doc.text(`Bank: ${settings.bankName}`, 105, py, { align: 'center' });
+            py += 4;
+        }
+        if (settings.accountNumber) {
+            doc.text(`A/c No: ${settings.accountNumber}`, 105, py, { align: 'center' });
+            py += 4;
+        }
+        if (settings.ifscCode) {
+            doc.text(`IFSC: ${settings.ifscCode}`, 105, py, { align: 'center' });
+        }
+    }
 
     // Center Footer Disclaimer
     y = 282;
-    doc.setFontSize(7);
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(150, 150, 150);
-    const disclaimer = 'This is a computer-generated quotation and does not require a physical signature.';
-    const disclaimerLines = doc.splitTextToSize(disclaimer, 160);
-    doc.text(disclaimerLines, 105, y, { align: 'center' });
+    const disclaimer = 'This bill is computer generated and does not need signature';
+    doc.text(disclaimer, 105, y, { align: 'center' });
     doc.setTextColor(0, 0, 0);
 
     y = 278;

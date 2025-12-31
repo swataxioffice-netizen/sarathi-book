@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import type { Trip } from '../utils/fare';
 import { shareReceipt, shareQuotation, type SavedQuotation } from '../utils/pdf';
-import { FileText, Share2, Eye, Trash2, Quote } from 'lucide-react';
+import { FileText, Share2, Eye, Trash2, Quote, Receipt } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface HistoryProps {
@@ -11,11 +11,12 @@ interface HistoryProps {
     type: 'invoice' | 'quotation';
     onDeleteTrip?: (id: string) => void;
     onDeleteQuotation?: (id: string) => void;
+    onConvertQuotation?: (quotation: SavedQuotation) => void;
 }
 
 type TimeFilter = 'all' | 'today' | 'week' | 'month';
 
-const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, onDeleteTrip, onDeleteQuotation }) => {
+const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, onDeleteTrip, onDeleteQuotation, onConvertQuotation }) => {
     const { settings } = useSettings();
     const { user } = useAuth();
     const [filter, setFilter] = useState<TimeFilter>('all');
@@ -170,6 +171,17 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                             >
                                                 <Share2 size={14} />
                                             </button>
+
+                                            {/* Convert to Invoice (Quotation Only) */}
+                                            {type === 'quotation' && onConvertQuotation && (
+                                                <button
+                                                    onClick={() => onConvertQuotation(item)}
+                                                    className="p-2 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white transition-all border border-orange-100"
+                                                    title="Convert to Invoice"
+                                                >
+                                                    <Receipt size={14} />
+                                                </button>
+                                            )}
 
                                             {/* Delete Button */}
                                             {(type === 'invoice' ? onDeleteTrip : onDeleteQuotation) && (
