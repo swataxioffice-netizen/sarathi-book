@@ -308,17 +308,7 @@ const CabCalculator: React.FC = () => {
                             {[4, 7, 12, 18, 24].map(n => <option key={n} value={n}>{n} Passengers</option>)}
                         </select>
                     </div>
-                    {tripType === 'roundtrip' && (
-                        <div className="space-y-1">
-                            <Label icon={<Clock size={10} aria-hidden="true" />} text="Trip Duration" htmlFor="cab-days" />
-                            <select id="cab-days" value={days} onChange={e => setDays(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
-                                {[1, 2, 3, 4, 5, 6, 7, 10, 15].map(n => <option key={n} value={n}>{n} {n === 1 ? 'Day' : 'Days'}</option>)}
-                            </select>
-                        </div>
-                    )}
-                </div>
 
-                <div className="grid grid-cols-[2fr,1fr] gap-3">
                     <div className="space-y-1">
                         <Label icon={<Car size={10} aria-hidden="true" />} text="Vehicle" htmlFor="cab-vehicle" />
                         <select id="cab-vehicle" value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
@@ -331,6 +321,17 @@ const CabCalculator: React.FC = () => {
                             }).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                         </select>
                     </div>
+                </div>
+
+                <div className={`grid ${tripType === 'roundtrip' ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
+                    {tripType === 'roundtrip' && (
+                        <div className="space-y-1">
+                            <Label icon={<Clock size={10} aria-hidden="true" />} text="Trip Duration" htmlFor="cab-days" />
+                            <select id="cab-days" value={days} onChange={e => setDays(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
+                                {[1, 2, 3, 4, 5, 6, 7, 10, 15].map(n => <option key={n} value={n}>{n} {n === 1 ? 'Day' : 'Days'}</option>)}
+                            </select>
+                        </div>
+                    )}
                     <Input label="Rate/Km" icon={<Hash size={10} aria-hidden="true" />} value={customRate} onChange={setCustomRate} type="number" highlight />
                 </div>
 

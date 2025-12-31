@@ -55,6 +55,16 @@ function AppContent() {
 
   useEffect(() => {
     localStorage.setItem('nav-active-tab', activeTab);
+
+    // Check if the current hash is an auth redirect from Supabase
+    // If so, DO NOT overwrite it, otherwise auth will fail
+    const currentHash = window.location.hash;
+    if (currentHash.includes('access_token') ||
+      currentHash.includes('refresh_token') ||
+      currentHash.includes('error_description')) {
+      return;
+    }
+
     // Update URL without reloading to support deep linking
     window.history.replaceState(null, '', `#${activeTab}`);
   }, [activeTab]);
