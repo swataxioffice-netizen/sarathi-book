@@ -69,30 +69,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const signInWithGoogle = async () => {
-        try {
-            // Clean origin for redirect (remove trailing slash if any for consistency)
-            const redirectTo = window.location.origin.replace(/\/$/, '');
-            console.log('Initiating Google Sign-in with redirect:', redirectTo);
+        const redirectTo = window.location.origin;
+        console.log('Initiating Google Sign-in with redirect:', redirectTo);
 
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: redirectTo,
-                    queryParams: {
-                        access_type: 'offline',
-                        prompt: 'consent',
-                    },
-                }
-            });
-
-            if (error) {
-                console.error('Sign-in error:', error);
-                alert(`Sign-in failed: ${error.message}. Please ensure the redirect URL is whitelisted in Supabase.`);
+        await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: redirectTo,
+                queryParams: {
+                    access_type: 'offline',
+                    prompt: 'consent',
+                },
             }
-        } catch (err: any) {
-            console.error('Sign-in exception:', err);
-            alert('Sign-in failed. Please check your internet connection or browser settings (allow popups).');
-        }
+        });
     };
 
     const signOut = async () => {

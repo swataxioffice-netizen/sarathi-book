@@ -37,7 +37,7 @@ const LoadingFallback = () => (
 
 function AppContent() {
   /* Guest Roaming Logic */
-  const { user, isAdmin, loading: authLoading } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { needRefresh, updateServiceWorker } = useUpdate();
 
   const [activeTab, setActiveTab] = useState(() => {
@@ -361,31 +361,14 @@ function AppContent() {
   /* Public Profile Route */
   const params = new URLSearchParams(window.location.search);
   const publicProfileId = params.get('u');
-  let publicProfileCode = params.get('code') || params.get('p');
 
-  // Guard against "null" string from poorly generated URLs
-  if (publicProfileCode === 'null') publicProfileCode = null;
-
-  useEffect(() => {
-    // Dynamic SEO title for public profiles
-    if (publicProfileId || publicProfileCode) {
-      document.title = 'Driver Profile - Sarathi Book';
-    } else {
-      document.title = 'Sarathi Book - Your Digital Office on Car';
-    }
-  }, [publicProfileId, publicProfileCode]);
-
-  if (publicProfileId || publicProfileCode) {
-    const parsedCode = publicProfileCode ? parseInt(publicProfileCode) : undefined;
-
-    // Only return PublicProfile if we have a valid ID or valid numeric code
-    if (publicProfileId || (parsedCode && !isNaN(parsedCode))) {
-      return (
-        <Suspense fallback={<LoadingFallback />}>
-          <PublicProfile userId={publicProfileId || ''} driverCode={parsedCode} />
-        </Suspense>
-      );
-    }
+  if (publicProfileId) {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        {/* Dynamically import PublicProfile to avoid bundling it for admins if possible, though needed here */}
+        <PublicProfile userId={publicProfileId} />
+      </Suspense>
+    );
   }
 
   return (
@@ -412,7 +395,7 @@ function AppContent() {
                   aria-label="Refresh page"
                   className="p-2 bg-slate-50 text-slate-400 rounded-full border border-slate-100 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                 >
-                  <RefreshCw size={14} aria-hidden="true" className={(loading || authLoading) ? 'animate-spin text-blue-600' : ''} />
+                  <RefreshCw size={14} aria-hidden="true" className={loading ? 'animate-spin text-blue-600' : ''} />
                 </button>
               )}
               <Notifications />
@@ -421,7 +404,7 @@ function AppContent() {
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Driver Account</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-blue-100 text-[#0047AB] flex items-center justify-center font-black border border-blue-200">
-                {(loading || authLoading) ? (
+                {loading ? (
                   <RefreshCw size={16} className="animate-spin" />
                 ) : (
                   user?.user_metadata?.full_name?.[0]?.toUpperCase() || 'U'

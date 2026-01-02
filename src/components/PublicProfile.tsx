@@ -4,7 +4,6 @@ import { Phone, MapPin, BadgeCheck, Car, Star } from 'lucide-react';
 
 interface PublicProfileProps {
     userId: string;
-    driverCode?: number;
 }
 
 interface ProfileData {
@@ -20,82 +19,36 @@ interface ProfileData {
     driver_code?: number;
 }
 
-const PublicProfile: React.FC<PublicProfileProps> = ({ userId, driverCode }) => {
+const PublicProfile: React.FC<PublicProfileProps> = ({ userId }) => {
     const [profile, setProfile] = useState<ProfileData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        let isMounted = true;
         const fetchProfile = async () => {
-            if (!userId && !driverCode) {
-                if (isMounted) {
-                    setError('Invalid profile link.');
-                    setLoading(false);
-                }
-                return;
-            }
-
-            // Safety timeout: stop loading if database takes too long (> 10 seconds)
-            const timeout = setTimeout(() => {
-                if (isMounted && loading) {
-                    setError('Unable to reach the database. Please try again.');
-                    setLoading(false);
-                }
-            }, 10000);
-
             try {
-                let query = supabase.from('profiles').select('settings, id, driver_code');
+                // Fetch profile settings (public read access assumed/required on 'profiles' table for this to work)
+                // If RLS is strict, we might need an Edge Function or RPC, but usually profiles are public readable
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('settings, id, driver_code') // selecting minimal fields
+                    .eq('id', userId)
+                    .single();
 
-                if (userId) {
-                    query = query.eq('id', userId);
-                } else if (driverCode) {
-                    query = query.eq('driver_code', driverCode);
-                }
+                if (error || !data) throw error || new Error('Profile not found');
 
-                const { data, error: dbError } = await query.single();
-                clearTimeout(timeout);
-
-                if (!isMounted) return;
-
-                if (dbError || !data) {
-                    console.error('DB Error:', dbError);
-                    setError('Profile not found.');
-                    setLoading(false);
-                    return;
-                }
-
+                // Parse if needed (supabase returns typed data, but settings is jsonb)
                 setProfile(data as any);
-
-                // Update SEO Meta Tags dynamically
-                const settings = data.settings as any;
-                const company = settings.companyName || 'Professional Driver';
-                document.title = `${company} - Sarathi Book Profile`;
-
-                // Update description meta tag
-                const metaDesc = document.querySelector('meta[name="description"]');
-                if (metaDesc) {
-                    metaDesc.setAttribute('content', `Book cab service from ${company}. Professional driver with verified documents and fleet. ID: #${data.driver_code}`);
-                }
-
-                // Update OG tags
-                const ogTitle = document.querySelector('meta[property="og:title"]');
-                if (ogTitle) ogTitle.setAttribute('content', `${company} - Sarathi Book`);
-                const ogUrl = document.querySelector('meta[property="og:url"]');
-                if (ogUrl) ogUrl.setAttribute('content', `${window.location.origin}/?code=${data.driver_code}`);
-
             } catch (err) {
-                clearTimeout(timeout);
                 console.error('Error fetching public profile:', err);
-                if (isMounted) setError('Profile not found.');
+                setError('Profile not found or inaccessible.');
             } finally {
-                if (isMounted) setLoading(false);
+                setLoading(false);
             }
         };
 
-        fetchProfile();
-        return () => { isMounted = false; };
-    }, [userId, driverCode]);
+        if (userId) fetchProfile();
+    }, [userId]);
 
     if (loading) return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center">

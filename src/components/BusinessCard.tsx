@@ -12,11 +12,7 @@ const BusinessCard: React.FC = () => {
     const [generating, setGenerating] = useState(false);
 
     // Public Profile URL
-    const publicUrl = driverCode
-        ? `${window.location.origin}/?code=${driverCode}`
-        : user
-            ? `${window.location.origin}/?u=${user.id}`
-            : window.location.origin;
+    const publicUrl = user ? `${window.location.origin}?u=${user.id}` : window.location.origin;
 
     // Generate VCard Data (For "Add to Contacts")
 
@@ -191,7 +187,6 @@ const BusinessCard: React.FC = () => {
                                     level="M"
                                     fgColor={colors.slate900}
                                     bgColor="#FFFFFF"
-                                    includeMargin={false}
                                 />
                             </div>
                         </div>
