@@ -67,7 +67,20 @@ const AdminPanel: React.FC = () => {
                             <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-full">--</span>
                         </div>
                         <h4 className="text-2xl font-black text-slate-900">{stat.value}</h4>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
+                            {stat.label === 'Total Users' && (
+                                <button
+                                    onClick={() => {
+                                        setNotifyingUser({ name: 'All Drivers', id: null });
+                                        setNotificationText('');
+                                    }}
+                                    className="text-[9px] font-black text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100 transition-colors"
+                                >
+                                    Broadcast All
+                                </button>
+                            )}
+                        </div>
                     </div>
                 ))}
             </div>
@@ -130,6 +143,7 @@ const AdminPanel: React.FC = () => {
                             <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Phone</th>
                             <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Address</th>
                             <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Created</th>
+                            <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -145,6 +159,15 @@ const AdminPanel: React.FC = () => {
                                     <td className="p-4">{user.phone}</td>
                                     <td className="p-4">{user.address}</td>
                                     <td className="p-4 text-xs">{user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</td>
+                                    <td className="p-4 text-right">
+                                        <button
+                                            onClick={() => setNotifyingUser({ name: user.name || user.id, id: user.id })}
+                                            className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                            title="Send Notification"
+                                        >
+                                            <Bell size={16} />
+                                        </button>
+                                    </td>
                                 </tr>
                             ))
                         )}
@@ -374,13 +397,27 @@ const AdminPanel: React.FC = () => {
                                 <button
                                     disabled={!notificationText.trim() || isSending}
                                     onClick={async () => {
+                                        if (!notificationText.trim()) return;
                                         setIsSending(true);
-                                        // Simulate API call
-                                        await new Promise(r => setTimeout(r, 800));
-                                        setIsSending(false);
-                                        setNotifyingUser(null);
-                                        setNotificationText('');
-                                        // In a real app, signal success here
+                                        try {
+                                            const { error } = await supabase.from('notifications').insert({
+                                                user_id: notifyingUser.id, // null for broadcast
+                                                title: notifyingUser.id ? 'System Notification' : 'Important Broadcast',
+                                                message: notificationText,
+                                                type: 'info'
+                                            });
+
+                                            if (error) throw error;
+
+                                            addNotification('Success', `Notification sent to ${notifyingUser.name}`, 'success');
+                                            setNotifyingUser(null);
+                                            setNotificationText('');
+                                        } catch (err: any) {
+                                            console.error('Failed to send notification:', err);
+                                            alert('Failed to send notification: ' + err.message);
+                                        } finally {
+                                            setIsSending(false);
+                                        }
                                     }}
                                     className="flex-2 bg-[#0047AB] text-white py-3 px-6 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                                 >

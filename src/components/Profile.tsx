@@ -10,6 +10,8 @@ import { VEHICLES } from '../config/vehicleRates';
 import { toTitleCase, formatAddress } from '../utils/stringUtils';
 
 import BusinessCard from './BusinessCard';
+import { subscribeToPush } from '../utils/push';
+import { Bell } from 'lucide-react';
 
 const Profile: React.FC = () => {
     const { user, signOut, loading: authLoading } = useAuth();
@@ -1047,6 +1049,35 @@ const Profile: React.FC = () => {
                                             >
                                                 {savingSection === 'language' ? 'Saving...' : 'Apply Language'}
                                             </button>
+                                        </div>
+
+                                        <div className="h-px bg-slate-100" />
+
+                                        {/* Notifications Section */}
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2">
+                                                <Bell size={14} className="text-red-500" />
+                                                <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Push Notifications</h4>
+                                            </div>
+                                            <div className="p-3 bg-red-50/50 rounded-xl border border-red-100">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <p className="text-[9px] text-red-700 font-bold leading-tight">Get instant alerts for new bookings and system updates even when app is closed.</p>
+                                                    <div
+                                                        onClick={async () => {
+                                                            const permission = await Notification.requestPermission();
+                                                            if (permission === 'granted') {
+                                                                await subscribeToPush();
+                                                                alert('Push Notifications Enabled!');
+                                                            } else {
+                                                                alert('Permission denied. Please enable notifications in your browser settings.');
+                                                            }
+                                                        }}
+                                                        className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${Notification.permission === 'granted' ? 'bg-red-500' : 'bg-slate-300'}`}
+                                                    >
+                                                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${Notification.permission === 'granted' ? 'left-6' : 'left-1'}`}></div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div className="h-px bg-slate-100" />

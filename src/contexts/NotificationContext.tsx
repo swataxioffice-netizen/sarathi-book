@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { supabase } from '../utils/supabase';
+import { useAuth } from './AuthContext';
 
 export interface Notification {
     id: string;
@@ -31,6 +33,7 @@ export const useNotifications = () => {
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
+    const { user } = useAuth();
 
     const addNotification = useCallback((title: string, message: string, type: Notification['type'] = 'info') => {
         const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 9);
@@ -43,6 +46,60 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             read: false,
         };
         setNotifications((prev) => [newNotification, ...prev]);
+
+        // Trigger native browser notification if permitted
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new window.Notification(title, {
+                body: message,
+                icon: '/logo.png'
+            });
+        }
+    }, []);
+
+    // Subscribe to real-time notifications from Supabase
+    useEffect(() => {
+        if (!user) return;
+
+        const channel = supabase
+            .channel('public:notifications')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${user.id}`,
+                },
+                (payload) => {
+                    const newNotif = payload.new as any;
+                    addNotification(newNotif.title, newNotif.message, newNotif.type);
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: 'user_id=is.null',
+                },
+                (payload) => {
+                    const newNotif = payload.new as any;
+                    addNotification(newNotif.title, newNotif.message, newNotif.type);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user, addNotification]);
+
+    useEffect(() => {
+        // Request notification permission on first load
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
     }, []);
 
     const markAsRead = useCallback((id: string) => {
