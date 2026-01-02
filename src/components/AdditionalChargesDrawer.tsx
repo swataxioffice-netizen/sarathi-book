@@ -8,7 +8,6 @@ interface AdditionalChargesDrawerProps {
 
     // Context for logic
     tripType: string;
-    distance: string;
     days: string;
 
     // States & Setters
@@ -50,7 +49,7 @@ interface AdditionalChargesDrawerProps {
 
 const AdditionalChargesDrawer: React.FC<AdditionalChargesDrawerProps> = ({
     isOpen, onClose,
-    tripType, distance, days,
+    tripType, days,
     driverBata, setDriverBata, manualDriverBata, setManualDriverBata,
     toll, setToll, manualToll, setManualToll,
     parking, setParking, manualParking, setManualParking,

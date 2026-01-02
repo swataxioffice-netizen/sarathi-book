@@ -467,7 +467,6 @@ const CabCalculator: React.FC = () => {
                 isOpen={showAdditional}
                 onClose={() => setShowAdditional(false)}
                 tripType={tripType}
-                distance={distance}
                 days={days}
                 driverBata={driverBata} setDriverBata={setDriverBata}
                 manualDriverBata={manualDriverBata} setManualDriverBata={setManualDriverBata}
