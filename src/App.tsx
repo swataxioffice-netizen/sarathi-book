@@ -361,12 +361,21 @@ function AppContent() {
   /* Public Profile Route */
   const params = new URLSearchParams(window.location.search);
   const publicProfileId = params.get('u');
+  const publicProfileCode = params.get('code') || params.get('p');
 
-  if (publicProfileId) {
+  useEffect(() => {
+    // Dynamic SEO title for public profiles
+    if (publicProfileId || publicProfileCode) {
+      document.title = 'Driver Profile - Sarathi Book';
+    } else {
+      document.title = 'Sarathi Book - Your Digital Office on Car';
+    }
+  }, [publicProfileId, publicProfileCode]);
+
+  if (publicProfileId || publicProfileCode) {
     return (
       <Suspense fallback={<LoadingFallback />}>
-        {/* Dynamically import PublicProfile to avoid bundling it for admins if possible, though needed here */}
-        <PublicProfile userId={publicProfileId} />
+        <PublicProfile userId={publicProfileId || ''} driverCode={publicProfileCode ? parseInt(publicProfileCode) : undefined} />
       </Suspense>
     );
   }

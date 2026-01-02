@@ -4,6 +4,7 @@ import { Phone, MapPin, BadgeCheck, Car, Star } from 'lucide-react';
 
 interface PublicProfileProps {
     userId: string;
+    driverCode?: number;
 }
 
 interface ProfileData {
@@ -19,7 +20,7 @@ interface ProfileData {
     driver_code?: number;
 }
 
-const PublicProfile: React.FC<PublicProfileProps> = ({ userId }) => {
+const PublicProfile: React.FC<PublicProfileProps> = ({ userId, driverCode }) => {
     const [profile, setProfile] = useState<ProfileData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -27,18 +28,37 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId }) => {
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                // Fetch profile settings (public read access assumed/required on 'profiles' table for this to work)
-                // If RLS is strict, we might need an Edge Function or RPC, but usually profiles are public readable
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('settings, id, driver_code') // selecting minimal fields
-                    .eq('id', userId)
-                    .single();
+                let query = supabase.from('profiles').select('settings, id, driver_code');
+
+                if (userId) {
+                    query = query.eq('id', userId);
+                } else if (driverCode) {
+                    query = query.eq('driver_code', driverCode);
+                }
+
+                const { data, error } = await query.single();
 
                 if (error || !data) throw error || new Error('Profile not found');
 
-                // Parse if needed (supabase returns typed data, but settings is jsonb)
                 setProfile(data as any);
+
+                // Update SEO Meta Tags dynamically
+                const settings = data.settings as any;
+                const company = settings.companyName || 'Professional Driver';
+                document.title = `${company} - Sarathi Book Profile`;
+
+                // Update description meta tag
+                const metaDesc = document.querySelector('meta[name="description"]');
+                if (metaDesc) {
+                    metaDesc.setAttribute('content', `Book cab service from ${company}. Professional driver with verified documents and fleet. ID: #${data.driver_code}`);
+                }
+
+                // Update OG tags
+                const ogTitle = document.querySelector('meta[property="og:title"]');
+                if (ogTitle) ogTitle.setAttribute('content', `${company} - Sarathi Book`);
+                const ogUrl = document.querySelector('meta[property="og:url"]');
+                if (ogUrl) ogUrl.setAttribute('content', `${window.location.origin}/?code=${data.driver_code}`);
+
             } catch (err) {
                 console.error('Error fetching public profile:', err);
                 setError('Profile not found or inaccessible.');
@@ -47,8 +67,8 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId }) => {
             }
         };
 
-        if (userId) fetchProfile();
-    }, [userId]);
+        fetchProfile();
+    }, [userId, driverCode]);
 
     if (loading) return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center">
