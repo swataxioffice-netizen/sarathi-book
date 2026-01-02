@@ -14,7 +14,7 @@ import { subscribeToPush } from '../utils/push';
 import { Bell } from 'lucide-react';
 
 const Profile: React.FC = () => {
-    const { user, signOut, loading: authLoading } = useAuth();
+    const { user, signOut, signInWithGoogle, loading: authLoading } = useAuth();
     const { settings, updateSettings, saveSettings, docStats, driverCode } = useSettings();
     const [newVehicleNumber, setNewVehicleNumber] = useState('');
     const [selectedCategoryId, setSelectedCategoryId] = useState(VEHICLES[0].id);
@@ -902,35 +902,50 @@ const Profile: React.FC = () => {
                         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
                             <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-100 rounded-xl gap-3">
                                 <div className="flex flex-col flex-1 min-w-0">
-                                    <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-0.5">Your Direct Link</span>
+                                    <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-0.5">Your Direct Link</span>
                                     <span className="text-[10px] font-bold text-slate-700 truncate">
-                                        {driverCode ? `${window.location.origin}/?code=${driverCode}` : 'Waiting for ID...'}
+                                        {user ? (
+                                            driverCode ? `${window.location.origin}/?code=${driverCode}` : 'Waiting for ID...'
+                                        ) : (
+                                            'Sign in to get your business link'
+                                        )}
                                     </span>
                                 </div>
                                 <div className="flex gap-2 shrink-0">
-                                    <button
-                                        onClick={() => {
-                                            if (!driverCode) return;
-                                            navigator.clipboard.writeText(`${window.location.origin}/?code=${driverCode}`);
-                                            alert('Link copied to clipboard!');
-                                        }}
-                                        disabled={!driverCode}
-                                        className="p-2 bg-white text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
-                                        title="Copy Link"
-                                    >
-                                        <Copy size={14} />
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            if (!driverCode) return;
-                                            window.open(`${window.location.origin}/?code=${driverCode}`, '_blank');
-                                        }}
-                                        disabled={!driverCode}
-                                        className="p-2 bg-white text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
-                                        title="Open Link"
-                                    >
-                                        <ExternalLink size={14} />
-                                    </button>
+                                    {user ? (
+                                        <>
+                                            <button
+                                                onClick={() => {
+                                                    if (!driverCode) return;
+                                                    navigator.clipboard.writeText(`${window.location.origin}/?code=${driverCode}`);
+                                                    alert('Link copied to clipboard!');
+                                                }}
+                                                disabled={!driverCode}
+                                                className="p-2 bg-white text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
+                                                title="Copy Link"
+                                            >
+                                                <Copy size={14} />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (!driverCode) return;
+                                                    window.open(`${window.location.origin}/?code=${driverCode}`, '_blank');
+                                                }}
+                                                disabled={!driverCode}
+                                                className="p-2 bg-white text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
+                                                title="Open Link"
+                                            >
+                                                <ExternalLink size={14} />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button
+                                            onClick={() => signInWithGoogle()}
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-md"
+                                        >
+                                            Sign In
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
