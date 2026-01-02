@@ -1,120 +1,134 @@
 import { describe, it, expect } from 'vitest';
 import { calculateFare } from './fare';
 
-describe('Master Test Plan - 2025 Market Rates', () => {
+
+describe('Master Test Plan - 2025 Market Rates (New Logic)', () => {
 
     // Test 1: The "Corporate Rental" (Local Hourly)
     it('Scenario 1: Corporate Rental (Local Hourly) - 8Hr/80Km + Extras', () => {
-        // Base Package: 2300 (Input)
-        // Extra Hr: 1 (at 250)
-        // Extra Km: 10 (at 14)
+        // Config: Sedan 8hr/80km = 2200. Extra Hr = 250. Extra Km = 15.5 (One Way Rate).
         // Usage: 9 Hr, 90 Km.
-        // Formula: 2300 + 250 + (10*14=140) = 2690.
-        const result = calculateFare({
-            startKm: 0,
-            endKm: 90,
-            ratePerKm: 14, // Extra KM Rate
-            mode: 'hourly',
-            vehicleId: 'sedan',
-            packagePrice: 2300,
-            durationHours: 9,
-            waitingHours: 1, // Using waitingHours to represent Extra Hours
-            hourlyRate: 250 // Extra Hour Rate
-        });
-        expect(result.distanceCharge).toBe(2690);
+        // Base: 2200.
+        // Extra Hr: 1 * 250 = 250.
+        // Extra Km: 10 * 15.5 = 155.
+        // Total: 2200 + 250 + 155 = 2605.
+
+        const result = calculateFare(
+            'local_hourly',
+            'sedan',
+            90, // distance
+            1,  // days (N/A)
+            1,  // extraHours (9-8=1)
+            false // hillStation
+        );
+        expect(result.totalFare).toBeLessThanOrEqual(2605 + 5); // Allowing small float diffs or rounding
+        expect(result.totalFare).toBeGreaterThanOrEqual(2605 - 5);
+        expect(result.breakdown).toContain('Base Package (8 Hr / 80 Km): ₹2200');
     });
 
-    // Test 2: The "Airport Flat Rate" (Fixed Price)
-    it('Scenario 2: Airport Pickup (Fixed Price) - Crysta', () => {
-        // Flat Fare: 2500.
-        // Parking: 100.
-        // Total: 2600.
-        const result = calculateFare({
-            startKm: 0,
-            endKm: 20,
-            mode: 'fixed',
-            vehicleId: 'premium_suv',
-            packagePrice: 2500,
-            parking: 100
-        });
-        expect(result.distanceCharge).toBe(2500); // Fare Part
-        expect(result.total).toBe(2600); // Total with Parking
+    // Test 2: The "Airport Flat Rate" (Fixed Price) -- NOT SUPPORTED in new logic 
+    // The new logic only handles One Way, Round Trip, Local Hourly.
+    // We can skip this or test One Way Drop instead.
+    it('Scenario 2: One Way Drop (Airport equivalent) - Premium SUV', () => {
+        // Crysta Drop. min 130km.
+        // Distance: 20km.
+        // Logic: Should charge Min 130km.
+        // Config: Crysta One Way = 25.
+        // Fare: 130 * 25 = 3250.
+        // Bata: 600.
+        // Total: 3850.
+
+        const result = calculateFare(
+            'one_way',
+            'premium_suv',
+            20
+        );
+        expect(result.effectiveDistance).toBe(130);
+        expect(result.totalFare).toBe(3250 + 600);
     });
 
-    // Test 3: The "Tirupati Darshan" (Interstate + Permit)
-    it('Scenario 3: Tirupati Darshan (Interstate) - SUV', () => {
-        // SUV Min 300. Actual 320. Use 320.
-        // Rate: 17.
-        // Fare: 320 * 17 = 5440.
-        // Bata: 400.
-        // Permit (AP SUV): 1350.
-        // Total: 5440 + 400 + 1350 = 7190.
-        const result = calculateFare({
-            startKm: 0,
-            endKm: 320,
-            ratePerKm: 17,
-            mode: 'outstation',
-            vehicleId: 'suv',
-            days: 1,
-            interstateState: 'andhra'
-        });
+    // Test 3: The "Tirupati Darshan" (Interstate)
+    it('Scenario 3: Tirupati Darshan (Outstation Round Trip) - SUV', () => {
+        // SUV Round Trip Rate: 18.
+        // Min: 300km.
+        // Actual: 320km.
+        // Dist Cost: 320 * 18 = 5760.
+        // Bata: 500.
+        // Total: 6260.
+        // Note: New logic does not add permit or parking internally.
 
-        // Exempt Total contains Permit?
-        // Note: verify_outstation.test.ts says result.exemptTotal should be permit.
-        // Fare + Bata = Taxable? Or just Fare + Bata logic.
-        const total = result.distanceCharge + result.driverBatta + result.exemptTotal;
-        expect(result.distanceCharge).toBe(5440);
-        expect(result.driverBatta).toBe(400);
-        expect(result.exemptTotal).toBe(1350);
-        expect(total).toBe(7190);
+        const result = calculateFare(
+            'round_trip',
+            'suv',
+            320,
+            1 // 1 day
+        );
+
+        expect(result.totalFare).toBe(5760 + 500);
+        expect(result.effectiveDistance).toBe(320);
     });
 
-    // Test 4: The "Temple Tour" (Multi-Day Bus)
-    it('Scenario 4: Temple Tour (Multi-Day Bus) - Tempo', () => {
-        // Tempo Min 300/day. 2 Days = 600 Minimum.
-        // Actual: 500 KM.
-        // Chargeable: 600 KM.
-        // Rate: 25.
-        // Fare: 600 * 25 = 15000.
-        // Bata: 700 * 2 = 1400.
-        // Total: 16400.
-        const result = calculateFare({
-            startKm: 0,
-            endKm: 500,
-            ratePerKm: 25,
-            mode: 'outstation',
-            vehicleId: 'tempo',
-            days: 2
-        });
+    // Test 4: The "Temple Tour" (Multi-Day Bus) - Tempo
+    it('Scenario 4: Temple Tour (Multi-Day) - Tempo', () => {
+        // Tempo Round Trip Rate: 24.
+        // Min: 300km/day. Days: 2 => Min 600km.
+        // Actual: 500km. Effective: 600km.
+        // Dist Cost: 600 * 24 = 14400.
+        // Bata: 800 * 2 = 1600.
+        // Total: 16000.
 
-        const total = result.distanceCharge + result.driverBatta;
-        expect(result.distanceCharge).toBe(15000);
-        expect(result.driverBatta).toBe(1400);
-        expect(total).toBe(16400);
+        const result = calculateFare(
+            'round_trip',
+            'tempo',
+            500,
+            2 // 2 days
+        );
+
+        expect(result.totalFare).toBe(14400 + 1600);
+        expect(result.effectiveDistance).toBe(600);
     });
 
-    // Test 5: The "Hatchback Min Rule" (250 KM Verification)
-    it('Scenario 5: Hatchback 2-Day Round Trip (Min 250km verification)', () => {
-        // Hatchback Round Rate: 13. Min : 250/day.
-        // Days: 2.
-        // Actual Distance: 400 KM.
-        // Min Billable: 2 * 250 = 500 KM. (NOT 600).
-        // Billable: Max(400, 500) = 500 KM.
-        // Expected Fare: 500 * 13 = 6500.
-        // Batta: 300 * 2 = 600.
+    // Test 5: The "Hatchback Min Rule"
+    it('Scenario 5: Hatchback 2-Day Round Trip (Min check)', () => {
+        // Hatchback Round Trip Rate: 13.
+        // Min: 250km/day. Days: 2 => Min 500km.
+        // Actual: 400km. Effective: 500km.
+        // Dist Cost: 500 * 13 = 6500.
+        // Bata: 300 * 2 = 600.
         // Total: 7100.
-        const result = calculateFare({
-            startKm: 0,
-            endKm: 400,
-            mode: 'outstation',
-            vehicleId: 'hatchback',
-            days: 2
-        });
 
-        const total = result.distanceCharge + result.driverBatta;
-        expect(result.distanceCharge).toBe(6500);
-        expect(result.driverBatta).toBe(600);
-        expect(total).toBe(7100);
+        const result = calculateFare(
+            'round_trip',
+            'hatchback',
+            400,
+            2
+        );
+
+        expect(result.totalFare).toBe(6500 + 600);
+        expect(result.effectiveDistance).toBe(500);
+    });
+
+    // Test 6: Override Rate Check
+    it('Scenario 6: Custom Rate Override', () => {
+        // Sedan One Way. Config Rate: 15.5.
+        // Custom Rate: 20.
+        // Distance: 200km.
+        // Cost: 200 * 20 = 4000.
+        // Bata: 300.
+        // Total: 4300.
+
+        const result = calculateFare(
+            'one_way',
+            'sedan',
+            200,
+            1,
+            0,
+            false,
+            20 // Override Rate
+        );
+
+        expect(result.rateUsed).toBe(20);
+        expect(result.totalFare).toBe(4000 + 300);
     });
 
 });

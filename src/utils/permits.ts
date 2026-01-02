@@ -22,11 +22,11 @@ export const estimatePermitCharge = (
     const isState = (addr: string, keywords: string[]) =>
         keywords.some(k => addr.includes(k));
 
-    const TN = ['tamil nadu', 'chennai', 'coimbatore', 'madurai', 'trichy', 'salem'];
-    const KA = ['karnataka', 'bangalore', 'bengaluru', 'mysore', 'mangalore', 'hosur'];
-    const KL = ['kerala', 'kochi', 'trivandrum', 'palakkad', 'kozhikode'];
-    const AP = ['andhra', 'vijayawada', 'visakhapatnam', 'tirupati', 'chittoor'];
-    const PY = ['puducherry', 'pondicherry', 'pondicherri'];
+    const TN = ['tamil nadu', 'chennai', 'coimbatore', 'madurai', 'trichy', 'salem', 'vellore', 'tirunelveli', 'thoothukudi', 'tiruppur', 'erode'];
+    const KA = ['karnataka', 'bangalore', 'bengaluru', 'mysore', 'mangalore', 'hosur', 'coorg', 'hampi', 'chikmagalur', 'udupi', 'hubli', 'belgaum'];
+    const KL = ['kerala', 'kochi', 'trivandrum', 'palakkad', 'kozhikode', 'munnar', 'wayanad', 'thekkady', 'alleppey', 'kumarakom', 'guruvayur', 'sabarimala'];
+    const AP = ['andhra', 'vijayawada', 'visakhapatnam', 'tirupati', 'chittoor', 'srisailam', 'mantralayam', 'nellore', 'kurnool', 'guntur', 'rajahmundry', 'puttaparthi'];
+    const PY = ['puducherry', 'pondicherry', 'pondicherri', 'karaikal'];
 
     const fromTN = isState(pickupLower, TN);
 

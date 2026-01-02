@@ -48,14 +48,28 @@ export const estimateParkingCharge = (location: string): ParkingInfo | null => {
         }
     }
 
-    // 4. Important Temples/Tourist spots
-    if (loc.includes('temple') || loc.includes('kovil') || loc.includes('church') || loc.includes('mosque') || loc.includes('basilica')) {
+    // 4. Important Temples
+    if (
+        loc.includes('temple') || loc.includes('kovil') || loc.includes('church') || loc.includes('mosque') || loc.includes('dargah') ||
+        loc.includes('basilica') || loc.includes('meenakshi') || loc.includes('rameshwaram') || loc.includes('palani') ||
+        loc.includes('tiruchendur') || loc.includes('velankanni') || loc.includes('nagore') || loc.includes('srirangam') ||
+        loc.includes('thanjavur')
+    ) {
         return { amount: 50, type: 'Temple', description: 'Temple/Religious Place Parking' };
     }
 
-    // 5. Hospitals
-    if (loc.includes('hospital') || loc.includes('apollo') || loc.includes('fortis') || loc.includes('kauvery') || loc.includes('gleneagles')) {
-        return { amount: 50, type: 'Hospital', description: 'Hospital Parking Fee' };
+    // 5. Tourist Spots
+    if (
+        loc.includes('ooty') || loc.includes('kodaikanal') || loc.includes('yercaud') || loc.includes('hogneakkal') ||
+        loc.includes('courtallam') || loc.includes('pichavaram') || loc.includes('mahabalipuram') || loc.includes('beach') ||
+        loc.includes('botanical') || loc.includes('boat house')
+    ) {
+        return { amount: 50, type: 'Tourist', description: 'Tourist Spot Parking' };
+    }
+
+    // 6. Hospitals
+    if (loc.includes('hospital') || loc.includes('apollo') || loc.includes('fortis') || loc.includes('kauvery') || loc.includes('gleneagles') || loc.includes('medicity')) {
+        return { amount: 40, type: 'Hospital', description: 'Hospital Parking Fee' };
     }
 
     return null;

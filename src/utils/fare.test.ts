@@ -1,140 +1,105 @@
 import { describe, it, expect } from 'vitest';
 import { calculateFare } from './fare';
 
+
 describe('Chennai Fare Business Logic 2025', () => {
 
-    it('should calculate Local Drop correctly for Hatchback (<30km)', () => {
-        const result = calculateFare({
-            startKm: 0,
-            endKm: 25,
-            ratePerKm: 0,
-            mode: 'drop',
-            vehicleId: 'hatchback',
-            includeGarageBuffer: false
-        });
+    it('should calculate Local Drop correctly for Hatchback (< 40km)', () => {
+        // Hatchback: One Way 14.5 (or config dependent).
+        // 25km distance.
+        // Base KM: 10. Base Fare: 250.
+        // Extra KM: 15. Rate: 14.5.
+        // 15 * 14.5 = 217.5.
+        // Total: 467.5 -> 468.
 
-        // Base Fee (10km) = 250
-        // Extra (15km) * 25 = 375
-        // Total Distance Charge = 475
-        // No Bata
-        expect(result.distanceCharge).toBe(475);
-        expect(result.driverBatta).toBe(0);
+        const result = calculateFare(
+            'one_way',
+            'hatchback',
+            25
+        );
+
+        // Check against config dynamically or hardcoded if 2025 standard is fixed
+        // Base 250. Extra 15 * 14.5 = 217.5. Total = 467.5.
+        expect(result.totalFare).toBe(468);
     });
 
-    it('should calculate Outstation Drop correctly for Sedan (>30km)', () => {
-        const result = calculateFare({
-            startKm: 0,
-            endKm: 150,
-            ratePerKm: 0, // Should pick default Drop Rate: 16
-            mode: 'drop',
-            vehicleId: 'sedan',
-            includeGarageBuffer: false
-        });
+    it('should calculate Outstation Drop correctly for Sedan (> 40km)', () => {
+        // Sedan One Way: 15.5.
+        // Distance: 150km.
+        // Min Drop: 130km (Satisfied).
+        // Fare: 150 * 15.5 = 2325.
+        // Bata: 300.
+        // Total: 2625.
 
-        // Distance: 150km (Min 130 satisfied)
-        // Rate: 16
-        // Charge: 150 * 16 = 2400
-        // Bata: 300
-        expect(result.distanceCharge).toBe(2400);
-        expect(result.driverBatta).toBe(300);
+        const result = calculateFare(
+            'one_way',
+            'sedan',
+            150
+        );
+
+        expect(result.totalFare).toBe(2625);
     });
 
-    it('should apply Double Bata for High Mileage SUV Round Trip', () => {
-        const result = calculateFare({
-            startKm: 0,
-            endKm: 500,
-            ratePerKm: 0, // Round Rate: 18
-            mode: 'outstation',
-            vehicleId: 'suv',
-            days: 1
-        });
+    it('should apply higher Minimum KM for SUV Round Trip (300/day)', () => {
+        // SUV Round Rate: 18. Min 300km.
+        // 1 Day. Distance 200km.
+        // Billable: 300km.
+        // Dist Cost: 300 * 18 = 5400.
+        // Bata: 500.
+        // Total: 5900.
 
-        // Min 300km satisfied.
-        // Distance: 500km
-        // Charge: 500 * 18 = 9000
-        // Avg Check: 500/1 > 400 => Double Bata
-        // Bata: 400 * 2 = 800
-        expect(result.distanceCharge).toBe(9000);
-        expect(result.driverBatta).toBe(800);
-    });
+        const result = calculateFare(
+            'round_trip',
+            'suv',
+            200,
+            1
+        );
 
-    it('should enforce Minimum KM for Outstation Round Trip', () => {
-        const result = calculateFare({
-            startKm: 0,
-            endKm: 200,
-            ratePerKm: 0, // Round Rate: 18
-            mode: 'outstation',
-            vehicleId: 'suv',
-            days: 1
-        });
-
-        // Actual 200. Min 300. Used 300.
-        // Charge: 300 * 18 = 5400.
-        // Avg: 300/1 < 400 => Single Bata (400)
-        expect(result.distanceCharge).toBe(5400);
-        expect(result.driverBatta).toBe(400);
+        expect(result.totalFare).toBe(5900);
+        expect(result.effectiveDistance).toBe(300);
     });
 
     it('should apply Heavy Vehicle Rule (Round Trip Logic) for Tempo Drop', () => {
-        const result = calculateFare({
-            startKm: 0,
-            endKm: 100, // One way distance
-            ratePerKm: 0, // Round Rate: 25
-            mode: 'drop',
-            vehicleId: 'tempo'
-        });
+        // Tempo. Min 300. Round Rate 24.
+        // Drop Trip Requested (One Way).
+        // Distance 100km.
+        // Logic: Round Trip Dist = 200km.
+        // Min Check: Max(200, 300) = 300km.
+        // Cost: 300 * 24 = 7200.
+        // Bata: 800.
+        // Total: 8000.
 
-        // Rule: Treat as Round Trip Distance => 100 * 2 = 200km.
-        // Min KM for Van = 300.
-        // Effective = max(200, 300) = 300.
-        // Charge: 300 * 25 = 7500.
-        expect(result.distanceCharge).toBe(7500);
+        const result = calculateFare(
+            'one_way',
+            'tempo',
+            100
+        );
+
+        expect(result.totalFare).toBe(8000);
+        expect(result.breakdown).toContain('Heavy Vehicle Rule: One-Way charged as Round Trip');
     });
 
-    it('should add Garage Buffer for Outstation', () => {
-        const result = calculateFare({
-            startKm: 0,
-            endKm: 400,
-            ratePerKm: 0,
-            mode: 'outstation',
-            vehicleId: 'sedan',
-            includeGarageBuffer: true // +20km
-        });
+    it('should use Custom Rate when provided', () => {
+        // Hatchback Drop.
+        // Distance 25km.
+        // Custom Rate: 18.
+        // Base 250 (10km).
+        // Extra 15 * 18 = 270.
+        // Total: 520.
 
-        // Distance: 400 + 20 = 420.
-        // Rate (Round Sedan): 14
-        // Charge: 420 * 14 = 5880
-        expect(result.effectiveDistance).toBe(420);
-        expect(result.distanceCharge).toBe(5880);
-    });
+        const result = calculateFare(
+            'one_way',
+            'hatchback',
+            25,
+            1,
+            0,
+            false,
+            18 // Override
+        );
 
-    it('should add Interstate Permit Charges', () => {
-        const result = calculateFare({
-            startKm: 0,
-            endKm: 100,
-            ratePerKm: 0,
-            mode: 'drop',
-            vehicleId: 'suv',
-            interstateState: 'karnataka'
-        });
-
-        // SUV Karnataka Permit = 1250
-        // Permit is part of exemptTotal
-        expect(result.exemptTotal).toBe(1250);
-    });
-    it('should use Custom Rate for Local Drop extra km', () => {
-        const result = calculateFare({
-            startKm: 0,
-            endKm: 25,
-            ratePerKm: 18, // User Input
-            mode: 'drop',
-            vehicleId: 'hatchback'
-        });
-
-        // Base 250.
-        // Extra 15km * 18 = 270.
-        // Total = 520.
-        expect(result.distanceCharge).toBe(520);
+        expect(result.totalFare).toBe(520);
+        expect(result.rateUsed).toBe(18);
     });
 
 });
+

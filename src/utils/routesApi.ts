@@ -47,7 +47,10 @@ export const calculateAdvancedRoute = async (
             routeModifiers: {
                 vehicleInfo: {
                     emissionType: 'GASOLINE'
-                }
+                },
+                tollPasses: [
+                    'IN_FASTAG'
+                ]
             }
         };
 
