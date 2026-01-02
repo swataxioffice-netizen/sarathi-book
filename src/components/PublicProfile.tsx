@@ -26,12 +26,23 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId, driverCode }) => 
     const [error, setError] = useState('');
 
     useEffect(() => {
+        let isMounted = true;
         const fetchProfile = async () => {
             if (!userId && !driverCode) {
-                setError('Invalid profile link.');
-                setLoading(false);
+                if (isMounted) {
+                    setError('Invalid profile link.');
+                    setLoading(false);
+                }
                 return;
             }
+
+            // Safety timeout: stop loading if database takes too long (> 10 seconds)
+            const timeout = setTimeout(() => {
+                if (isMounted && loading) {
+                    setError('Unable to reach the database. Please try again.');
+                    setLoading(false);
+                }
+            }, 10000);
 
             try {
                 let query = supabase.from('profiles').select('settings, id, driver_code');
@@ -42,10 +53,15 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId, driverCode }) => 
                     query = query.eq('driver_code', driverCode);
                 }
 
-                const { data, error } = await query.single();
+                const { data, error: dbError } = await query.single();
+                clearTimeout(timeout);
 
-                if (error || !data) {
+                if (!isMounted) return;
+
+                if (dbError || !data) {
+                    console.error('DB Error:', dbError);
                     setError('Profile not found.');
+                    setLoading(false);
                     return;
                 }
 
@@ -69,14 +85,16 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId, driverCode }) => 
                 if (ogUrl) ogUrl.setAttribute('content', `${window.location.origin}/?code=${data.driver_code}`);
 
             } catch (err) {
+                clearTimeout(timeout);
                 console.error('Error fetching public profile:', err);
-                setError('Profile not found.');
+                if (isMounted) setError('Profile not found.');
             } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
         };
 
         fetchProfile();
+        return () => { isMounted = false; };
     }, [userId, driverCode]);
 
     if (loading) return (
