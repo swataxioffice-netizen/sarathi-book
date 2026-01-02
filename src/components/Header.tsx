@@ -17,10 +17,10 @@ const Header: React.FC = () => {
                         />
                     </div>
                     <div className="flex flex-col justify-center">
-                        <h1 className="text-xl font-black text-[#0047AB] leading-none mb-0.5" style={{ letterSpacing: '-0.02em' }}>
+                        <h1 className="text-hero font-black text-[#0047AB] leading-none mb-0.5" style={{ letterSpacing: '-0.02em' }}>
                             SARATHI BOOK
                         </h1>
-                        <p className="text-[10px] font-semibold text-slate-500 leading-none tracking-wide" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+                        <p className="text-body-fluid font-semibold text-slate-500 leading-none tracking-wide" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
                             Your digital office on car
                         </p>
                     </div>

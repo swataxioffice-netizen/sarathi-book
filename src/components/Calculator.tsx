@@ -13,7 +13,8 @@ import {
     Share2,
     UserCheck,
     Truck,
-    RotateCcw
+    RotateCcw,
+    ShieldCheck
 } from 'lucide-react';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
@@ -26,17 +27,29 @@ import { VEHICLES } from '../config/vehicleRates';
 import { Analytics } from '../utils/monitoring';
 import { isHillStationLocation } from '../utils/locationUtils';
 import AdditionalChargesDrawer from './AdditionalChargesDrawer';
+import SEOHead from './SEOHead';
 
 
 // Define result type based on calculation output
 type FareResult = ReturnType<typeof calculateFare>;
 
 // --- 1. Cab Calculator Component ---
-const CabCalculator: React.FC = () => {
+interface CabProps {
+    initialPickup?: string;
+    initialDrop?: string;
+}
+
+const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
     useSettings();
     const [tripType, setTripType] = useState<'oneway' | 'roundtrip' | 'local' | 'airport'>('oneway');
-    const [pickup, setPickup] = useState('');
-    const [drop, setDrop] = useState('');
+    const [pickup, setPickup] = useState(initialPickup || '');
+    const [drop, setDrop] = useState(initialDrop || '');
+
+    // Sync state with props (for deep linking from URL)
+    useEffect(() => {
+        if (initialPickup) setPickup(initialPickup);
+        if (initialDrop) setDrop(initialDrop);
+    }, [initialPickup, initialDrop]);
     const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [dropCoords, setDropCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [distance, setDistance] = useState<string>('');
@@ -46,6 +59,15 @@ const CabCalculator: React.FC = () => {
     const [result, setResult] = useState<{ fare: number; details: string[]; breakdown: FareResult & { total: number } } | null>(null);
     const [calculatingDistance, setCalculatingDistance] = useState(false);
     const [showMap, setShowMap] = useState(false);
+
+    // Dynamic SEO Callback
+    useEffect(() => {
+        if (pickup && drop) {
+            window.dispatchEvent(new CustomEvent('calculator-route-change', {
+                detail: { pickup, drop }
+            }));
+        }
+    }, [pickup, drop]);
 
     // Hourly / Local Package State
     const [hourlyPackage, setHourlyPackage] = useState<string>('8hr_80km');
@@ -344,7 +366,7 @@ const CabCalculator: React.FC = () => {
                                 ))}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <Input
                                     label="Duration (Hrs)"
                                     icon={<Clock size={10} />}
@@ -409,7 +431,7 @@ const CabCalculator: React.FC = () => {
                     )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                         <Label icon={<Car size={10} aria-hidden="true" />} text="Vehicle" htmlFor="cab-vehicle" />
                         <select id="cab-vehicle" value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
@@ -439,6 +461,23 @@ const CabCalculator: React.FC = () => {
                     </label>
                 )}
             </div>
+
+            {/* Transparency Section for SEO & Trust */}
+            {pickup && drop && (
+                <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4 mb-4">
+                    <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-emerald-600 shadow-sm shrink-0">
+                            <ShieldCheck size={18} />
+                        </div>
+                        <div className="space-y-1">
+                            <h4 className="text-[11px] font-black text-emerald-900 uppercase tracking-wider underline decoration-emerald-200 underline-offset-4">0% Service Commission</h4>
+                            <p className="text-[10px] text-emerald-700/80 leading-relaxed font-bold italic">
+                                Large platforms add 15-20% hidden fees to your ride. Sarathi Book estimates are derived directly from taxi associations, ensuring you pay one fair, direct price.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div
                 onClick={() => setShowAdditional(true)}
@@ -1029,13 +1068,99 @@ const ResultCard = ({ title, amount, details, sub }: ResultCardProps) => {
 
 // --- Main Container ---
 const Calculator: React.FC = () => {
-    const [mode, setMode] = useState<'cab' | 'driver' | 'relocation' | null>(null);
-
     const SERVICES = [
-        { id: 'cab', label: 'Cab Rental', sub: 'Calculations for distance, drops & outstation', icon: Car, color: 'bg-blue-600' },
-        { id: 'driver', label: 'Act Driver', sub: 'Daily & hourly charges for acting drivers', icon: UserCheck, color: 'bg-emerald-600' },
-        { id: 'relocation', label: 'Relocation', sub: 'Car & vehicle relocation service costs', icon: Truck, color: 'bg-orange-600' },
+        {
+            id: 'cab',
+            label: 'Cab Rental',
+            sub: 'Calculations for distance, drops & outstation',
+            icon: Car,
+            color: 'bg-blue-600',
+            seoTitle: 'Cab Rental Fare Calculator | Best Rates for Outstation & Local',
+            seoDesc: 'Calculate accurate cab fares for outstation drop trips, round trips, and local hourly rentals. Includes tolls, permits, and driver allowance.'
+        },
+        {
+            id: 'driver',
+            label: 'Acting Driver',
+            sub: 'Daily & hourly charges for acting drivers',
+            icon: UserCheck,
+            color: 'bg-emerald-600',
+            seoTitle: 'Acting Driver Charges Estimator | Daily & Hourly Driver Rates',
+            seoDesc: 'Estimate acting driver charges for local and outstation trips. Professional drivers at affordable daily and hourly rates.'
+        },
+        {
+            id: 'relocation',
+            label: 'Relocation',
+            sub: 'Car & vehicle relocation service costs',
+            icon: Truck,
+            color: 'bg-orange-600',
+            seoTitle: 'Car Relocation Cost Estimator | Vehicle Shifting Charges',
+            seoDesc: 'Calculate professional car relocation costs and vehicle shifting charges. Reliable car transport services across India.'
+        },
     ] as const;
+
+    const [mode, setMode] = useState<'cab' | 'driver' | 'relocation' | null>(() => {
+        const path = window.location.pathname.split('/')[2];
+        return (path as any) || null;
+    });
+
+    const [dynamicRoute, setDynamicRoute] = useState<{ pickup: string, drop: string } | null>(() => {
+        const params = new URLSearchParams(window.location.search);
+        const from = params.get('from');
+        const to = params.get('to');
+        if (from && to) return { pickup: from, drop: to };
+        return null;
+    });
+
+    // Listen for route changes within calculators
+    useEffect(() => {
+        const handleRouteUpdate = (e: any) => {
+            setDynamicRoute(e.detail);
+        };
+        window.addEventListener('calculator-route-change', handleRouteUpdate);
+        return () => window.removeEventListener('calculator-route-change', handleRouteUpdate);
+    }, []);
+
+    // Sync search params back to URL for shareability
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (dynamicRoute) {
+            params.set('from', dynamicRoute.pickup);
+            params.set('to', dynamicRoute.drop);
+        } else {
+            params.delete('from');
+            params.delete('to');
+        }
+
+        const newSearch = params.toString();
+        const currentSearch = window.location.search.slice(1);
+
+        if (newSearch !== currentSearch) {
+            const cleanPath = mode ? `/calculator/${mode}` : '/calculator';
+            window.history.replaceState(null, '', `${cleanPath}${newSearch ? '?' + newSearch : ''}`);
+        }
+    }, [dynamicRoute, mode]);
+
+    // Sync mode with URL but PRESERVE search parameters (for auto-fill)
+    useEffect(() => {
+        const currentPath = window.location.pathname;
+        const currentSearch = window.location.search;
+        const cleanPath = mode ? `/calculator/${mode}` : '/calculator';
+        const newUrl = cleanPath + currentSearch;
+
+        if (currentPath !== cleanPath) {
+            window.history.replaceState(null, '', newUrl);
+        }
+    }, [mode]);
+
+    // Handle initial mount and browser back/forward
+    useEffect(() => {
+        const handlePopState = () => {
+            const path = window.location.pathname.split('/')[2];
+            setMode((path as any) || null);
+        };
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
 
     if (!mode) {
         return (
@@ -1072,6 +1197,36 @@ const Calculator: React.FC = () => {
                         </p>
                     </div>
                 </div>
+
+                {/* Popular Routes Section for SEO/AEO */}
+                <div className="pt-4 space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                        <MapPin size={14} className="text-slate-400" />
+                        <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.2em]">Popular Route Estimates</h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {[
+                            { route: 'Chennai to Pondicherry', price: '₹2,500+', type: 'Drop Trip' },
+                            { route: 'Bangalore to Mysore', price: '₹3,200+', type: 'Round Trip' },
+                            { route: 'Chennai to Mahabalipuram', price: '₹1,500+', type: 'Local Package' },
+                            { route: 'Coimbatore to Ooty', price: '₹3,500+', type: 'Hills Trip' }
+                        ].map((r, i) => (
+                            <div key={i} className="bg-white border border-slate-100 rounded-2xl p-4 flex justify-between items-center shadow-sm">
+                                <div>
+                                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-tight">{r.route}</h4>
+                                    <p className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase tracking-widest">{r.type}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm font-black text-blue-600">{r.price}</p>
+                                    <p className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter">Est. Fare</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-[9px] text-slate-400 font-medium px-1 leading-relaxed">
+                        Prices shown are estimates for Hatchback vehicles. Actual fares for your specific trip from <span className="text-slate-600 font-bold">Chennai to Pondicherry</span> and other cities will be calculated instantly based on real-time distance.
+                    </p>
+                </div>
             </div>
         );
     }
@@ -1095,8 +1250,44 @@ const Calculator: React.FC = () => {
                 </div>
             </div>
 
+            <SEOHead
+                title={dynamicRoute
+                    ? `${dynamicRoute.pickup} to ${dynamicRoute.drop} Cab Fare & Price`
+                    : (currentService?.seoTitle || 'Fare Calculator')
+                }
+                description={dynamicRoute
+                    ? `Calculate exact cab fare from ${dynamicRoute.pickup} to ${dynamicRoute.drop}. Get estimates for Sedan, SUV and Tempo Traveller with tolls and permits.`
+                    : currentService?.seoDesc
+                }
+                schema={dynamicRoute ? {
+                    "@context": "https://schema.org",
+                    "@type": "Service",
+                    "name": `Cab from ${dynamicRoute.pickup} to ${dynamicRoute.drop}`,
+                    "description": `Professional taxi service and fare estimate for ${dynamicRoute.pickup} to ${dynamicRoute.drop} route.`,
+                    "provider": {
+                        "@type": "LocalBusiness",
+                        "name": "Sarathi Book"
+                    },
+                    "areaServed": [
+                        { "@type": "City", "name": dynamicRoute.pickup },
+                        { "@type": "City", "name": dynamicRoute.drop }
+                    ],
+                    "offers": {
+                        "@type": "Offer",
+                        "description": "Starting price for Hatchback one-way",
+                        "priceCurrency": "INR",
+                        "price": "2500"
+                    }
+                } : null}
+            />
+
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm mx-2">
-                {mode === 'cab' && <CabCalculator />}
+                {mode === 'cab' && (
+                    <CabCalculator
+                        initialPickup={dynamicRoute?.pickup}
+                        initialDrop={dynamicRoute?.drop}
+                    />
+                )}
                 {mode === 'driver' && <ActingDriverCalculator />}
                 {mode === 'relocation' && <RelocationCalculator />}
             </div>

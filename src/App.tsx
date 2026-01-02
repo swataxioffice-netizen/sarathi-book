@@ -41,12 +41,28 @@ function AppContent() {
   const { needRefresh, updateServiceWorker } = useUpdate();
 
   const [activeTab, setActiveTab] = useState(() => {
-    // Priority: 1. URL Hash, 2. Local Storage, 3. Default 'dashboard'
-    const hash = window.location.hash.slice(1);
+    // Priority: 1. URL Path, 2. URL Hash (Legacy/Auth), 3. Local Storage, 4. Default 'dashboard'
+    const pathname = window.location.pathname.slice(1).split('/')[0];
+    const hash = window.location.hash.slice(1).split('/')[0];
     const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin'];
+
+    if (pathname && validTabs.includes(pathname)) return pathname;
     if (hash && validTabs.includes(hash)) return hash;
     return localStorage.getItem('nav-active-tab') || 'dashboard';
   });
+
+  // Support for Browser Back/Forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const pathname = window.location.pathname.slice(1).split('/')[0];
+      const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin'];
+      if (pathname && validTabs.includes(pathname)) {
+        setActiveTab(pathname);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     const handleNav = (e: any) => setActiveTab(e.detail);
@@ -60,8 +76,7 @@ function AppContent() {
     // Track Page View
     Analytics.viewPage(activeTab);
 
-    // Check if the current hash is an auth redirect from Supabase
-    // If so, DO NOT overwrite it, otherwise auth will fail
+    // Check for auth redirects from Supabase (usually in Hash)
     const currentHash = window.location.hash;
     if (currentHash.includes('access_token') ||
       currentHash.includes('refresh_token') ||
@@ -69,8 +84,18 @@ function AppContent() {
       return;
     }
 
-    // Update URL without reloading to support deep linking
-    window.history.replaceState(null, '', `#${activeTab}`);
+    // Update URL without reloading to support deep linking (Replace History)
+    // We preserve the full URL if it already starts with the active tab to support sub-paths and search params
+    const currentPath = window.location.pathname;
+    const currentTab = currentPath.slice(1).split('/')[0] || 'dashboard';
+
+    // If the tab just changed, we go to the base path. 
+    // If we are already on that tab, we do nothing to avoid stripping sub-paths/params.
+    if (activeTab !== currentTab && !currentPath.startsWith('/public')) {
+      window.history.replaceState(null, '', `/${activeTab}`);
+    } else if (currentPath === '/' && activeTab !== 'dashboard') {
+      window.history.replaceState(null, '', `/${activeTab}`);
+    }
   }, [activeTab]);
 
   const [invoiceQuotationToggle, setInvoiceQuotationToggle] = useState<'invoice' | 'quotation'>('invoice');
@@ -304,7 +329,7 @@ function AppContent() {
                       <span className="absolute inset-0 flex items-center justify-center text-xl font-black tracking-tighter text-slate-900">{completion}%</span>
                     </div>
 
-                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-3">Profile Incomplete</h3>
+                    <h3 className="text-hero font-black text-slate-900 uppercase tracking-tight mb-3">Profile Incomplete</h3>
                     <p className="text-[11px] text-slate-500 font-bold leading-relaxed mb-8">
                       You must complete your 100% profile details including business info, fleet, and documents to access invoicing features.
                     </p>
@@ -359,8 +384,8 @@ function AppContent() {
   };
 
   /* Public Profile Route */
-  const params = new URLSearchParams(window.location.search);
-  const publicProfileId = params.get('u');
+  const pathSegments = window.location.pathname.split('/');
+  const publicProfileId = pathSegments[1] === 'public' ? pathSegments[2] : null;
 
   if (publicProfileId) {
     return (
@@ -379,7 +404,7 @@ function AppContent() {
         <SideNav activeTab={activeTab} setActiveTab={setActiveTab} />
         <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-[#F5F7FA]">
           <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10">
-            <h2 className="text-xl font-bold text-slate-800 capitalize tracking-wide">{activeTab === 'trips' ? 'Invoices & Trips' : activeTab}</h2>
+            <h2 className="text-hero font-bold text-slate-800 capitalize tracking-wide">{activeTab === 'trips' ? 'Invoices & Trips' : activeTab}</h2>
             <div className="flex items-center gap-4">
               {needRefresh ? (
                 <button

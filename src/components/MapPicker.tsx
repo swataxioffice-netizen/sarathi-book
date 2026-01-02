@@ -510,14 +510,14 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
                 <div className="flex gap-2">
                     <button
                         onClick={() => setMode(mode === 'pickup' ? 'drop' : 'pickup')}
-                        className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-xl font-bold text-sm"
+                        className="flex-1 bg-slate-100 text-slate-700 h-12 rounded-xl font-bold text-sm"
                     >
                         Switch to {mode === 'pickup' ? 'Drop' : 'Pickup'}
                     </button>
                     <button
                         onClick={handleConfirm}
                         disabled={!pickupLocation || !dropLocation}
-                        className="flex-1 bg-[#0047AB] text-white py-3 rounded-xl font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 bg-[#0047AB] text-white h-12 rounded-xl font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Confirm ({distance} KM)
                     </button>

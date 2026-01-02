@@ -7,14 +7,14 @@ export default defineConfig({
     plugins: [
         react(),
         VitePWA({
-            registerType: 'prompt',
+            registerType: 'autoUpdate',
             injectRegister: 'script',
             includeAssets: ['apple-touch-icon.png', 'favicon.png', 'favicon-96x96.png', 'favicon-158x158.png', 'logo.png'],
             manifest: {
                 name: 'Sarathi Book',
                 short_name: 'Sarathi',
                 description: 'Your Digital Office on Car',
-                theme_color: '#ffffff',
+                theme_color: '#0047AB',
                 background_color: '#ffffff',
                 display: 'standalone',
                 start_url: '/',

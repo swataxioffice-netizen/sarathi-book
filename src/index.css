@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+@theme {
+  --text-display: clamp(2rem, 8vw, 3.5rem);
+  --text-hero: clamp(1.5rem, 5vw, 2.5rem);
+  --text-body-fluid: clamp(1rem, 2.5vw, 1.125rem);
+}
+
 
 
 :root {
@@ -60,7 +66,7 @@ body,
     border: 1px solid var(--border-light);
     border-radius: 12px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    @apply p-5;
+    @apply p-4 sm:p-5;
   }
 
   /* Solid Action Button */
@@ -68,7 +74,7 @@ body,
     background-color: var(--primary);
     color: white;
     border-radius: 10px;
-    @apply font-bold px-6 py-4 flex items-center justify-center gap-2 active:scale-[0.98] transition-all uppercase tracking-wide text-[15px];
+    @apply font-bold px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-center gap-2 active:scale-[0.98] transition-all uppercase tracking-wide text-[14px] sm:text-[15px] min-h-[48px];
   }
 
   /* Clean Input */
@@ -78,8 +84,8 @@ body,
     border: 1px solid var(--border-light);
     color: var(--text-main);
     border-radius: 10px;
-    @apply py-3 px-4 font-semibold text-[15px] outline-none transition-all h-12 text-slate-900;
-    /* h-12 to accommodate larger text/padding comfortably */
+    @apply py-2 px-3 sm:py-3 sm:px-4 font-semibold text-[14px] sm:text-[15px] outline-none transition-all h-12 text-slate-900;
+    /* h-12 ensures a solid 48px touch target */
   }
 
   .tn-input:focus {

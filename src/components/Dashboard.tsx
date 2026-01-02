@@ -156,7 +156,7 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-1.5 text-slate-300">
                             <TrendingUp size={12} aria-hidden="true" /> {stats.label}
                         </p>
-                        <h2 className={`text-3xl font-black mt-2 tabular-nums transition-colors duration-500 ${stats.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        <h2 className={`text-hero font-black mt-2 tabular-nums transition-colors duration-500 ${stats.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                             ₹{stats.profit.toLocaleString()}
                         </h2>
                     </div>
@@ -242,19 +242,19 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                 <div className="space-y-2">
                     <div className="flex items-start gap-3">
                         <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1"></div>
-                        <p className="text-[10px] font-bold text-slate-700 uppercase leading-relaxed">
+                        <p className="text-body-fluid font-bold text-slate-700 uppercase leading-relaxed">
                             <span className="text-slate-900">INCOME:</span> Money from all saved <span className="text-green-600">Invoices</span>.
                         </p>
                     </div>
                     <div className="flex items-start gap-3">
                         <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1"></div>
-                        <p className="text-[10px] font-bold text-slate-700 uppercase leading-relaxed">
+                        <p className="text-body-fluid font-bold text-slate-700 uppercase leading-relaxed">
                             <span className="text-slate-900">SPENT:</span> Money logged in the <span className="text-red-500">Expenses</span> page.
                         </p>
                     </div>
                     <div className="flex items-start gap-3">
                         <div className="w-1.5 h-1.5 rounded-full bg-[#0047AB] mt-1"></div>
-                        <p className="text-[10px] font-bold text-slate-700 uppercase leading-relaxed">
+                        <p className="text-body-fluid font-bold text-slate-700 uppercase leading-relaxed">
                             <span className="text-slate-900">CASH FLOW:</span> Remaining profit (<span className="text-[#0047AB]">Income - Spent</span>).
                         </p>
                     </div>
@@ -302,7 +302,7 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                         <p className="text-xs text-slate-400 mt-1">Click "Add Note" to create your first note</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {notes.map((note) => (
                             <div
                                 key={note.id}
