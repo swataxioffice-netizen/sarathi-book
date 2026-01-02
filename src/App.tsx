@@ -37,7 +37,7 @@ const LoadingFallback = () => (
 
 function AppContent() {
   /* Guest Roaming Logic */
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const { needRefresh, updateServiceWorker } = useUpdate();
 
   const [activeTab, setActiveTab] = useState(() => {
@@ -412,7 +412,7 @@ function AppContent() {
                   aria-label="Refresh page"
                   className="p-2 bg-slate-50 text-slate-400 rounded-full border border-slate-100 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                 >
-                  <RefreshCw size={14} aria-hidden="true" className={loading ? 'animate-spin text-blue-600' : ''} />
+                  <RefreshCw size={14} aria-hidden="true" className={authLoading ? 'animate-spin text-blue-600' : ''} />
                 </button>
               )}
               <Notifications />
@@ -421,7 +421,7 @@ function AppContent() {
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Driver Account</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-blue-100 text-[#0047AB] flex items-center justify-center font-black border border-blue-200">
-                {loading ? (
+                {authLoading ? (
                   <RefreshCw size={16} className="animate-spin" />
                 ) : (
                   user?.user_metadata?.full_name?.[0]?.toUpperCase() || 'U'
