@@ -361,7 +361,10 @@ function AppContent() {
   /* Public Profile Route */
   const params = new URLSearchParams(window.location.search);
   const publicProfileId = params.get('u');
-  const publicProfileCode = params.get('code') || params.get('p');
+  let publicProfileCode = params.get('code') || params.get('p');
+
+  // Guard against "null" string from poorly generated URLs
+  if (publicProfileCode === 'null') publicProfileCode = null;
 
   useEffect(() => {
     // Dynamic SEO title for public profiles
@@ -373,11 +376,16 @@ function AppContent() {
   }, [publicProfileId, publicProfileCode]);
 
   if (publicProfileId || publicProfileCode) {
-    return (
-      <Suspense fallback={<LoadingFallback />}>
-        <PublicProfile userId={publicProfileId || ''} driverCode={publicProfileCode ? parseInt(publicProfileCode) : undefined} />
-      </Suspense>
-    );
+    const parsedCode = publicProfileCode ? parseInt(publicProfileCode) : undefined;
+
+    // Only return PublicProfile if we have a valid ID or valid numeric code
+    if (publicProfileId || (parsedCode && !isNaN(parsedCode))) {
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <PublicProfile userId={publicProfileId || ''} driverCode={parsedCode} />
+        </Suspense>
+      );
+    }
   }
 
   return (

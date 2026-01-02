@@ -904,29 +904,33 @@ const Profile: React.FC = () => {
                                 <div className="flex flex-col flex-1 min-w-0">
                                     <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-0.5">Your Direct Link</span>
                                     <span className="text-[10px] font-bold text-slate-700 truncate">
-                                        {window.location.origin}/?code={driverCode || '...'}
+                                        {driverCode ? `${window.location.origin}/?code=${driverCode}` : 'Waiting for ID...'}
                                     </span>
                                 </div>
                                 <div className="flex gap-2 shrink-0">
                                     <button
                                         onClick={() => {
+                                            if (!driverCode) return;
                                             navigator.clipboard.writeText(`${window.location.origin}/?code=${driverCode}`);
                                             alert('Link copied to clipboard!');
                                         }}
-                                        className="p-2 bg-white text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                        disabled={!driverCode}
+                                        className="p-2 bg-white text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
                                         title="Copy Link"
                                     >
                                         <Copy size={14} />
                                     </button>
-                                    <a
-                                        href={`${window.location.origin}/?code=${driverCode}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="p-2 bg-white text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                    <button
+                                        onClick={() => {
+                                            if (!driverCode) return;
+                                            window.open(`${window.location.origin}/?code=${driverCode}`, '_blank');
+                                        }}
+                                        disabled={!driverCode}
+                                        className="p-2 bg-white text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
                                         title="Open Link"
                                     >
                                         <ExternalLink size={14} />
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         </div>

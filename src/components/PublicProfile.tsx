@@ -27,6 +27,12 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId, driverCode }) => 
 
     useEffect(() => {
         const fetchProfile = async () => {
+            if (!userId && !driverCode) {
+                setError('Invalid profile link.');
+                setLoading(false);
+                return;
+            }
+
             try {
                 let query = supabase.from('profiles').select('settings, id, driver_code');
 
@@ -38,7 +44,10 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId, driverCode }) => 
 
                 const { data, error } = await query.single();
 
-                if (error || !data) throw error || new Error('Profile not found');
+                if (error || !data) {
+                    setError('Profile not found.');
+                    return;
+                }
 
                 setProfile(data as any);
 
@@ -61,7 +70,7 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId, driverCode }) => 
 
             } catch (err) {
                 console.error('Error fetching public profile:', err);
-                setError('Profile not found or inaccessible.');
+                setError('Profile not found.');
             } finally {
                 setLoading(false);
             }

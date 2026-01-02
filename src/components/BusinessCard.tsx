@@ -191,6 +191,7 @@ const BusinessCard: React.FC = () => {
                                     level="M"
                                     fgColor={colors.slate900}
                                     bgColor="#FFFFFF"
+                                    includeMargin={false}
                                 />
                             </div>
                         </div>
