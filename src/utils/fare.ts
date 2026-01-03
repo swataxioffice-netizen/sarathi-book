@@ -113,13 +113,13 @@ export const calculateFare = (
             const eRate = overrideRate || vehicle.one_way_rate;
             const extraKmCost = extraKm * eRate;
             distanceCharge += extraKmCost;
-            breakdown.push(`Extra Distance: ${extraKm} km x ₹${eRate} = ₹${extraKmCost}`);
+            breakdown.push(`Extra Distance (${extraKm} km x ₹${eRate}): ₹${extraKmCost.toLocaleString()}`);
         }
 
         if (extraHours > 0) {
             const extraHrCost = extraHours * vehicle.extra_hr_rate;
             distanceCharge += extraHrCost;
-            breakdown.push(`Extra Time: ${extraHours} hrs x ₹${vehicle.extra_hr_rate} = ₹${extraHrCost}`);
+            breakdown.push(`Extra Time (${extraHours} hrs x ₹${vehicle.extra_hr_rate}): ₹${extraHrCost.toLocaleString()}`);
         }
         totalFare = distanceCharge;
     }
@@ -136,19 +136,21 @@ export const calculateFare = (
 
         distanceCharge = effectiveKm * rateUsed;
 
+        breakdown.push(`Trip Charge (${effectiveKm} km x ₹${rateUsed}): ₹${distanceCharge.toLocaleString()}`);
+
         if (overrideBata !== undefined) {
             calculatedBata = overrideBata;
-            breakdown.push(`Driver Bata (Manual): ₹${calculatedBata}`);
+            breakdown.push(`Driver Bata (Manual): ₹${calculatedBata.toLocaleString()}`);
         } else {
             calculatedBata = vehicle.driver_bata * durationDays;
-            breakdown.push(`Driver Bata: ₹${vehicle.driver_bata} x ${durationDays} days = ₹${calculatedBata}`);
+            breakdown.push(`Driver Bata (₹${vehicle.driver_bata} x ${durationDays} days): ₹${calculatedBata.toLocaleString()}`);
         }
 
         totalFare = distanceCharge + calculatedBata;
 
-        breakdown.push(`Min KM Rule: ${minKm} km/day x ${durationDays} days = ${minBillable} km`);
-        breakdown.push(`Billable Distance: ${effectiveKm} km (Actual: ${distance} km)`);
-        breakdown.push(`Distance Charge: ${effectiveKm} km x ₹${rateUsed} = ₹${distanceCharge}`);
+        if (effectiveKm > distance) {
+            breakdown.push(`Note: Min ${minKm} km/day applied for ${durationDays} days`);
+        }
     }
 
     // ============================================================
@@ -168,19 +170,19 @@ export const calculateFare = (
 
             distanceCharge = effectiveKm * rateUsed;
 
+            breakdown.push(`Trip Charge (${effectiveKm} km x ₹${rateUsed}): ₹${distanceCharge.toLocaleString()}`);
+
             if (overrideBata !== undefined) {
                 calculatedBata = overrideBata;
-                breakdown.push(`Driver Bata (Manual): ₹${calculatedBata}`);
+                breakdown.push(`Driver Bata (Manual): ₹${calculatedBata.toLocaleString()}`);
             } else {
                 calculatedBata = vehicle.driver_bata * estDays;
-                breakdown.push(`Driver Bata: ₹${vehicle.driver_bata} x ${estDays} days = ₹${calculatedBata}`);
+                breakdown.push(`Driver Bata (₹${vehicle.driver_bata} x ${estDays} days): ₹${calculatedBata.toLocaleString()}`);
             }
 
             totalFare = distanceCharge + calculatedBata;
 
-            breakdown.push(`Heavy Vehicle Rule: One-Way charged as Round Trip`);
-            breakdown.push(`Trip Coverage: ${roundDist} km round-trip in ~${estDays} days`);
-            breakdown.push(`Billable Distance: ${effectiveKm} km (at ₹${rateUsed}/km)`);
+            breakdown.push(`Note: One-Way is charged as Round-Trip for this vehicle`);
         }
         // Local Short Drop Rule (< 40km)
         else if (distance <= 40) {
@@ -208,20 +210,21 @@ export const calculateFare = (
 
             distanceCharge = effectiveKm * rateUsed;
 
+            breakdown.push(`Trip Charge (${effectiveKm} km x ₹${rateUsed}): ₹${distanceCharge.toLocaleString()}`);
+
             if (overrideBata !== undefined) {
                 calculatedBata = overrideBata;
-                breakdown.push(`Driver Bata (Manual): ₹${calculatedBata}`);
+                breakdown.push(`Driver Bata (Manual): ₹${calculatedBata.toLocaleString()}`);
             } else {
                 calculatedBata = vehicle.driver_bata;
-                breakdown.push(`Driver Bata: ₹${calculatedBata}`);
+                breakdown.push(`Driver Bata: ₹${calculatedBata.toLocaleString()}`);
             }
 
             totalFare = distanceCharge + calculatedBata;
 
             if (effectiveKm > distance) {
-                breakdown.push(`Minimum Drop Distance Applied: ${minDrop} km`);
+                breakdown.push(`Note: Minimum ${minDrop} km applies for drop trips`);
             }
-            breakdown.push(`Distance Charge: ${effectiveKm} km x ₹${rateUsed} = ₹${distanceCharge}`);
         }
     }
 
@@ -271,4 +274,20 @@ export const calculateFare = (
             nightCharge: Math.round(nightAmt)
         }
     };
+};
+
+/**
+ * Fallback heuristic to estimate tolls in India based on distance and vehicle type.
+ * NHAI rates are roughly ₹100-150 per 60km (i.e. ~₹2/km) for cars.
+ */
+export const estimateTolls = (distanceKm: number, vehicleType: string): number => {
+    if (distanceKm < 50) return 0; // Likely no major tolls for short city trips
+
+    // Base rates per KM (Association market estimates)
+    let rate = 1.8; // Hatchback/Sedan
+    if (vehicleType === 'suv' || vehicleType === 'premium_suv') rate = 2.4;
+    if (vehicleType === 'tempo') rate = 3.8;
+    if (vehicleType === 'minibus' || vehicleType === 'bus') rate = 7.5;
+
+    return Math.round(distanceKm * rate);
 };

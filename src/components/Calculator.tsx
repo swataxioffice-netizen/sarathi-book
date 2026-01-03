@@ -14,7 +14,8 @@ import {
     UserCheck,
     Truck,
     RotateCcw,
-    ShieldCheck
+    X,
+    FileText
 } from 'lucide-react';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
@@ -226,16 +227,20 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
             // Auto-Calculate Driver Bata (Default)
             if (!manualDriverBata) {
                 let batta = 0;
+                const dist = parseFloat(distance) || 0;
+                const isHeavy = ['tempo', 'minibus', 'bus'].some(t => vehicle.id.includes(t));
+
                 if (tripType === 'roundtrip') {
                     const d = parseInt(days) || 1;
                     batta = vehicle.batta * d;
                 } else if (tripType === 'oneway') {
-                    batta = vehicle.batta;
+                    // Only apply bata for outstation drops (> 40km) OR heavy vehicles
+                    batta = (dist > 40 || isHeavy) ? vehicle.batta : 0;
                 }
                 setDriverBata(batta.toString());
             }
         }
-    }, [selectedVehicle, tripType, days, manualDriverBata]);
+    }, [selectedVehicle, tripType, days, manualDriverBata, distance]);
 
     const calculate = () => {
         const dist = parseFloat(distance) || 0;
@@ -279,9 +284,11 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
         const finalTotal = res.totalFare + otherExtras;
 
         const fullBreakdown = [...res.breakdown];
-        if (permitTotal > 0) fullBreakdown.push(`Permit: ₹${permitTotal}`);
-        if (parkingTotal > 0) fullBreakdown.push(`Parking: ₹${parkingTotal}`);
-        if (tollTotal > 0) fullBreakdown.push(`Tolls: ₹${tollTotal}`);
+
+        // Add Local UI Extras
+        if (permitTotal > 0) fullBreakdown.push(`Permit Charges: ₹${permitTotal.toLocaleString()}`);
+        if (parkingTotal > 0) fullBreakdown.push(`Parking Charges: ₹${parkingTotal.toLocaleString()}`);
+        if (tollTotal > 0) fullBreakdown.push(`Toll Charges: ₹${tollTotal.toLocaleString()}`);
 
         Analytics.calculateFare(serviceType, selectedVehicle, dist);
 
@@ -302,10 +309,18 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
         }
     }, [distance, tripType, days, selectedVehicle, customRate, hillStationCharge, petCharge, toll, permit, parking, garageBuffer, driverBata, nightCharge, hourlyPackage, durationHours]);
 
+    // Handle vehicle selection reset when switching tabs
+    useEffect(() => {
+        if (tripType === 'oneway' && ['tempo', 'minibus', 'bus'].includes(selectedVehicle)) {
+            setSelectedVehicle('hatchback');
+        }
+    }, [tripType, selectedVehicle]);
+
     // Calculate total additional charges for summary
     const totalExtras = (parseFloat(driverBata) || 0) + (parseFloat(toll) || 0) + (parseFloat(parking) || 0) + (parseFloat(permit) || 0) + (parseFloat(hillStationCharge) || 0) + (parseFloat(petCharge) || 0) + (parseFloat(nightCharge) || 0);
 
-    const minDays = (tripType === 'roundtrip' && distance) ? Math.max(1, Math.ceil(parseFloat(distance) / 600)) : 1;
+    // Calculate minDays with a 50km grace margin (e.g. 640km still allows 1 day)
+    const minDays = (tripType === 'roundtrip' && distance) ? Math.max(1, Math.ceil((parseFloat(distance) - 50) / 600)) : 1;
 
     return (
         <div className="space-y-4">
@@ -340,6 +355,17 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
                         }}
                         onMapClick={() => setShowMap(true)}
                         placeholder="Start typing..."
+                        rightContent={pickup && (
+                            <button
+                                onClick={() => {
+                                    setPickup('');
+                                    setPickupCoords(null);
+                                }}
+                                className="p-1 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
                     />
                     <PlacesAutocomplete
                         label="Drop"
@@ -352,6 +378,17 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
                         }}
                         onMapClick={() => setShowMap(true)}
                         placeholder="Start typing..."
+                        rightContent={drop && (
+                            <button
+                                onClick={() => {
+                                    setDrop('');
+                                    setDropCoords(null);
+                                }}
+                                className="p-1 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
                     />
                 </div>
 
@@ -416,7 +453,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
 
                                 {parseFloat(distance) > 0 && (
                                     <span className="shrink-0 text-[10px] font-bold text-green-600 bg-green-50 px-3 py-2 rounded-lg border border-green-100 uppercase tracking-wider">
-                                        {parseFloat(distance) <= 30 ? 'Local' : 'Drop Trip'}
+                                        {parseFloat(distance) <= 40 ? 'Local' : (tripType === 'roundtrip' ? 'Outstation' : 'Drop Trip')}
                                     </span>
                                 )}
                             </div>
@@ -441,7 +478,12 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
                     <div className="space-y-1">
                         <Label icon={<Car size={10} aria-hidden="true" />} text="Vehicle" htmlFor="cab-vehicle" />
                         <select id="cab-vehicle" value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
-                            {VEHICLES.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                            {VEHICLES.filter(v => {
+                                if (tripType === 'oneway') {
+                                    return !['tempo', 'minibus', 'bus'].includes(v.id);
+                                }
+                                return true;
+                            }).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                         </select>
                     </div>
 
@@ -468,20 +510,16 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
                 )}
             </div>
 
-            {/* Transparency Section for SEO & Trust */}
+            {/* 
+                Transparency Section for SEO & Answer Engines 
+                Visible to crawlers but hidden from drivers/users UI
+            */}
             {pickup && drop && (
-                <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4 mb-4">
-                    <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-emerald-600 shadow-sm shrink-0">
-                            <ShieldCheck size={18} />
-                        </div>
-                        <div className="space-y-1">
-                            <h4 className="text-[11px] font-black text-emerald-900 uppercase tracking-wider underline decoration-emerald-200 underline-offset-4">0% Service Commission</h4>
-                            <p className="text-[10px] text-emerald-700/80 leading-relaxed font-bold italic">
-                                Large platforms add 15-20% hidden fees to your ride. Sarathi Book estimates are derived directly from taxi associations, ensuring you pay one fair, direct price.
-                            </p>
-                        </div>
-                    </div>
+                <div className="sr-only">
+                    <h4>0% Service Commission</h4>
+                    <p>
+                        Large platforms add 15-20% hidden fees to your ride. Sarathi Book estimates are derived directly from taxi associations, ensuring you pay one fair, direct price.
+                    </p>
                 </div>
             )}
 
@@ -529,7 +567,22 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
                 manualNight={manualNight} setManualNight={setManualNight}
             />
 
-            {result && <ResultCard title="Cab Fare" amount={result.fare} details={result.details} sub="Tolls & Permits Included (Approx)" />}
+            {result && (
+                <ResultCard
+                    title="Cab Fare"
+                    amount={result.fare}
+                    details={result.details}
+                    sub="Tolls & Permits Included (Approx)"
+                    tripData={{
+                        pickup,
+                        drop,
+                        distance,
+                        vehicle: selectedVehicle,
+                        type: tripType,
+                        days
+                    }}
+                />
+            )}
 
             {
                 showMap && (
@@ -665,7 +718,22 @@ const ActingDriverCalculator: React.FC = () => {
             </div>
 
             <Button onClick={calculate} disabled={!days} text="Calculate Driver Cost" ariaLabel="Calculate Acting Driver Cost" />
-            {result && <ResultCard title="Estimated Fare" amount={result.fare} details={result.details} sub={serviceType === 'outstation' ? 'Driver Bata/Night charges extra' : 'Extra Hr/Km charges apply'} />}
+            {result && (
+                <ResultCard
+                    title="Estimated Fare"
+                    amount={result.fare}
+                    details={result.details}
+                    sub={serviceType === 'outstation' ? 'Driver Bata/Night charges extra' : 'Extra Hr/Km charges apply'}
+                    tripData={{
+                        pickup: 'Acting Driver Service',
+                        drop: serviceType.toUpperCase(),
+                        distance: days,
+                        vehicle: 'Acting Driver',
+                        type: 'local',
+                        days
+                    }}
+                />
+            )}
         </div>
     );
 };
@@ -827,6 +895,17 @@ const RelocationCalculator: React.FC = () => {
                         }}
                         onMapClick={() => setShowMap(true)}
                         placeholder="Start typing..."
+                        rightContent={pickup && (
+                            <button
+                                onClick={() => {
+                                    setPickup('');
+                                    setPickupCoords(null);
+                                }}
+                                className="p-1 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
                     />
                     <PlacesAutocomplete
                         label="Drop"
@@ -839,6 +918,17 @@ const RelocationCalculator: React.FC = () => {
                         }}
                         onMapClick={() => setShowMap(true)}
                         placeholder="Start typing..."
+                        rightContent={drop && (
+                            <button
+                                onClick={() => {
+                                    setDrop('');
+                                    setDropCoords(null);
+                                }}
+                                className="p-1 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
                     />
                 </div>
 
@@ -958,9 +1048,17 @@ interface ResultCardProps {
     amount: number;
     details: string[] | string;
     sub: string;
+    tripData?: {
+        pickup: string;
+        drop: string;
+        distance: string;
+        vehicle: string;
+        type: string;
+        days?: string;
+    };
 }
 
-const ResultCard = ({ title, amount, details, sub }: ResultCardProps) => {
+const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) => {
     const [expanded, setExpanded] = useState(false);
 
     const shareToWhatsApp = () => {
@@ -970,6 +1068,31 @@ const ResultCard = ({ title, amount, details, sub }: ResultCardProps) => {
         const text = `*${title}*\n\n${cleanDetails}\n\nNote: ${sub}\n\n*Total Estimate: ₹${amount.toLocaleString()}*`;
         const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
         window.open(url, '_blank');
+    };
+
+    const handleCreateQuote = () => {
+        if (!tripData) return;
+
+        // 1. Prepare items from details
+        const items = Array.isArray(details) ? details
+            .filter(line => !line.toLowerCase().startsWith('note:'))
+            .map(line => {
+                const parts = line.split(': ₹');
+                return {
+                    description: parts[0].trim(),
+                    amount: parts[1] ? parts[1].replace(/,/g, '') : '',
+                    package: '',
+                    vehicleType: tripData.vehicle
+                };
+            }) : [];
+
+        // 2. Set localStorage drafts for QuotationForm
+        localStorage.setItem('draft-q-subject', JSON.stringify(`${tripData.pickup} to ${tripData.drop}`));
+        localStorage.setItem('draft-q-vehicle', JSON.stringify(tripData.vehicle));
+        localStorage.setItem('draft-q-items', JSON.stringify(items));
+
+        // 3. Dispatch navigation event
+        window.dispatchEvent(new CustomEvent('nav-tab-quotation'));
     };
 
     if (!amount) return null;
@@ -1014,16 +1137,8 @@ const ResultCard = ({ title, amount, details, sub }: ResultCardProps) => {
                                 onClick={() => setExpanded(!expanded)}
                                 className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border whitespace-nowrap flex items-center gap-2 ${expanded ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-slate-50 text-[#0047AB] border-slate-200 hover:bg-slate-100'}`}
                             >
-                                {expanded ? 'Close' : 'View Price Breakdown'}
+                                {expanded ? 'Hide Details' : 'View Price Breakdown'}
                                 {expanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-                            </button>
-
-                            <button
-                                onClick={shareToWhatsApp}
-                                className="p-2.5 rounded-xl bg-[#25D366] text-white hover:bg-[#20bd5a] transition-all shadow-md active:scale-95 flex items-center justify-center aspect-square"
-                                aria-label="Share via WhatsApp"
-                            >
-                                <Share2 size={20} className="text-white relative left-[-1px]" />
                             </button>
                         </div>
                     </div>
@@ -1036,23 +1151,47 @@ const ResultCard = ({ title, amount, details, sub }: ResultCardProps) => {
                             {/* Scrollable Details */}
                             <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-2">
                                 {Array.isArray(details) ? (
-                                    details.map((line: string, i: number) => {
-                                        const cleanLine = line.replace(/[*_]/g, '').replace(/⚠️/g, '').trim();
-                                        const isTotal = line.toLowerCase().includes('total');
+                                    <div className="space-y-1">
+                                        {details.map((line: string, i: number) => {
+                                            const cleanLine = line.replace(/[*_]/g, '').replace(/⚠️/g, '').trim();
+                                            if (!cleanLine) return null;
 
-                                        if (!cleanLine) return null;
+                                            const parts = cleanLine.split(': ₹');
+                                            const isNote = cleanLine.toLowerCase().startsWith('note:');
 
-                                        return (
-                                            <div
-                                                key={i}
-                                                className={`flex justify-between items-start gap-3 text-xs py-1.5 border-b border-dashed border-slate-100 last:border-0 ${isTotal ? 'font-bold text-slate-900 bg-slate-50 px-2 rounded' : 'text-slate-600'}`}
-                                            >
-                                                <span>{cleanLine}</span>
-                                            </div>
-                                        );
-                                    })
+                                            if (isNote) {
+                                                return (
+                                                    <div key={i} className="py-1 px-2 bg-slate-50 rounded text-[10px] text-slate-400 italic font-medium mt-1">
+                                                        {cleanLine}
+                                                    </div>
+                                                );
+                                            }
+
+                                            return (
+                                                <div
+                                                    key={i}
+                                                    className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0"
+                                                >
+                                                    <span className="text-[11px] font-bold text-slate-600">
+                                                        {parts[0]}
+                                                    </span>
+                                                    {parts.length === 2 && (
+                                                        <span className="text-[11px] font-black text-slate-900">
+                                                            ₹{parts[1]}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+
+                                        {/* Final Sum Line */}
+                                        <div className="mt-4 pt-4 border-t-2 border-slate-100 flex justify-between items-center">
+                                            <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Total Amount</span>
+                                            <span className="text-xl font-black text-[#0047AB]">₹{amount.toLocaleString()}</span>
+                                        </div>
+                                    </div>
                                 ) : (
-                                    <p className="text-xs text-slate-600 leading-relaxed">{details}</p>
+                                    <p className="text-xs text-slate-600 font-medium leading-relaxed">{details}</p>
                                 )}
 
                                 {/* Notes Box */}
@@ -1062,6 +1201,24 @@ const ResultCard = ({ title, amount, details, sub }: ResultCardProps) => {
                                         <p className="text-[9px] font-bold text-blue-700 uppercase tracking-wider">Note</p>
                                         <p className="text-[10px] text-blue-600/80 leading-relaxed font-medium">{sub}</p>
                                     </div>
+                                </div>
+
+                                {/* Bottom Actions Area */}
+                                <div className="grid grid-cols-5 gap-2 mt-4 pt-4 border-t border-slate-100">
+                                    <button
+                                        onClick={handleCreateQuote}
+                                        className="col-span-4 bg-[#6366F1] text-white font-black py-3.5 rounded-xl flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                                    >
+                                        <FileText size={16} />
+                                        Create Formal Quotation
+                                    </button>
+                                    <button
+                                        onClick={shareToWhatsApp}
+                                        className="col-span-1 bg-[#25D366] text-white rounded-xl flex items-center justify-center shadow-lg active:scale-95 transition-all"
+                                        aria-label="Share via WhatsApp"
+                                    >
+                                        <Share2 size={20} />
+                                    </button>
                                 </div>
                             </div>
                         </div>

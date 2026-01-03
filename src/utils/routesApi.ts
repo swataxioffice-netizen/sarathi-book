@@ -11,17 +11,12 @@ export interface RouteTollData {
 /**
  * Advanced Route Calculation using the Google Routes API (v2)
  * Specifically supports Toll Prices for India.
- * 
- * NOTE: This requires the "Routes API" to be enabled in your Google Cloud Console.
  */
 export const calculateAdvancedRoute = async (
     origin: { lat: number; lng: number },
     destination: { lat: number; lng: number }
 ): Promise<RouteTollData | null> => {
-    if (!API_KEY) {
-        console.warn('Routes API: Missing API Key');
-        return null;
-    }
+    if (!API_KEY) return null;
 
     try {
         const body = {
@@ -42,16 +37,10 @@ export const calculateAdvancedRoute = async (
                 }
             },
             travelMode: 'DRIVE',
-            routingPreference: 'TRAFFIC_AWARE',
-            extraComputations: ['TOLLS'],
-            routeModifiers: {
-                vehicleInfo: {
-                    emissionType: 'GASOLINE'
-                },
-                tollPasses: [
-                    'IN_FASTAG'
-                ]
-            }
+            routingPreference: 'TRAFFIC_AWARE_OPTIMAL',
+            departureTime: new Date(Date.now() + 300000).toISOString(), // 5 mins in future
+            extraComputations: ['TOLLS']
+            // Note: tollPasses filtered removed for higher reliability/cash rates
         };
 
         const response = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
@@ -65,10 +54,13 @@ export const calculateAdvancedRoute = async (
         });
 
         if (!response.ok) {
-            throw new Error(`Routes API Error: ${response.statusText}`);
+            const errorText = await response.text();
+            console.error('[RoutesAPI] Error:', errorText);
+            return null;
         }
 
         const data = await response.json();
+        console.log('[RoutesAPI] Response:', data);
 
         if (!data.routes || data.routes.length === 0) {
             return null;
@@ -77,13 +69,16 @@ export const calculateAdvancedRoute = async (
         const route = data.routes[0];
         const tollInfo = route.travelAdvisory?.tollInfo;
 
-        // Sum up all estimated tolls
         let totalToll = 0;
         let currency = 'INR';
 
-        if (tollInfo && tollInfo.estimatedPrice) {
-            const price = tollInfo.estimatedPrice;
-            totalToll = parseInt(price.units || '0') + (price.nanos || 0) / 1000000000;
+        // FIX: estimatedPrice is an array in Google Routes API v2
+        if (tollInfo && tollInfo.estimatedPrice && Array.isArray(tollInfo.estimatedPrice) && tollInfo.estimatedPrice.length > 0) {
+            const price = tollInfo.estimatedPrice[0];
+            const units = parseInt(price.units || '0');
+            const nanos = (price.nanos || 0) / 1000000000;
+
+            totalToll = units + nanos;
             currency = price.currencyCode || 'INR';
         }
 

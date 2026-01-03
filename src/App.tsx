@@ -66,8 +66,17 @@ function AppContent() {
 
   useEffect(() => {
     const handleNav = (e: any) => setActiveTab(e.detail);
+    const handleQuoteNav = () => {
+      setActiveTab('trips');
+      setInvoiceQuotationToggle('quotation');
+    };
+
     window.addEventListener('nav-tab-change', handleNav);
-    return () => window.removeEventListener('nav-tab-change', handleNav);
+    window.addEventListener('nav-tab-quotation', handleQuoteNav);
+    return () => {
+      window.removeEventListener('nav-tab-change', handleNav);
+      window.removeEventListener('nav-tab-quotation', handleQuoteNav);
+    };
   }, []);
 
   useEffect(() => {
@@ -106,12 +115,9 @@ function AppContent() {
   const [selectedQuotation, setSelectedQuotation] = useState<SavedQuotation | null>(null);
   const [showLoginNudge, setShowLoginNudge] = useState(false);
 
-  // Trigger login nudge after 2 minutes of roaming
+  // Nudge logic removed as per user request to stop showing the login popup
   useEffect(() => {
-    if (!user) {
-      const timer = setTimeout(() => setShowLoginNudge(true), 120000);
-      return () => clearTimeout(timer);
-    } else {
+    if (user) {
       setShowLoginNudge(false);
     }
   }, [user]);
