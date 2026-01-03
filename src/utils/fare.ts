@@ -187,7 +187,10 @@ export const calculateFare = (
         // Local Short Drop Rule (< 40km)
         else if (distance <= 40) {
             const baseKm = 10;
-            const basePrice = (vehicleType === 'hatchback' || vehicleType === 'sedan') ? 250 : 400;
+            let basePrice = 300; // Default (Sedan)
+            if (vehicleType === 'hatchback') basePrice = 250;
+            if (vehicleType === 'suv') basePrice = 500;
+            if (vehicleType === 'premium_suv') basePrice = 700;
 
             if (distance <= baseKm) {
                 distanceCharge = basePrice;

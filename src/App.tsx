@@ -11,9 +11,11 @@ import BottomNav from './components/BottomNav';
 import Dashboard from './components/Dashboard';
 import GoogleSignInButton from './components/GoogleSignInButton';
 import SideNav from './components/SideNav';
-import { NotificationProvider } from './contexts/NotificationContext';
+import { NotificationProvider, useNotifications } from './contexts/NotificationContext';
 import Notifications from './components/Notifications';
 import { Analytics } from './utils/monitoring';
+import { subscribeToPush, onMessageListener } from './utils/push';
+import SarathiAI from './components/SarathiAI';
 import type { Trip } from './utils/fare';
 import type { SavedQuotation } from './utils/pdf';
 
@@ -39,6 +41,7 @@ function AppContent() {
   /* Guest Roaming Logic */
   const { user, isAdmin } = useAuth();
   const { needRefresh, updateServiceWorker } = useUpdate();
+  const { addNotification } = useNotifications();
 
   const [activeTab, setActiveTab] = useState(() => {
     // Priority: 1. URL Path, 2. URL Hash (Legacy/Auth), 3. Local Storage, 4. Default 'dashboard'
@@ -117,10 +120,22 @@ function AppContent() {
 
   // Nudge logic removed as per user request to stop showing the login popup
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       setShowLoginNudge(false);
+      // Auto-subscribe to push notifications on login
+      subscribeToPush();
     }
-  }, [user]);
+  }, [user?.id]);
+
+  // Handle foreground notifications
+  useEffect(() => {
+    onMessageListener().then((payload: any) => {
+      console.log('Push received in foreground:', payload);
+      if (payload.notification) {
+        addNotification(payload.notification.title, payload.notification.body, 'info');
+      }
+    });
+  }, [addNotification]);
 
   useEffect(() => {
     localStorage.setItem('namma-cab-trips', JSON.stringify(trips));
@@ -460,6 +475,9 @@ function AppContent() {
         </main>
         <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
       </div>
+
+      {/* Sarathi AI Assistant */}
+      <SarathiAI />
 
       {/* Guest Login Nudge */}
       {showLoginNudge && !user && (

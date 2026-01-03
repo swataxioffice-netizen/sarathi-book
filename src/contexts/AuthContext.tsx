@@ -46,7 +46,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
                 const currentUser = session?.user ?? null;
-                setUser(currentUser);
+                // Only update if IDs change to avoid unnecessary re-renders loop
+                setUser(prev => prev?.id === currentUser?.id ? prev : currentUser);
                 if (currentUser) ensureProfile(currentUser);
             } catch (error) {
                 console.error('Auth check failed:', error);
@@ -65,8 +66,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (currentUser) await ensureProfile(currentUser);
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            subscription.unsubscribe();
+        };
     }, []);
+
+    // Helper for Google One Tap - separated to avoid re-subscribing to auth changes
+    useEffect(() => {
+        const initializeOneTap = () => {
+            const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+            if (!clientId || user) return;
+
+            // Wait for script to load if it hasn't yet
+            const interval = setInterval(() => {
+                const google = (window as any).google;
+                if (google?.accounts?.id) {
+                    clearInterval(interval);
+                    google.accounts.id.initialize({
+                        client_id: clientId,
+                        callback: async (response: any) => {
+                            const { data, error } = await supabase.auth.signInWithIdToken({
+                                provider: 'google',
+                                token: response.credential,
+                            });
+                            if (error) console.error('One Tap Error:', error);
+                            if (data.user) {
+                                setUser(data.user);
+                                await ensureProfile(data.user);
+                            }
+                        },
+                    });
+                    google.accounts.id.prompt();
+                }
+            }, 1000);
+
+            return () => clearInterval(interval);
+        };
+
+        const cleanupOneTap = initializeOneTap();
+        return () => {
+            if (cleanupOneTap) cleanupOneTap();
+        };
+    }, [user]);
 
     const signInWithGoogle = async () => {
         const redirectTo = window.location.origin;

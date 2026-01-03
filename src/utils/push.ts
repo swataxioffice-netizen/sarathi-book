@@ -1,60 +1,69 @@
+import { messaging, getToken, onMessage } from './firebase';
 import { supabase } from './supabase';
 
-// Public VAPID key (Placeholder - should be in env)
-const VAPID_PUBLIC_KEY = 'BCOm0Xq8e9... (Replace with real VAPID public key)';
-
 export async function subscribeToPush() {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.warn('Push messaging is not supported');
+    // RATE LIMIT: Prevent spamming FCM registration
+    const lastPrompt = sessionStorage.getItem('fcm_prompt_timestamp');
+    const now = Date.now();
+    if (lastPrompt && (now - parseInt(lastPrompt) < 60000)) { // 1 minute debouce
+        console.log('FCM Registration debounced');
+        return;
+    }
+    sessionStorage.setItem('fcm_prompt_timestamp', now.toString());
+
+    if (!('serviceWorker' in navigator)) {
+        console.warn('Service Worker is not supported');
         return;
     }
 
     try {
-        const registration = await navigator.serviceWorker.ready;
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            console.warn('Notification permission was not granted');
+            return;
+        }
 
-        // Check for existing subscription
-        let subscription = await registration.pushManager.getSubscription();
+        // Get FCM Token
+        const currentToken = await getToken(messaging, {
+            vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+        });
 
-        if (!subscription) {
-            // Request permission if not already granted
-            const permission = await Notification.requestPermission();
-            if (permission !== 'granted') {
-                throw new Error('Notification permission denied');
+        if (currentToken) {
+            console.log('FCM Token:', currentToken);
+
+            // Avoid re-saving if already up to date in session
+            const savedToken = sessionStorage.getItem('fcm_token_saved');
+            if (savedToken === currentToken) return currentToken;
+
+            // Save token to Supabase profile
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase
+                    .from('profiles')
+                    .update({
+                        fcm_token: currentToken,
+                        notifications_enabled: true
+                    })
+                    .eq('id', user.id);
+
+                sessionStorage.setItem('fcm_token_saved', currentToken);
             }
 
-            // Create new subscription
-            subscription = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-            });
+            return currentToken;
+        } else {
+            console.warn('No registration token available. Request permission to generate one.');
         }
-
-        // Save to Supabase profile
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-            await supabase
-                .from('profiles')
-                .update({ push_subscription: subscription.toJSON() })
-                .eq('id', user.id);
-        }
-
-        return subscription;
     } catch (err) {
-        console.error('Failed to subscribe to push notifications:', err);
+        console.error('An error occurred while retrieving token. ', err);
     }
 }
 
-function urlBase64ToUint8Array(base64String: string) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-        .replace(/-/g, '+')
-        .replace(/_/g, '/');
-
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
+// Listen for foreground messages
+export function onMessageListener() {
+    return new Promise((resolve) => {
+        onMessage(messaging, (payload) => {
+            console.log('Foreground message received:', payload);
+            resolve(payload);
+        });
+    });
 }

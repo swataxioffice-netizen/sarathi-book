@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Plus, Fuel, Settings, Trash2, PieChart, ShoppingBag, Coffee, Calculator, Wallet, MapPin, Shield, CreditCard } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Fuel, Settings, Trash2, PieChart, ShoppingBag, Coffee, Calculator, Wallet, MapPin, Shield, CreditCard, Scan } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import type { Expense } from '../utils/fare';
 import { safeJSONParse } from '../utils/storage';
+import DocumentScanner from './DocumentScanner';
 
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../utils/supabase';
@@ -14,9 +15,10 @@ const ExpenseTracker: React.FC = () => {
     const [amount, setAmount] = useState('');
     const [category, setCategory] = useState<Expense['category']>('fuel');
     const [desc, setDesc] = useState('');
+    const [showScanner, setShowScanner] = useState(false);
 
     // Cloud Sync: Fetch expenses on load/login
-    React.useEffect(() => {
+    useEffect(() => {
         const fetchExpenses = async () => {
             if (user) {
                 const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false });
@@ -31,9 +33,9 @@ const ExpenseTracker: React.FC = () => {
                     }));
                     setExpenses(prev => {
                         const merged = new Map<string, Expense>();
-                        prev.forEach(e => merged.set(e.id, e));
+                        prev.forEach((e: any) => merged.set(e.id, e));
                         cloudExpenses.forEach(e => merged.set(e.id, e));
-                        return Array.from(merged.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                        return Array.from(merged.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) as Expense[];
                     });
                 }
             }
@@ -67,6 +69,15 @@ const ExpenseTracker: React.FC = () => {
                 date: newExpense.date
             });
         }
+    };
+
+    const handleScanComplete = (data: { amount?: number; date?: string; fullText: string }) => {
+        if (data.amount) {
+            setAmount(data.amount.toString());
+            setCategory('fuel'); // OCR is mostly used for fuel
+            setDesc(`Smart Scan: ${new Date().toLocaleDateString()}`);
+        }
+        setShowScanner(false);
     };
 
     const deleteExpense = async (id: string) => {
@@ -161,14 +172,31 @@ const ExpenseTracker: React.FC = () => {
 
             {/* Expense Entry Card - Compacter */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4">
-                <div className="flex items-center gap-3 border-b border-slate-50 pb-3">
-                    <div className="p-2 bg-blue-50 text-[#0047AB] rounded-lg">
-                        <Plus size={16} strokeWidth={3} />
+                <div className="flex items-center justify-between border-b border-slate-50 pb-3">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-50 text-[#0047AB] rounded-lg">
+                            <Plus size={16} strokeWidth={3} />
+                        </div>
+                        <div>
+                            <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight">New Expenditure</h3>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight">New Expenditure</h3>
-                    </div>
+                    <button
+                        onClick={() => setShowScanner(true)}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-[#0047AB] rounded-xl border border-blue-100 hover:bg-blue-100 transition-all active:scale-95 group"
+                    >
+                        <Scan size={14} className="group-hover:rotate-12 transition-transform" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Scan Bill</span>
+                    </button>
                 </div>
+
+                {showScanner && (
+                    <DocumentScanner
+                        onClose={() => setShowScanner(false)}
+                        onScanComplete={handleScanComplete}
+                        label="Scan Fuel Receipt"
+                    />
+                )}
 
                 <div className="grid grid-cols-[1fr,1.5fr] gap-3">
                     <div className="space-y-1">
@@ -228,6 +256,7 @@ const ExpenseTracker: React.FC = () => {
                                         </div>
                                         <div>
                                             <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight">{t(e.category)}</h4>
+                                            {e.description && <p className="text-[8px] text-slate-400 font-medium italic">{e.description}</p>}
                                             <p className="text-[9px] font-bold text-slate-400 uppercase">
                                                 {new Date(e.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </p>

@@ -76,7 +76,7 @@ describe('Chennai Fare Business Logic 2025', () => {
         );
 
         expect(result.totalFare).toBe(13600);
-        expect(result.breakdown).toContain('Heavy Vehicle Rule: One-Way charged as Round Trip');
+        expect(result.breakdown).toContain('Note: One-Way is charged as Round-Trip for this vehicle');
     });
 
     it('should use Custom Rate when provided', () => {

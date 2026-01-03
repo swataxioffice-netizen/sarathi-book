@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Trash2, FileText, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Trash2, FileText, CheckCircle, AlertCircle, Loader2, X, Scan } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../utils/supabase';
 import { useSettings } from '../contexts/SettingsContext';
+import DocumentScanner from './DocumentScanner';
+import { parseDocument } from '../utils/visionApi';
 
 interface Document {
     id: string;
@@ -41,6 +43,7 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
     const [editingDocType, setEditingDocType] = useState<string | null>(null);
     const [tempDate, setTempDate] = useState('');
     const [newDocDates, setNewDocDates] = useState<Record<string, string>>({});
+    const [showScanner, setShowScanner] = useState<string | null>(null);
 
     // Initialize selected vehicle
     useEffect(() => {
@@ -94,18 +97,11 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
 
         let docName = 'Driver';
         if (category === 'vehicle') {
-            // Robust Vehicle Selection Strategy
-            // 1. Try to find the vehicle by the currently selected ID
             let v = settings.vehicles.find(v => v.id === selectedVehicleId);
-
-            // 2. If not found (e.g. ID mismatch or stale state), but we have vehicles, default to the first one
-            // This prevents the "Select a vehicle first" error when a vehicle is visually visible in the dropdown
             if (!v && settings.vehicles.length > 0) {
                 v = settings.vehicles[0];
-                // Silently sync the state to match the fallback
                 setSelectedVehicleId(v.id);
             }
-
             if (!v) {
                 alert('No vehicle found. Please add a vehicle in Garage first.');
                 return;
@@ -123,7 +119,6 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
 
             if (user) {
                 const existing = docs.find(d => d.type === reqType && d.name === docName);
-
                 const payload = {
                     user_id: user.id,
                     name: docName,
@@ -131,8 +126,6 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                     expiry_date: dateValue,
                 };
 
-                // Remove explicit file handling logic as requested
-                // Use existing file data if available to prevent overwriting with null
                 let fileUrl = existing?.fileData || null;
                 let filePath = existing?.fileName || null;
 
@@ -166,14 +159,31 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
 
             setEditingDocType(null);
             setTempDate('');
-            setNewDocDates(prev => ({ ...prev, [reqType]: '' })); // Clear new doc input
-
+            setNewDocDates(prev => ({ ...prev, [reqType]: '' }));
         } catch (error: any) {
             console.error(error);
             alert('Save failed: ' + (error.message || 'Unknown error'));
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleScanComplete = (reqType: string, data: { fullText: string }) => {
+        const parsed = parseDocument(data.fullText.split('\n'));
+        if (parsed.expiryDate) {
+            let formattedDate = parsed.expiryDate.replace(/\//g, '-');
+            const parts = formattedDate.split('-');
+            if (parts.length === 3 && parts[2].length === 4) {
+                formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+
+            if (editingDocType === reqType) {
+                setTempDate(formattedDate);
+            } else {
+                setNewDocDates(prev => ({ ...prev, [reqType]: formattedDate }));
+            }
+        }
+        setShowScanner(null);
     };
 
     const deleteDoc = async (doc: Document) => {
@@ -189,7 +199,6 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
         } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
-    // Helper
     const getDays = (dateStr: string) => Math.ceil((new Date(dateStr).getTime() - new Date().getTime()) / (86400000));
     const selectedVehicle = settings.vehicles.find(v => v.id === selectedVehicleId);
 
@@ -207,7 +216,7 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
 
         if (isEditing) {
             return (
-                <div key={req.type} className="bg-blue-50 border border-blue-200 rounded-2xl p-3 shadow-md animate-fade-in">
+                <div key={req.type} className="bg-blue-50 border border-blue-200 rounded-2xl p-3 shadow-md animate-fade-in relative">
                     <div className="flex justify-between items-start mb-2">
                         <div>
                             <h4 className="text-xs font-black text-blue-900">{req.label}</h4>
@@ -229,13 +238,29 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                             />
                         </div>
 
-                        <button
-                            onClick={() => handleSave(req.type, category, tempDate)}
-                            className="w-full h-10 bg-blue-600 text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-sm hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2"
-                        >
-                            <CheckCircle size={14} /> Update Document
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setShowScanner(req.type)}
+                                className="flex-1 h-10 bg-white border border-blue-200 text-blue-600 rounded-lg text-xs font-black uppercase tracking-wider shadow-sm hover:bg-blue-50 active:scale-95 transition-all flex items-center justify-center gap-2"
+                            >
+                                <Scan size={14} /> Scan Photo
+                            </button>
+                            <button
+                                onClick={() => handleSave(req.type, category, tempDate)}
+                                className="flex-1 h-10 bg-blue-600 text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-sm hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2"
+                            >
+                                <CheckCircle size={14} /> Update
+                            </button>
+                        </div>
                     </div>
+
+                    {showScanner === req.type && (
+                        <DocumentScanner
+                            onClose={() => setShowScanner(null)}
+                            onScanComplete={(data) => handleScanComplete(req.type, data)}
+                            label={`Scan ${req.label}`}
+                        />
+                    )}
                 </div>
             );
         }
@@ -266,6 +291,13 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                                         onChange={(e) => setNewDocDates(prev => ({ ...prev, [req.type]: e.target.value }))}
                                         className="h-10 flex-1 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm"
                                     />
+                                    <button
+                                        onClick={() => setShowScanner(req.type)}
+                                        className="h-10 w-10 flex items-center justify-center bg-blue-50 text-blue-600 border border-blue-100 rounded-xl hover:bg-blue-100 active:scale-95 transition-all"
+                                        title="Scan document"
+                                    >
+                                        <Scan size={16} />
+                                    </button>
                                     {newDocDates[req.type] && (
                                         <button
                                             onClick={() => handleSave(req.type, category, newDocDates[req.type])}
@@ -278,6 +310,13 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                             )}
                         </div>
                     </div>
+                    {showScanner === req.type && (
+                        <DocumentScanner
+                            onClose={() => setShowScanner(null)}
+                            onScanComplete={(data) => handleScanComplete(req.type, data)}
+                            label={`Scan ${req.label}`}
+                        />
+                    )}
                     <div>
                         {existingDoc && (
                             <div className="flex gap-2">
@@ -309,7 +348,6 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                 </div>
             )}
 
-            {/* Vehicle Section */}
             <div className="space-y-3">
                 <div className="flex items-center justify-between">
                     <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">For Vehicle</h4>
@@ -338,7 +376,6 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                 )}
             </div>
 
-            {/* Driver Section */}
             <div className="space-y-3 pt-6 border-t border-slate-100">
                 <div className="flex items-center gap-2">
                     <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Driver Documents</h4>
@@ -347,7 +384,6 @@ const DocumentVault: React.FC<DocumentVaultProps> = ({ onStatsUpdate }) => {
                     {REQUIRED_DRIVER_DOCS.map(req => renderDocItem(req, 'driver'))}
                 </div>
             </div>
-
         </div>
     );
 };

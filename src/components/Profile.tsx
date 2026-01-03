@@ -253,7 +253,7 @@ const Profile: React.FC = () => {
                                         ID: <span className="text-[#0047AB]">{operatorId}</span>
                                     </p>
                                 </div>
-                                {completion === 100 && (
+                                {settings.companyName && (
                                     <button
                                         onClick={() => setShowCard(true)}
                                         className="px-2 py-0.5 bg-[#0047AB] text-white rounded-md flex items-center gap-1 hover:bg-blue-700 transition-colors shadow-sm active:scale-95"
@@ -555,6 +555,30 @@ const Profile: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* Digital Visiting Card Shortcut */}
+                    <div className="bg-gradient-to-br from-[#0047AB] to-indigo-600 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-3xl rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
+                        <div className="relative z-10">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                                    <Contact size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-black uppercase tracking-wider">Digital Visiting Card</h3>
+                                    <p className="text-[10px] text-white/70 font-bold uppercase tracking-[0.2em]">Premium Feature</p>
+                                </div>
+                            </div>
+                            <p className="text-xs text-blue-50/90 leading-relaxed mb-6 font-medium">
+                                Share your professional profile with customers. Includes QR code, VCard download, and offline booking info.
+                            </p>
+                            <button
+                                onClick={() => setShowCard(true)}
+                                className="w-full h-12 bg-white text-[#0047AB] rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-blue-50 transition-all active:scale-95 flex items-center justify-center gap-2"
+                            >
+                                Open Visiting Card <ChevronRight size={14} />
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -721,227 +745,234 @@ const Profile: React.FC = () => {
                     </div>
 
                 </div>
-            )}
+            )
+            }
 
             {/* TAB CONTENT: GARAGE */}
-            {activeTab === 'garage' && (
-                <div className="space-y-6 animate-fade-in">
+            {
+                activeTab === 'garage' && (
+                    <div className="space-y-6 animate-fade-in">
 
 
 
-                    {/* Fleet Management */}
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2 px-1">
-                            {settings.vehicles.length > 0 ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
-                            <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-green-500 underline-offset-4">My Vehicles</h3>
-                        </div>
-                        <p className="text-[10px] text-slate-500 px-1 font-medium">Add vehicles to manage trips and track availability.</p>
-                        <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
-                            <div className="space-y-2">
-                                {settings.vehicles.map((v) => (
-                                    <div key={v.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-xl group relative overflow-hidden">
-                                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${settings.currentVehicleId === v.id ? 'bg-primary' : 'bg-slate-300'}`}></div>
-                                        <div
-                                            className="flex-1 pl-2 cursor-pointer"
-                                            onClick={() => updateSettings({ currentVehicleId: v.id })}
-                                        >
-                                            <div className="flex flex-col">
-                                                <span className="text-xs font-black text-slate-900">{v.number}</span>
-                                                <div className="flex flex-wrap gap-2 items-center">
-                                                    <span className="text-[9px] font-bold text-slate-500 uppercase">{v.model}</span>
+                        {/* Fleet Management */}
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 px-1">
+                                {settings.vehicles.length > 0 ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
+                                <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-green-500 underline-offset-4">My Vehicles</h3>
+                            </div>
+                            <p className="text-[10px] text-slate-500 px-1 font-medium">Add vehicles to manage trips and track availability.</p>
+                            <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
+                                <div className="space-y-2">
+                                    {settings.vehicles.map((v) => (
+                                        <div key={v.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-xl group relative overflow-hidden">
+                                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${settings.currentVehicleId === v.id ? 'bg-primary' : 'bg-slate-300'}`}></div>
+                                            <div
+                                                className="flex-1 pl-2 cursor-pointer"
+                                                onClick={() => updateSettings({ currentVehicleId: v.id })}
+                                            >
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-black text-slate-900">{v.number}</span>
+                                                    <div className="flex flex-wrap gap-2 items-center">
+                                                        <span className="text-[9px] font-bold text-slate-500 uppercase">{v.model}</span>
+                                                    </div>
                                                 </div>
                                             </div>
+
+                                            <button
+                                                onClick={() => deleteVehicle(v.id)}
+                                                className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+
+                                            {settings.currentVehicleId === v.id && (
+                                                <div className="mr-2 px-2 py-0.5 bg-primary text-white text-[8px] font-black uppercase rounded-full tracking-widest">
+                                                    Active
+                                                </div>
+                                            )}
                                         </div>
-
-                                        <button
-                                            onClick={() => deleteVehicle(v.id)}
-                                            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-
-                                        {settings.currentVehicleId === v.id && (
-                                            <div className="mr-2 px-2 py-0.5 bg-primary text-white text-[8px] font-black uppercase rounded-full tracking-widest">
-                                                Active
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="pt-2 border-t border-slate-100 space-y-2">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Plus size={14} className="text-slate-400" />
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Add New Vehicle</span>
+                                    ))}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Vehicle Number</label>
-                                        <input
-                                            type="text"
-                                            value={newVehicleNumber}
-                                            onChange={(e) => setNewVehicleNumber(e.target.value.toUpperCase())}
-                                            className="tn-input font-bold uppercase w-full placeholder:text-slate-500"
-                                            placeholder="MH-01-AB-1234"
-                                        />
+                                <div className="pt-2 border-t border-slate-100 space-y-2">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Plus size={14} className="text-slate-400" />
+                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Add New Vehicle</span>
                                     </div>
-                                    <div>
-                                        <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Category</label>
-                                        <select
-                                            value={selectedCategoryId}
-                                            onChange={(e) => {
-                                                setSelectedCategoryId(e.target.value);
-                                                setNewVehicleModel('');
-                                                setIsCustomModel(false);
-                                            }}
-                                            className="tn-input font-bold w-full bg-slate-50 text-black"
-                                        >
-                                            {VEHICLES.map(v => (
-                                                <option key={v.id} value={v.id}>
-                                                    {v.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
 
-                                <div className="grid grid-cols-1 gap-2">
-                                    <div>
-                                        <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Car Model</label>
-                                        {!isCustomModel ? (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Vehicle Number</label>
+                                            <input
+                                                type="text"
+                                                value={newVehicleNumber}
+                                                onChange={(e) => setNewVehicleNumber(e.target.value.toUpperCase())}
+                                                className="tn-input font-bold uppercase w-full placeholder:text-slate-500"
+                                                placeholder="MH-01-AB-1234"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Category</label>
                                             <select
-                                                value={newVehicleModel}
+                                                value={selectedCategoryId}
                                                 onChange={(e) => {
-                                                    if (e.target.value === 'CUSTOM') {
-                                                        setIsCustomModel(true);
-                                                        setNewVehicleModel('');
-                                                    } else {
-                                                        setNewVehicleModel(e.target.value);
-                                                    }
+                                                    setSelectedCategoryId(e.target.value);
+                                                    setNewVehicleModel('');
+                                                    setIsCustomModel(false);
                                                 }}
                                                 className="tn-input font-bold w-full bg-slate-50 text-black"
                                             >
-                                                <option value="">Select Model...</option>
-                                                {VEHICLES.find(v => v.id === selectedCategoryId)?.popularModels.split(', ').map(model => (
-                                                    <option key={model} value={model}>{model}</option>
+                                                {VEHICLES.map(v => (
+                                                    <option key={v.id} value={v.id}>
+                                                        {v.name}
+                                                    </option>
                                                 ))}
-                                                <option value="CUSTOM">+ Type Manual Model Name</option>
                                             </select>
-                                        ) : (
-                                            <div className="relative">
-                                                <input
-                                                    type="text"
-                                                    value={newVehicleModel}
-                                                    onChange={(e) => setNewVehicleModel(e.target.value)}
-                                                    className="tn-input font-bold w-full pr-16 placeholder:text-slate-500"
-                                                    placeholder="Enter Car Model (e.g. Swift Dzire)"
-                                                    autoFocus
-                                                />
-                                                <button
-                                                    onClick={() => { setIsCustomModel(false); setNewVehicleModel(''); }}
-                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-primary uppercase"
-                                                >
-                                                    Back
-                                                </button>
-                                            </div>
-                                        )}
+                                        </div>
                                     </div>
 
+                                    <div className="grid grid-cols-1 gap-2">
+                                        <div>
+                                            <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Car Model</label>
+                                            {!isCustomModel ? (
+                                                <select
+                                                    value={newVehicleModel}
+                                                    onChange={(e) => {
+                                                        if (e.target.value === 'CUSTOM') {
+                                                            setIsCustomModel(true);
+                                                            setNewVehicleModel('');
+                                                        } else {
+                                                            setNewVehicleModel(e.target.value);
+                                                        }
+                                                    }}
+                                                    className="tn-input font-bold w-full bg-slate-50 text-black"
+                                                >
+                                                    <option value="">Select Model...</option>
+                                                    {VEHICLES.find(v => v.id === selectedCategoryId)?.popularModels.split(', ').map(model => (
+                                                        <option key={model} value={model}>{model}</option>
+                                                    ))}
+                                                    <option value="CUSTOM">+ Type Manual Model Name</option>
+                                                </select>
+                                            ) : (
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        value={newVehicleModel}
+                                                        onChange={(e) => setNewVehicleModel(e.target.value)}
+                                                        className="tn-input font-bold w-full pr-16 placeholder:text-slate-500"
+                                                        placeholder="Enter Car Model (e.g. Swift Dzire)"
+                                                        autoFocus
+                                                    />
+                                                    <button
+                                                        onClick={() => { setIsCustomModel(false); setNewVehicleModel(''); }}
+                                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-primary uppercase"
+                                                    >
+                                                        Back
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
 
+
+                                    </div>
+
+                                    <button
+                                        onClick={addVehicle}
+                                        disabled={!newVehicleNumber || !selectedCategoryId || !newVehicleModel}
+                                        className="w-full h-10 bg-slate-800 text-white rounded-xl shadow-md disabled:opacity-50 active:scale-95 transition-all font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-900"
+                                    >
+                                        <Plus size={14} /> Add Vehicle
+                                    </button>
                                 </div>
 
-                                <button
-                                    onClick={addVehicle}
-                                    disabled={!newVehicleNumber || !selectedCategoryId || !newVehicleModel}
-                                    className="w-full h-10 bg-slate-800 text-white rounded-xl shadow-md disabled:opacity-50 active:scale-95 transition-all font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-900"
-                                >
-                                    <Plus size={14} /> Add Vehicle
-                                </button>
-                            </div>
-
-                            <div className="pt-2 flex justify-end">
-                                <button
-                                    onClick={async () => {
-                                        setSavingSection('fleet');
-                                        const success = await saveSettings();
-                                        await new Promise(r => setTimeout(r, 500));
-                                        if (!success) alert('Failed to save settings. Please try again.');
-                                        setSavingSection(null);
-                                    }}
-                                    className="bg-green-700 text-white px-6 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
-                                >
-                                    {savingSection === 'fleet' ? (
-                                        <>
-                                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CheckCircle size={12} /> Save
-                                        </>
-                                    )}
-                                </button>
+                                <div className="pt-2 flex justify-end">
+                                    <button
+                                        onClick={async () => {
+                                            setSavingSection('fleet');
+                                            const success = await saveSettings();
+                                            await new Promise(r => setTimeout(r, 500));
+                                            if (!success) alert('Failed to save settings. Please try again.');
+                                            setSavingSection(null);
+                                        }}
+                                        className="bg-green-700 text-white px-6 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
+                                    >
+                                        {savingSection === 'fleet' ? (
+                                            <>
+                                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CheckCircle size={12} /> Save
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
                             </div>
                         </div>
+
+
+
                     </div>
-
-
-
-                </div>
-            )}
+                )
+            }
 
             {/* TAB CONTENT: BUSINESS (Website) */}
-            {activeTab === 'business' && (
-                <div className="space-y-6 animate-fade-in">
+            {
+                activeTab === 'business' && (
+                    <div className="space-y-6 animate-fade-in">
 
-                    {settings.websiteUrl && (
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 px-1">
-                                <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-orange-500 underline-offset-4">Website</h3>
-                            </div>
-                            <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                                <div className="flex items-center justify-between p-2 bg-orange-50 border border-orange-100 rounded-xl">
-                                    <div className="flex items-center gap-2">
-                                        <Globe size={14} className="text-orange-500" />
-                                        <span className="text-[10px] font-bold text-slate-700 truncate max-w-[150px]">{settings.websiteUrl}</span>
-                                    </div>
-                                    <a
-                                        href={`https://${settings.websiteUrl}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-[9px] font-black text-orange-600 uppercase tracking-widest hover:underline"
-                                    >
-                                        Visit
-                                    </a >
+                        {settings.websiteUrl && (
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2 px-1">
+                                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-orange-500 underline-offset-4">Website</h3>
+                                </div>
+                                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+                                    <div className="flex items-center justify-between p-2 bg-orange-50 border border-orange-100 rounded-xl">
+                                        <div className="flex items-center gap-2">
+                                            <Globe size={14} className="text-orange-500" />
+                                            <span className="text-[10px] font-bold text-slate-700 truncate max-w-[150px]">{settings.websiteUrl}</span>
+                                        </div>
+                                        <a
+                                            href={`https://${settings.websiteUrl}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-[9px] font-black text-orange-600 uppercase tracking-widest hover:underline"
+                                        >
+                                            Visit
+                                        </a >
+                                    </div >
                                 </div >
                             </div >
-                        </div >
-                    )}
+                        )}
 
-                </div>
-            )}
+                    </div>
+                )
+            }
 
             {/* TAB CONTENT: DOCUMENTS */}
-            {activeTab === 'docs' && (
-                <div className="space-y-6 animate-fade-in">
+            {
+                activeTab === 'docs' && (
+                    <div className="space-y-6 animate-fade-in">
 
-                    {/* 6. Documents */}
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2 px-1">
-                            {docStats.hasFullVehicle && docStats.hasFullDriver ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
-                            <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Expiry Date</h3>
-                        </div>
-                        <p className="text-[10px] text-slate-500 px-1 font-medium">Add expiry dates.</p>
-                        <div className="pt-0">
-                            <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                                <DocumentVault />
+                        {/* 6. Documents */}
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 px-1">
+                                {docStats.hasFullVehicle && docStats.hasFullDriver ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
+                                <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-blue-500 underline-offset-4">Expiry Date</h3>
+                            </div>
+                            <p className="text-[10px] text-slate-500 px-1 font-medium">Add expiry dates.</p>
+                            <div className="pt-0">
+                                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+                                    <DocumentVault />
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                </div>
-            )}
+                    </div>
+                )
+            }
 
             {/* 9. SETTINGS & TOOLS: Relocated to last before footer */}
             <div className="px-1 mt-8">
@@ -987,193 +1018,194 @@ const Profile: React.FC = () => {
             </div>
 
             {/* Global Modal Overlay */}
-            {activeModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden animate-slide-up border border-slate-100">
-                        <div className="p-6">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">
-                                    {activeModal === 'terms' && 'Terms of Service'}
-                                    {activeModal === 'privacy' && 'Privacy Policy'}
-                                    {activeModal === 'support' && 'Official Support'}
-                                    {activeModal === 'settings_menu' && 'App Settings'}
-                                </h3>
-                                <button
-                                    onClick={() => setActiveModal(null)}
-                                    className="w-8 h-8 flex items-center justify-center bg-slate-100 text-slate-400 rounded-full hover:bg-slate-200 transition-all"
-                                >
-                                    <X size={16} />
-                                </button>
-                            </div>
+            {
+                activeModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-white w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden animate-slide-up border border-slate-100">
+                            <div className="p-6">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">
+                                        {activeModal === 'terms' && 'Terms of Service'}
+                                        {activeModal === 'privacy' && 'Privacy Policy'}
+                                        {activeModal === 'support' && 'Official Support'}
+                                        {activeModal === 'settings_menu' && 'App Settings'}
+                                    </h3>
+                                    <button
+                                        onClick={() => setActiveModal(null)}
+                                        className="w-8 h-8 flex items-center justify-center bg-slate-100 text-slate-400 rounded-full hover:bg-slate-200 transition-all"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
 
-                            <div className="space-y-4 text-xs font-bold text-slate-600 leading-relaxed max-h-[60vh] overflow-y-auto pr-2 scrollbar-hide">
-                                {activeModal === 'settings_menu' && (
-                                    <div className="space-y-6">
-                                        {/* Language Section */}
-                                        <div className="space-y-3">
-                                            <div className="flex items-center gap-2">
-                                                <Globe size={14} className="text-blue-500" />
-                                                <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Select Language</h4>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                {['English', 'Tamil', 'Kannada', 'Hindi'].map(lang => {
-                                                    const isAvailable = lang === 'English';
-                                                    return (
-                                                        <button
-                                                            key={lang}
-                                                            onClick={() => isAvailable && setSelectedLanguage(lang)}
-                                                            className={`relative p-2.5 border rounded-xl text-center transition-all ${selectedLanguage === lang
-                                                                ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                                                                : 'bg-slate-50 text-slate-700 border-slate-100'
-                                                                } ${isAvailable ? 'hover:bg-slate-100 active:scale-95' : 'opacity-40 cursor-not-allowed'}`}
-                                                        >
-                                                            <span className="text-[10px] font-bold">{lang}</span>
-                                                            {!isAvailable && (
-                                                                <span className="block text-[7px] mt-0.5 opacity-60">Soon</span>
-                                                            )}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                            <button
-                                                onClick={async () => {
-                                                    setSavingSection('language');
-                                                    updateSettings({ language: selectedLanguage });
-                                                    await saveSettings();
-                                                    await new Promise(r => setTimeout(r, 500));
-                                                    setSavingSection(null);
-                                                    setActiveModal(null);
-                                                }}
-                                                disabled={selectedLanguage === settings.language}
-                                                className="w-full h-10 bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-green-200 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-                                            >
-                                                {savingSection === 'language' ? 'Saving...' : 'Apply Language'}
-                                            </button>
-                                        </div>
-
-                                        <div className="h-px bg-slate-100" />
-
-                                        {/* Notifications Section */}
-                                        <div className="space-y-3">
-                                            <div className="flex items-center gap-2">
-                                                <Bell size={14} className="text-red-500" />
-                                                <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Push Notifications</h4>
-                                            </div>
-                                            <div className="p-3 bg-red-50/50 rounded-xl border border-red-100">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <p className="text-[9px] text-red-700 font-bold leading-tight">Get instant alerts for new bookings and system updates even when app is closed.</p>
-                                                    <div
-                                                        onClick={async () => {
-                                                            const permission = await Notification.requestPermission();
-                                                            if (permission === 'granted') {
-                                                                await subscribeToPush();
-                                                                alert('Push Notifications Enabled!');
-                                                            } else {
-                                                                alert('Permission denied. Please enable notifications in your browser settings.');
-                                                            }
-                                                        }}
-                                                        className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${Notification.permission === 'granted' ? 'bg-red-500' : 'bg-slate-300'}`}
-                                                    >
-                                                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${Notification.permission === 'granted' ? 'left-6' : 'left-1'}`}></div>
-                                                    </div>
+                                <div className="space-y-4 text-xs font-bold text-slate-600 leading-relaxed max-h-[60vh] overflow-y-auto pr-2 scrollbar-hide">
+                                    {activeModal === 'settings_menu' && (
+                                        <div className="space-y-6">
+                                            {/* Language Section */}
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-2">
+                                                    <Globe size={14} className="text-blue-500" />
+                                                    <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Select Language</h4>
                                                 </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="h-px bg-slate-100" />
-
-                                        {/* Support Section */}
-                                        <div className="space-y-3">
-                                            <div className="flex items-center gap-2">
-                                                <MessageCircle size={14} className="text-[#25D366]" />
-                                                <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Help & Support</h4>
-                                            </div>
-                                            <a
-                                                href="https://wa.me/919952749408?text=I%20need%20help%20with%20Sarathi%20Book"
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:bg-slate-100 transition-all group"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-[#25D366]/10 flex items-center justify-center text-[#25D366]">
-                                                        <MessageCircle size={16} />
-                                                    </div>
-                                                    <span className="text-[10px] font-black text-slate-700">Chat on WhatsApp</span>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {['English', 'Tamil', 'Kannada', 'Hindi'].map(lang => {
+                                                        const isAvailable = lang === 'English';
+                                                        return (
+                                                            <button
+                                                                key={lang}
+                                                                onClick={() => isAvailable && setSelectedLanguage(lang)}
+                                                                className={`relative p-2.5 border rounded-xl text-center transition-all ${selectedLanguage === lang
+                                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                                                                    : 'bg-slate-50 text-slate-700 border-slate-100'
+                                                                    } ${isAvailable ? 'hover:bg-slate-100 active:scale-95' : 'opacity-40 cursor-not-allowed'}`}
+                                                            >
+                                                                <span className="text-[10px] font-bold">{lang}</span>
+                                                                {!isAvailable && (
+                                                                    <span className="block text-[7px] mt-0.5 opacity-60">Soon</span>
+                                                                )}
+                                                            </button>
+                                                        );
+                                                    })}
                                                 </div>
-                                                <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
-                                            </a>
-                                        </div>
-
-                                        <div className="h-px bg-slate-100" />
-
-                                        {/* System Health Section */}
-                                        <div className="space-y-3">
-                                            <div className="flex items-center gap-2">
-                                                <RefreshCw size={14} className="text-orange-500" />
-                                                <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Troubleshooting</h4>
-                                            </div>
-                                            <div className="p-3 bg-orange-50/50 rounded-xl border border-orange-100">
-                                                <p className="text-[9px] text-orange-700 font-bold mb-2 leading-tight">Syncing issues or app feeling slow? Repairing will clear cache and refresh data.</p>
                                                 <button
                                                     onClick={async () => {
-                                                        if (window.confirm('This will refresh the app and clear cache. Proceed?')) {
-                                                            if ('serviceWorker' in navigator) {
-                                                                const reg = await navigator.serviceWorker.getRegistrations();
-                                                                for (const r of reg) await r.unregister();
-                                                            }
-                                                            if ('caches' in window) {
-                                                                const keys = await caches.keys();
-                                                                for (const k of keys) await caches.delete(k);
-                                                            }
-                                                            window.location.href = window.location.origin + '?cb=' + Date.now();
-                                                        }
+                                                        setSavingSection('language');
+                                                        updateSettings({ language: selectedLanguage });
+                                                        await saveSettings();
+                                                        await new Promise(r => setTimeout(r, 500));
+                                                        setSavingSection(null);
+                                                        setActiveModal(null);
                                                     }}
-                                                    className="w-full h-9 bg-white text-orange-600 border border-orange-200 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-orange-50 transition-all flex items-center justify-center gap-2"
+                                                    disabled={selectedLanguage === settings.language}
+                                                    className="w-full h-10 bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-green-200 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                                                 >
-                                                    <RefreshCw size={12} /> Repair & Restart
+                                                    {savingSection === 'language' ? 'Saving...' : 'Apply Language'}
                                                 </button>
                                             </div>
-                                        </div>
-                                    </div>
-                                )}
 
-                                {activeModal === 'terms' && (
-                                    <>
-                                        <p>1. Sarathi Book is a digital documentation tool for individual taxi operators and fleet owners. It is not a transport service provider.</p>
-                                        <p>2. Users are responsible for the accuracy of invoices and trip sheets generated. We are not liable for any legal or tax misuse.</p>
-                                        <p>3. While we strive for 100% uptime, Sarathi Book is provided "as is" without warranty for data loss due to browser cache clearing.</p>
-                                    </>
-                                )}
-                                {activeModal === 'privacy' && (
-                                    <>
-                                        <p>1. <strong>Local First:</strong> Your trip data and documents are primarily stored in your phone's secure local storage.</p>
-                                        <p>2. <strong>Cloud Sync:</strong> If you sign in with Google, your data is encrypted and synced to our secure database for multi-device access.</p>
-                                        <p>3. <strong>Data Handling:</strong> We do not sell or share your billing information, passenger details, or personal ID documents with any advertising agencies.</p>
-                                    </>
-                                )}
-                                {activeModal === 'support' && (
-                                    <>
-                                        <p>For any technical issues or feature requests, contact our engineering team directly.</p>
-                                        <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 mt-2">
-                                            <p className="text-blue-900 mb-1">WhatsApp Support:</p>
-                                            <p className="text-lg text-[#0047AB] font-black">+91 99527 49408</p>
-                                            <p className="text-[10px] text-blue-400 mt-1 italic">Response time: Usually within 2 hours</p>
+                                            <div className="h-px bg-slate-100" />
+
+                                            {/* Notifications Section */}
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-2">
+                                                    <Bell size={14} className="text-red-500" />
+                                                    <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Push Notifications</h4>
+                                                </div>
+                                                <div className="p-3 bg-red-50/50 rounded-xl border border-red-100">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <p className="text-[9px] text-red-700 font-bold leading-tight">Get instant alerts for new bookings and system updates even when app is closed.</p>
+                                                        <div
+                                                            onClick={async () => {
+                                                                const permission = await Notification.requestPermission();
+                                                                if (permission === 'granted') {
+                                                                    await subscribeToPush();
+                                                                    alert('Push Notifications Enabled!');
+                                                                } else {
+                                                                    alert('Permission denied. Please enable notifications in your browser settings.');
+                                                                }
+                                                            }}
+                                                            className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${Notification.permission === 'granted' ? 'bg-red-500' : 'bg-slate-300'}`}
+                                                        >
+                                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${Notification.permission === 'granted' ? 'left-6' : 'left-1'}`}></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="h-px bg-slate-100" />
+
+                                            {/* Support Section */}
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-2">
+                                                    <MessageCircle size={14} className="text-[#25D366]" />
+                                                    <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Help & Support</h4>
+                                                </div>
+                                                <a
+                                                    href="https://wa.me/919952749408?text=I%20need%20help%20with%20Sarathi%20Book"
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:bg-slate-100 transition-all group"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-[#25D366]/10 flex items-center justify-center text-[#25D366]">
+                                                            <MessageCircle size={16} />
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-slate-700">Chat on WhatsApp</span>
+                                                    </div>
+                                                    <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
+                                                </a>
+                                            </div>
+
+                                            <div className="h-px bg-slate-100" />
+
+                                            {/* System Health Section */}
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-2">
+                                                    <RefreshCw size={14} className="text-orange-500" />
+                                                    <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Troubleshooting</h4>
+                                                </div>
+                                                <div className="p-3 bg-orange-50/50 rounded-xl border border-orange-100">
+                                                    <p className="text-[9px] text-orange-700 font-bold mb-2 leading-tight">Syncing issues or app feeling slow? Repairing will clear cache and refresh data.</p>
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (window.confirm('This will refresh the app and clear cache. Proceed?')) {
+                                                                if ('serviceWorker' in navigator) {
+                                                                    const reg = await navigator.serviceWorker.getRegistrations();
+                                                                    for (const r of reg) await r.unregister();
+                                                                }
+                                                                if ('caches' in window) {
+                                                                    const keys = await caches.keys();
+                                                                    for (const k of keys) await caches.delete(k);
+                                                                }
+                                                                window.location.href = window.location.origin + '?cb=' + Date.now();
+                                                            }
+                                                        }}
+                                                        className="w-full h-9 bg-white text-orange-600 border border-orange-200 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-orange-50 transition-all flex items-center justify-center gap-2"
+                                                    >
+                                                        <RefreshCw size={12} /> Repair & Restart
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </>
-                                )}
+                                    )}
+
+                                    {activeModal === 'terms' && (
+                                        <>
+                                            <p>1. Sarathi Book is a digital documentation tool for individual taxi operators and fleet owners. It is not a transport service provider.</p>
+                                            <p>2. Users are responsible for the accuracy of invoices and trip sheets generated. We are not liable for any legal or tax misuse.</p>
+                                            <p>3. While we strive for 100% uptime, Sarathi Book is provided "as is" without warranty for data loss due to browser cache clearing.</p>
+                                        </>
+                                    )}
+                                    {activeModal === 'privacy' && (
+                                        <>
+                                            <p>1. <strong>Local First:</strong> Your trip data and documents are primarily stored in your phone's secure local storage.</p>
+                                            <p>2. <strong>Cloud Sync:</strong> If you sign in with Google, your data is encrypted and synced to our secure database for multi-device access.</p>
+                                            <p>3. <strong>Data Handling:</strong> We do not sell or share your billing information, passenger details, or personal ID documents with any advertising agencies.</p>
+                                        </>
+                                    )}
+                                    {activeModal === 'support' && (
+                                        <>
+                                            <p>For any technical issues or feature requests, contact our engineering team directly.</p>
+                                            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 mt-2">
+                                                <p className="text-blue-900 mb-1">WhatsApp Support:</p>
+                                                <p className="text-lg text-[#0047AB] font-black">+91 99527 49408</p>
+                                                <p className="text-[10px] text-blue-400 mt-1 italic">Response time: Usually within 2 hours</p>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-center">
+                                <button
+                                    onClick={() => setActiveModal(null)}
+                                    className="px-8 py-3 bg-[#0047AB] text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md active:scale-95 transition-all"
+                                >
+                                    Close View
+                                </button>
                             </div>
                         </div>
-                        <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-center">
-                            <button
-                                onClick={() => setActiveModal(null)}
-                                className="px-8 py-3 bg-[#0047AB] text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md active:scale-95 transition-all"
-                            >
-                                Close View
-                            </button>
-                        </div>
                     </div>
-                </div>
-            )}
+                )}
             {/* Business Card Modal */}
             {showCard && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setShowCard(false)}>
@@ -1190,7 +1222,7 @@ const Profile: React.FC = () => {
                     </div>
                 </div>
             )}
-        </div >
+        </div>
     );
 };
 

@@ -30,21 +30,20 @@ describe('Master Test Plan - 2025 Market Rates (New Logic)', () => {
     // The new logic only handles One Way, Round Trip, Local Hourly.
     // We can skip this or test One Way Drop instead.
     it('Scenario 2: One Way Drop (Airport equivalent) - Premium SUV', () => {
-        // Crysta Drop. min 130km.
+        // Crysta Drop. Local Short Rule (<40km).
         // Distance: 20km.
-        // Logic: Should charge Min 130km.
-        // Config: Crysta One Way = 25.
-        // Fare: 130 * 25 = 3250.
-        // Bata: 600.
-        // Total: 3850.
+        // Base (10km): 700.
+        // Extra (10km): 10 * 25 = 250.
+        // Total: 950.
+        // Bata: 0 (Local short drop).
 
         const result = calculateFare(
             'one_way',
             'premium_suv',
             20
         );
-        expect(result.effectiveDistance).toBe(130);
-        expect(result.totalFare).toBe(3250 + 600);
+        expect(result.effectiveDistance).toBe(20);
+        expect(result.totalFare).toBe(950);
     });
 
     // Test 3: The "Tirupati Darshan" (Interstate)
@@ -71,11 +70,11 @@ describe('Master Test Plan - 2025 Market Rates (New Logic)', () => {
     // Test 4: The "Temple Tour" (Multi-Day Bus) - Tempo
     it('Scenario 4: Temple Tour (Multi-Day) - Tempo', () => {
         // Tempo Round Trip Rate: 24.
-        // Min: 300km/day. Days: 2 => Min 600km.
-        // Actual: 500km. Effective: 600km.
-        // Dist Cost: 600 * 24 = 14400.
+        // Min: 250km/day (Updated Config). Days: 2 => Min 500km.
+        // Actual: 500km. Effective: 500km.
+        // Dist Cost: 500 * 24 = 12000.
         // Bata: 800 * 2 = 1600.
-        // Total: 16000.
+        // Total: 13600.
 
         const result = calculateFare(
             'round_trip',
@@ -84,8 +83,8 @@ describe('Master Test Plan - 2025 Market Rates (New Logic)', () => {
             2 // 2 days
         );
 
-        expect(result.totalFare).toBe(14400 + 1600);
-        expect(result.effectiveDistance).toBe(600);
+        expect(result.totalFare).toBe(12000 + 1600);
+        expect(result.effectiveDistance).toBe(500);
     });
 
     // Test 5: The "Hatchback Min Rule"

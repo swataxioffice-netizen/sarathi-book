@@ -150,6 +150,25 @@ body,
   animation: progress 5s linear forwards;
 }
 
+@keyframes progress-indefinite {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  50% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-progress-indefinite {
+  animation: progress-indefinite 2s infinite ease-in-out;
+  width: 100%;
+}
+
 .glass-panel {
   @apply bg-slate-900/90 backdrop-blur-xl border border-white/10 shadow-xl;
 }
