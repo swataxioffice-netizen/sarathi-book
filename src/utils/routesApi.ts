@@ -81,9 +81,8 @@ export const calculateAdvancedRoute = async (
         let totalToll = 0;
         let currency = 'INR';
 
-        if (tollInfo && tollInfo.estimatedPrice && tollInfo.estimatedPrice.length > 0) {
-            // Usually India returns strictly INR
-            const price = tollInfo.estimatedPrice[0];
+        if (tollInfo && tollInfo.estimatedPrice) {
+            const price = tollInfo.estimatedPrice;
             totalToll = parseInt(price.units || '0') + (price.nanos || 0) / 1000000000;
             currency = price.currencyCode || 'INR';
         }

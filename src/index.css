@@ -1,14 +1,6 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
-@theme {
-  --text-display: clamp(2rem, 8vw, 3.5rem);
-  --text-hero: clamp(1.5rem, 5vw, 2.5rem);
-  --text-body-fluid: clamp(1rem, 2.5vw, 1.125rem);
-}
-
-
-
 :root {
   /* Vibrant 500 Scale Palette */
   --bg-app: #F5F7FA;

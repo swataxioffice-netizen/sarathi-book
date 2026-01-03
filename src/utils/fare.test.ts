@@ -40,13 +40,13 @@ describe('Chennai Fare Business Logic 2025', () => {
         expect(result.totalFare).toBe(2625);
     });
 
-    it('should apply higher Minimum KM for SUV Round Trip (300/day)', () => {
-        // SUV Round Rate: 18. Min 300km.
+    it('should apply higher Minimum KM for SUV Round Trip (250km/day)', () => {
+        // SUV Round Rate: 18. Min 250km (Updated).
         // 1 Day. Distance 200km.
-        // Billable: 300km.
-        // Dist Cost: 300 * 18 = 5400.
+        // Billable: 250km.
+        // Dist Cost: 250 * 18 = 4500.
         // Bata: 500.
-        // Total: 5900.
+        // Total: 5000.
 
         const result = calculateFare(
             'round_trip',
@@ -55,27 +55,27 @@ describe('Chennai Fare Business Logic 2025', () => {
             1
         );
 
-        expect(result.totalFare).toBe(5900);
-        expect(result.effectiveDistance).toBe(300);
+        expect(result.totalFare).toBe(5000);
+        expect(result.effectiveDistance).toBe(250);
     });
 
-    it('should apply Heavy Vehicle Rule (Round Trip Logic) for Tempo Drop', () => {
-        // Tempo. Min 300. Round Rate 24.
-        // Drop Trip Requested (One Way).
-        // Distance 100km.
-        // Logic: Round Trip Dist = 200km.
-        // Min Check: Max(200, 300) = 300km.
-        // Cost: 300 * 24 = 7200.
-        // Bata: 800.
-        // Total: 8000.
+    it('should apply Heavy Vehicle Association Rule (Round Trip Logic) for Tempo Drop', () => {
+        // Tempo Traveller. Min 250. Round Rate 24.
+        // Drop Trip (One Way). Distance 150km.
+        // Round Dist = 300km.
+        // Days Required = Math.ceil(300 / 250) = 2 Days.
+        // Min Billable = 2 * 250 = 500km.
+        // Cost: 500 * 24 = 12000.
+        // Bata: 800 * 2 = 1600.
+        // Total: 13600.
 
         const result = calculateFare(
             'one_way',
             'tempo',
-            100
+            150
         );
 
-        expect(result.totalFare).toBe(8000);
+        expect(result.totalFare).toBe(13600);
         expect(result.breakdown).toContain('Heavy Vehicle Rule: One-Way charged as Round Trip');
     });
 

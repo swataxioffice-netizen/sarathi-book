@@ -82,7 +82,14 @@ export const calculateFare = (
             totalFare: 0,
             breakdown: ["Error: Invalid Vehicle Type"],
             distance: distance,
-            mode: serviceType
+            mode: serviceType,
+            details: {
+                fare: 0,
+                driverBatta: 0,
+                hillStation: 0,
+                petCharge: 0,
+                nightCharge: 0
+            }
         };
     }
 
@@ -90,32 +97,31 @@ export const calculateFare = (
     let breakdown: string[] = [];
     let effectiveKm = distance;
     let rateUsed = 0;
+    let distanceCharge = 0;
+    let calculatedBata = 0;
 
     // ============================================================
     // SCENARIO 1: LOCAL HOURLY (Rentals)
     // ============================================================
     if (serviceType === 'local_hourly') {
-        // Base Package
         const pkgPrice = vehicle.local_8hr_pkg;
-        totalFare = pkgPrice;
+        distanceCharge = pkgPrice;
         breakdown.push(`Base Package (8 Hr / 80 Km): ₹${pkgPrice}`);
 
-        // Extra KM
-        // Note: For hourly, 'distance' IS the actual usage.
         if (distance > 80) {
             const extraKm = distance - 80;
-            const eRate = overrideRate || vehicle.one_way_rate; // Fallback to one way rate for extra km
+            const eRate = overrideRate || vehicle.one_way_rate;
             const extraKmCost = extraKm * eRate;
-            totalFare += extraKmCost;
+            distanceCharge += extraKmCost;
             breakdown.push(`Extra Distance: ${extraKm} km x ₹${eRate} = ₹${extraKmCost}`);
         }
 
-        // Extra Hours
         if (extraHours > 0) {
             const extraHrCost = extraHours * vehicle.extra_hr_rate;
-            totalFare += extraHrCost;
+            distanceCharge += extraHrCost;
             breakdown.push(`Extra Time: ${extraHours} hrs x ₹${vehicle.extra_hr_rate} = ₹${extraHrCost}`);
         }
+        totalFare = distanceCharge;
     }
 
     // ============================================================
@@ -128,31 +134,21 @@ export const calculateFare = (
         effectiveKm = Math.max(distance, minBillable);
         rateUsed = overrideRate || vehicle.round_trip_rate;
 
-        const distCost = effectiveKm * rateUsed;
+        distanceCharge = effectiveKm * rateUsed;
 
-        let bataCost = 0;
         if (overrideBata !== undefined) {
-            bataCost = overrideBata;
-            breakdown.push(`Driver Bata (Manual): ₹${bataCost}`);
+            calculatedBata = overrideBata;
+            breakdown.push(`Driver Bata (Manual): ₹${calculatedBata}`);
         } else {
-            bataCost = vehicle.driver_bata * durationDays;
-            breakdown.push(`Driver Bata: ₹${vehicle.driver_bata} x ${durationDays} days = ₹${bataCost}`);
+            calculatedBata = vehicle.driver_bata * durationDays;
+            breakdown.push(`Driver Bata: ₹${vehicle.driver_bata} x ${durationDays} days = ₹${calculatedBata}`);
         }
 
-        totalFare = distCost + bataCost;
+        totalFare = distanceCharge + calculatedBata;
 
         breakdown.push(`Min KM Rule: ${minKm} km/day x ${durationDays} days = ${minBillable} km`);
         breakdown.push(`Billable Distance: ${effectiveKm} km (Actual: ${distance} km)`);
-        breakdown.push(`Distance Charge: ${effectiveKm} km x ₹${rateUsed} = ₹${distCost}`);
-
-        if (overrideHillStation !== undefined && overrideHillStation > 0) {
-            totalFare += overrideHillStation;
-            breakdown.push(`Hill Station Charge: ₹${overrideHillStation}`);
-        } else if (isHillStation) {
-            const hillCharge = (vehicleType === 'tempo' || vehicleType === 'minibus' || vehicleType === 'bus') ? 1000 : 500;
-            totalFare += hillCharge;
-            breakdown.push(`Hill Station Charge: ₹${hillCharge}`);
-        }
+        breakdown.push(`Distance Charge: ${effectiveKm} km x ₹${rateUsed} = ₹${distanceCharge}`);
     }
 
     // ============================================================
@@ -162,44 +158,47 @@ export const calculateFare = (
         // Heavy Vehicle Rule: Always calculated as Round Trip
         if (vehicle.is_heavy_vehicle) {
             const roundDist = distance * 2;
-            const minHeavy = vehicle.min_km_per_day; // e.g. 300
-            effectiveKm = Math.max(roundDist, minHeavy);
+            const minKmDay = vehicle.min_km_per_day;
 
-            rateUsed = overrideRate || vehicle.round_trip_rate; // Use Round Trip Rate!
+            const estDays = Math.max(durationDays, Math.ceil(roundDist / minKmDay));
+            const minBillable = minKmDay * estDays;
 
-            const distCost = effectiveKm * rateUsed;
+            effectiveKm = Math.max(roundDist, minBillable);
+            rateUsed = overrideRate || vehicle.round_trip_rate;
 
-            let bata = 0;
+            distanceCharge = effectiveKm * rateUsed;
+
             if (overrideBata !== undefined) {
-                bata = overrideBata;
-                breakdown.push(`Driver Bata (Manual): ₹${bata}`);
+                calculatedBata = overrideBata;
+                breakdown.push(`Driver Bata (Manual): ₹${calculatedBata}`);
             } else {
-                bata = vehicle.driver_bata;
-                breakdown.push(`Driver Bata: ₹${bata}`);
+                calculatedBata = vehicle.driver_bata * estDays;
+                breakdown.push(`Driver Bata: ₹${vehicle.driver_bata} x ${estDays} days = ₹${calculatedBata}`);
             }
 
-            totalFare = distCost + bata;
+            totalFare = distanceCharge + calculatedBata;
 
             breakdown.push(`Heavy Vehicle Rule: One-Way charged as Round Trip`);
-            breakdown.push(`Billable Distance: ${effectiveKm} km (Actual x 2 vs Min ${minHeavy})`);
-            breakdown.push(`Distance Charge: ${effectiveKm} km x ₹${rateUsed} = ₹${distCost}`);
+            breakdown.push(`Trip Coverage: ${roundDist} km round-trip in ~${estDays} days`);
+            breakdown.push(`Billable Distance: ${effectiveKm} km (at ₹${rateUsed}/km)`);
         }
         // Local Short Drop Rule (< 40km)
         else if (distance <= 40) {
             const baseKm = 10;
-            const basePrice = (vehicleType === 'hatchback' || vehicleType === 'sedan') ? 250 : 400; // Base Fare
+            const basePrice = (vehicleType === 'hatchback' || vehicleType === 'sedan') ? 250 : 400;
 
             if (distance <= baseKm) {
-                totalFare = basePrice;
+                distanceCharge = basePrice;
                 breakdown.push(`Local Minimum Fare (upto 10km): ₹${basePrice}`);
             } else {
                 const extraKm = distance - baseKm;
                 rateUsed = overrideRate || vehicle.one_way_rate;
                 const extraCost = extraKm * rateUsed;
-                totalFare = basePrice + extraCost;
+                distanceCharge = basePrice + extraCost;
                 breakdown.push(`Base Fare (10km): ₹${basePrice}`);
                 breakdown.push(`Extra Distance: ${extraKm} km x ₹${rateUsed} = ₹${extraCost}`);
             }
+            totalFare = distanceCharge;
         }
         // Outstation Drop
         else {
@@ -207,35 +206,54 @@ export const calculateFare = (
             effectiveKm = Math.max(distance, minDrop);
             rateUsed = overrideRate || vehicle.one_way_rate;
 
-            const distCost = effectiveKm * rateUsed;
+            distanceCharge = effectiveKm * rateUsed;
 
-            let bata = 0;
             if (overrideBata !== undefined) {
-                bata = overrideBata;
-                breakdown.push(`Driver Bata (Manual): ₹${bata}`);
+                calculatedBata = overrideBata;
+                breakdown.push(`Driver Bata (Manual): ₹${calculatedBata}`);
             } else {
-                bata = vehicle.driver_bata;
-                breakdown.push(`Driver Bata: ₹${bata}`);
+                calculatedBata = vehicle.driver_bata;
+                breakdown.push(`Driver Bata: ₹${calculatedBata}`);
             }
 
-            totalFare = distCost + bata;
+            totalFare = distanceCharge + calculatedBata;
 
             if (effectiveKm > distance) {
                 breakdown.push(`Minimum Drop Distance Applied: ${minDrop} km`);
             }
-            breakdown.push(`Distance Charge: ${effectiveKm} km x ₹${rateUsed} = ₹${distCost}`);
+            breakdown.push(`Distance Charge: ${effectiveKm} km x ₹${rateUsed} = ₹${distanceCharge}`);
         }
     }
 
-    // Final Additions for Pet / Night if passed
-    if (petCharge && petCharge > 0) {
-        totalFare += petCharge;
-        breakdown.push(`Pet Charge: ₹${petCharge}`);
+    // ============================================================
+    // FINAL ADDITIONS (Applied to all scenarios)
+    // ============================================================
+
+    // Hill Station Logic
+    let hillStationAmt = 0;
+    if (overrideHillStation !== undefined && overrideHillStation > 0) {
+        hillStationAmt = overrideHillStation;
+    } else if (isHillStation) {
+        hillStationAmt = (vehicleType === 'tempo' || vehicleType === 'minibus' || vehicleType === 'bus') ? 1000 : 500;
     }
 
-    if (nightCharge && nightCharge > 0) {
-        totalFare += nightCharge;
-        breakdown.push(`Night Charge: ₹${nightCharge}`);
+    if (hillStationAmt > 0) {
+        totalFare += hillStationAmt;
+        breakdown.push(`Hill Station Charge: ₹${hillStationAmt}`);
+    }
+
+    // Pet Charge
+    const petAmt = petCharge || 0;
+    if (petAmt > 0) {
+        totalFare += petAmt;
+        breakdown.push(`Pet Charge: ₹${petAmt}`);
+    }
+
+    // Night Charge
+    const nightAmt = nightCharge || 0;
+    if (nightAmt > 0) {
+        totalFare += nightAmt;
+        breakdown.push(`Night Charge: ₹${nightAmt}`);
     }
 
     return {
@@ -244,6 +262,13 @@ export const calculateFare = (
         effectiveDistance: effectiveKm,
         rateUsed,
         distance: distance,
-        mode: serviceType
+        mode: serviceType,
+        details: {
+            fare: Math.round(distanceCharge),
+            driverBatta: Math.round(calculatedBata),
+            hillStation: Math.round(hillStationAmt),
+            petCharge: Math.round(petAmt),
+            nightCharge: Math.round(nightAmt)
+        }
     };
 };

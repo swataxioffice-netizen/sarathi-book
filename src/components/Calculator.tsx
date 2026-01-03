@@ -99,7 +99,13 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
         setDrop(dropAddr);
         setDistance(dist.toString());
         if (tollAmt && tollAmt > 0) {
-            setToll(tollAmt.toString());
+            let finalToll = tollAmt;
+            if (tripType === 'roundtrip') {
+                const numDays = parseInt(days) || 1;
+                // Indian Toll Logic: ~1.6x for return within 24h, 2.0x for multi-day
+                finalToll = numDays > 1 ? tollAmt * 2 : Math.round(tollAmt * 1.6);
+            }
+            setToll(finalToll.toString());
         }
         setShowMap(false);
     };
@@ -156,8 +162,8 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
                         if (advanced.tollPrice > 0 && !manualToll) {
                             let baseToll = advanced.tollPrice;
                             let vehicleMultiplier = 1;
-                            if (selectedVehicle === 'tempo') vehicleMultiplier = 1.5;
-                            else if (['minibus', 'bus'].includes(selectedVehicle)) vehicleMultiplier = 2.0;
+                            if (selectedVehicle === 'tempo') vehicleMultiplier = 1.6;
+                            else if (['minibus', 'bus'].includes(selectedVehicle)) vehicleMultiplier = 3.3;
 
                             baseToll = Math.round(baseToll * vehicleMultiplier);
 

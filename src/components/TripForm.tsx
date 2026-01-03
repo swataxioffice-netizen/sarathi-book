@@ -325,7 +325,17 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 setEndKm(startKm + Math.round(dist * multiplier));
             }
             if (tollAmt && tollAmt > 0) {
-                setToll(tollAmt);
+                let vehicleMultiplier = 1;
+                if (selectedVehicleId === 'tempo') vehicleMultiplier = 1.6;
+                else if (['minibus', 'bus'].includes(selectedVehicleId)) vehicleMultiplier = 3.3;
+
+                const baseToll = Math.round(tollAmt * vehicleMultiplier);
+                let finalToll = baseToll;
+                if (mode === 'outstation') {
+                    // Indian Toll Logic: ~1.6x for return within 24h, 2.0x for multi-day
+                    finalToll = (days || 1) > 1 ? baseToll * 2 : Math.round(baseToll * 1.6);
+                }
+                setToll(finalToll);
                 if (!visibleCharges.includes('toll')) {
                     setVisibleCharges(prev => [...prev, 'toll']);
                 }
@@ -388,8 +398,17 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                         setEstimatedDistance(finalDist);
 
                         if (advanced.tollPrice > 0) {
-                            // Doubling toll for outstation (Round Trip)
-                            setToll(advanced.tollPrice * multiplier);
+                            let vehicleMultiplier = 1;
+                            if (selectedVehicleId === 'tempo') vehicleMultiplier = 1.6;
+                            else if (['minibus', 'bus'].includes(selectedVehicleId)) vehicleMultiplier = 3.3;
+
+                            const baseToll = Math.round(advanced.tollPrice * vehicleMultiplier);
+                            let finalToll = baseToll;
+                            if (mode === 'outstation') {
+                                // Doubling toll for outstation (Round Trip)
+                                finalToll = (days || 1) > 1 ? baseToll * 2 : Math.round(baseToll * 1.6);
+                            }
+                            setToll(finalToll);
                             if (!visibleCharges.includes('toll')) {
                                 setVisibleCharges(prev => [...prev, 'toll']);
                             }
@@ -561,9 +580,13 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         const durationDays = (mode === 'outstation') ? (days || 1) : 1;
 
         // Prepare extraHours for local hourly
-        // TripForm uses waitingHours as duration for hourly mode
         const durationHrs = mode === 'hourly' ? waitingHours : 0;
         const extraHours = Math.max(0, durationHrs - 8);
+
+        // Prepare overrides for core calculation
+        const overrideBata = driverBatta > 0 ? driverBatta : undefined;
+        const petChargeAmt = petCharge ? 500 : 0;
+        const nightBataAmt = nightBata ? (settings.nightBata || 0) : 0;
 
         const res = calculateFare(
             serviceType,
@@ -572,75 +595,35 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             durationDays,
             extraHours,
             isHillStation,
-            overrideRate
+            overrideRate,
+            overrideBata,
+            undefined, // overrideHillStation
+            petChargeAmt,
+            nightBataAmt
         );
 
-        // TripForm handles extra charges (toll, parking, permit, pet, night) manually
-        // But calculateFare returns { totalFare, breakdown }
-        // We need to adhere to the Result state structure expected by TripForm
-
-        // Re-construct the 'total' by adding extras not handled in calculateFare logic
+        // External Extras (Not handled by core calculateFare logic)
         const permitTotal = permitCharge || 0;
         const parkingTotal = parking || 0;
         const tollTotal = toll || 0;
-        const petTotal = petCharge ? 500 : 0;
-        const nightBataTotal = nightBata ? (settings.nightBata || 0) : 0; // Manual night batta from settings
-        const nightStayTotal = nightStay || 0; // Manual night stay
+        const nightStayTotal = nightStay || 0;
 
-        // Note: calculateFare MIGHT have added Hill Station charges or Night Charges if logic existed, 
-        // but our new logic puts Hill Station in totalFare. 
-        // However, TripForm treats these as separate line items in its result state often.
-        // Let's rely on calculateFare's totalFare as the base + distance + minimal logic, and add the rest.
-
-        // Wait! calculateFare INCLUDES driverBatta in totalFare for Round Trip / Outstation.
-        // But TripForm has `driverBatta` state for manual overrides.
-        // Line 574 logic: "Use Manual Batta only if user explicitly overrode it"
-
-        // Let's extract the components. 
-        // The new calculateFare returns totalFare which INCLUDES Batta and HillStation.
-        // Break it down?
-        // Actually, TripForm's 'result' state expects:
-        // { total, gst, fare, distance, effectiveDistance, rateUsed, distanceCharge, waitingCharges, ... driverBatta }
-
-        // This is tricky. The new calculateFare return type is simple: { totalFare, breakdown, effectiveDistance, rateUsed, distance, mode }
-        // We need to map it back to the detailed object or adjust TripForm's expectation.
-
-        // Let's assume calculateFare does the heavy lifting.
-        // We add the purely external extras.
-
-        let finalTotal = res.totalFare;
-
-        // Add extras that are NOT in calculateFare
-        finalTotal += parkingTotal;
-        finalTotal += tollTotal;
-        finalTotal += permitTotal;
-        finalTotal += nightBataTotal; // Night Batta (Driver Allowance for night drive) - Distinct from Night Charge?
-        finalTotal += nightStayTotal;
-        finalTotal += petTotal;
-        // Hill station is already in res.totalFare if isHillStation=true passed to it.
-
-        // Driver Batta Logic
-        // calculateFare computed a batta. 
-        // If the user manually entered a DIFFERENT batta in UI (driverBatta state), we need to correct the total.
-        // But the new calculateFare doesn't expose the calculated batta amount separately in a property, only in breakdown string.
-        // Recommendation: Trust the new calculateFare. If user entered manual batta, we might have a conflict.
-        // However, looking at the previous code (Line 574), it seems the UI allows overriding.
-        // For now, let's use the calculated value to avoid complexity, or if driverBatta > 0 state implies manual override, we'd need to subtract the calc'd batta and add manual.
-        // Since we can't easily extract calc'd batta from the simple result, let's stick to the calculated one.
+        // Final total combines core calculation with external extras
+        const finalTotal = res.totalFare + permitTotal + parkingTotal + tollTotal + nightStayTotal;
 
         setResult({
-            total: finalTotal,
-            gst: 0, // GST Logic is separate
-            fare: res.totalFare, // Base Calc (Dist + Time + Vehicle Batta)
+            total: Math.round(finalTotal),
+            gst: 0, // GST handling remains separate/manual
+            fare: res.totalFare, // Base calculation (includes distance, time, batta, hill, pet, night)
             distance: dist,
             effectiveDistance: res.effectiveDistance || dist,
             rateUsed: res.rateUsed || 0,
-            distanceCharge: 0, // Not explicitly returned, can be derived if needed, but 'fare' covers it
-            waitingCharges: 0,
+            distanceCharge: res.details.fare,
+            waitingCharges: 0, // Currently accounted for within res.totalFare for hourly
             waitingHours: durationHrs,
-            hillStationCharges: isHillStation ? 500 : 0, // Approx
-            petCharges: petTotal,
-            driverBatta: 0, // It's inside 'fare', setting 0 here to avoid double counting if UI adds it
+            hillStationCharges: res.details.hillStation,
+            petCharges: res.details.petCharge,
+            driverBatta: res.details.driverBatta,
             nightStay: nightStayTotal
         });
         setIsCalculated(true);
