@@ -15,7 +15,7 @@ import { NotificationProvider, useNotifications } from './contexts/NotificationC
 import Notifications from './components/Notifications';
 import { Analytics } from './utils/monitoring';
 import { subscribeToPush, onMessageListener } from './utils/push';
-import SarathiAI from './components/SarathiAI';
+// import SarathiAI from './components/SarathiAI';
 import type { Trip } from './utils/fare';
 import type { SavedQuotation } from './utils/pdf';
 
@@ -28,6 +28,7 @@ const Calculator = lazy(() => import('./components/Calculator'));
 const QuotationForm = lazy(() => import('./components/QuotationForm'));
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
 const PublicProfile = lazy(() => import('./components/PublicProfile'));
+const QuickNotes = lazy(() => import('./components/QuickNotes'));
 
 // Loading fallback component
 // Loading fallback component
@@ -47,7 +48,7 @@ function AppContent() {
     // Priority: 1. URL Path, 2. URL Hash (Legacy/Auth), 3. Local Storage, 4. Default 'dashboard'
     const pathname = window.location.pathname.slice(1).split('/')[0];
     const hash = window.location.hash.slice(1).split('/')[0];
-    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin'];
+    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin', 'notes'];
 
     if (pathname && validTabs.includes(pathname)) return pathname;
     if (hash && validTabs.includes(hash)) return hash;
@@ -58,7 +59,7 @@ function AppContent() {
   useEffect(() => {
     const handlePopState = () => {
       const pathname = window.location.pathname.slice(1).split('/')[0];
-      const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin'];
+      const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin', 'notes'];
       if (pathname && validTabs.includes(pathname)) {
         setActiveTab(pathname);
       }
@@ -112,6 +113,7 @@ function AppContent() {
 
   const [invoiceQuotationToggle, setInvoiceQuotationToggle] = useState<'invoice' | 'quotation'>('invoice');
   const [invoiceStep, setInvoiceStep] = useState(1);
+  const [quotationStep, setQuotationStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [trips, setTrips] = useState<Trip[]>(() => safeJSONParse<Trip[]>('namma-cab-trips', []));
   const [quotations, setQuotations] = useState<SavedQuotation[]>(() => safeJSONParse<SavedQuotation[]>('saved-quotations', []));
@@ -309,19 +311,21 @@ function AppContent() {
               ) : (
                 <div className="space-y-2">
                   <Suspense fallback={<LoadingFallback />}>
-                    <QuotationForm onSaveQuotation={handleSaveQuotation} quotations={quotations} />
+                    <QuotationForm onSaveQuotation={handleSaveQuotation} quotations={quotations} onStepChange={setQuotationStep} />
                   </Suspense>
 
-                  <div className="mt-8 pt-6 border-t border-slate-200 text-left">
-                    <Suspense fallback={<LoadingFallback />}>
-                      <History
-                        quotations={quotations}
-                        type="quotation"
-                        onDeleteQuotation={handleDeleteQuotation}
-                        onConvertQuotation={handleConvertQuotation}
-                      />
-                    </Suspense>
-                  </div>
+                  {quotationStep === 1 && (
+                    <div className="mt-8 pt-6 border-t border-slate-200 text-left">
+                      <Suspense fallback={<LoadingFallback />}>
+                        <History
+                          quotations={quotations}
+                          type="quotation"
+                          onDeleteQuotation={handleDeleteQuotation}
+                          onConvertQuotation={handleConvertQuotation}
+                        />
+                      </Suspense>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -381,10 +385,15 @@ function AppContent() {
             <ExpenseTracker />
           </Suspense>
         );
-      case 'calculator':
         return (
           <Suspense fallback={<LoadingFallback />}>
             <Calculator />
+          </Suspense>
+        );
+      case 'notes':
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <QuickNotes />
           </Suspense>
         );
       case 'profile':
@@ -427,7 +436,7 @@ function AppContent() {
           <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10">
             <h2 className="text-hero font-bold text-slate-800 capitalize tracking-wide">{activeTab === 'trips' ? 'Invoices & Trips' : activeTab}</h2>
             <div className="flex items-center gap-4">
-              {needRefresh ? (
+              {needRefresh && (
                 <button
                   onClick={() => updateServiceWorker(true)}
                   className="flex items-center gap-1 bg-red-50 text-red-600 px-3 py-1.5 rounded-full border border-red-100 animate-pulse shadow-sm"
@@ -435,27 +444,26 @@ function AppContent() {
                   <RefreshCw size={14} className="animate-spin-slow" />
                   <span className="text-[10px] font-black uppercase tracking-widest">New Version Available</span>
                 </button>
-              ) : (
-                <button
-                  onClick={() => window.location.reload()}
-                  aria-label="Refresh page"
-                  className="p-2 bg-slate-50 text-slate-400 rounded-full border border-slate-100 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                >
-                  <RefreshCw size={14} aria-hidden="true" className={loading ? 'animate-spin text-blue-600' : ''} />
-                </button>
               )}
               <Notifications />
               <div className="text-right hidden lg:block">
                 <p className="text-sm font-bold text-slate-900">{user?.user_metadata?.full_name || 'Guest User'}</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Driver Account</p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-blue-100 text-[#0047AB] flex items-center justify-center font-black border border-blue-200">
+              <button
+                onClick={() => setActiveTab('profile')}
+                className="w-10 h-10 rounded-full bg-blue-100 text-[#0047AB] flex items-center justify-center font-black border border-blue-200 hover:bg-blue-200 transition-colors"
+              >
                 {loading ? (
                   <RefreshCw size={16} className="animate-spin" />
                 ) : (
-                  user?.user_metadata?.full_name?.[0]?.toUpperCase() || 'U'
+                  user?.user_metadata?.avatar_url ? (
+                    <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    user?.user_metadata?.full_name?.[0]?.toUpperCase() || 'U'
+                  )
                 )}
-              </div>
+              </button>
             </div>
           </header>
 
@@ -469,15 +477,15 @@ function AppContent() {
 
       {/* Mobile Layout */}
       <div className="md:hidden h-screen w-full bg-white flex flex-col relative overflow-hidden">
-        <Header />
+        <Header activeTab={activeTab} setActiveTab={setActiveTab} />
         <main className="flex-1 overflow-y-auto scrollbar-hide p-4 pb-24 bg-[#F5F7FA]">
           {renderContent()}
         </main>
         <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
       </div>
 
-      {/* Sarathi AI Assistant */}
-      <SarathiAI />
+      {/* Sarathi AI Assistant (Disabled for cleaner UI) */}
+      {/* <SarathiAI /> */}
 
       {/* Guest Login Nudge */}
       {showLoginNudge && !user && (

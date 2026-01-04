@@ -51,12 +51,18 @@ const Profile: React.FC = () => {
         const vehicleInfo = VEHICLES.find(v => v.id === selectedCategoryId);
         if (!vehicleInfo) return;
 
+        const mileageMap: Record<string, string> = {
+            'hatchback': '18', 'sedan': '16', 'suv': '12', 'premium_suv': '10',
+            'tempo': '8', 'minibus': '6', 'bus': '4'
+        };
+
         updateSettings({
             vehicles: [...settings.vehicles, {
                 id: crypto.randomUUID(),
                 number: newVehicleNumber.toUpperCase().replace(/[^A-Z0-9]/g, ''), // Store clean format
                 model: newVehicleModel || vehicleInfo.name,
-                categoryId: vehicleInfo.id
+                categoryId: vehicleInfo.id,
+                mileage: mileageMap[vehicleInfo.id] || '15'
             }]
         });
         setNewVehicleNumber('');

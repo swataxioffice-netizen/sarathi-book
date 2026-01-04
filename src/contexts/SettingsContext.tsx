@@ -10,6 +10,7 @@ interface Vehicle {
     model: string;
     categoryId?: string;
     expiryDate?: string;
+    mileage?: string;
 }
 
 interface Settings {

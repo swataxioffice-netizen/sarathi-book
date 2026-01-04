@@ -30,6 +30,7 @@ export interface QuotationItem {
     package: string;
     vehicleType: string;
     rate: string;
+    quantity?: number; // Added for auto-calculation
     amount: string;
 }
 
@@ -563,343 +564,414 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     return doc;
 };
 
-// Sustainable Quotation Design
+
+
+// Sustainable Quotation Design (Refactored to match Professional Letterhead Standard)
 export const generateQuotationPDF = async (data: QuotationData, settings: PDFSettings) => {
-    const doc = new jsPDF({ compress: true });
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
     const margin = 15;
-    let y = 0;
+    let y = 15;
 
     const companyName = String(settings?.companyName || 'YOUR Business Name');
     const companyAddress = String(settings?.companyAddress || '');
     const driverPhone = String(settings?.driverPhone || '');
     const gstin = String(settings?.gstin || '');
+
+    // Theme Color (Standard Blue if not set)
     const themeColor = settings?.appColor || '#0047AB';
     const rgb = hexToRgb(themeColor);
-    const setThemeColor = () => doc.setTextColor(rgb.r, rgb.g, rgb.b);
-    const setDrawColor = () => doc.setDrawColor(rgb.r, rgb.g, rgb.b);
+    const setBrandColor = () => doc.setTextColor(rgb.r, rgb.g, rgb.b);
+    const setBlack = () => doc.setTextColor(0, 0, 0);
+    const setGray = () => doc.setTextColor(100, 100, 100);
 
-    // --- HEADER (Minimal) ---
-    setThemeColor();
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
-    doc.text(companyName.toUpperCase(), margin, 20);
-    doc.setTextColor(0, 0, 0);
+    // --- 1. LETTERHEAD HEADER ---
+    // Company Name
+    setBrandColor();
+    doc.setFont('times', 'bold');
+    doc.setFontSize(24);
+    doc.text(companyName.toUpperCase(), margin, y);
 
-
-    doc.setFontSize(9);
-
-    doc.setFontSize(9);
+    // Address & Contact Block
+    y += 8;
+    setGray();
     doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
     const addrLines = doc.splitTextToSize(companyAddress, 120);
-    doc.text(addrLines, margin, 27);
+    doc.text(addrLines, margin, y);
 
-    y = 38 + (addrLines.length > 1 ? (addrLines.length - 1) * 4 : 0);
+    y += (addrLines.length * 4) + 2;
+    setBlack();
     doc.setFont('helvetica', 'bold');
-    doc.text(`Contact: ${driverPhone}${gstin ? `  |  GSTIN: ${gstin}` : ''}`, margin, y);
+    doc.text(`Contact : ${driverPhone}`, margin, y);
+    if (gstin) {
+        doc.text(`GSTIN : ${gstin}`, margin + 60, y);
+    }
 
-    doc.setDrawColor(0, 0, 0);
+    // Divider
+    y += 5;
+    doc.setDrawColor(rgb.r, rgb.g, rgb.b);
     doc.setLineWidth(0.5);
-    doc.line(margin, y + 5, 195, y + 5);
+    doc.line(margin, y, 210 - margin, y);
 
-    y += 12;
-    doc.setFontSize(10);
+    // --- 2. QUOTATION INFO & RECIPIENT ---
+    y += 8;
+
+    // Header Title at Top
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    const title = 'QUOTATION';
+    doc.text(title, 105, y, { align: 'center', charSpace: 1.5 });
+
+    // Underline for Title
+    doc.setLineWidth(0.3);
+    const titleWidth = doc.getTextWidth(title) + 5; // Slight padding
+    doc.line(105 - (titleWidth / 2), y + 1.5, 105 + (titleWidth / 2), y + 1.5);
+
+    y += 10;
+
+    // Right Side: Date & Ref No
     const dateObj = new Date(data.date);
     const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
     const yyyy = dateObj.getFullYear();
-
     const qNo = data.quotationNo || `QT/${mm}${yyyy}/001`;
 
-    doc.setFont('helvetica', 'bold');
-    doc.text(`QUOT NO : ${qNo}`, margin, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`DATE : ${dateObj.toLocaleDateString('en-IN')}`, 195, y, { align: 'right' });
+    doc.setFontSize(10);
+    doc.text(`Date : ${dateObj.toLocaleDateString('en-IN')}`, 210 - margin, y, { align: 'right' });
+    y += 5;
+    doc.text(`Ref No : ${qNo}`, 210 - margin, y, { align: 'right' });
 
-    y += 10;
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('QUOTATION / COST ESTIMATION', 105, y, { align: 'center' });
-    // Minimal underline
-    doc.setLineWidth(0.2);
-    doc.line(80, y + 1, 130, y + 1);
-
-    y += 15;
+    // Left Side: To Address
+    y -= 5;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text('To,', margin, y);
-    y += 7;
+    y += 6;
     doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
     doc.text(toTitleCase(data.customerName || '[Client\'s Name]'), margin, y);
 
     if (data.customerAddress) {
         y += 5;
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
+        doc.setFontSize(10);
         const addrText = formatAddress(data.customerAddress);
         const parts = addrText.split(',').map(p => p.trim());
-        let lines: string[] = [];
-        if (parts.length <= 3) {
-            lines = parts;
-        } else {
-            const line1 = parts.slice(0, parts.length - 2).join(', ');
-            const line2 = parts[parts.length - 2];
-            const line3 = parts[parts.length - 1];
-            lines = [line1, line2, line3];
-        }
+        // Simple 3 line wrap
+        const maxLines = 3;
+        let currentLine = 0;
+        let currentY = y;
 
-        let combinedLines: string[] = [];
-        lines.forEach((line, idx) => {
-            if (idx < 2) {
-                const wrapped = doc.splitTextToSize(line + (idx < lines.length - 1 ? ',' : ''), 70);
-                combinedLines = [...combinedLines, ...wrapped];
+        // Primitive wrapping for address
+        let buffer = '';
+        parts.forEach((part, i) => {
+            if (currentLine >= maxLines) return;
+            const newBuffer = buffer ? `${buffer}, ${part}` : part;
+            if (doc.getTextWidth(newBuffer) > 90) { // Max width for address col
+                doc.text(buffer + (i < parts.length - 1 ? ',' : ''), margin, currentY);
+                currentY += 5;
+                currentLine++;
+                buffer = part;
             } else {
-                combinedLines.push(line);
+                buffer = newBuffer;
             }
         });
-
-        const finalLines = combinedLines.slice(0, 3);
-        doc.text(finalLines, margin, y);
-        y += (finalLines.length * 4.5);
+        if (buffer && currentLine < maxLines) {
+            doc.text(buffer, margin, currentY);
+            currentY += 5;
+        }
+        y = Math.max(y + 10, currentY);
+    } else {
+        y += 10;
     }
 
     if (data.customerGstin) {
-        y += 5;
+        y += 2;
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        doc.text(`GSTIN : ${data.customerGstin}`, margin, y);
+        doc.setFontSize(10);
+        doc.text(`GSTIN: ${data.customerGstin}`, margin, y);
+        y += 8;
     }
 
-    y += 10;
+    // --- 3. SUBJECT ---
+    y += 5;
     doc.setFont('helvetica', 'bold');
-    const subText = `SUB : ${toTitleCase(data.subject)} -reg.`;
-    const subLines = doc.splitTextToSize(subText, 175);
-    doc.text(subLines, 105, y, { align: 'center' });
-    y += subLines.length * 5 + 5;
+    doc.setFontSize(11);
 
-    // --- TABLE (Clean, No Fill) ---
-    const headers = ['S.No', 'Description', 'SAC', 'Vehicle', 'Rate', 'Amount'];
-    const colWidths = [10, 70, 15, 30, 25, 30];
+    let subject = toTitleCase(data.subject).trim();
+    if (!subject.toLowerCase().endsWith('reg.') && !subject.toLowerCase().endsWith('reg')) {
+        subject += ' - Reg.';
+    }
+    const subText = `SUB : ${subject}`;
+    doc.text(subText, 105, y, { align: 'center' });
+
+    // --- 4. TABLE ---
+    y += 12;
+
+    const headers = ['S.No', 'Description of Service', 'Vehicle', 'Pkg', 'Qty', 'Rate', 'Amount'];
+    const colWidths = [10, 65, 20, 20, 12, 20, 33]; // Total 180 (Fits nicely within A4 margins)
     const tableX = margin;
 
-    // Header Lines (Top/Bottom border for header row)
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.1);
-    doc.line(tableX, y, tableX + 180, y);
+    // Table Header
+    setBrandColor();
+    doc.setDrawColor(rgb.r, rgb.g, rgb.b);
+    doc.setLineWidth(0.3);
+    doc.rect(tableX, y, 180, 8, 'S'); // Stroke Header Box
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
 
     let xVal = tableX;
     headers.forEach((h, i) => {
-        doc.text(h, xVal + (colWidths[i] / 2), y + 6.5, { align: 'center' });
+        // center align text in cell
+        doc.text(h, xVal + (colWidths[i] / 2), y + 5.5, { align: 'center' });
+        // Draw vertical line after cell (except last)
+        if (i < headers.length - 1) {
+            doc.line(xVal + colWidths[i], y, xVal + colWidths[i], y + 8);
+        }
         xVal += colWidths[i];
     });
 
-    y += 10;
-    doc.line(tableX, y - 2, tableX + 180, y - 2); // Bottom header line
+    y += 8; // Row Height
+
+    // Table Body
+    setBlack();
+    doc.setFont('helvetica', 'normal');
+    doc.setDrawColor(200, 200, 200); // Lighter grid lines
 
     let totalAmount = 0;
+
     data.items.forEach((item, index) => {
-        doc.setFont('helvetica', 'normal');
+        const rowTopY = y;
+
+        // Content Formatting
+        const descText = item.description;
+        const descLines = doc.splitTextToSize(descText, colWidths[1] - 4);
+
+        // Calculate Row Max Height
+        const rowHeight = Math.max(8, (descLines.length * 5) + 4);
+
+        // Check for page break
+        if (y + rowHeight > 270) {
+            doc.addPage();
+            y = 20;
+            // Draw Header again... simplified for now assuming single page quotation usually
+        }
+
+        // Draw Row Cells
         let x = tableX;
-        doc.text((index + 1).toString(), x + (colWidths[0] / 2), y + 7, { align: 'center' });
+
+        // S.No
+        doc.text((index + 1).toString(), x + (colWidths[0] / 2), y + 5, { align: 'center' });
         x += colWidths[0];
 
-        const descText = toTitleCase(`${item.description} - ${item.package}`);
-        const descLines = doc.splitTextToSize(descText, colWidths[1] - 4);
-        doc.text(descLines, x + 2, y + 7);
+        // Description
+        doc.text(descLines, x + 2, y + 5);
         x += colWidths[1];
 
-        // SAC Code
-        doc.text('9966', x + (colWidths[2] / 2), y + 7, { align: 'center' });
+        // Vehicle
+        doc.text(item.vehicleType, x + (colWidths[2] / 2), y + 5, { align: 'center' });
         x += colWidths[2];
 
-        doc.text(item.vehicleType, x + (colWidths[3] / 2), y + 7, { align: 'center' });
+        // Package
+        const pkgText = doc.splitTextToSize(item.package || '-', colWidths[3] - 4);
+        doc.text(pkgText, x + (colWidths[3] / 2), y + 5, { align: 'center' });
         x += colWidths[3];
 
-        doc.text(item.rate, x + (colWidths[4] / 2), y + 7, { align: 'center' });
+        // Qty
+        doc.text(String(item.quantity || 1), x + (colWidths[4] / 2), y + 5, { align: 'center' });
         x += colWidths[4];
 
+        // Rate
+        doc.text(item.rate, x + (colWidths[5] / 2), y + 5, { align: 'center' });
+        x += colWidths[5];
+
+        // Amount
         const amt = parseFloat(item.amount) || 0;
-        doc.text(`${amt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, x + colWidths[5] - 2, y + 7, { align: 'right' });
+        doc.text(`${amt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, x + (colWidths[6] / 2), y + 5, { align: 'center' });
         totalAmount += amt;
 
-        const rowHeight = Math.max(10, descLines.length * 6);
+        // Vertical Lines for this row
+        doc.setDrawColor(220, 220, 220); // Light gray
+        let vx = tableX;
+        colWidths.forEach((cw, i) => {
+            if (i < colWidths.length - 1) { // Skip last right edge
+                doc.line(vx + cw, rowTopY, vx + cw, rowTopY + rowHeight);
+            }
+            vx += cw;
+        });
+
+        // Box around the row
+        doc.rect(tableX, rowTopY, 180, rowHeight);
+
         y += rowHeight;
     });
 
+    // --- 5. TOTALS SECTION ---
     y += 5;
-    doc.line(tableX, y, tableX + 180, y);
 
-    // --- TOTALS SECTION ---
-    y += 10;
-    const taxableValue = totalAmount;
-    const gstTotal = data.gstEnabled ? (taxableValue * 0.05) : 0;
-    const grandTotal = taxableValue + gstTotal;
+    // We'll put Totals on the right
 
+
+    // Taxable
     doc.setFont('helvetica', 'normal');
-    doc.text('Taxable Amount:', 140, y);
-    doc.text(`${taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
+    // Align totals with the center of the Amount column (Amount column starts at X=... depends on sum of prev cols)
+    const totalAmountColumnCenterX = tableX + 10 + 65 + 20 + 20 + 12 + 20 + (33 / 2); // = tableX + 147 + 16.5 = tableX + 163.5
+    // Actually, user said "make the values aligned center". So the column values are centered.
+    // The total values should probably align with those values.
+    const alignX = tableX + 180 - (33 / 2); // Center of Last Column (Width 33)
 
-    if (data.gstEnabled) {
+    doc.text('Taxable Value', 135, y);
+    doc.text(totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 }), alignX, y, { align: 'center' });
+    y += 6;
+
+    // RCM / GST Logic
+    let gstAmt = 0;
+
+    if (data.rcmEnabled) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text('Tax Payable on RCM :', 135, y);
+        doc.text('YES', alignX, y, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9); // Reset
         y += 6;
-        doc.text('CGST (2.5%):', 140, y);
-        doc.text(`${(gstTotal / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
-        y += 6;
-        doc.text('SGST (2.5%):', 140, y);
-        doc.text(`${(gstTotal / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
+    } else if (data.gstEnabled) {
+        gstAmt = (totalAmount * 0.05);
+
+        // Determine Inter-state (IGST) or Intra-state (CGST+SGST)
+        const driverStateCode = settings.gstin ? settings.gstin.substring(0, 2) : '33'; // Default to TN (33)
+        const clientStateCode = data.customerGstin ? data.customerGstin.substring(0, 2) : '';
+
+        const isInterState = clientStateCode && driverStateCode !== clientStateCode;
+
+        if (isInterState) {
+            doc.text('IGST (5%)', 135, y);
+            doc.text(gstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 }), alignX, y, { align: 'center' });
+            y += 6;
+        } else {
+            const halfGst = gstAmt / 2;
+            doc.text('CGST (2.5%)', 135, y);
+            doc.text(halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 }), alignX, y, { align: 'center' });
+            y += 6;
+            doc.text('SGST (2.5%)', 135, y);
+            doc.text(halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 }), alignX, y, { align: 'center' });
+            y += 6;
+        }
     }
 
-    y += 8;
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.3);
-    doc.line(130, y - 6, 195, y - 6); // Top line for Grand Total
-    doc.line(130, y + 4, 195, y + 4); // Bottom line for Grand Total
+    // Line
+    doc.line(130, y - 2, alignX + 15, y - 2); // Underline extending a bit
 
+    // Net Amount
+    const netAmount = totalAmount + gstAmt;
+    setBrandColor();
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.text('GRAND TOTAL:', 140, y);
-    doc.text(`Rs. ${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
+    doc.text('TOTAL AMOUNT', 135, y + 2);
+    doc.text(netAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 }), alignX, y + 2, { align: 'center' });
+    y += 10;
+    setBlack();
 
-    // --- RCM Section ---
-    if (data.rcmEnabled) {
-        y += 8;
-        doc.setFont('helvetica', 'italic'); // Changed to italic as per preference
-        doc.setFontSize(9);
-        doc.text('Tax Payable on Reverse Charge: YES', margin, y);
-    }
-
-    doc.setFontSize(9);
+    // Amount in Words
     doc.setFont('helvetica', 'italic');
-    doc.text(`( ${numberToWords(grandTotal).toUpperCase()} )`, 105, y + 8, { align: 'center', maxWidth: 180 });
-
-    y += 18;
-
-    // Terms & Conditions
-    y += 5;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Terms & Conditions:', margin, y);
-    y += 6;
     doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    const notes = data.terms && data.terms.length > 0 ? data.terms : [
-        '• Toll, Parking, State Permit and Border Entry Fees are extra as per actual receipts.',
-        '• Driver Allowance, Night Batta and Hill Station charges extra if applicable.',
-        '• This quotation is valid for a period of 15 days from the date of issue.'
-    ];
+    doc.text(`( ${numberToWords(netAmount).toUpperCase()} )`, alignX + 15, y, { align: 'right' });
 
-    notes.forEach(n => {
-        const lines = doc.splitTextToSize(n, 180);
-        doc.text(lines, margin, y);
-        y += (lines.length * 5) + 1;
-    });
-
-    // Signature
-    y += 5;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('For ' + companyName.toUpperCase(), 195, y, { align: 'right' });
-
-    y += 5;
-    if (settings?.signatureUrl) {
-        try {
-            doc.addImage(settings.signatureUrl, 'PNG', 158, y, 35, 14, undefined, 'FAST');
-            y += 18;
-        } catch (e) {
-            y += 15;
-        }
-    } else {
-        y += 15;
-    }
-    doc.text('Authorized Signatory', 195, y, { align: 'right' });
-
-
-    // --- PAYMENT DETAILS CENTERED BOTTOM ---
-    if (settings.holderName || settings.upiId) {
-        const bottomY = 262; // Fixed position near footer
-        doc.setFontSize(9);
-        setThemeColor();
-        doc.text('PAYMENT DETAILS', 105, bottomY, { align: 'center' });
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(8);
+    // --- 6. TERMS & FOOTER ---
+    // Render Terms only if available
+    if (data.terms && data.terms.length > 0) {
+        y += 10;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('Terms & Conditions:', margin, y);
+        y += 5;
         doc.setFont('helvetica', 'normal');
 
-        let py = bottomY + 5;
-        if (settings.holderName) {
-            doc.text(`Account Name: ${settings.holderName}`, 105, py, { align: 'center' });
-            py += 4;
-        }
-        if (settings.upiId) {
-            doc.text(`UPI ID: ${settings.upiId}`, 105, py, { align: 'center' });
-            py += 4;
-        }
-        if (settings.bankName) {
-            doc.text(`Bank: ${settings.bankName}`, 105, py, { align: 'center' });
-            py += 4;
-        }
-        if (settings.accountNumber) {
-            doc.text(`A/c No: ${settings.accountNumber}`, 105, py, { align: 'center' });
-            py += 4;
-        }
-        if (settings.ifscCode) {
-            doc.text(`IFSC: ${settings.ifscCode}`, 105, py, { align: 'center' });
-        }
+        data.terms.forEach(t => {
+            doc.setFontSize(9);
+            const lines = doc.splitTextToSize(t, 180);
+            doc.text(lines, margin, y);
+            y += (lines.length * 4.5);
+        });
+    } else {
+        // Just add some spacing if no terms
+        y += 10;
     }
 
-    // Center Footer Disclaimer
-    y = 282;
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(150, 150, 150);
-    const disclaimer = 'This bill is computer generated and does not need signature';
-    doc.text(disclaimer, 105, y, { align: 'center' });
-    doc.setTextColor(0, 0, 0);
+    // Bank Details (If available)
+    if (settings.bankName && settings.accountNumber) {
+        y += 5;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Bank Details:', margin, y);
+        y += 5;
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Bank: ${settings.bankName}`, margin, y);
+        y += 4;
+        doc.text(`A/c No: ${settings.accountNumber}`, margin, y);
+        y += 4;
+        doc.text(`IFSC: ${settings.ifscCode}`, margin, y);
+        y += 6; // Space after bank details
+    }
 
-    y = 278;
-    setDrawColor();
+    // Thank You Message
+    y += 10;
+    setBrandColor();
+    doc.setFontSize(12);
+    doc.setFont('times', 'italic');
+    doc.text('Thank You', 105, y, { align: 'center' });
+    setBlack();
+
+    // Signature
+    // Ensure we have space at bottom but don't force it too far down if not needed
+    if (y > 230) {
+        doc.addPage();
+        y = 20;
+    } else {
+        y += 15; // Small gap after Thank You
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(`For ${companyName}`, 210 - margin, y, { align: 'right' });
+    y += 15;
+
+    if (settings?.signatureUrl) {
+        try {
+            doc.addImage(settings.signatureUrl, 'PNG', 160, y - 12, 35, 12, undefined, 'FAST');
+        } catch (e) { }
+    }
+
+    doc.text('Authorized Signatory', 210 - margin, y, { align: 'right' });
+
+    // --- FOOTER PROMOTION ---
+    const footerY = 280;
+    doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.5);
-    doc.line(margin, y, 195, y);
-    y += 3; // Adjusted for logo
+    doc.line(margin, footerY, 210 - margin, footerY);
 
     try {
         // Brand Logo and Name in Footer
-        doc.addImage('/logo.png', 'PNG', margin, y, 10, 10);
+        doc.addImage('/logo.png', 'PNG', margin, footerY + 3, 8, 8, undefined, 'FAST');
 
         doc.setFont('times', 'bold');
-        doc.setFontSize(10);
-        setThemeColor();
-        doc.text('SARATHI BOOK', margin + 12, y + 4.5);
+        doc.setFontSize(9);
+        setBrandColor();
+        doc.text('SARATHI BOOK', margin + 10, footerY + 7);
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(6);
-        doc.setTextColor(100, 100, 100);
-        doc.text('Your digital office on car', margin + 12, y + 8);
+        doc.setFontSize(5);
+        setGray();
+        doc.text('Your digital office on car', margin + 10, footerY + 10);
 
-        doc.setFontSize(8);
-        setThemeColor();
-        doc.setFont('helvetica', 'bold');
-        doc.text('sarathibook.com', 195, y + 6, { align: 'right', url: 'https://sarathibook.com' } as any);
-        doc.link(175, y, 20, 10, { url: 'https://sarathibook.com' });
-    } catch (e) {
-        // Fallback if logo fails
         doc.setFontSize(7);
-        setThemeColor();
+        setBrandColor();
         doc.setFont('helvetica', 'bold');
-        doc.text('SARATHIBOOK.COM', 105, y + 2, {
-            align: 'center',
-            url: 'https://sarathibook.com'
-        } as any);
-
-        doc.setFontSize(4);
-        doc.setTextColor(150, 150, 150);
-        doc.setFont('helvetica', 'normal');
-        doc.text('PROFESSIONAL CAB BUSINESS SUITE | AUTOMATE YOUR GROWTH', 105, y + 5, { align: 'center' });
-
-        doc.link(90, y, 30, 5, { url: 'https://sarathibook.com' });
-    }
+        doc.text('sarathibook.com', 210 - margin, footerY + 8, { align: 'right', url: 'https://sarathibook.com' } as any);
+        doc.link(180, footerY + 2, 20, 10, { url: 'https://sarathibook.com' });
+    } catch (e) { }
 
     return doc;
 };
+
 
 // --- HELPER ---
 const hexToRgb = (hex: string) => {

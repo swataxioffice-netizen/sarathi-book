@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { shareQuotation, type SavedQuotation, type QuotationItem } from '../utils/pdf';
-import { safeJSONParse } from '../utils/storage';
-import { Send, User, Plus, Trash2, ChevronDown, ChevronUp, RefreshCw, MapPin, Landmark, Eye } from 'lucide-react';
+import { Send, Plus, Trash2, ChevronDown, ChevronUp, Briefcase, Car, MapPin, Sparkles } from 'lucide-react';
 import { generateQuotationPDF } from '../utils/pdf';
 import PDFPreviewModal from './PDFPreviewModal';
 import { saveToHistory, getHistory } from '../utils/history';
@@ -12,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 interface QuotationFormProps {
     onSaveQuotation: (q: SavedQuotation) => void;
     quotations?: SavedQuotation[];
+    onStepChange?: (step: number) => void;
 }
 
 const DEFAULT_TERMS = [
@@ -23,24 +23,48 @@ const DEFAULT_TERMS = [
     'This quotation is valid for a period of 15 days from the date of issue.'
 ];
 
-const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotations = [] }) => {
+const QUOTATION_TEMPLATES = [
+    { id: 'local', label: 'Local Rental', icon: Car, desc: '8Hr/80KM Pkg', subject: 'Quotation for Local Car Rental', items: [{ description: 'Sedan - 8 Hrs / 80 KM', package: '8h 80km', vehicleType: 'Sedan', rate: '2500', amount: '2500' }, { description: 'Extra KM Charge', package: 'Per KM', vehicleType: 'Any', rate: '14', amount: '' }, { description: 'Extra Hour Charge', package: 'Per Hr', vehicleType: 'Any', rate: '150', amount: '' }] },
+    { id: 'outstation', label: 'Outstation', icon: MapPin, desc: 'Round Trip', subject: 'Quotation for Outstation Trip', items: [{ description: 'Sedan - Min 250 KM/Day', package: 'Per KM', vehicleType: 'Sedan', rate: '12', amount: '3000' }, { description: 'Driver Batta', package: 'Per Day', vehicleType: 'Any', rate: '500', amount: '500' }] },
+    { id: 'airport', label: 'Airport', icon: Send, desc: 'Pickup/Drop', subject: 'Quotation for Airport Transfer', items: [{ description: 'Airport Drop (City to Airport)', package: 'One Way', vehicleType: 'Sedan', rate: '1200', amount: '1200' }, { description: 'Airport Pickup (Airport to City)', package: 'One Way', vehicleType: 'Sedan', rate: '1300', amount: '1300' }] },
+    { id: 'monthly', label: 'Corporate', icon: Briefcase, desc: 'Monthly Cab', subject: 'Quotation for Corporate Monthly Cab', items: [{ description: 'Monthly Cab Service (Sedan)', package: '3000 KM / 300 Hrs', vehicleType: 'Sedan', rate: '45000', amount: '45000' }] },
+];
+
+
+
+const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotations = [], onStepChange }) => {
     const { settings } = useSettings();
     const { user } = useAuth();
-    const [customerName, setCustomerName] = useState(() => safeJSONParse('draft-q-name', ''));
-    const [customerAddress, setCustomerAddress] = useState(() => safeJSONParse('draft-q-address', ''));
-    const [customerGstin, setCustomerGstin] = useState(() => safeJSONParse('draft-q-gstin', ''));
-    const [subject, setSubject] = useState(() => safeJSONParse('draft-q-subject', ''));
-    const [vehicleType, setVehicleType] = useState(() => safeJSONParse('draft-q-vehicle', 'Sedan'));
-    const [items, setItems] = useState<QuotationItem[]>(() => safeJSONParse('draft-q-items', []));
-    const [gstEnabled, setGstEnabled] = useState(() => safeJSONParse('draft-q-gst', false));
-    const [rcmEnabled, setRcmEnabled] = useState(() => safeJSONParse('draft-q-rcm', false)); // Reverse Charge
-    const [selectedTerms, setSelectedTerms] = useState<string[]>(() => safeJSONParse('draft-q-terms', DEFAULT_TERMS));
+
+    // Steps: 1=Type, 2=Items/Pricing, 3=Client, 4=Terms/Preview
+    const [currentStep, setCurrentStep] = useState(1);
+
+
+    // Sync step change to parent
+    useEffect(() => {
+        onStepChange?.(currentStep);
+    }, [currentStep, onStepChange]);
+
+    // Initialize with empty defaults (no draft persistence as per user request)
+    const [customerName, setCustomerName] = useState('');
+    const [customerAddress, setCustomerAddress] = useState('');
+    const [customerGstin, setCustomerGstin] = useState('');
+    const [subject, setSubject] = useState('');
+
+    // Removed global vehicleType state in favor of item-level types
+    const [items, setItems] = useState<QuotationItem[]>([]);
+
+    const [gstEnabled, setGstEnabled] = useState(false);
+    const [rcmEnabled, setRcmEnabled] = useState(false);
+    const [selectedTerms, setSelectedTerms] = useState<string[]>([]);
+
+    // UI States
     const [customTerm, setCustomTerm] = useState('');
-    const [showItems, setShowItems] = useState(false);
     const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
     const [showPreview, setShowPreview] = useState(false);
+    const [showTerms, setShowTerms] = useState(false); // Collapsible
 
-    // History States
+    // History
     const [history, setHistory] = useState({
         names: getHistory('customer_name'),
         addresses: getHistory('customer_address'),
@@ -49,49 +73,35 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
         descriptions: getHistory('item_description')
     });
 
-    // Auto-save draft changes
-    useEffect(() => { localStorage.setItem('draft-q-name', JSON.stringify(customerName)); }, [customerName]);
-    useEffect(() => { localStorage.setItem('draft-q-address', JSON.stringify(customerAddress)); }, [customerAddress]);
-    useEffect(() => { localStorage.setItem('draft-q-gstin', JSON.stringify(customerGstin)); }, [customerGstin]);
-    useEffect(() => { localStorage.setItem('draft-q-subject', JSON.stringify(subject)); }, [subject]);
-    useEffect(() => { localStorage.setItem('draft-q-vehicle', JSON.stringify(vehicleType)); }, [vehicleType]);
-    useEffect(() => { localStorage.setItem('draft-q-items', JSON.stringify(items)); }, [items]);
-    useEffect(() => { localStorage.setItem('draft-q-gst', JSON.stringify(gstEnabled)); }, [gstEnabled]);
-    useEffect(() => { localStorage.setItem('draft-q-rcm', JSON.stringify(rcmEnabled)); }, [rcmEnabled]);
-    useEffect(() => { localStorage.setItem('draft-q-terms', JSON.stringify(selectedTerms)); }, [selectedTerms]);
-
 
 
     const handleAddItem = () => {
-        setItems([...items, { description: '', package: '', vehicleType: vehicleType, rate: '', amount: '' }]);
+        setItems([...items, { description: '', package: '', vehicleType: 'Sedan', rate: '', quantity: 1, amount: '' }]);
     };
 
     const handleRemoveItem = (index: number) => {
         setItems(items.filter((_, i) => i !== index));
     };
 
-    const applyTemplate = (type: 'day_rental') => {
-        if (type === 'day_rental') {
-            setSubject('Day Rental Quotation');
-            setItems([
-                {
-                    description: 'Day Rental (Local)',
-                    package: '12 Hrs / 120 KM',
-                    vehicleType: vehicleType,
-                    rate: '4000',
-                    amount: '4000'
-                }
-            ]);
-            setGstEnabled(true);
-            setShowItems(true);
-        }
-    };
-
-    const updateItem = (index: number, field: keyof QuotationItem, value: string) => {
+    const updateItem = (index: number, field: keyof QuotationItem, value: any) => {
         const newItems = [...items];
-        newItems[index][field] = value;
+        newItems[index] = { ...newItems[index], [field]: value };
+
+        // Auto Calculate Amount
+        if (field === 'rate' || field === 'quantity') {
+            const rate = parseFloat(newItems[index].rate) || 0;
+            const qty = parseFloat(String(newItems[index].quantity)) || 0;
+            if (rate > 0 && qty > 0) {
+                newItems[index].amount = (rate * qty).toString();
+            } else {
+                newItems[index].amount = '';
+            }
+        }
+
         setItems(newItems);
     };
+
+
 
     const toggleTerm = (term: string) => {
         if (selectedTerms.includes(term)) {
@@ -108,10 +118,6 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
         setCustomTerm('');
     };
 
-    const removeTerm = (index: number) => {
-        setSelectedTerms(selectedTerms.filter((_, i) => i !== index));
-    };
-
     const getNextQuotationNo = () => {
         const dateObj = new Date();
         const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -121,8 +127,6 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
         if (!quotations || quotations.length === 0) {
             return `${prefix}01`;
         }
-
-        // Find all quotations for the current month and get their serial numbers
         const currentMonthSerials = quotations
             .filter(q => q.quotationNo && q.quotationNo.startsWith(prefix))
             .map(q => {
@@ -130,123 +134,58 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                 const serialStr = parts[parts.length - 1];
                 return parseInt(serialStr) || 0;
             });
-
         const maxSerial = currentMonthSerials.length > 0 ? Math.max(...currentMonthSerials) : 0;
         return `${prefix}${String(maxSerial + 1).padStart(2, '0')}`;
     };
 
     const handlePreview = async () => {
         if (!customerName?.trim()) { alert('Please enter Guest / Company Name'); return; }
-        if (!subject?.trim()) { alert('Please enter a Subject for the quotation'); return; }
-        if (items.length === 0) { alert('Please add at least one item to the quotation'); return; }
-
         const qNo = getNextQuotationNo();
-
         const doc = await generateQuotationPDF({
             customerName,
             customerAddress,
             customerGstin,
             subject,
             date: new Date().toISOString(),
-            items: items.map(item => ({ ...item, vehicleType })),
+            items: items.map(item => ({ ...item, vehicleType: item.vehicleType || 'Sedan' })),
             gstEnabled,
-            rcmEnabled, // Pass RCM flag
+            rcmEnabled,
             quotationNo: qNo,
-            terms: selectedTerms
-        }, {
-            ...settings,
-            vehicleNumber: 'N/A',
-            signatureUrl: settings.signatureUrl,
-            userId: user?.id,
-            bankName: settings.bankName,
-            accountNumber: settings.accountNumber,
-            ifscCode: settings.ifscCode,
-            holderName: settings.holderName,
-            upiId: settings.upiId
-        });
-
-        const blob = doc.output('blob');
-        const url = URL.createObjectURL(blob);
-        setPreviewPdfUrl(url);
+            terms: currentStep >= 3 ? selectedTerms : []
+        }, { ...settings, vehicleNumber: 'N/A', signatureUrl: settings.signatureUrl, userId: user?.id, bankName: settings.bankName, accountNumber: settings.accountNumber, ifscCode: settings.ifscCode, holderName: settings.holderName, upiId: settings.upiId });
+        setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
         setShowPreview(true);
     };
 
     const handleShareQuote = async () => {
         if (!customerName?.trim()) { alert('Please enter Guest / Company Name'); return; }
-        if (!subject?.trim()) { alert('Please enter a Subject for the quotation'); return; }
-        if (items.length === 0) { alert('Please add at least one item to the quotation'); return; }
-
-        // Validate Item Details
-        const invalidItems = items.filter(i => !i.description?.trim() || !i.amount || Number(i.amount) <= 0);
-        if (invalidItems.length > 0) {
-            alert('Please ensure all items have a Description and valid Amount');
-            return;
-        }
-
         const qNo = getNextQuotationNo();
-
         const newQuote: SavedQuotation = {
             id: Date.now().toString(),
             quotationNo: qNo,
-            customerName,
-            customerAddress,
-            customerGstin,
-            subject,
+            customerName, customerAddress, customerGstin, subject,
             date: new Date().toISOString(),
-            items: items.map(item => ({ ...item, vehicleType })),
-            vehicleType,
-            gstEnabled,
-            rcmEnabled, // Save to history
-            terms: selectedTerms
+            items: items.map(item => ({ ...item, vehicleType: item.vehicleType || 'Sedan' })),
+            vehicleType: 'Sedan',
+            gstEnabled, rcmEnabled, terms: selectedTerms
         };
-
         onSaveQuotation(newQuote);
+        await shareQuotation(newQuote, { ...settings, vehicleNumber: 'N/A', signatureUrl: settings.signatureUrl, userId: user?.id, bankName: settings.bankName, accountNumber: settings.accountNumber, ifscCode: settings.ifscCode, holderName: settings.holderName, upiId: settings.upiId });
 
-        await shareQuotation({
-            customerName,
-            customerAddress,
-            customerGstin,
-            subject,
-            date: newQuote.date,
-            items: newQuote.items,
-            gstEnabled,
-            rcmEnabled, // Pass RCM flag
-            quotationNo: qNo,
-            terms: selectedTerms
-        }, {
-            ...settings,
-            vehicleNumber: 'N/A',
-            signatureUrl: settings.signatureUrl,
-            userId: user?.id,
-            bankName: settings.bankName,
-            accountNumber: settings.accountNumber,
-            ifscCode: settings.ifscCode,
-            holderName: settings.holderName,
-            upiId: settings.upiId
-        });
+        // Reset
+        setCustomerName(''); setCustomerAddress(''); setCustomerGstin(''); setSubject(''); setItems([]);
+        setCurrentStep(1);
+        localStorage.removeItem('draft-q-name'); localStorage.removeItem('draft-q-items');
 
-        // Clear draft after successful creation
-        setCustomerName('');
-        setCustomerAddress('');
-        setCustomerGstin('');
-        setSubject('');
-        setVehicleType('Sedan');
-        setItems([]);
-        localStorage.removeItem('draft-q-name');
-        localStorage.removeItem('draft-q-address');
-        localStorage.removeItem('draft-q-gstin');
-        localStorage.removeItem('draft-q-subject');
-        localStorage.removeItem('draft-q-vehicle');
-        localStorage.removeItem('draft-q-items');
-        localStorage.removeItem('draft-q-gst');
-        // Save to History
+        // Save History
         if (customerName) saveToHistory('customer_name', customerName);
         if (customerAddress) saveToHistory('customer_address', customerAddress);
         if (customerGstin) saveToHistory('customer_gstin', customerGstin);
         if (subject) saveToHistory('quotation_subject', subject);
-        items.forEach(i => { if (i.description) saveToHistory('item_description', i.description); });
+        // Save description history for all items
+        items.forEach(item => { if (item.description) saveToHistory('item_description', item.description); });
 
-        // Update local history state
+        // Update local history
         setHistory({
             names: getHistory('customer_name'),
             addresses: getHistory('customer_address'),
@@ -258,345 +197,341 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
         setShowPreview(false);
     };
 
-    return (
-        <div className="space-y-2 pb-24">
-            {/* Page Title */}
-            <div className="px-2 py-1 text-center relative">
-                <h2 className="text-lg font-black uppercase tracking-wide text-slate-800 underline decoration-4 decoration-[#6366F1] underline-offset-4">QUOTATION</h2>
-                <div className="flex items-center justify-center gap-2 mt-1">
-                    <p className="text-slate-600 text-[10px] font-medium">Create formal quotations</p>
-                    <span className="px-1.5 py-0.5 bg-blue-50 text-[#6366F1] text-[8px] font-black rounded uppercase border border-blue-100 mt-1">v2.1</span>
-                </div>
+    const applyTemplate = (tmpl: typeof QUOTATION_TEMPLATES[0]) => {
+        setSubject(tmpl.subject);
+        setItems(tmpl.items.map(i => ({ ...i, quantity: 1 }))); // Deep copy to avoid ref issues
+    };
 
-                {/* Emergency Refresh for Cache issues */}
-                <button
-                    onClick={() => window.location.reload()}
-                    className="absolute right-2 top-2 p-2 text-slate-400 hover:text-blue-600 active:rotate-180 transition-all duration-500"
-                    title="Refresh App"
-                >
-                    <RefreshCw size={14} />
-                </button>
+    return (
+
+        <div className="space-y-4">
+            {/* Step Indicator */}
+            <div className="flex items-center justify-between mb-2">
+                <div className="flex gap-1.5">
+                    {[1, 2, 3].map((s) => (
+                        <div key={s} className={`h-1.5 rounded-full transition-all duration-300 ${s <= currentStep ? (s === currentStep ? 'w-8 bg-blue-600' : 'w-4 bg-blue-400') : 'w-4 bg-slate-200'}`} />
+                    ))}
+                </div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Step {currentStep} of 3</span>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-2 space-y-2">
-                <div className="space-y-2">
-                    <div className="space-y-2 mb-2">
+            <div className="tn-card overflow-hidden">
+                {/* STEP 1: CLIENT & SUBJECT */}
+                {currentStep === 1 && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                         <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Guest / Company Name <span className="text-red-500">*</span></label>
-                            <div className="relative">
-                                <User size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <input
-                                    id="quote_customer_name"
-                                    name="quote_customer_name"
-                                    type="text"
-                                    value={customerName}
-                                    onChange={(e) => setCustomerName(e.target.value)}
-                                    onBlur={(e) => setCustomerName(toTitleCase(e.target.value))}
-                                    className="tn-input h-10 pl-8 text-xs font-bold bg-white border-slate-200 focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1]"
-                                    placeholder="Enter Client Name"
-                                    list="q-history-names"
-                                />
-                                <datalist id="q-history-names">
-                                    {history.names.map(name => <option key={name} value={name} />)}
-                                </datalist>
-                            </div>
+                            <h3 className="text-xl font-black text-slate-900 leading-tight">Quotation Details</h3>
+                            <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wide">Client Info & Subject</p>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-2">
+                        <div className="space-y-4">
+                            {/* To Address Section */}
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                        <Briefcase size={12} />
+                                    </div>
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">To (Client)</span>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Client Name</label>
+                                    <input
+                                        value={customerName}
+                                        onChange={(e) => setCustomerName(e.target.value)}
+                                        onBlur={(e) => setCustomerName(toTitleCase(e.target.value))}
+                                        className="w-full h-10 px-3 text-sm font-bold border border-slate-200 rounded-xl focus:border-[#0047AB] focus:ring-1 focus:ring-[#0047AB] outline-none bg-white"
+                                        placeholder="Company / Person Name"
+                                        list="q-history-names"
+                                    />
+                                    <datalist id="q-history-names">{history.names.map(n => <option key={n} value={n} />)}</datalist>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Address</label>
+                                    <input
+                                        value={customerAddress}
+                                        onChange={(e) => setCustomerAddress(e.target.value)}
+                                        onBlur={(e) => setCustomerAddress(formatAddress(e.target.value))}
+                                        className="w-full h-10 px-3 text-sm font-bold border border-slate-200 rounded-xl focus:border-[#0047AB] focus:ring-1 focus:ring-[#0047AB] outline-none bg-white"
+                                        placeholder="Full Address"
+                                        list="q-history-addresses"
+                                    />
+                                    <datalist id="q-history-addresses">{history.addresses.map(a => <option key={a} value={a} />)}</datalist>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">GSTIN (Optional)</label>
+                                    <input
+                                        value={customerGstin}
+                                        onChange={(e) => setCustomerGstin(e.target.value.toUpperCase())}
+                                        className="w-full h-10 px-3 text-sm font-bold border border-slate-200 rounded-xl focus:border-[#0047AB] focus:ring-1 focus:ring-[#0047AB] uppercase outline-none bg-white"
+                                        placeholder="GST Number"
+                                        maxLength={15}
+                                        list="q-history-gstins"
+                                    />
+                                    <datalist id="q-history-gstins">{history.gstins.map(g => <option key={g} value={g} />)}</datalist>
+                                </div>
+                            </div>
+
+                            {/* Subject Section */}
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1">
-                                    <MapPin size={10} className="text-red-500" /> Client Address
-                                </label>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Subject Line</label>
                                 <input
-                                    id="quote_customer_address"
-                                    name="quote_customer_address"
-                                    type="text"
-                                    value={customerAddress}
-                                    onChange={(e) => setCustomerAddress(e.target.value)}
-                                    onBlur={(e) => setCustomerAddress(formatAddress(e.target.value))}
-                                    className="tn-input h-10 text-xs font-bold bg-white border-slate-200"
-                                    placeholder="City, State"
-                                    list="q-history-addresses"
+                                    value={subject}
+                                    onChange={(e) => setSubject(e.target.value)}
+                                    className="w-full h-12 px-4 text-sm font-bold border border-slate-200 rounded-xl focus:border-[#0047AB] focus:ring-1 focus:ring-[#0047AB] outline-none"
+                                    placeholder="e.g. Quotation for Monthly Cab Services"
+                                    list="q-history-subjects"
                                 />
-                                <datalist id="q-history-addresses">
-                                    {history.addresses.map(addr => <option key={addr} value={addr} />)}
-                                </datalist>
+                                <datalist id="q-history-subjects">{history.subjects.map(s => <option key={s} value={s} />)}</datalist>
                             </div>
+                        </div>
 
+                        <div className="flex gap-3 pt-4 border-t border-slate-100">
+                            <button onClick={() => setCurrentStep(2)} className="flex-[2] bg-[#0047AB] text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[11px] shadow-lg shadow-blue-500/30 hover:bg-blue-700 active:scale-95 transition-all">Next: Add Items</button>
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 2: COMMERCIALS / ITEMS */}
+                {currentStep === 2 && (
+                    <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                        <div className="flex items-center justify-between">
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1">
-                                    <Landmark size={10} className="text-blue-500" /> Client GSTIN (Optional)
-                                </label>
-                                <input
-                                    id="quote_customer_gstin"
-                                    name="quote_customer_gstin"
-                                    type="text"
-                                    value={customerGstin}
-                                    onChange={(e) => setCustomerGstin(e.target.value.toUpperCase())}
-                                    className="tn-input h-10 text-xs font-bold bg-white border-slate-200"
-                                    placeholder="33XXXXX0000X1ZX"
-                                    maxLength={15}
-                                    list="q-history-gstins"
-                                />
-                                <datalist id="q-history-gstins">
-                                    {history.gstins.map(gst => <option key={gst} value={gst} />)}
-                                </datalist>
+                                <h3 className="text-xl font-black text-slate-900 leading-tight">Commercials</h3>
+                                <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wide">Edit rates & descriptions</p>
                             </div>
                         </div>
-                    </div>
 
-
-
-                    <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Subject</label>
-                        <input
-                            id="quote_subject"
-                            name="quote_subject"
-                            type="text"
-                            value={subject}
-                            onChange={(e) => setSubject(e.target.value)}
-                            onBlur={(e) => setSubject(toTitleCase(e.target.value))}
-                            className="tn-input h-8 text-xs font-bold bg-slate-50 border-slate-200"
-                            placeholder="e.g. Airport Transfer"
-                            list="q-history-subjects"
-                        />
-                        <datalist id="q-history-subjects">
-                            {history.subjects.map(s => <option key={s} value={s} />)}
-                        </datalist>
-                    </div>
-
-                    <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Vehicle Type</label>
-                        <div className="flex gap-1">
-                            {['Sedan', 'SUV', 'Innova', 'Tempo'].map(type => (
-                                <button
-                                    key={type}
-                                    onClick={() => setVehicleType(type)}
-                                    className={`flex-1 py-2 rounded-lg text-[10px] font-black transition-all border ${vehicleType === type ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-400 border-slate-200'}`}
-                                >
-                                    {type}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl border border-slate-200">
-                        <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                                <Plus size={12} className="text-blue-600" />
+                        {items.length === 0 && (
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Sparkles size={14} className="text-blue-500" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Quick Templates</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {QUOTATION_TEMPLATES.map(t => {
+                                        const Icon = t.icon;
+                                        return (
+                                            <button key={t.id} onClick={() => applyTemplate(t)} className="bg-white border hover:border-blue-500 hover:bg-blue-50 transition-all p-3 rounded-xl text-left flex items-start gap-3 group">
+                                                <div className="bg-blue-50 text-blue-600 p-2 rounded-lg group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                                                    <Icon size={16} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[11px] font-bold text-slate-800 group-hover:text-blue-700">{t.label}</p>
+                                                    <p className="text-[9px] font-medium text-slate-400">{t.desc}</p>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                            <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider">Quick Fill</span>
-                        </div>
-                        <button
-                            onClick={() => applyTemplate('day_rental')}
-                            className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black text-blue-600 hover:bg-blue-50 transition-colors"
-                        >
-                            DAY RENTAL (₹4000)
-                        </button>
-                    </div>
+                        )}
 
-                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl border border-slate-200">
-                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">Include 5% GST</span>
-                        <button
-                            onClick={() => setGstEnabled(!gstEnabled)}
-                            className={`w-10 h-5 rounded-full relative transition-colors ${gstEnabled ? 'bg-blue-600' : 'bg-slate-300'}`}
-                        >
-                            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${gstEnabled ? 'left-5.5' : 'left-0.5'}`} />
-                        </button>
-                    </div>
 
-                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl border border-slate-200">
-                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">Reverse Charge (RCM)</span>
-                        <button
-                            onClick={() => setRcmEnabled(!rcmEnabled)}
-                            className={`w-10 h-5 rounded-full relative transition-colors ${rcmEnabled ? 'bg-orange-600' : 'bg-slate-300'}`}
-                        >
-                            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${rcmEnabled ? 'left-5.5' : 'left-0.5'}`} />
-                        </button>
-                    </div>
-                </div>
 
-                <div className="space-y-2 pt-1">
-                    <button
-                        onClick={() => setShowItems(!showItems)}
-                        className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-black text-[#6366F1] uppercase tracking-widest"
-                    >
-                        <span>Edit Items ({items.length})</span>
-                        {showItems ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </button>
+                        <div className="space-y-3">
 
-                    {showItems && (
-                        <div className="space-y-2 animate-fade-in">
                             {items.map((item, index) => (
-                                <div key={index} className="bg-slate-50 p-2 rounded-xl border border-slate-100 space-y-1.5 relative">
-                                    <button
-                                        onClick={() => handleRemoveItem(index)}
-                                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90"
-                                    >
-                                        <Trash2 size={10} />
-                                    </button>
+                                <div key={index} className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm relative group space-y-3">
+                                    <div className="absolute top-3 right-3">
+                                        <button onClick={() => handleRemoveItem(index)} className="text-slate-300 hover:text-red-500 p-1 transition-colors"><Trash2 size={16} /></button>
+                                    </div>
 
                                     <div>
-                                        <label className="text-[9px] font-black text-slate-400 uppercase">Description</label>
+                                        <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">Description</label>
                                         <input
-                                            id={`quote_item_desc_${index}`}
-                                            name={`quote_item_desc_${index}`}
-                                            type="text"
                                             value={item.description}
                                             onChange={(e) => updateItem(index, 'description', e.target.value)}
-                                            onBlur={(e) => updateItem(index, 'description', toTitleCase(e.target.value))}
-                                            className="tn-input h-7 text-xs font-bold"
-                                            placeholder="Service"
+                                            className="w-full font-bold text-xs border-b border-slate-200 pb-1 outline-none focus:border-blue-500 bg-transparent"
+                                            placeholder="Details"
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <div className="col-span-1">
-                                            <label className="text-[9px] font-black text-slate-400 uppercase">Package</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">Vehicle Class</label>
+                                            <select
+                                                value={item.vehicleType || 'Sedan'}
+                                                onChange={(e) => updateItem(index, 'vehicleType', e.target.value)}
+                                                className="w-full text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 outline-none"
+                                            >
+                                                <option value="Sedan">Sedan</option>
+                                                <option value="SUV">SUV</option>
+                                                <option value="Innova">Innova</option>
+                                                <option value="Tempo">Tempo</option>
+                                                <option value="Any">Any</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">Package Limit</label>
+                                            <input value={item.package} onChange={(e) => updateItem(index, 'package', e.target.value)} className="w-full text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 outline-none" placeholder="e.g. 8h 80km" />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div>
+                                            <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">Rate</label>
+                                            <input value={item.rate} onChange={(e) => updateItem(index, 'rate', e.target.value)} className="w-full text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 outline-none" placeholder="Rate" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">Qty</label>
                                             <input
-                                                id={`quote_item_pkg_${index}`}
-                                                name={`quote_item_pkg_${index}`}
-                                                type="text"
-                                                value={item.package}
-                                                onChange={(e) => updateItem(index, 'package', e.target.value)}
-                                                className="tn-input h-7 text-xs font-bold"
-                                                placeholder="Limit"
+                                                type="number"
+                                                value={item.quantity || 1}
+                                                onChange={(e) => updateItem(index, 'quantity', e.target.value)}
+                                                className="w-full text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 outline-none text-center"
                                             />
                                         </div>
                                         <div>
-                                            <label className="text-[9px] font-black text-slate-400 uppercase">Rate</label>
+                                            <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">Amount</label>
                                             <input
-                                                id={`quote_item_rate_${index}`}
-                                                name={`quote_item_rate_${index}`}
-                                                type="text"
-                                                value={item.rate}
-                                                onChange={(e) => updateItem(index, 'rate', e.target.value)}
-                                                className="tn-input h-7 text-xs font-bold"
-                                                placeholder="Rate"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="text-[9px] font-black text-slate-400 uppercase">Amount</label>
-                                            <input
-                                                id={`quote_item_amt_${index}`}
-                                                name={`quote_item_amt_${index}`}
-                                                type="text"
                                                 value={item.amount}
-                                                onChange={(e) => updateItem(index, 'amount', e.target.value)}
-                                                className="tn-input h-7 text-xs font-black text-right"
-                                                placeholder="0.00"
+                                                readOnly
+                                                className="w-full text-xs font-black bg-slate-100 border border-slate-200 rounded-lg px-2 py-2 outline-none text-right text-slate-600 cursor-not-allowed"
+                                                placeholder="Total"
                                             />
                                         </div>
                                     </div>
                                 </div>
                             ))}
-                            <button
-                                onClick={handleAddItem}
-                                className="w-full py-2 border border-dashed border-slate-300 rounded-xl text-slate-400 text-[10px] font-black flex items-center justify-center gap-1.5 hover:bg-slate-50"
-                            >
-                                <Plus size={14} /> ADD ROW
-                            </button>
                         </div>
-                    )}
-                </div>
 
-                {/* Terms and Conditions Selection */}
-                <div className="space-y-3 pt-2">
-                    <div className="flex items-center justify-between">
-                        <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Select Terms</h4>
-                        <span className="text-[9px] font-bold text-slate-400 uppercase">{selectedTerms.length} Selected</span>
-                    </div>
 
-                    <div className="flex flex-wrap gap-1.5">
-                        {DEFAULT_TERMS.map((term, i) => (
-                            <button
-                                key={i}
-                                type="button"
-                                onClick={() => toggleTerm(`• ${term}`)}
-                                className={`px-2.5 py-1.5 rounded-lg border text-[8.5px] font-bold transition-all text-left max-w-full ${selectedTerms.includes(`• ${term}`)
-                                    ? 'bg-blue-50 border-blue-200 text-[#0047AB]'
-                                    : 'bg-white border-slate-100 text-slate-500 hover:border-slate-300'
-                                    }`}
-                            >
-                                {term.length > 50 ? term.substring(0, 50) + '...' : term}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Custom Terms List */}
-                    {selectedTerms.filter(t => !DEFAULT_TERMS.some(dt => `• ${dt}` === t)).length > 0 && (
-                        <div className="space-y-1.5 mt-2 text-left">
-                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest pl-1">Custom Terms</p>
-                            {selectedTerms.map((t, i) => {
-                                if (DEFAULT_TERMS.some(dt => `• ${dt}` === t)) return null;
-                                return (
-                                    <div key={i} className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-100 rounded-lg group">
-                                        <p className="flex-1 text-[9px] font-bold text-slate-600 leading-tight">{t.replace('• ', '')}</p>
-                                        <button
-                                            type="button"
-                                            onClick={() => removeTerm(i)}
-                                            className="text-slate-300 hover:text-red-500 transition-colors"
-                                        >
-                                            <Trash2 size={12} />
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    {/* Add Custom Term Input */}
-                    <div className="flex gap-2 pb-2">
-                        <input
-                            id="quote_custom_term"
-                            name="quote_custom_term"
-                            type="text"
-                            value={customTerm}
-                            onChange={(e) => setCustomTerm(e.target.value)}
-                            placeholder="Add custom policy..."
-                            className="flex-1 tn-input h-8 text-[11px] font-bold"
-                            onKeyPress={(e) => e.key === 'Enter' && addCustomTerm()}
-                        />
-                        <button
-                            type="button"
-                            onClick={addCustomTerm}
-                            className="px-3 bg-blue-50 border border-blue-100 text-[#0047AB] rounded-lg hover:bg-blue-100 transition-all font-black text-[10px]"
-                        >
-                            <Plus size={14} />
+                        <button onClick={handleAddItem} className="w-full py-3 border-2 border-dashed border-slate-300 rounded-2xl text-slate-500 font-bold uppercase tracking-widest text-[10px] hover:border-blue-500 hover:text-blue-500 hover:bg-blue-50 transition-all flex items-center justify-center gap-2">
+                            <Plus size={16} /> Add New Row
                         </button>
+
+                        <div className="flex gap-3 pt-4 border-t border-slate-100 mt-4">
+                            <button onClick={() => setCurrentStep(1)} className="flex-1 py-4 font-bold text-slate-400 uppercase tracking-widest text-[11px] border-2 border-slate-100 rounded-2xl hover:bg-slate-50 transition-colors">Back</button>
+                            <div className="flex-[2] flex gap-2">
+                                <button onClick={handlePreview} className="flex-1 bg-white border-2 border-slate-200 text-slate-800 font-black py-4 rounded-xl uppercase tracking-widest text-[10px] shadow-sm hover:bg-slate-50">Preview</button>
+                                <button onClick={() => setCurrentStep(3)} className="flex-[2] bg-[#0047AB] text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[11px] shadow-lg shadow-blue-500/30 hover:bg-blue-700 active:scale-95 transition-all">Continue</button>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
 
-                <div className="pt-1 flex gap-2">
-                    <button
-                        onClick={handlePreview}
-                        disabled={!customerName || items.length === 0}
-                        className="flex-1 bg-white border-2 border-slate-200 text-slate-700 font-black py-3 rounded-xl flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest active:scale-[0.98] transition-all disabled:opacity-50"
-                    >
-                        <Eye size={16} />
-                        Preview
-                    </button>
-                    <button
-                        onClick={handleShareQuote}
-                        disabled={!customerName || items.length === 0}
-                        className="flex-[2] bg-[#6366F1] text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest shadow-lg active:scale-[0.98] transition-all disabled:opacity-50"
-                    >
-                        <Send size={16} />
-                        Share Quote
-                    </button>
-                </div>
+                {/* STEP 3: TAX, TERMS & REVIEW */}
+                {currentStep === 3 && (
+                    <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                        <div>
+                            <h3 className="text-xl font-black text-slate-900 leading-tight">Review & Legal</h3>
+                            <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wide">Tax Settings & Terms</p>
+                        </div>
 
-                <PDFPreviewModal
-                    isOpen={showPreview}
-                    onClose={() => setShowPreview(false)}
-                    pdfUrl={previewPdfUrl || ''}
-                    onShare={handleShareQuote}
-                    title="Quotation Preview"
-                />
+                        {/* Tax Settings */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div onClick={() => setGstEnabled(!gstEnabled)} className={`p-3 rounded-2xl border-2 cursor-pointer transition-all ${gstEnabled ? 'bg-green-50 border-green-500' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
+                                <div className={`w-4 h-4 rounded-full border-2 mb-2 flex items-center justify-center ${gstEnabled ? 'border-green-500 bg-green-500' : 'border-slate-300'}`}>
+                                    {gstEnabled && <span className="text-white text-[8px]">✓</span>}
+                                </div>
+                                <p className="text-[10px] font-black uppercase tracking-wider text-slate-600">GST (5%)</p>
+                            </div>
+                            <div onClick={() => setRcmEnabled(!rcmEnabled)} className={`p-3 rounded-2xl border-2 cursor-pointer transition-all ${rcmEnabled ? 'bg-orange-50 border-orange-500' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
+                                <div className={`w-4 h-4 rounded-full border-2 mb-2 flex items-center justify-center ${rcmEnabled ? 'border-orange-500 bg-orange-500' : 'border-slate-300'}`}>
+                                    {rcmEnabled && <span className="text-white text-[8px]">✓</span>}
+                                </div>
+                                <p className="text-[10px] font-black uppercase tracking-wider text-slate-600">RCM Mode</p>
+                            </div>
+                        </div>
+
+                        {/* Terms */}
+                        {/* Terms */}
+                        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                            <button onClick={() => setShowTerms(!showTerms)} className="w-full flex justify-between items-center p-4 bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <span className="text-xs font-black uppercase tracking-wider text-slate-700">Terms & Conditions ({selectedTerms.length} Selected)</span>
+                                {showTerms ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                            </button>
+                            {showTerms && (
+                                <div className="p-4 border-t border-slate-100 bg-white">
+                                    <div className="space-y-3 mb-4">
+                                        {DEFAULT_TERMS.map((term, i) => {
+
+                                            // The toggle function adds '• ' prefix if missing in DEFAULT_TERMS, but DEFAULT_TERMS strings don't have it. 
+                                            // Let's standardize: The state `selectedTerms` seems to store strings. 
+                                            // The `toggleTerm` function: `toggleTerm('• ' + term)` was used before.
+                                            // Let's simplify: Just store the term string. The PDF generation can add bullets if needed, or we store with bullets. 
+                                            // Currently `toggleTerm` toggles exact string match.
+
+                                            // Wait, looking at previous code: 
+                                            // `toggleTerm('• ' + term)` was called on click.
+                                            // But `DEFAULT_TERMS` (line 17) does NOT have bullets.
+                                            // So `selectedTerms` has bullets.
+
+                                            return (
+                                                <div key={i} onClick={() => toggleTerm(`• ${term}`)} className="flex items-start gap-3 cursor-pointer group">
+                                                    <div className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${selectedTerms.includes(`• ${term}`) ? 'bg-blue-600 border-blue-600' : 'border-slate-300 group-hover:border-blue-400 bg-white'}`}>
+                                                        {selectedTerms.includes(`• ${term}`) && <span className="text-white text-xs font-bold">✓</span>}
+                                                    </div>
+                                                    <p className={`text-xs font-medium leading-relaxed ${selectedTerms.includes(`• ${term}`) ? 'text-slate-900' : 'text-slate-500'}`}>
+                                                        {term}
+                                                    </p>
+                                                </div>
+                                            );
+                                        })}
+
+                                        {/* Show Custom Terms that are in selectedTerms but NOT in DEFAULT_TERMS */}
+                                        {selectedTerms.filter(t => !DEFAULT_TERMS.some(dt => t === `• ${dt}` || t === dt)).map((term, i) => (
+                                            <div key={`custom-${i}`} onClick={() => toggleTerm(term)} className="flex items-start gap-3 cursor-pointer group">
+                                                <div className="mt-0.5 w-5 h-5 rounded-md border-2 border-blue-600 bg-blue-600 flex items-center justify-center shrink-0">
+                                                    <span className="text-white text-xs font-bold">✓</span>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-xs font-medium leading-relaxed text-slate-900">{term.replace(/^•\s*/, '')}</p>
+                                                    <span className="text-[9px] text-blue-500 font-bold uppercase tracking-wider">Custom Term</span>
+                                                </div>
+                                                <button onClick={(e) => { e.stopPropagation(); toggleTerm(term); }} className="p-1 text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="flex gap-2 pt-3 border-t border-slate-50">
+                                        <input
+                                            value={customTerm}
+                                            onChange={e => setCustomTerm(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && addCustomTerm()}
+                                            className="flex-1 h-10 px-3 text-xs font-bold border border-slate-200 rounded-xl outline-none focus:border-blue-500 transition-all placeholder:font-medium"
+                                            placeholder="Type a new term and press Enter..."
+                                        />
+                                        <button onClick={addCustomTerm} className="bg-slate-900 hover:bg-slate-800 text-white w-10 h-10 rounded-xl flex items-center justify-center transition-colors shadow-lg shadow-slate-200"><Plus size={16} /></button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-16 translate-x-10 blur-2xl"></div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Estimated Value</p>
+                            <h2 className="text-4xl font-black flex items-baseline gap-1">
+                                <span className="text-2xl text-slate-400">₹</span>
+                                {items.reduce((acc, i) => acc + (parseFloat(i.amount) || 0), 0).toLocaleString()}
+                            </h2>
+                            <p className="text-[10px] text-slate-400 mt-4 font-medium border-t border-white/10 pt-3">
+                                for {items.length} service items in "{subject}"
+                            </p>
+                        </div>
+
+                        <div className="flex gap-3 pt-4 border-t border-slate-100">
+                            <button onClick={() => setCurrentStep(2)} className="flex-1 py-4 font-bold text-slate-400 uppercase tracking-widest text-[11px] border-2 border-slate-100 rounded-2xl hover:bg-slate-50 transition-colors">Back</button>
+                            <div className="flex-[2] flex gap-2">
+                                <button onClick={handlePreview} className="flex-1 bg-white border-2 border-slate-200 text-slate-800 font-black py-4 rounded-xl uppercase tracking-widest text-[10px] shadow-sm hover:bg-slate-50">Preview</button>
+                                <button onClick={handleShareQuote} className="flex-[2] bg-[#0047AB] text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[11px] shadow-lg shadow-blue-500/30 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2">
+                                    Share <Send size={16} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
-
-        </div>
+            <PDFPreviewModal
+                isOpen={showPreview}
+                onClose={() => setShowPreview(false)}
+                pdfUrl={previewPdfUrl || ''}
+                onShare={handleShareQuote}
+                title="Quotation Preview"
+            />
+        </div >
     );
 };
 

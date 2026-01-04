@@ -203,6 +203,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     const [driverBatta, setDriverBatta] = useState<number>(0);
     const [visibleCharges, setVisibleCharges] = useState<string[]>(['toll', 'parking']); // Default common ones
 
+
+
     // Sync which charges should be visible based on values and mode
     useEffect(() => {
         const initialVisible = new Set(visibleCharges);
@@ -564,7 +566,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         return (maxSeq + 1).toString().padStart(3, '0');
     };
 
-    const handleCalculate = () => {
+    const getCalculation = () => {
         // Map mode to serviceType
         let serviceType = 'one_way';
         if (mode === 'outstation') serviceType = 'round_trip';
@@ -611,26 +613,34 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         // Final total combines core calculation with external extras
         const finalTotal = res.totalFare + permitTotal + parkingTotal + tollTotal + nightStayTotal;
 
-        setResult({
+        return {
             total: Math.round(finalTotal),
-            gst: 0, // GST handling remains separate/manual
-            fare: res.totalFare, // Base calculation (includes distance, time, batta, hill, pet, night)
+            gst: 0,
+            fare: res.totalFare,
             distance: dist,
             effectiveDistance: res.effectiveDistance || dist,
             rateUsed: res.rateUsed || 0,
             distanceCharge: res.details.fare,
-            waitingCharges: 0, // Currently accounted for within res.totalFare for hourly
+            waitingCharges: 0,
             waitingHours: durationHrs,
             hillStationCharges: res.details.hillStation,
             petCharges: res.details.petCharge,
             driverBatta: res.details.driverBatta,
             nightStay: nightStayTotal
-        });
+        };
+    };
+
+    const handleCalculate = () => {
+        const res = getCalculation();
+        setResult(res);
         setIsCalculated(true);
     };
 
     const handlePreview = async () => {
-        if (!result) return;
+        const calcResult = getCalculation();
+        setResult(calcResult);
+        if (!calcResult) return;
+
         const selectedVehObj = (settings.vehicles || []).find(v => v.id === selectedVehicleId) || currentVehicle;
         const finalVehicleNum = selectedVehObj?.number || currentVehicle?.number || 'N/A';
 
@@ -646,15 +656,15 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             to: toLoc,
             date: new Date(invoiceDate).toISOString(),
             mode,
-            totalFare: result.total,
-            fare: result.fare,
-            gst: result.gst,
+            totalFare: calcResult.total,
+            fare: calcResult.fare,
+            gst: calcResult.gst,
             startKm,
             endKm,
-            waitingCharges: result.waitingCharges,
+            waitingCharges: calcResult.waitingCharges,
             waitingHours,
-            hillStationCharges: result.hillStationCharges,
-            petCharges: result.petCharges,
+            hillStationCharges: calcResult.hillStationCharges,
+            petCharges: calcResult.petCharges,
             permit: permitCharge,
             ratePerKm: customRate,
             baseFare: settings.baseFare,
@@ -662,7 +672,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             toll: toll,
             parking: parking,
             days: days,
-            driverBatta: result.driverBatta,
+            driverBatta: calcResult.driverBatta,
             nightStay: nightStay,
             extraItems: mode === 'custom' ? extraItems : undefined
         };
@@ -824,6 +834,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             <div className="tn-card overflow-hidden">
                 {currentStep === 1 && (
                     <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                        {/* Quick Selection Templates */}
+
+
                         <div>
                             <h3 className="text-xl font-black text-slate-900 leading-tight">Choose Service</h3>
                             <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wide">What kind of trip is this?</p>
@@ -1116,6 +1129,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
                         <div className="flex gap-3">
                             <button onClick={prevStep} className="flex-1 py-4 font-bold text-slate-400 uppercase tracking-widest text-[11px] border-2 border-slate-100 rounded-2xl">Back</button>
+                            <button onClick={handlePreview} className="bg-white border-2 border-slate-200 text-slate-800 font-black py-4 px-6 rounded-2xl uppercase tracking-widest text-[11px] shadow-sm hover:bg-slate-50 transition-colors flex items-center justify-center" title="Preview"><Eye size={18} /></button>
                             <button onClick={nextStep} className="flex-[2] tn-button-primary">Continue</button>
                         </div>
                     </div>
@@ -1234,6 +1248,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
                         <div className="flex gap-3 pt-2">
                             <button onClick={prevStep} className="flex-1 py-4 font-bold text-slate-400 uppercase tracking-widest text-[11px] border-2 border-slate-100 rounded-2xl">Back</button>
+                            <button onClick={handlePreview} className="bg-white border-2 border-slate-200 text-slate-800 font-black py-4 px-6 rounded-2xl uppercase tracking-widest text-[11px] shadow-sm hover:bg-slate-50 transition-colors flex items-center justify-center" title="Preview"><Eye size={18} /></button>
                             <button onClick={nextStep} className="flex-[2] tn-button-primary">Continue</button>
                         </div>
                     </div>
@@ -1425,6 +1440,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
                         <div className="flex gap-3">
                             <button onClick={prevStep} className="flex-1 py-4 font-bold text-slate-400 uppercase tracking-widest text-[11px] border-2 border-slate-100 rounded-2xl">Back</button>
+                            <button onClick={handlePreview} className="bg-white border-2 border-slate-200 text-slate-800 font-black py-4 px-6 rounded-2xl uppercase tracking-widest text-[11px] shadow-sm hover:bg-slate-50 transition-colors flex items-center justify-center" title="Preview"><Eye size={18} /></button>
                             <button
                                 onClick={() => { handleCalculate(); nextStep(); }}
                                 className="flex-[2] tn-button-primary"
