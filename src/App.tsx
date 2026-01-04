@@ -385,6 +385,7 @@ function AppContent() {
             <ExpenseTracker />
           </Suspense>
         );
+      case 'calculator':
         return (
           <Suspense fallback={<LoadingFallback />}>
             <Calculator />
