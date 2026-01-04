@@ -52,7 +52,7 @@
             ]
         },
         {
-            "source": "/site.webmanifest",
+            "source": "/manifest.webmanifest",
             "headers": [
                 {
                     "key": "Cache-Control",

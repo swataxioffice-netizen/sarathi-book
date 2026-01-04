@@ -7,7 +7,7 @@ export default defineConfig({
     plugins: [
         react(),
         VitePWA({
-            registerType: 'autoUpdate',
+            registerType: 'prompt', // Changed from 'autoUpdate' to 'prompt' to enable UpdateWatcher UI
             injectRegister: 'script',
             includeAssets: ['apple-touch-icon.png', 'favicon.png', 'favicon-96x96.png', 'favicon-158x158.png', 'logo.png'],
             manifest: {
@@ -33,6 +33,12 @@ export default defineConfig({
                         purpose: 'any maskable'
                     }
                 ]
+            },
+            workbox: {
+                cleanupOutdatedCaches: true,
+                clientsClaim: true,
+                skipWaiting: false, // Wait for user confirmation
+                globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
             },
             devOptions: {
                 enabled: true
