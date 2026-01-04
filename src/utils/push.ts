@@ -23,9 +23,13 @@ export async function subscribeToPush() {
             return;
         }
 
+        // Wait for Service Worker to be ready to avoid "Registration failed" errors
+        const registration = await navigator.serviceWorker.ready;
+
         // Get FCM Token
         const currentToken = await getToken(messaging, {
             vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+            serviceWorkerRegistration: registration,
         });
 
         if (currentToken) {
