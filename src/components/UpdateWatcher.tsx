@@ -49,7 +49,11 @@ const UpdateWatcher: React.FC = () => {
 
                     <div className="space-y-3">
                         <button
-                            onClick={() => updateServiceWorker(true)}
+                            onClick={() => {
+                                updateServiceWorker(true);
+                                // Fallback: Force reload after 500ms if SW update hangs due to errors
+                                setTimeout(() => window.location.reload(), 500);
+                            }}
                             className="w-full py-4 bg-[#0047AB] text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                         >
                             <RefreshCw size={16} />
