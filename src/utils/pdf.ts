@@ -32,6 +32,7 @@ export interface QuotationItem {
     rate: string;
     quantity?: number; // Added for auto-calculation
     amount: string;
+    taxable?: boolean;
 }
 
 export interface QuotationData {
@@ -619,15 +620,23 @@ export const generateQuotationPDF = async (data: QuotationData, settings: PDFSet
     y += 8;
 
     // Header Title at Top
+    const pageWidth = doc.internal.pageSize.getWidth();
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    const title = 'QUOTATION';
-    doc.text(title, 105, y, { align: 'center', charSpace: 1.5 });
+    // doc.setCharSpace(1.5); // jsPDF sometimes glitches with centering + charSpace
+    // Instead of charSpace, I used manual spaces above for simpler logic, or stick to standard:
 
-    // Underline for Title
+    // Let's stick to standard but use dynamic center
+    const centerX = pageWidth / 2;
+    doc.text('QUOTATION', centerX, y, { align: 'center', charSpace: 2 });
+
+    // Underline for Title - Calculate real width approximation since getTextWidth might not catch charSpace params in all versions
+    // Width ~= StandardWidth + (Chars * Space)
+    // Actually, let's just draw a fixed width line that looks good, e.g. 40mm
     doc.setLineWidth(0.3);
-    const titleWidth = doc.getTextWidth(title) + 5; // Slight padding
-    doc.line(105 - (titleWidth / 2), y + 1.5, 105 + (titleWidth / 2), y + 1.5);
+    doc.line(centerX - 18, y + 1.5, centerX + 18, y + 1.5);
+
+    // Reset CharSpace if any (though passed as option above so it shouldn't persist, but let's be safe)
 
     y += 10;
 
@@ -700,11 +709,26 @@ export const generateQuotationPDF = async (data: QuotationData, settings: PDFSet
     doc.setFontSize(11);
 
     let subject = toTitleCase(data.subject).trim();
-    if (!subject.toLowerCase().endsWith('reg.') && !subject.toLowerCase().endsWith('reg')) {
-        subject += ' - Reg.';
+    // Removed automatic ' - Reg.' as requested
+
+    // Check for multi-line format (indicated by separator)
+    if (subject.includes('|')) {
+        const parts = subject.split('|').map(s => s.trim());
+        // Line 1: SUB : <First Part>
+        doc.text(`SUB : ${parts[0]}`, 105, y, { align: 'center' });
+        y += 5;
+        // Subsequent Lines
+        for (let i = 1; i < parts.length; i++) {
+            doc.text(parts[i], 105, y, { align: 'center' });
+            y += 5;
+        }
+    } else {
+        // Standard Single Block
+        const subText = `SUB : ${subject}`;
+        const subLines = doc.splitTextToSize(subText, 180);
+        doc.text(subLines, 105, y, { align: 'center' });
+        y += (subLines.length * 5);
     }
-    const subText = `SUB : ${subject}`;
-    doc.text(subText, 105, y, { align: 'center' });
 
     // --- 4. TABLE ---
     y += 12;
@@ -747,6 +771,7 @@ export const generateQuotationPDF = async (data: QuotationData, settings: PDFSet
 
         // Content Formatting
         const descText = item.description;
+        // Ensure strictly wrapped lines
         const descLines = doc.splitTextToSize(descText, colWidths[1] - 4);
 
         // Calculate Row Max Height
@@ -767,15 +792,16 @@ export const generateQuotationPDF = async (data: QuotationData, settings: PDFSet
         x += colWidths[0];
 
         // Description
-        doc.text(descLines, x + 2, y + 5);
+        // Explicitly align left to prevent justification artifacts and ensure wrapping
+        doc.text(descLines, x + 2, y + 5, { align: 'left' });
         x += colWidths[1];
 
         // Vehicle
-        doc.text(item.vehicleType, x + (colWidths[2] / 2), y + 5, { align: 'center' });
+        doc.text(String(item.vehicleType || '-'), x + (colWidths[2] / 2), y + 5, { align: 'center' });
         x += colWidths[2];
 
         // Package
-        const pkgText = doc.splitTextToSize(item.package || '-', colWidths[3] - 4);
+        const pkgText = doc.splitTextToSize(String(item.package || '-'), colWidths[3] - 4);
         doc.text(pkgText, x + (colWidths[3] / 2), y + 5, { align: 'center' });
         x += colWidths[3];
 
@@ -784,7 +810,7 @@ export const generateQuotationPDF = async (data: QuotationData, settings: PDFSet
         x += colWidths[4];
 
         // Rate
-        doc.text(item.rate, x + (colWidths[5] / 2), y + 5, { align: 'center' });
+        doc.text(String(item.rate || ''), x + (colWidths[5] / 2), y + 5, { align: 'center' });
         x += colWidths[5];
 
         // Amount
@@ -813,18 +839,34 @@ export const generateQuotationPDF = async (data: QuotationData, settings: PDFSet
 
     // We'll put Totals on the right
 
+    // Separate Taxable and Exempt Amounts
+    let taxableAmount = 0;
+    let exemptAmount = 0;
 
-    // Taxable
-    doc.setFont('helvetica', 'normal');
-    // Align totals with the center of the Amount column (Amount column starts at X=... depends on sum of prev cols)
+    data.items.forEach(item => {
+        const amt = parseFloat(item.amount) || 0;
+        // Use explicit flag, default to TRUE if undefined
+        if (item.taxable === false) {
+            exemptAmount += amt;
+        } else {
+            taxableAmount += amt;
+        }
+    });
 
-    // Actually, user said "make the values aligned center". So the column values are centered.
-    // The total values should probably align with those values.
     const alignX = tableX + 180 - (33 / 2); // Center of Last Column (Width 33)
 
+    // Show Taxable Value
+    doc.setFont('helvetica', 'normal');
     doc.text('Taxable Value', 135, y);
-    doc.text(totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 }), alignX, y, { align: 'center' });
+    doc.text(taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 }), alignX, y, { align: 'center' });
     y += 6;
+
+    // Show Exempt Value if any
+    if (exemptAmount > 0) {
+        doc.text('Reimbursements', 135, y);
+        doc.text(exemptAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 }), alignX, y, { align: 'center' });
+        y += 6;
+    }
 
     // RCM / GST Logic
     let gstAmt = 0;
@@ -838,7 +880,7 @@ export const generateQuotationPDF = async (data: QuotationData, settings: PDFSet
         doc.setFontSize(9); // Reset
         y += 6;
     } else if (data.gstEnabled) {
-        gstAmt = (totalAmount * 0.05);
+        gstAmt = (taxableAmount * 0.05);
 
         // Determine Inter-state (IGST) or Intra-state (CGST+SGST)
         const driverStateCode = settings.gstin ? settings.gstin.substring(0, 2) : '33'; // Default to TN (33)

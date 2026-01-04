@@ -15,7 +15,8 @@ import {
     Truck,
     RotateCcw,
     X,
-    FileText
+    FileText,
+    Check
 } from 'lucide-react';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
@@ -1060,12 +1061,22 @@ interface ResultCardProps {
 
 const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) => {
     const [expanded, setExpanded] = useState(false);
+    const [includeGst, setIncludeGst] = useState(false);
+
+    const gstAmount = Math.round(amount * 0.05);
+    const finalAmount = includeGst ? amount + gstAmount : amount;
 
     const shareToWhatsApp = () => {
         const cleanDetails = Array.isArray(details)
             ? details.map(line => line.replace(/[*_]/g, '').replace(/⚠️/g, '').trim()).join('\n')
             : details;
-        const text = `*${title}*\n\n${cleanDetails}\n\nNote: ${sub}\n\n*Total Estimate: ₹${amount.toLocaleString()}*`;
+
+        let text = `*${title}*\n\n${cleanDetails}`;
+        if (includeGst) {
+            text += `\nGST (5%): ₹${gstAmount.toLocaleString()}`;
+        }
+        text += `\n\nNote: ${sub}\n\n*Total Estimate: ₹${finalAmount.toLocaleString()}*`;
+
         const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
         window.open(url, '_blank');
     };
@@ -1078,18 +1089,33 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
             .filter(line => !line.toLowerCase().startsWith('note:'))
             .map(line => {
                 const parts = line.split(': ₹');
+                // Force break before parentheses to ensure proper wrapping in PDF
+                // Also remove '₹' symbol as it breaks PDF font encoding (shows as ¹)
+                const desc = parts[0].trim().replace(' (', '\n(').replace(/₹/g, '');
+                const amt = parts[1] ? parts[1].replace(/,/g, '') : '';
+
                 return {
-                    description: parts[0].trim(),
-                    amount: parts[1] ? parts[1].replace(/,/g, '') : '',
+                    description: desc,
+                    rate: amt,
+                    quantity: 1,
+                    amount: amt,
                     package: '',
-                    vehicleType: tripData.vehicle
+                    vehicleType: tripData.vehicle,
+                    taxable: true
                 };
             }) : [];
 
         // 2. Set localStorage drafts for QuotationForm
-        localStorage.setItem('draft-q-subject', JSON.stringify(`${tripData.pickup} to ${tripData.drop}`));
+        // Shorten locations (City only) to prevent PDF overflow
+        const shortPickup = tripData.pickup.split(',')[0].trim();
+        const shortDrop = tripData.drop.split(',')[0].trim();
+        // Use Pipe Separator for multi-line formatting in PDF
+        localStorage.setItem('draft-q-subject', JSON.stringify(`Quotation for Cab Services - ${tripData.vehicle} | Pickup: ${shortPickup} | Drop: ${shortDrop}`));
         localStorage.setItem('draft-q-vehicle', JSON.stringify(tripData.vehicle));
         localStorage.setItem('draft-q-items', JSON.stringify(items));
+        if (includeGst) {
+            localStorage.setItem('draft-q-gst', 'true');
+        }
 
         // 3. Dispatch navigation event
         window.dispatchEvent(new CustomEvent('nav-tab-quotation'));
@@ -1109,7 +1135,7 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
             )}
 
             {/* Sticky Floating Card */}
-            <div className={`fixed bottom-[90px] left-3 right-3 md:left-auto md:right-6 md:w-96 bg-white text-slate-800 z-[100] transition-all duration-300 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.15)] border border-slate-200 flex flex-col overflow-hidden ${expanded ? 'max-h-[60vh]' : 'h-auto'}`}>
+            <div className={`fixed bottom-[90px] left-3 right-3 md:left-auto md:right-6 md:w-96 bg-white text-slate-800 z-[100] transition-all duration-300 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.15)] border border-slate-200 flex flex-col overflow-hidden ${expanded ? 'max-h-[85vh]' : 'h-auto'}`}>
 
                 {/* Visual Drag Handle (only visible when expanded) */}
                 {expanded && (
@@ -1126,9 +1152,10 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                     <div className="flex justify-between items-center gap-3">
                         <div className="flex-1">
                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">{title}</p>
-                            <div className="flex items-baseline gap-1.5">
-                                <h2 className="text-2xl font-black text-[#0047AB]">₹{amount.toLocaleString()}</h2>
+                            <div className="flex items-baseline flex-wrap gap-1.5">
+                                <h2 className="text-2xl font-black text-[#0047AB]">₹{finalAmount.toLocaleString()}</h2>
                                 <span className="text-[10px] text-slate-400 font-medium">approx</span>
+                                {!includeGst && <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded ml-1">Excl. GST</span>}
                             </div>
                         </div>
 
@@ -1137,7 +1164,7 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                                 onClick={() => setExpanded(!expanded)}
                                 className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border whitespace-nowrap flex items-center gap-2 ${expanded ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-slate-50 text-[#0047AB] border-slate-200 hover:bg-slate-100'}`}
                             >
-                                {expanded ? 'Hide Details' : 'View Price Breakdown'}
+                                {expanded ? 'Hide Details' : 'View Price'}
                                 {expanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
                             </button>
                         </div>
@@ -1184,10 +1211,20 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                                             );
                                         })}
 
+                                        {/* GST Toggle Section */}
+                                        <div className="flex justify-between items-center py-2 border-b border-slate-50 border-blue-100/50">
+                                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setIncludeGst(!includeGst)}>
+                                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${includeGst ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
+                                                    {includeGst && <Check size={12} className="text-white" />}
+                                                </div>
+                                                <span className="text-[11px] font-bold text-slate-700 select-none">Add GST (5%)</span>
+                                            </div>
+                                            {includeGst && <span className="text-[11px] font-black text-[#0047AB]">₹{gstAmount.toLocaleString()}</span>}
+                                        </div>
                                         {/* Final Sum Line */}
                                         <div className="mt-4 pt-4 border-t-2 border-slate-100 flex justify-between items-center">
                                             <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Total Amount</span>
-                                            <span className="text-xl font-black text-[#0047AB]">₹{amount.toLocaleString()}</span>
+                                            <span className="text-xl font-black text-[#0047AB]">₹{finalAmount.toLocaleString()}</span>
                                         </div>
                                     </div>
                                 ) : (

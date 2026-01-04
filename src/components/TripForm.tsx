@@ -1517,10 +1517,22 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                                     <span className="font-black text-white">₹{result.driverBatta}</span>
                                                 </div>
                                             )}
-                                            {(toll > 0 || parking > 0 || permitCharge > 0) && (
+                                            {toll > 0 && (
                                                 <div className="flex justify-between items-center text-[10px]">
-                                                    <span className="font-bold text-slate-400 uppercase">Tolls & Other</span>
-                                                    <span className="font-black text-white">₹{toll + parking + permitCharge}</span>
+                                                    <span className="font-bold text-slate-400 uppercase">Toll Charges</span>
+                                                    <span className="font-black text-white">₹{toll}</span>
+                                                </div>
+                                            )}
+                                            {parking > 0 && (
+                                                <div className="flex justify-between items-center text-[10px]">
+                                                    <span className="font-bold text-slate-400 uppercase">Parking Fees</span>
+                                                    <span className="font-black text-white">₹{parking}</span>
+                                                </div>
+                                            )}
+                                            {permitCharge > 0 && (
+                                                <div className="flex justify-between items-center text-[10px]">
+                                                    <span className="font-bold text-slate-400 uppercase">State Permit</span>
+                                                    <span className="font-black text-white">₹{permitCharge}</span>
                                                 </div>
                                             )}
                                             {result.gst > 0 && (

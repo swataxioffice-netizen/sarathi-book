@@ -64,6 +64,27 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
     const [showPreview, setShowPreview] = useState(false);
     const [showTerms, setShowTerms] = useState(false); // Collapsible
 
+    // Load Draft from Calculator
+    useEffect(() => {
+        try {
+            const draftSubject = localStorage.getItem('draft-q-subject');
+            const draftItems = localStorage.getItem('draft-q-items');
+
+            if (draftSubject && draftItems) {
+                setSubject(JSON.parse(draftSubject));
+                setItems(JSON.parse(draftItems));
+
+                // Do not clear storage here to prevent StrictMode execution issues.
+                // We will clear it on Save/Share.
+
+                // Start at Step 1 so user enters Customer Name/Address
+                setCurrentStep(1);
+            }
+        } catch (e) {
+            console.error("Failed to load draft quotation", e);
+        }
+    }, []);
+
     // History
     const [history, setHistory] = useState({
         names: getHistory('customer_name'),
@@ -139,22 +160,31 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
     };
 
     const handlePreview = async () => {
-        if (!customerName?.trim()) { alert('Please enter Guest / Company Name'); return; }
-        const qNo = getNextQuotationNo();
-        const doc = await generateQuotationPDF({
-            customerName,
-            customerAddress,
-            customerGstin,
-            subject,
-            date: new Date().toISOString(),
-            items: items.map(item => ({ ...item, vehicleType: item.vehicleType || 'Sedan' })),
-            gstEnabled,
-            rcmEnabled,
-            quotationNo: qNo,
-            terms: currentStep >= 3 ? selectedTerms : []
-        }, { ...settings, vehicleNumber: 'N/A', signatureUrl: settings.signatureUrl, userId: user?.id, bankName: settings.bankName, accountNumber: settings.accountNumber, ifscCode: settings.ifscCode, holderName: settings.holderName, upiId: settings.upiId });
-        setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
-        setShowPreview(true);
+        try {
+            console.log("Generating Preview with items:", items);
+            if (!customerName?.trim()) { alert('Please enter Guest / Company Name'); return; }
+
+            const qNo = getNextQuotationNo();
+            const doc = await generateQuotationPDF({
+                customerName,
+                customerAddress,
+                customerGstin,
+                subject,
+                date: new Date().toISOString(),
+                items: items.map(item => ({ ...item, vehicleType: item.vehicleType || 'Sedan' })),
+                gstEnabled,
+                rcmEnabled,
+                quotationNo: qNo,
+                terms: currentStep >= 3 ? selectedTerms : []
+            }, { ...settings, vehicleNumber: 'N/A', signatureUrl: settings.signatureUrl, userId: user?.id, bankName: settings.bankName, accountNumber: settings.accountNumber, ifscCode: settings.ifscCode, holderName: settings.holderName, upiId: settings.upiId });
+
+            const blob = doc.output('blob');
+            setPreviewPdfUrl(URL.createObjectURL(blob));
+            setShowPreview(true);
+        } catch (error) {
+            console.error("Preview Generation Error:", error);
+            alert("Failed to generate preview. Check console for details.");
+        }
     };
 
     const handleShareQuote = async () => {
@@ -175,7 +205,9 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
         // Reset
         setCustomerName(''); setCustomerAddress(''); setCustomerGstin(''); setSubject(''); setItems([]);
         setCurrentStep(1);
-        localStorage.removeItem('draft-q-name'); localStorage.removeItem('draft-q-items');
+        localStorage.removeItem('draft-q-subject');
+        localStorage.removeItem('draft-q-items');
+        localStorage.removeItem('draft-q-vehicle');
 
         // Save History
         if (customerName) saveToHistory('customer_name', customerName);
@@ -287,6 +319,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                         </div>
 
                         <div className="flex gap-3 pt-4 border-t border-slate-100">
+                            <button onClick={handlePreview} className="flex-1 bg-white border-2 border-slate-200 text-slate-800 font-black py-4 rounded-xl uppercase tracking-widest text-[10px] shadow-sm hover:bg-slate-50 transition-all">Preview</button>
                             <button onClick={() => setCurrentStep(2)} className="flex-[2] bg-[#0047AB] text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[11px] shadow-lg shadow-blue-500/30 hover:bg-blue-700 active:scale-95 transition-all">Next: Add Items</button>
                         </div>
                     </div>
@@ -392,6 +425,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                                             />
                                         </div>
                                     </div>
+
+                                    {/* Taxable Toggle Removed */}
                                 </div>
                             ))}
                         </div>
@@ -504,7 +539,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Estimated Value</p>
                             <h2 className="text-4xl font-black flex items-baseline gap-1">
                                 <span className="text-2xl text-slate-400">₹</span>
-                                {items.reduce((acc, i) => acc + (parseFloat(i.amount) || 0), 0).toLocaleString()}
+                                {(items.reduce((acc, i) => acc + (parseFloat(i.amount) || 0), 0) * (gstEnabled ? 1.05 : 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                             </h2>
                             <p className="text-[10px] text-slate-400 mt-4 font-medium border-t border-white/10 pt-3">
                                 for {items.length} service items in "{subject}"
