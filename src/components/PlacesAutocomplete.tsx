@@ -33,6 +33,7 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
     const [predictions, setPredictions] = useState<google.maps.places.AutocompletePrediction[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [dropdownPosition, setDropdownPosition] = useState<'top' | 'bottom'>('bottom');
     const wrapperRef = useRef<HTMLDivElement>(null);
 
     // Sync internal state with prop value
@@ -51,7 +52,37 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // Smart Positioning and Scroll Logic
+    const ensureVisibility = () => {
+        // 1. Scroll into view (delayed for keyboard animation)
+        setTimeout(() => {
+            if (wrapperRef.current) {
+                wrapperRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 300);
+
+        // 2. Decide Dropdown Position (Top vs Bottom)
+        if (wrapperRef.current) {
+            const rect = wrapperRef.current.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            // If less than 200px (approx 3 items) below, and we have more space above, flip it
+            if (spaceBelow < 200 && rect.top > 200) {
+                setDropdownPosition('top');
+            } else {
+                setDropdownPosition('bottom');
+            }
+        }
+    };
+
+    const handleFocus = () => {
+        if (inputValue && predictions.length > 0) {
+            setIsOpen(true);
+        }
+        ensureVisibility();
+    };
+
     const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        // ... existing logic ...
         const val = e.target.value;
         setInputValue(val);
         onChange(val);
@@ -62,11 +93,15 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
             return;
         }
 
+        // Re-check visibility when typing creates new results
+        ensureVisibility();
+
         setIsLoading(true);
+        // ... rest of handleInputChange ...
         try {
             const google = await loadGoogleMaps();
             const service = new google.maps.places.AutocompleteService();
-
+            // ...
             const request: google.maps.places.AutocompletionRequest = {
                 input: val,
                 componentRestrictions: { country: 'in' },
@@ -77,6 +112,8 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                 if (status === google.maps.places.PlacesServiceStatus.OK && results) {
                     setPredictions(results);
                     setIsOpen(true);
+                    // Check position again once results are ready
+                    ensureVisibility();
                 } else {
                     setPredictions([]);
                     setIsOpen(false);
@@ -123,13 +160,16 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
     };
 
     return (
-        <div className="space-y-1 w-full" ref={wrapperRef}>
+        <div className="space-y-1 w-full relative" ref={wrapperRef}>
+            {/* ... label ... */}
             {label && (
                 <label htmlFor={id} className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
                     {icon} {label}
                 </label>
             )}
+
             <div className="relative group">
+                {/* ... map button ... */}
                 {onMapClick && (
                     <button
                         type="button"
@@ -147,8 +187,8 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                     type="text"
                     value={inputValue}
                     onChange={handleInputChange}
-                    onFocus={() => inputValue && predictions.length > 0 && setIsOpen(true)}
-                    onBlur={onBlur} // Note: This might conflict with click selection if not handled carefully, but mousedown listener helps
+                    onFocus={handleFocus}
+                    onBlur={onBlur}
                     className={className || `tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs ${onMapClick ? 'pl-10' : 'pl-3'} pr-10`}
                     placeholder={placeholder || "Start typing..."}
                     autoComplete="off"
@@ -161,7 +201,10 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
 
                 {/* Custom Dropdown */}
                 {isOpen && predictions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-slate-100 z-50 max-h-60 overflow-y-auto">
+                    <div className={`absolute left-0 right-0 z-50 bg-white rounded-xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto ${dropdownPosition === 'top'
+                        ? 'bottom-full mb-1'
+                        : 'top-full mt-1'
+                        }`}>
                         {predictions.map((prediction) => (
                             <button
                                 key={prediction.place_id}
