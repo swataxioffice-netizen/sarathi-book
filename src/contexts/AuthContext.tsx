@@ -12,9 +12,17 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+import { useUpdate } from './UpdateContext';
+
+
+
+// ... existing imports ...
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    // Safe to use here because UpdateProvider wraps AuthProvider now
+    const { needRefresh } = useUpdate();
 
     const ensureProfile = async (user: User) => {
         try {
@@ -44,7 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     setTimeout(() => resolve({ data: { session: null } }), 5000)
                 );
 
-                const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
+                const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
                 const currentUser = session?.user ?? null;
                 // Only update if IDs change to avoid unnecessary re-renders loop
                 setUser(prev => prev?.id === currentUser?.id ? prev : currentUser);
@@ -71,15 +79,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
     }, []);
 
-    // Helper for Google One Tap - separated to avoid re-subscribing to auth changes
+    // Helper for Google One Tap
     useEffect(() => {
         const initializeOneTap = () => {
-            const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-            if (!clientId) {
-                console.warn('Google Client ID not found in environment variables (VITE_GOOGLE_CLIENT_ID)');
+            // Block One Tap if Update is pending (UI Conflict)
+            if (needRefresh) {
+                console.log('Update pending, delaying Google One Tap.');
                 return;
             }
-            if (user) return;
+
+            const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+            if (!clientId) {
+                console.warn('Google Client ID not found');
+                return;
+            }
+            if (user) return; // Already logged in
 
             // Wait for script to load if it hasn't yet
             const interval = setInterval(() => {
@@ -89,14 +103,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     google.accounts.id.initialize({
                         client_id: clientId,
                         callback: async (response: any) => {
-                            const { data, error } = await supabase.auth.signInWithIdToken({
-                                provider: 'google',
-                                token: response.credential,
-                            });
-                            if (error) console.error('One Tap Error:', error);
-                            if (data.user) {
-                                setUser(data.user);
-                                await ensureProfile(data.user);
+                            try {
+                                const { error } = await supabase.auth.signInWithIdToken({
+                                    provider: 'google',
+                                    token: response.credential,
+                                });
+                                if (error) throw error;
+                            } catch (error) {
+                                console.error('One Tap Error:', error);
                             }
                         },
                         auto_select: true,
@@ -112,8 +126,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const cleanupOneTap = initializeOneTap();
         return () => {
             if (cleanupOneTap) cleanupOneTap();
+            // Force close if unmounting (e.g. logging in or update appearing)
+            const google = (window as any).google;
+            if (google?.accounts?.id) {
+                google.accounts.id.cancel();
+            }
         };
-    }, [user]);
+    }, [user, needRefresh]);
+
+    // ... existing content ...
 
     const signInWithGoogle = async () => {
         const redirectTo = window.location.origin;

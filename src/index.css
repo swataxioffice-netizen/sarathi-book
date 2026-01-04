@@ -24,7 +24,7 @@
   --status-warning: #EAB308;
   /* Yellow 500 */
 
-  font-family: 'Noto Sans', 'Noto Sans Tamil', 'Noto Sans Devanagari', 'Noto Sans Kannada', 'Noto Sans Telugu', 'Noto Sans Malayalam', sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Noto Sans', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   color-scheme: light;
   color: var(--text-main);

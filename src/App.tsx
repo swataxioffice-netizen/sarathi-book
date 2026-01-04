@@ -571,15 +571,15 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <NotificationProvider>
-        <SettingsProvider>
-          <UpdateProvider>
+    <UpdateProvider>
+      <AuthProvider>
+        <NotificationProvider>
+          <SettingsProvider>
             <AppContent />
-          </UpdateProvider>
-        </SettingsProvider>
-      </NotificationProvider>
-    </AuthProvider>
+          </SettingsProvider>
+        </NotificationProvider>
+      </AuthProvider>
+    </UpdateProvider>
   );
 }
 

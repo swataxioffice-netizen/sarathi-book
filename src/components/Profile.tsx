@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { Trash2, Plus, User as UserIcon, CheckCircle, Circle, Globe, Camera, LogOut, Landmark, MessageCircle, RefreshCw, Phone, Contact, X, Car, FileText, Settings, ChevronRight } from 'lucide-react';
+import { Trash2, Plus, User as UserIcon, CheckCircle, Circle, Globe, Camera, LogOut, Landmark, MessageCircle, RefreshCw, Contact, X, Car, FileText, Settings, ChevronRight } from 'lucide-react';
 import { validateGSTIN, validateVehicleNumber } from '../utils/validation';
 import DocumentVault from './DocumentVault';
 import GoogleSignInButton from './GoogleSignInButton';
@@ -453,6 +453,53 @@ const Profile: React.FC = () => {
                                         placeholder="State, City"
                                     />
                                 </div>
+
+                                {/* Moved Tax Settings (GST) */}
+                                <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Landmark size={14} className={settings.gstEnabled ? "text-green-600" : "text-slate-400"} />
+                                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-wide">Enable GST Invoice</span>
+                                        </div>
+                                        <div
+                                            onClick={() => updateSettings({ gstEnabled: !settings.gstEnabled })}
+                                            className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${settings.gstEnabled ? 'bg-green-500' : 'bg-slate-300'}`}
+                                        >
+                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${settings.gstEnabled ? 'left-6' : 'left-1'}`}></div>
+                                        </div>
+                                    </div>
+
+                                    {settings.gstEnabled && (
+                                        <div className="animate-fade-in pt-1">
+                                            <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">GST Number</label>
+                                            <input
+                                                type="text"
+                                                value={settings.gstin}
+                                                onChange={(_) => updateSettings({ gstin: _.target.value.toUpperCase() })}
+                                                className={`tn-input h-10 font-bold placeholder:text-slate-500 ${settings.gstin && !validateGSTIN(settings.gstin) ? 'border-red-300 bg-red-50' : ''}`}
+                                                placeholder="22AAAAA0000A1Z5"
+                                                maxLength={15}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* GST Help Banner */}
+                                    {user && !settings.gstEnabled && (
+                                        <div className="pt-2 border-t border-slate-200 border-dashed">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wide">Need GST Registration?</span>
+                                                <a
+                                                    href="https://wa.me/919941033990?text=Hi, I am running a Cab Transport Business and need help with GST Registration and Tax Filing."
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="text-xs text-[#25D366] hover:scale-110 transition-transform"
+                                                >
+                                                    <MessageCircle size={16} />
+                                                </a>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                                 <div className="pt-2">
                                     <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-1 block">Digital Signature (Recommended: 400x150 px, White BG)</label>
                                     <div className="flex items-center gap-4 p-3 bg-slate-50 border border-slate-100 rounded-xl">
@@ -592,95 +639,7 @@ const Profile: React.FC = () => {
             {activeTab === 'finance' && (
                 <div className="space-y-6 animate-fade-in">
 
-                    {/* Tax Settings */}
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2 px-1">
-                            {settings.gstEnabled && settings.gstin ? <CheckCircle size={14} className="text-green-500" /> : <Circle size={14} className="text-slate-300" />}
-                            <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest underline decoration-2 decoration-green-500 underline-offset-4">Tax Settings</h3>
-                        </div>
-                        <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
-                            {/* GST Toggle */}
-                            <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl border border-slate-100">
-                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-wide">Enable GST Invoice</span>
-                                <div
-                                    onClick={() => updateSettings({ gstEnabled: !settings.gstEnabled })}
-                                    className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${settings.gstEnabled ? 'bg-green-500' : 'bg-slate-300'}`}
-                                >
-                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${settings.gstEnabled ? 'left-6' : 'left-1'}`}></div>
-                                </div>
-                            </div>
 
-                            {user && !settings.gstEnabled && (
-                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 p-3 rounded-xl animate-fade-in relative overflow-hidden group">
-                                    <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                                        <Landmark size={48} className="text-blue-600" />
-                                    </div>
-                                    <h4 className="text-[10px] font-black text-blue-800 uppercase tracking-widest mb-1 flex items-center gap-1">
-                                        Need GST Registration?
-                                    </h4>
-                                    <p className="text-[9px] text-blue-600 font-bold mb-2 w-3/4">
-                                        Get your GSTIN quickly to serve corporate clients and grow your business.
-                                    </p>
-                                    <div className="flex gap-2">
-                                        <a
-                                            href="https://wa.me/919941033990?text=Hi, I am running a Cab Transport Business and need help with GST Registration and Tax Filing."
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="inline-flex items-center gap-1 bg-[#25D366] text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider hover:bg-green-600 transition-colors shadow-sm"
-                                        >
-                                            WhatsApp <MessageCircle size={10} />
-                                        </a>
-                                        <a
-                                            href="tel:+919941033990"
-                                            className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider hover:bg-blue-700 transition-colors shadow-sm"
-                                        >
-                                            Call Now <Phone size={10} />
-                                        </a>
-                                    </div>
-                                </div>
-                            )}
-
-                            {settings.gstEnabled && (
-                                <div className="space-y-2 animate-fade-in pl-1">
-                                    <div>
-                                        <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">GST Number</label>
-                                        <input
-                                            type="text"
-                                            value={settings.gstin}
-                                            onChange={(_) => updateSettings({ gstin: _.target.value.toUpperCase() })}
-                                            className={`tn-input h-10 font-bold placeholder:text-slate-500 ${settings.gstin && !validateGSTIN(settings.gstin) ? 'border-red-300 bg-red-50' : ''}`}
-                                            placeholder="22AAAAA0000A1Z5"
-                                            maxLength={15}
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="pt-2 flex justify-end border-t border-slate-100">
-                                <button
-                                    onClick={async () => {
-                                        setSavingSection('tax');
-                                        const success = await saveSettings();
-                                        await new Promise(r => setTimeout(r, 500));
-                                        if (!success) alert('Failed to save settings. Please try again.');
-                                        setSavingSection(null);
-                                    }}
-                                    className="bg-green-700 text-white px-6 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-800 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
-                                >
-                                    {savingSection === 'tax' ? (
-                                        <>
-                                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CheckCircle size={12} /> Save
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
 
                     {/* Legal & Banking */}
                     <div className="space-y-2">

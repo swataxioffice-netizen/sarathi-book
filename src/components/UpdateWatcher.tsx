@@ -24,7 +24,7 @@ const UpdateWatcher: React.FC = () => {
     if (!needRefresh) return null;
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500">
                 <div className="bg-[#0047AB] p-6 text-center relative overflow-hidden">
                     {/* Animated Background Effect */}

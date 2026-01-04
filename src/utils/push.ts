@@ -23,6 +23,11 @@ export async function subscribeToPush() {
             return;
         }
 
+        if (!import.meta.env.VITE_FIREBASE_VAPID_KEY) {
+            console.warn('VITE_FIREBASE_VAPID_KEY is missing. Push notifications will not work.');
+            return;
+        }
+
         // Wait for Service Worker to be ready to avoid "Registration failed" errors
         const registration = await navigator.serviceWorker.ready;
 
@@ -57,8 +62,14 @@ export async function subscribeToPush() {
         } else {
             console.warn('No registration token available. Request permission to generate one.');
         }
-    } catch (err) {
-        console.error('An error occurred while retrieving token. ', err);
+    } catch (err: any) {
+        if (err.code === 'messaging/permission-blocked' || err.message?.includes('permission')) {
+            console.warn('Notification permission blocked.');
+        } else if (err.name === 'AbortError' || err.message?.includes('Registration failed')) {
+            console.error('FCM Registration Failed (Network or VAPID issue):', err.message);
+        } else {
+            console.error('An error occurred while retrieving token:', err);
+        }
     }
 }
 

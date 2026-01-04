@@ -12,10 +12,10 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
 
     const navItems = [
         { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'DASHBOARD' },
+        { id: 'trips', icon: <FileText size={20} />, label: 'INVOICES' },
+        { id: 'calculator', icon: <Calculator size={20} />, label: 'CALCULATOR' },
         { id: 'expenses', icon: <Wallet size={20} />, label: 'EXPENSES' },
         { id: 'notes', icon: <PlusCircle size={24} />, label: 'ADD NOTE' },
-        { id: 'calculator', icon: <Calculator size={20} />, label: 'CALCULATOR' },
-        { id: 'trips', icon: <FileText size={20} />, label: 'INVOICES' },
     ];
 
     if (isAdmin) {
