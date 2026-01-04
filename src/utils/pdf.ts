@@ -815,7 +815,7 @@ export const generateQuotationPDF = async (data: QuotationData, settings: PDFSet
     // Taxable
     doc.setFont('helvetica', 'normal');
     // Align totals with the center of the Amount column (Amount column starts at X=... depends on sum of prev cols)
-    const totalAmountColumnCenterX = tableX + 10 + 65 + 20 + 20 + 12 + 20 + (33 / 2); // = tableX + 147 + 16.5 = tableX + 163.5
+
     // Actually, user said "make the values aligned center". So the column values are centered.
     // The total values should probably align with those values.
     const alignX = tableX + 180 - (33 / 2); // Center of Last Column (Width 33)
