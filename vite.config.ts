@@ -38,7 +38,8 @@ export default defineConfig({
                 cleanupOutdatedCaches: true,
                 clientsClaim: true,
                 skipWaiting: false, // Wait for user confirmation
-                globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
+                globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+                importScripts: ['firebase-messaging-sw.js']
             },
             devOptions: {
                 enabled: true

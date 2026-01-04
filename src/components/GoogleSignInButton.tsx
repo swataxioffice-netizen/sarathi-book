@@ -20,8 +20,9 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         setLoading(true);
         try {
             await signInWithGoogle();
-        } catch (error) {
-            console.error(error);
+        } catch (error: any) {
+            console.error('Google Sign-in failed:', error);
+            alert(`Sign-in failed: ${error.message || 'Unknown error'}`);
             setLoading(false);
         }
     };

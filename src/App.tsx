@@ -153,29 +153,74 @@ function AppContent() {
       if (user) {
         setLoading(true);
         try {
+          // 1. Fetch Cloud Trips
           const { data, error } = await supabase.from('trips').select('*').order('created_at', { ascending: false });
           if (error) throw error;
 
+          const cloudTripsMap = new Map<string, Trip>();
           if (data) {
-            const cloudTrips: Trip[] = data.map(row => ({
-              ...row.details,
-              id: row.id // Ensure ID consistency
-            }));
-
-            setTrips(prev => {
-              // Merge logic: Map by ID to avoid duplicates, keep newest versions if applicable
-              const merged = new Map<string, Trip>();
-              // Add local trips first
-              prev.forEach(t => merged.set(t.id, t));
-              // Overwrite/Add with cloud trips (Cloud is authority for synced data)
-              cloudTrips.forEach(t => merged.set(t.id, t));
-
-              return Array.from(merged.values())
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            data.forEach(row => {
+              cloudTripsMap.set(row.id, { ...row.details, id: row.id });
             });
           }
+
+          // 2. Identify and Upload Local-Only Trips to Cloud
+          const localTipsToUpload: Trip[] = [];
+
+          // Access valid current trips (ignoring any potential state closure staleness if possible, 
+          // but here we rely on 'trips' from closure which is fresh due to [user] dep getting hit after state updates usually)
+          // Actually, 'trips' in this scope might be stale if strict mode runs effect twice? 
+          // Better to use functional access or ref, but for now we trust 'trips' dependency or local read.
+          // Wait, 'trips' is not in dependency array.
+
+          // Let's use a trick: read from localStorage for source of truth of "Guest Work" to sync up
+          const localStored = safeJSONParse<Trip[]>('namma-cab-trips', []);
+
+          for (const localTrip of localStored) {
+            if (!cloudTripsMap.has(localTrip.id)) {
+              localTipsToUpload.push(localTrip);
+            }
+          }
+
+          if (localTipsToUpload.length > 0) {
+            console.log(`Syncing ${localTipsToUpload.length} local trips to cloud...`);
+            await Promise.all(localTipsToUpload.map(t =>
+              supabase.from('trips').upsert({
+                id: t.id,
+                user_id: user.id,
+                customer_name: t.customerName,
+                date: new Date(t.date).toISOString(),
+                amount: t.totalFare,
+                details: t,
+                pickup_location: (t as any).from,
+                drop_location: (t as any).to,
+                distance: (t as any).distance
+              })
+            ));
+            // Re-fetch to get cleaner state? Or just trust our merge logic below.
+            // Let's rely on merge logic, but now cloudTripsMap effectively should include these if we wanted perfect sync,
+            // but the merge logic below handles visual consistency.
+          }
+
+          setTrips(prev => {
+            const merged = new Map<string, Trip>();
+            // Keep local changes
+            prev.forEach(t => merged.set(t.id, t));
+
+            // Add Cloud Data (Win conflicts? Or Local wins? Standard sync usually Cloud Wins)
+            cloudTripsMap.forEach((t, id) => merged.set(id, t));
+
+            // Add the just-uploaded local trips back? 
+            // They are already in 'prev' (from local), and we just pushed them to cloud.
+            // If we fetched cloud trips BEFORE pushing, cloudTripsMap lacks them.
+            // 'prev' has them. 'merged' has them. We are good.
+
+            return Array.from(merged.values())
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          });
+
         } catch (err) {
-          console.error('Failed to fetch trips:', err);
+          console.error('Failed to sync trips:', err);
         } finally {
           setLoading(false);
         }
