@@ -108,7 +108,7 @@ const Profile: React.FC = () => {
                 try {
                     // Timeout promise to prevent infinite loading (15 seconds)
                     const timeoutPromise = new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error('Profile fetch timed out')), 5000)
+                        setTimeout(() => reject(new Error('Profile fetch timed out')), 15000)
                     );
 
                     const dbPromise = supabase

@@ -75,7 +75,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         const initializeOneTap = () => {
             const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-            if (!clientId || user) return;
+            if (!clientId) {
+                console.warn('Google Client ID not found in environment variables (VITE_GOOGLE_CLIENT_ID)');
+                return;
+            }
+            if (user) return;
 
             // Wait for script to load if it hasn't yet
             const interval = setInterval(() => {
@@ -95,6 +99,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                                 await ensureProfile(data.user);
                             }
                         },
+                        auto_select: true,
+                        cancel_on_tap_outside: false,
                     });
                     google.accounts.id.prompt();
                 }
@@ -119,7 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 redirectTo: redirectTo,
                 queryParams: {
                     access_type: 'offline',
-                    prompt: 'consent',
+                    prompt: 'select_account',
                 },
             }
         });

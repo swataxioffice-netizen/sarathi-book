@@ -9,7 +9,7 @@ export default defineConfig({
         VitePWA({
             registerType: 'prompt', // Changed from 'autoUpdate' to 'prompt' to enable UpdateWatcher UI
             injectRegister: 'script',
-            includeAssets: ['apple-touch-icon.png', 'favicon.png', 'favicon-96x96.png', 'favicon-158x158.png', 'logo.png'],
+            includeAssets: ['apple-touch-icon.png', 'favicon.png', 'favicon-96x96.png', 'favicon-158x158.png', 'logo.png', 'pwa-192x192.png', 'pwa-512x512.png'],
             manifest: {
                 name: 'Sarathi Book',
                 short_name: 'Sarathi',
@@ -21,13 +21,13 @@ export default defineConfig({
                 scope: '/',
                 icons: [
                     {
-                        src: 'logo.png',
+                        src: 'pwa-192x192.png',
                         sizes: '192x192',
                         type: 'image/png',
                         purpose: 'any maskable'
                     },
                     {
-                        src: 'logo-original.png',
+                        src: 'pwa-512x512.png',
                         sizes: '512x512',
                         type: 'image/png',
                         purpose: 'any maskable'
