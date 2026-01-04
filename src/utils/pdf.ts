@@ -541,6 +541,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
         doc.setFontSize(8);
         setThemeColor();
         doc.setFont('helvetica', 'bold');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         doc.text('sarathibook.com', 195, y + 6, { align: 'right', url: 'https://sarathibook.com' } as any);
         doc.link(175, y, 20, 10, { url: 'https://sarathibook.com' });
     } catch (e) {
@@ -548,6 +549,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
         doc.setFontSize(7);
         setThemeColor();
         doc.setFont('helvetica', 'bold');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         doc.text('SARATHIBOOK.COM', 105, y + 2, {
             align: 'center',
             url: 'https://sarathibook.com'
@@ -965,6 +967,7 @@ export const generateQuotationPDF = async (data: QuotationData, settings: PDFSet
         doc.setFontSize(7);
         setBrandColor();
         doc.setFont('helvetica', 'bold');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         doc.text('sarathibook.com', 210 - margin, footerY + 8, { align: 'right', url: 'https://sarathibook.com' } as any);
         doc.link(180, footerY + 2, 20, 10, { url: 'https://sarathibook.com' });
     } catch (e) { }
@@ -1025,7 +1028,14 @@ export const shareQuotation = async (data: QuotationData, settings: PDFSettings)
     }
 };
 
-export const generateFinancialReportPDF = async (trips: Trip[], expenses: any[], settings: PDFSettings, periodLabel: string) => {
+
+export interface Expense {
+    category: string;
+    amount: number;
+    [key: string]: any;
+}
+
+export const generateFinancialReportPDF = async (trips: Trip[], expenses: Expense[], settings: PDFSettings, periodLabel: string) => {
     const doc = new jsPDF({ compress: true });
     const margin = 15;
     let y = 15;
@@ -1163,6 +1173,7 @@ export const generateFinancialReportPDF = async (trips: Trip[], expenses: any[],
     doc.setFontSize(7);
     setThemeColor();
     doc.setFont('helvetica', 'bold');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     doc.text('SARATHIBOOK.COM', 105, y + 2, {
         align: 'center',
         url: 'https://sarathibook.com'
@@ -1178,7 +1189,7 @@ export const generateFinancialReportPDF = async (trips: Trip[], expenses: any[],
     return doc;
 };
 
-export const shareFinancialReport = async (trips: Trip[], expenses: any[], settings: PDFSettings, periodLabel: string) => {
+export const shareFinancialReport = async (trips: Trip[], expenses: Expense[], settings: PDFSettings, periodLabel: string) => {
     const doc = await generateFinancialReportPDF(trips, expenses, settings, periodLabel);
     const pdfBlob = doc.output('blob');
     const filename = `Financial_Report_${periodLabel.replace(/\s/g, '_')}_${new Date().getTime()}.pdf`;
