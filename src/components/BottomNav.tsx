@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Wallet, PlusCircle, Calculator, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, FileText, Wallet, Calculator, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface BottomNavProps {
@@ -15,7 +15,6 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
         { id: 'trips', icon: <FileText size={20} />, label: 'INVOICES' },
         { id: 'calculator', icon: <Calculator size={20} />, label: 'CALCULATOR' },
         { id: 'expenses', icon: <Wallet size={20} />, label: 'EXPENSES' },
-        { id: 'notes', icon: <PlusCircle size={24} />, label: 'ADD NOTE' },
     ];
 
     if (isAdmin) {
