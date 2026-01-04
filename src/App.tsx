@@ -104,12 +104,16 @@ function AppContent() {
 
     // If the tab just changed, we go to the base path. 
     // If we are already on that tab, we do nothing to avoid stripping sub-paths/params.
-    if (activeTab !== currentTab && !currentPath.startsWith('/public')) {
-      window.history.replaceState(null, '', `/${activeTab}`);
+    if (currentPath.startsWith('/public')) return;
+
+    if (activeTab !== currentTab) {
+      if (activeTab !== 'admin' || isAdmin) {
+        window.history.replaceState(null, '', `/${activeTab}`);
+      }
     } else if (currentPath === '/' && activeTab !== 'dashboard') {
       window.history.replaceState(null, '', `/${activeTab}`);
     }
-  }, [activeTab]);
+  }, [activeTab, isAdmin]);
 
   const [invoiceQuotationToggle, setInvoiceQuotationToggle] = useState<'invoice' | 'quotation'>('invoice');
   const [invoiceStep, setInvoiceStep] = useState(1);
