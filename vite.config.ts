@@ -15,7 +15,7 @@ export default defineConfig({
                 short_name: 'Sarathi',
                 description: 'Your Digital Office on Car',
                 theme_color: '#0047AB',
-                background_color: '#ffffff',
+                background_color: '#F5F7FA',
                 display: 'standalone',
                 start_url: '/',
                 scope: '/',
