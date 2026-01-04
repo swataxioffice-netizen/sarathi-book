@@ -36,11 +36,25 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({ isOpen, onClose, pdfU
 
                 {/* PDF Content */}
                 <div className="flex-1 bg-slate-100 overflow-hidden p-2 md:p-4">
-                    <iframe
-                        src={`${pdfUrl}#toolbar=0&navpanes=0`}
-                        className="w-full h-full rounded-2xl border-none shadow-inner bg-white"
-                        title="PDF Preview"
-                    />
+                    <object
+                        data={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+                        type="application/pdf"
+                        className="w-full h-full rounded-2xl border-none shadow-inner bg-white z-10 relative"
+                    >
+                        <div className="flex flex-col items-center justify-center h-full p-8 text-center text-slate-500">
+                            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-400">
+                                <Eye size={32} />
+                            </div>
+                            <p className="mb-6 font-bold text-sm text-slate-600">Preview not available inline</p>
+                            <a
+                                href={pdfUrl}
+                                download={`Quotation_${new Date().getTime()}.pdf`}
+                                className="px-6 py-3 bg-[#0047AB] text-white rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+                            >
+                                Download to View
+                            </a>
+                        </div>
+                    </object>
                 </div>
 
                 {/* Footer Actions */}
