@@ -16,6 +16,9 @@ import { Bell } from 'lucide-react';
 const Profile: React.FC = () => {
     const { user, signOut, loading: authLoading } = useAuth();
     const { settings, updateSettings, saveSettings, docStats } = useSettings();
+    const [pushEnabled, setPushEnabled] = useState(() =>
+        typeof Notification !== 'undefined' && Notification.permission === 'granted'
+    );
     const [newVehicleNumber, setNewVehicleNumber] = useState('');
     const [selectedCategoryId, setSelectedCategoryId] = useState(VEHICLES[0].id);
     const [newVehicleModel, setNewVehicleModel] = useState('');
@@ -330,71 +333,81 @@ const Profile: React.FC = () => {
 
 
 
-            {/* COMPACT TABS NAVIGATION */}
-            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl mx-1 mb-6">
-                {[
-                    {
-                        id: 'business',
-                        label: 'Business',
-                        icon: <Contact size={14} />,
-                        color: 'blue',
-                        isComplete: !!(settings.companyName && settings.driverPhone && (settings.services?.length ?? 0) > 0)
-                    },
-                    {
-                        id: 'finance',
-                        label: 'Finance',
-                        icon: <Landmark size={14} />,
-                        color: 'green',
-                        isComplete: !!(settings.upiId || (settings.bankName && settings.holderName))
-                    },
-                    {
-                        id: 'garage',
-                        label: 'Garage',
-                        icon: <Car size={14} />,
-                        color: 'purple',
-                        isComplete: settings.vehicles.length > 0
-                    },
-                    {
-                        id: 'docs',
-                        label: 'Expiry Date',
-                        icon: <FileText size={14} />,
-                        color: 'orange',
-                        isComplete: docStats.hasFullVehicle && docStats.hasFullDriver
-                    }
-                ].map((tab) => {
-                    const isActive = activeTab === tab.id;
-                    const colorConfig: Record<string, string> = {
-                        blue: 'text-blue-600',
-                        green: 'text-green-600',
-                        purple: 'text-purple-600',
-                        orange: 'text-orange-600'
-                    };
+            {/* STEP-BY-STEP PROGRESS TABS */}
+            <div className="space-y-4 mb-4">
+                <div className="flex items-center justify-between px-2">
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Profile Progress</h3>
+                    </div>
+                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{completion}% Complete</span>
+                </div>
 
-                    return (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id as any)}
-                            className={`flex-1 flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all relative ${isActive
-                                ? 'bg-white shadow-sm ring-1 ring-black/5'
-                                : 'text-slate-500 hover:text-slate-700'
-                                }`}
-                        >
-                            {/* Status Indicator */}
-                            {tab.isComplete && (
-                                <div className="absolute top-1 right-1">
-                                    <CheckCircle size={8} className="text-green-500 fill-white" />
+                <div className="flex items-center gap-1.5 p-1.5 bg-white border border-slate-200 shadow-sm rounded-2xl mx-1">
+                    {[
+                        {
+                            id: 'business',
+                            label: '1. Business',
+                            icon: <Contact size={14} />,
+                            color: 'blue',
+                            isComplete: !!(settings.companyName && settings.driverPhone && (settings.services?.length ?? 0) > 0)
+                        },
+                        {
+                            id: 'finance',
+                            label: '2. Finance',
+                            icon: <Landmark size={14} />,
+                            color: 'green',
+                            isComplete: !!(settings.upiId || (settings.bankName && settings.holderName))
+                        },
+                        {
+                            id: 'garage',
+                            label: '3. Garage',
+                            icon: <Car size={14} />,
+                            color: 'purple',
+                            isComplete: settings.vehicles.length > 0
+                        },
+                        {
+                            id: 'docs',
+                            label: '4. Expiry',
+                            icon: <FileText size={14} />,
+                            color: 'orange',
+                            isComplete: docStats.hasFullVehicle && docStats.hasFullDriver
+                        }
+                    ].map((tab) => {
+                        const isActive = activeTab === tab.id;
+                        const colorConfig: Record<string, string> = {
+                            blue: 'text-blue-600',
+                            green: 'text-green-600',
+                            purple: 'text-purple-600',
+                            orange: 'text-orange-600'
+                        };
+
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as any)}
+                                className={`flex-1 flex flex-col items-center justify-center py-2.5 px-1 rounded-xl transition-all relative ${isActive
+                                    ? 'bg-slate-900 shadow-lg scale-105 z-10'
+                                    : 'bg-transparent text-slate-500 hover:bg-slate-50'
+                                    }`}
+                            >
+                                {/* Status Indicator */}
+                                {tab.isComplete && !isActive && (
+                                    <div className="absolute top-1.5 right-1.5">
+                                        <div className="w-2 h-2 bg-green-500 rounded-full border border-white shadow-sm" />
+                                    </div>
+                                )}
+
+                                <div className={`${isActive ? 'text-white' : colorConfig[tab.color]}`}>
+                                    {tab.icon}
                                 </div>
-                            )}
-
-                            <div className={`${isActive ? colorConfig[tab.color] : 'text-slate-400'}`}>
-                                {tab.icon}
-                            </div>
-                            <span className={`text-[8px] font-black uppercase tracking-wider mt-0.5 ${isActive ? 'text-slate-900' : 'opacity-60'}`}>
-                                {tab.label}
-                            </span>
-                        </button>
-                    );
-                })}
+                                <span className={`text-[7px] font-black uppercase tracking-tighter mt-1 ${isActive ? 'text-white' : 'text-slate-900 border-b border-transparent'}`}>
+                                    {tab.label}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
             {/* TAB CONTENT: BUSINESS */}
@@ -632,6 +645,21 @@ const Profile: React.FC = () => {
                             </button>
                         </div>
                     </div>
+
+                    {/* Navigation Flow Button */}
+                    <div className="pt-8 pb-4">
+                        <button
+                            onClick={() => {
+                                setActiveTab('finance');
+                                window.scrollTo({ top: 100, behavior: 'smooth' });
+                            }}
+                            className="w-full py-5 bg-slate-900 text-white rounded-3xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-slate-200 active:scale-95 transition-all flex items-center justify-center gap-3 group"
+                        >
+                            <span>Step 2: Finance Details</span>
+                            <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                        </button>
+                        <p className="text-center text-[9px] font-black text-slate-400 uppercase tracking-widest mt-4">Next: Bank Account & UPI Setup</p>
+                    </div>
                 </div>
             )}
 
@@ -707,6 +735,21 @@ const Profile: React.FC = () => {
                                 </button>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Navigation Flow Button */}
+                    <div className="pt-8 pb-4 px-1">
+                        <button
+                            onClick={() => {
+                                setActiveTab('garage');
+                                window.scrollTo({ top: 100, behavior: 'smooth' });
+                            }}
+                            className="w-full py-5 bg-slate-900 text-white rounded-3xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-slate-200 active:scale-95 transition-all flex items-center justify-center gap-3 group"
+                        >
+                            <span>Step 3: Garage / Fleet</span>
+                            <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                        </button>
+                        <p className="text-center text-[9px] font-black text-slate-400 uppercase tracking-widest mt-4">Next: Add Your Vehicles</p>
                     </div>
 
                 </div>
@@ -877,6 +920,21 @@ const Profile: React.FC = () => {
                             </div>
                         </div>
 
+
+                        {/* Navigation Flow Button */}
+                        <div className="pt-8 pb-4 px-1">
+                            <button
+                                onClick={() => {
+                                    setActiveTab('docs');
+                                    window.scrollTo({ top: 100, behavior: 'smooth' });
+                                }}
+                                className="w-full py-5 bg-slate-900 text-white rounded-3xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-slate-200 active:scale-95 transition-all flex items-center justify-center gap-3 group"
+                            >
+                                <span>Step 4: Expiry Dates</span>
+                                <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                            </button>
+                            <p className="text-center text-[9px] font-black text-slate-400 uppercase tracking-widest mt-4">Next: Doc Expiry Notifications</p>
+                        </div>
 
 
                     </div>
@@ -1061,7 +1119,12 @@ const Profile: React.FC = () => {
                                                         <p className="text-[9px] text-red-700 font-bold leading-tight">Get instant alerts for new bookings and system updates even when app is closed.</p>
                                                         <div
                                                             onClick={async () => {
+                                                                if (typeof Notification === 'undefined') {
+                                                                    alert('Notifications not supported in this browser.');
+                                                                    return;
+                                                                }
                                                                 const permission = await Notification.requestPermission();
+                                                                setPushEnabled(permission === 'granted');
                                                                 if (permission === 'granted') {
                                                                     await subscribeToPush();
                                                                     alert('Push Notifications Enabled!');
@@ -1069,9 +1132,9 @@ const Profile: React.FC = () => {
                                                                     alert('Permission denied. Please enable notifications in your browser settings.');
                                                                 }
                                                             }}
-                                                            className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${Notification.permission === 'granted' ? 'bg-red-500' : 'bg-slate-300'}`}
+                                                            className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${pushEnabled ? 'bg-green-500' : 'bg-slate-300'}`}
                                                         >
-                                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${Notification.permission === 'granted' ? 'left-6' : 'left-1'}`}></div>
+                                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${pushEnabled ? 'left-6' : 'left-1'}`}></div>
                                                         </div>
                                                     </div>
                                                 </div>

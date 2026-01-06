@@ -1,9 +1,16 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Scan, X, Loader2, FileImage } from 'lucide-react';
-import { performOcr, parseReceipt } from '../utils/visionApi';
+import { performOcr, parseReceipt, parseDocument } from '../utils/visionApi';
 
 interface DocumentScannerProps {
-    onScanComplete: (data: { amount?: number; date?: string; liters?: number; fullText: string }) => void;
+    onScanComplete: (data: {
+        amount?: number;
+        date?: string;
+        liters?: number;
+        expiryDate?: string;
+        docNumber?: string;
+        fullText: string
+    }) => void;
     onClose: () => void;
     label?: string;
 }
@@ -38,8 +45,14 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete, onClo
                 throw new Error("Could not read any text from this image. Please try a clearer photo.");
             }
 
-            const parsed = parseReceipt(result.lines);
-            onScanComplete({ ...parsed, fullText: result.fullText });
+            const parsedReceipt = parseReceipt(result.lines);
+            const parsedDoc = parseDocument(result.lines);
+
+            onScanComplete({
+                ...parsedReceipt,
+                ...parsedDoc,
+                fullText: result.fullText
+            });
         } catch (err: any) {
             console.error('OCR Process failed:', err);
             setError(err.message || "Scanning failed. Please try again.");
@@ -92,7 +105,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete, onClo
                                                 <Scan size={24} className="opacity-50" />
                                             </div>
                                         </div>
-                                        <p className="text-sm font-black uppercase tracking-widest animate-pulse">Scanning Receipt...</p>
+                                        <p className="text-sm font-black uppercase tracking-widest animate-pulse">Scanning Content...</p>
                                         <div className="mt-4 w-full bg-white/20 h-1.5 rounded-full overflow-hidden">
                                             <div className="bg-white h-full animate-progress-indefinite rounded-full" />
                                         </div>
