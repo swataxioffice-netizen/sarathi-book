@@ -169,6 +169,16 @@ body,
   width: 100%;
 }
 
+@keyframes shine {
+  100% {
+    left: 125%;
+  }
+}
+
+.animate-shine {
+  animation: shine 0.8s forwards;
+}
+
 .glass-panel {
   @apply bg-slate-900/90 backdrop-blur-xl border border-white/10 shadow-xl;
 }

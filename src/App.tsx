@@ -11,6 +11,7 @@ import BottomNav from './components/BottomNav';
 import Dashboard from './components/Dashboard';
 import GoogleSignInButton from './components/GoogleSignInButton';
 import SideNav from './components/SideNav';
+import GoogleOneTap from './components/GoogleOneTap';
 import { NotificationProvider, useNotifications } from './contexts/NotificationContext';
 import Notifications from './components/Notifications';
 import { Analytics } from './utils/monitoring';
@@ -478,6 +479,7 @@ function AppContent() {
 
   return (
     <>
+      <GoogleOneTap />
       <UpdateWatcher />
       {/* Desktop Layout */}
       <div className="hidden md:flex h-screen w-full bg-slate-100 overflow-hidden">
