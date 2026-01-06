@@ -81,55 +81,94 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Helper for Google One Tap
     useEffect(() => {
-        const initializeOneTap = () => {
-            // Block One Tap if Update is pending (UI Conflict)
-            if (needRefresh) {
-                console.log('Update pending, delaying Google One Tap.');
-                return;
-            }
+        let isCancelled = false;
+        let intervalId: any = null;
 
+        const initializeOneTap = () => {
             const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
             if (!clientId) {
-                console.warn('Google Client ID not found');
+                console.warn('Google Client ID not found in environment');
                 return;
             }
+
             if (user) return; // Already logged in
 
-            // Wait for script to load if it hasn't yet
-            const interval = setInterval(() => {
+            const initiate = () => {
+                if (isCancelled) return;
                 const google = (window as any).google;
-                if (google?.accounts?.id) {
-                    clearInterval(interval);
-                    google.accounts.id.initialize({
-                        client_id: clientId,
-                        callback: async (response: any) => {
-                            try {
-                                const { error } = await supabase.auth.signInWithIdToken({
-                                    provider: 'google',
-                                    token: response.credential,
-                                });
-                                if (error) throw error;
-                            } catch (error) {
-                                console.error('One Tap Error:', error);
-                            }
-                        },
-                        auto_select: true,
-                        cancel_on_tap_outside: false,
-                    });
-                    google.accounts.id.prompt();
-                }
-            }, 1000);
 
-            return () => clearInterval(interval);
+                if (google?.accounts?.id) {
+                    if (intervalId) clearInterval(intervalId);
+
+                    try {
+                        // Pre-emptively cancel any existing prompt to avoid "outstanding request" error
+                        google.accounts.id.cancel();
+
+                        google.accounts.id.initialize({
+                            client_id: clientId,
+                            callback: async (response: any) => {
+                                try {
+                                    console.log('One Tap callback received');
+                                    const { error } = await supabase.auth.signInWithIdToken({
+                                        provider: 'google',
+                                        token: response.credential,
+                                    });
+                                    if (error) throw error;
+                                    // Successfully signed in - state will update via onAuthStateChange
+                                } catch (error: any) {
+                                    console.error('One Tap Auth Error:', error.message || error);
+                                }
+                            },
+                            auto_select: true,
+                            cancel_on_tap_outside: false,
+                            itp_support: true,
+                            use_fedcm_for_prompt: true, // Use latest browser standard
+                        });
+
+                        // Show prompt
+                        google.accounts.id.prompt((notification: any) => {
+                            const reason = notification.getNotDisplayedReason();
+                            const skippedReason = notification.getSkippedReason();
+
+                            if (notification.isNotDisplayed()) {
+                                console.warn('One Tap not displayed:', reason);
+                                // If blocked by 'suppressed_by_user', don't retry too often
+                            } else if (notification.isSkippedMoment()) {
+                                console.warn('One Tap skipped:', skippedReason);
+                            } else if (notification.isDismissedMoment()) {
+                                console.log('One Tap dismissed by user');
+                            }
+                        });
+                    } catch (err) {
+                        console.error('Error during Google One Tap prompt:', err);
+                    }
+                }
+            };
+
+            // Check if script is already loaded
+            if ((window as any).google?.accounts?.id) {
+                initiate();
+            } else {
+                intervalId = setInterval(initiate, 1000);
+            }
         };
 
-        const cleanupOneTap = initializeOneTap();
+        // We run this if not logged in. We don't strictly block on needRefresh 
+        // because One Tap is less intrusive and auth is critical.
+        if (!user) {
+            initializeOneTap();
+        }
+
         return () => {
-            if (cleanupOneTap) cleanupOneTap();
-            // Force close if unmounting (e.g. logging in or update appearing)
+            isCancelled = true;
+            if (intervalId) clearInterval(intervalId);
             const google = (window as any).google;
             if (google?.accounts?.id) {
-                google.accounts.id.cancel();
+                try {
+                    google.accounts.id.cancel();
+                } catch (e) {
+                    // Ignore
+                }
             }
         };
     }, [user, needRefresh]);
