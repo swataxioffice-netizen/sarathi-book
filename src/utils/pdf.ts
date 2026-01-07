@@ -23,6 +23,8 @@ export interface PDFSettings {
     branchName?: string;
     upiId?: string;
     appColor?: string;
+    logoUrl?: string;
+    showWatermark?: boolean;
 }
 
 export interface QuotationItem {
@@ -82,13 +84,32 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     const setDrawThemeColor = () => doc.setDrawColor(rgb.r, rgb.g, rgb.b);
 
     // --- ZONE 1: HEADER (Minimal / Sustainable) ---
-    // No background fill - Saves Ink
+    if (settings?.logoUrl) {
+        try {
+            // Add custom logo if available
+            doc.addImage(settings.logoUrl, 'PNG', margin, 12, 18, 18, undefined, 'FAST');
 
-    setThemeColor();
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(24);
-    doc.text(companyName.toUpperCase(), margin, 20);
-    doc.setTextColor(0, 0, 0); // Reset for others
+            setThemeColor();
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(22);
+            doc.text(companyName.toUpperCase(), margin + 22, 22);
+            doc.setTextColor(0, 0, 0);
+        } catch (e) {
+            console.error('Failed to add custom logo to PDF', e);
+            // Fallback to text header
+            setThemeColor();
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(24);
+            doc.text(companyName.toUpperCase(), margin, 20);
+            doc.setTextColor(0, 0, 0);
+        }
+    } else {
+        setThemeColor();
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(24);
+        doc.text(companyName.toUpperCase(), margin, 20);
+        doc.setTextColor(0, 0, 0); // Reset for others
+    }
 
 
     doc.setFontSize(9);
@@ -525,43 +546,51 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     doc.line(margin, y, 195, y);
     y += 3; // Adjusted for logo
 
-    try {
-        // Brand Logo and Name in Footer
-        doc.addImage('/logo.png', 'PNG', margin, y, 10, 10, undefined, 'FAST');
+    // Only show watermark if enabled
+    if (settings.showWatermark !== false) {
+        try {
+            // Brand Logo and Name in Footer
+            doc.addImage('/logo.png', 'PNG', margin, y, 10, 10, undefined, 'FAST');
 
-        doc.setFont('times', 'bold');
-        doc.setFontSize(10);
-        setThemeColor();
-        doc.text('SARATHI BOOK', margin + 12, y + 4.5);
+            doc.setFont('times', 'bold');
+            doc.setFontSize(10);
+            setThemeColor();
+            doc.text('SARATHI BOOK', margin + 12, y + 4.5);
 
-        doc.setFont('helvetica', 'normal');
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(6);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Your digital office on car', margin + 12, y + 8);
+
+            doc.setFontSize(8);
+            setThemeColor();
+            doc.setFont('helvetica', 'bold');
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            doc.text('sarathibook.com', 195, y + 6, { align: 'right', url: 'https://sarathibook.com' } as any);
+            doc.link(175, y, 20, 10, { url: 'https://sarathibook.com' });
+        } catch (e) {
+            // Fallback if logo fails
+            doc.setFontSize(7);
+            setThemeColor();
+            doc.setFont('helvetica', 'bold');
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            doc.text('SARATHIBOOK.COM', 105, y + 2, {
+                align: 'center',
+                url: 'https://sarathibook.com'
+            } as any);
+
+            doc.setFontSize(4);
+            doc.setTextColor(150, 150, 150);
+            doc.setFont('helvetica', 'normal');
+            doc.text('PROFESSIONAL CAB BUSINESS SUITE | AUTOMATE YOUR GROWTH', 105, y + 5, { align: 'center' });
+
+            doc.link(90, y, 30, 5, { url: 'https://sarathibook.com' });
+        }
+    } else {
+        // Just show a small subtle note or nothing
         doc.setFontSize(6);
-        doc.setTextColor(100, 100, 100);
-        doc.text('Your digital office on car', margin + 12, y + 8);
-
-        doc.setFontSize(8);
-        setThemeColor();
-        doc.setFont('helvetica', 'bold');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        doc.text('sarathibook.com', 195, y + 6, { align: 'right', url: 'https://sarathibook.com' } as any);
-        doc.link(175, y, 20, 10, { url: 'https://sarathibook.com' });
-    } catch (e) {
-        // Fallback if logo fails
-        doc.setFontSize(7);
-        setThemeColor();
-        doc.setFont('helvetica', 'bold');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        doc.text('SARATHIBOOK.COM', 105, y + 2, {
-            align: 'center',
-            url: 'https://sarathibook.com'
-        } as any);
-
-        doc.setFontSize(4);
-        doc.setTextColor(150, 150, 150);
-        doc.setFont('helvetica', 'normal');
-        doc.text('PROFESSIONAL CAB BUSINESS SUITE | AUTOMATE YOUR GROWTH', 105, y + 5, { align: 'center' });
-
-        doc.link(90, y, 30, 5, { url: 'https://sarathibook.com' });
+        doc.setTextColor(200, 200, 200);
+        doc.text('Professional Business Invoice', margin, y + 5);
     }
 
     return doc;
@@ -588,11 +617,27 @@ export const generateQuotationPDF = async (data: QuotationData, settings: PDFSet
     const setGray = () => doc.setTextColor(100, 100, 100);
 
     // --- 1. LETTERHEAD HEADER ---
-    // Company Name
-    setBrandColor();
-    doc.setFont('times', 'bold');
-    doc.setFontSize(24);
-    doc.text(companyName.toUpperCase(), margin, y);
+    if (settings?.logoUrl) {
+        try {
+            doc.addImage(settings.logoUrl, 'PNG', margin, y - 5, 20, 20, undefined, 'FAST');
+            setBrandColor();
+            doc.setFont('times', 'bold');
+            doc.setFontSize(24);
+            doc.text(companyName.toUpperCase(), margin + 25, y + 5);
+        } catch (e) {
+            console.error('Failed to add custom logo to Quotation', e);
+            setBrandColor();
+            doc.setFont('times', 'bold');
+            doc.setFontSize(24);
+            doc.text(companyName.toUpperCase(), margin, y);
+        }
+    } else {
+        // Company Name
+        setBrandColor();
+        doc.setFont('times', 'bold');
+        doc.setFontSize(24);
+        doc.text(companyName.toUpperCase(), margin, y);
+    }
 
     // Address & Contact Block
     y += 8;
@@ -992,27 +1037,33 @@ export const generateQuotationPDF = async (data: QuotationData, settings: PDFSet
     doc.setLineWidth(0.5);
     doc.line(margin, footerY, 210 - margin, footerY);
 
-    try {
-        // Brand Logo and Name in Footer
-        doc.addImage('/logo.png', 'PNG', margin, footerY + 3, 8, 8, undefined, 'FAST');
+    if (settings.showWatermark !== false) {
+        try {
+            // Brand Logo and Name in Footer
+            doc.addImage('/logo.png', 'PNG', margin, footerY + 3, 8, 8, undefined, 'FAST');
 
-        doc.setFont('times', 'bold');
-        doc.setFontSize(9);
-        setBrandColor();
-        doc.text('SARATHI BOOK', margin + 10, footerY + 7);
+            doc.setFont('times', 'bold');
+            doc.setFontSize(9);
+            setBrandColor();
+            doc.text('SARATHI BOOK', margin + 10, footerY + 7);
 
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(5);
-        setGray();
-        doc.text('Your digital office on car', margin + 10, footerY + 10);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(5);
+            setGray();
+            doc.text('Your digital office on car', margin + 10, footerY + 10);
 
-        doc.setFontSize(7);
-        setBrandColor();
-        doc.setFont('helvetica', 'bold');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        doc.text('sarathibook.com', 210 - margin, footerY + 8, { align: 'right', url: 'https://sarathibook.com' } as any);
-        doc.link(180, footerY + 2, 20, 10, { url: 'https://sarathibook.com' });
-    } catch (e) { }
+            doc.setFontSize(7);
+            setBrandColor();
+            doc.setFont('helvetica', 'bold');
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            doc.text('sarathibook.com', 210 - margin, footerY + 8, { align: 'right', url: 'https://sarathibook.com' } as any);
+            doc.link(180, footerY + 2, 20, 10, { url: 'https://sarathibook.com' });
+        } catch (e) { }
+    } else {
+        doc.setFontSize(6);
+        doc.setTextColor(200, 200, 200);
+        doc.text('Professional Business Document', 105, footerY + 7, { align: 'center' });
+    }
 
     return doc;
 };

@@ -1,80 +1,90 @@
 import React, { useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useUpdate } from '../contexts/UpdateContext';
 
+/**
+ * 🛡️ Google One Tap (Dynamic Shielded Version)
+ * - Only loads the Google Script on valid origins (localhost or production).
+ * - Prevents crashes on mobile/IP-based development (192.168.x.x).
+ * - Manual Sign-In button remains as the primary backup.
+ */
 const GoogleOneTap: React.FC = () => {
     const { user, signInWithIdToken } = useAuth();
-    const { needRefresh } = useUpdate();
     const initialized = useRef(false);
 
     useEffect(() => {
-        // Only run if not logged in and no update is pending
-        if (user || needRefresh || initialized.current) return;
+        // 1. Initial State Checks
+        if (user || initialized.current) return;
 
-        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-        if (!clientId) {
-            console.warn('Google Client ID missing for One Tap');
+        const hostname = window.location.hostname;
+        const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+        const isIP = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+
+        // 🛡️ STOP: Google prevents One Tap on IP addresses. 
+        // We stop here to avoid script errors that could cause a white screen on mobile.
+        if (isIP && !isLocalhost) {
+            console.log('🛡️ GSI: Disabled on IP origin to ensure stability.');
             return;
         }
 
-        const handleOneTapResponse = async (response: any) => {
+        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+        if (!clientId) return;
+
+        // 2. Auth Handler
+        const handleResponse = async (response: any) => {
             try {
-                console.log('One Tap response received');
                 await signInWithIdToken(response.credential);
-            } catch (error: any) {
-                console.error('One Tap Auth Failed:', error.message);
+            } catch (err) {
+                console.error('🛡️ GSI: Auth Failed', err);
             }
         };
 
-        const initializeGSI = () => {
-            const google = (window as any).google;
-            if (google?.accounts?.id) {
-                try {
-                    console.log('Initializing Google One Tap...');
-                    google.accounts.id.initialize({
-                        client_id: clientId,
-                        callback: handleOneTapResponse,
-                        auto_select: true,
-                        cancel_on_tap_outside: false,
-                        itp_support: true,
-                        use_fedcm_for_prompt: true
-                    });
-
-                    google.accounts.id.prompt((notification: any) => {
-                        if (notification.isNotDisplayed()) {
-                            console.log('One Tap prompt not displayed:', notification.getNotDisplayedReason());
-                        } else if (notification.isSkippedMoment()) {
-                            console.log('One Tap prompt skipped:', notification.getSkippedReason());
-                        }
-                    });
-
-                    initialized.current = true;
-                } catch (err) {
-                    console.error('GSI Initialization Error:', err);
-                }
-            }
-        };
-
-        // Poll for script loading if not immediately available
-        const interval = setInterval(() => {
+        // 3. Dynamic Script Loading & Init
+        const loadAndInit = () => {
             if ((window as any).google?.accounts?.id) {
-                clearInterval(interval);
-                initializeGSI();
+                initGSI();
+                return;
             }
-        }, 1000);
+
+            const script = document.createElement('script');
+            script.src = 'https://accounts.google.com/gsi/client';
+            script.async = true;
+            script.defer = true;
+            script.onload = initGSI;
+            document.head.appendChild(script);
+        };
+
+        const initGSI = () => {
+            const google = (window as any).google;
+            if (!google?.accounts?.id || initialized.current) return;
+
+            try {
+                const isSecure = window.location.protocol === 'https:';
+
+                google.accounts.id.initialize({
+                    client_id: clientId.trim(),
+                    callback: handleResponse,
+                    use_fedcm_for_prompt: isSecure, // Only use FedCM on HTTPS (Production)
+                    itp_support: true,
+                    auto_select: false,
+                    context: 'signin'
+                });
+
+                google.accounts.id.prompt();
+                initialized.current = true;
+                console.log('🛡️ GSI: One Tap initialized successfully.');
+            } catch (err) {
+                console.warn('🛡️ GSI: Background initialization suppressed.', err);
+            }
+        };
+
+        loadAndInit();
 
         return () => {
-            clearInterval(interval);
-            if (initialized.current) {
-                const google = (window as any).google;
-                if (google?.accounts?.id) {
-                    google.accounts.id.cancel();
-                }
-            }
+            // No cleanup required for global script
         };
-    }, [user, needRefresh, signInWithIdToken]);
+    }, [user, signInWithIdToken]);
 
-    return null; // Invisible component
+    return null;
 };
 
 export default GoogleOneTap;

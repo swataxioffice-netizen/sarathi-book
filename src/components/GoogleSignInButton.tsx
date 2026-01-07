@@ -5,104 +5,70 @@ import { Loader2 } from 'lucide-react';
 interface GoogleSignInButtonProps {
     className?: string;
     text?: string;
-    variant?: 'full' | 'compact' | 'minimal';
 }
 
+/**
+ * 🚀 Rebuilt Pure Modern Google Sign-In
+ * - NO External Google Scripts (Prevents AbortError/GSI Warnings)
+ * - Pure Supabase OAuth Flow
+ * - High-end Glassmorphism Design
+ */
 const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
     className = '',
-    text = "Sign in with Google",
-    variant = 'full'
+    text = "Continue with Google"
 }) => {
     const { signInWithGoogle } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleSignIn = async () => {
-        if (isLoading) return;
+    const handleLogin = async () => {
         setIsLoading(true);
         try {
             await signInWithGoogle();
-        } catch (error: any) {
-            console.error('Sign-in error:', error);
-            // Error handling UI could go here
+        } catch (error) {
+            console.error('Login failed:', error);
             setIsLoading(false);
         }
     };
 
-    // Premium common styles
-    const baseStyles = "relative flex items-center justify-center gap-3 transition-all duration-300 active:scale-[0.97] disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden group";
-
-    if (variant === 'compact') {
-        return (
-            <button
-                onClick={handleSignIn}
-                disabled={isLoading}
-                className={`${baseStyles} px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:border-blue-400 ${className}`}
-            >
-                {isLoading ? (
-                    <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-                ) : (
-                    <GoogleIcon />
-                )}
-                <div className="flex flex-col items-start leading-tight">
-                    <span className="text-[10px] font-black text-slate-900 uppercase tracking-tighter">
-                        {isLoading ? 'Verifying...' : 'Login'}
-                    </span>
-                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Google</span>
-                </div>
-            </button>
-        );
-    }
-
-    if (variant === 'minimal') {
-        return (
-            <button
-                onClick={handleSignIn}
-                disabled={isLoading}
-                className={`${baseStyles} w-12 h-12 bg-white border border-slate-200 rounded-full shadow-sm hover:shadow-lg hover:border-blue-500 transition-all ${className}`}
-                title={text}
-            >
-                {isLoading ? (
-                    <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-                ) : (
-                    <GoogleIcon className="w-6 h-6" />
-                )}
-            </button>
-        );
-    }
-
     return (
         <button
-            onClick={handleSignIn}
+            onClick={handleLogin}
             disabled={isLoading}
-            className={`${baseStyles} w-full py-4 bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-xl shadow-slate-200/50 hover:shadow-blue-500/10 hover:border-blue-500 hover:-translate-y-0.5 ${className}`}
+            className={`group relative flex items-center justify-center gap-3 w-full py-4 px-6 bg-white border border-slate-200 rounded-2xl shadow-lg hover:shadow-blue-500/10 hover:border-blue-400 active:scale-[0.98] transition-all duration-300 disabled:opacity-70 ${className}`}
         >
-            {/* Visual background flair */}
-            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-50/0 via-blue-50/0 to-blue-50/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+            {isLoading ? (
+                <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+            ) : (
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                    <path
+                        fill="#4285F4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                        fill="#34A853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                        fill="#FBBC05"
+                        d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"
+                    />
+                    <path
+                        fill="#EA4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                    />
+                </svg>
+            )}
 
-            <div className="relative z-10 flex items-center justify-center gap-3">
-                {isLoading ? (
-                    <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-                ) : (
-                    <GoogleIcon className="w-5 h-5" />
-                )}
-                <span className="text-sm font-black tracking-tight uppercase">
-                    {isLoading ? 'Connecting Securely...' : text}
-                </span>
+            <span className="text-sm font-black text-slate-800 uppercase tracking-tight">
+                {isLoading ? "Connecting..." : text}
+            </span>
+
+            {/* Premium Shine Effect */}
+            <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+                <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent group-hover:animate-shine" />
             </div>
-
-            {/* Gloss shine effect */}
-            <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent group-hover:animate-shine" />
         </button>
     );
 };
-
-const GoogleIcon = ({ className = "w-5 h-5" }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className={className}>
-        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
-    </svg>
-);
 
 export default GoogleSignInButton;

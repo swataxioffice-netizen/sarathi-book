@@ -1,5 +1,5 @@
 import { useUpdate } from '../contexts/UpdateContext';
-import { RefreshCw, User, Plus } from 'lucide-react';
+import { RefreshCw, User } from 'lucide-react';
 import Notifications from './Notifications';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -33,7 +33,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-4">
                     {/* Language Toggle */}
 
 
@@ -48,14 +48,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                         </button>
                     )}
 
-                    {/* Add Note Action (Header) */}
-                    <button
-                        onClick={() => setActiveTab?.('notes')}
-                        aria-label="Add Note"
-                        className={`w-8 h-8 flex items-center justify-center rounded-full border transition-colors ${activeTab === 'notes' ? 'bg-[#0047AB] text-white border-[#0047AB]' : 'bg-slate-50 text-slate-500 border-slate-100 hover:bg-blue-50 hover:text-blue-600'}`}
-                    >
-                        <Plus size={18} strokeWidth={2.5} />
-                    </button>
+
 
                     <Notifications />
 

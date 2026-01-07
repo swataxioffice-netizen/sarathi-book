@@ -1271,7 +1271,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                             id="customer_name"
                                             name="customer_name"
                                             type="text"
-                                            className="tn-input pl-11"
+                                            className="tn-input pl-11 pr-24"
                                             placeholder="Guest Name"
                                             value={customerName}
                                             onChange={(e) => setCustomerName(e.target.value)}
@@ -1281,12 +1281,22 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                         <datalist id="history-names">
                                             {history.names.map(name => <option key={name} value={name} />)}
                                         </datalist>
-                                        <button
-                                            onClick={handleImportContact}
-                                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-slate-100 text-primary p-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-colors flex items-center gap-1"
-                                        >
-                                            <UserPlus size={14} /> Pick Contact
-                                        </button>
+                                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                            <button
+                                                onClick={() => startListening(setCustomerName)}
+                                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                title="Voice Input"
+                                            >
+                                                <Mic size={16} />
+                                            </button>
+                                            <button
+                                                onClick={handleImportContact}
+                                                className="bg-slate-100 text-primary p-2 rounded-lg text-slate-400 hover:text-primary hover:bg-slate-200 transition-colors"
+                                                title="Pick Contact"
+                                            >
+                                                <UserPlus size={16} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div>
@@ -1330,17 +1340,26 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                 </div>
                                 <div>
                                     <label className="tn-label">Billing Address</label>
-                                    <input
-                                        id="billing_address"
-                                        name="billing_address"
-                                        type="text"
-                                        className="tn-input"
-                                        placeholder="Company Address or Local Address"
-                                        value={billingAddress}
-                                        onChange={(e) => setBillingAddress(e.target.value)}
-                                        onBlur={(e) => setBillingAddress(formatAddress(e.target.value))}
-                                        list="history-addresses"
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            id="billing_address"
+                                            name="billing_address"
+                                            type="text"
+                                            className="tn-input pr-10"
+                                            placeholder="Company Address or Local Address"
+                                            value={billingAddress}
+                                            onChange={(e) => setBillingAddress(e.target.value)}
+                                            onBlur={(e) => setBillingAddress(formatAddress(e.target.value))}
+                                            list="history-addresses"
+                                        />
+                                        <button
+                                            onClick={() => startListening(setBillingAddress)}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                            title="Voice Input"
+                                        >
+                                            <Mic size={16} />
+                                        </button>
+                                    </div>
                                     <datalist id="history-addresses">
                                         {history.addresses.map(addr => <option key={addr} value={addr} />)}
                                     </datalist>

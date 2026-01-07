@@ -11,6 +11,7 @@ interface Vehicle {
     categoryId?: string;
     expiryDate?: string;
     mileage?: string;
+    fuelType?: 'petrol' | 'diesel' | 'cng' | 'ev';
 }
 
 interface Settings {
@@ -35,6 +36,10 @@ interface Settings {
     holderName?: string;
     upiId?: string;
     appColor?: string;
+    secondaryColor?: string;
+    logoUrl?: string;
+    showWatermark: boolean;
+    isPremium?: boolean;
     services?: string[];
     signatureUrl?: string;
 }
@@ -131,6 +136,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 parsed.theme = 'light';
             }
             parsed.appColor = parsed.appColor || '#0047AB';
+            parsed.secondaryColor = parsed.secondaryColor || '#6366F1';
+            parsed.showWatermark = parsed.showWatermark ?? true;
             // Force English to fix corrupted state
             parsed.language = 'en';
 
@@ -161,6 +168,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             holderName: '',
             upiId: '',
             appColor: '#0047AB',
+            secondaryColor: '#6366F1',
+            showWatermark: true,
+            isPremium: false,
             services: ['Local', 'Outstation', 'Tours'] // Default Services
         };
     });

@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { safeJSONParse } from './utils/storage';
 import { supabase } from './utils/supabase';
 import UpdateWatcher from './components/UpdateWatcher';
@@ -16,7 +16,6 @@ import { NotificationProvider, useNotifications } from './contexts/NotificationC
 import Notifications from './components/Notifications';
 import { Analytics } from './utils/monitoring';
 import { subscribeToPush, onMessageListener } from './utils/push';
-// import SarathiAI from './components/SarathiAI';
 import type { Trip } from './utils/fare';
 import type { SavedQuotation } from './utils/pdf';
 
@@ -30,6 +29,7 @@ const QuotationForm = lazy(() => import('./components/QuotationForm'));
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
 const PublicProfile = lazy(() => import('./components/PublicProfile'));
 const QuickNotes = lazy(() => import('./components/QuickNotes'));
+const PricingModal = lazy(() => import('./components/PricingModal'));
 
 // Loading fallback component
 // Loading fallback component
@@ -41,7 +41,7 @@ const LoadingFallback = () => (
 
 function AppContent() {
   /* Guest Roaming Logic */
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const { needRefresh, updateServiceWorker } = useUpdate();
   const { addNotification } = useNotifications();
 
@@ -124,6 +124,7 @@ function AppContent() {
   const [quotations, setQuotations] = useState<SavedQuotation[]>(() => safeJSONParse<SavedQuotation[]>('saved-quotations', []));
   const [selectedQuotation, setSelectedQuotation] = useState<SavedQuotation | null>(null);
   const [showLoginNudge, setShowLoginNudge] = useState(false);
+  const [triggerNoteCreation, setTriggerNoteCreation] = useState<number>(0);
 
   // Nudge logic removed as per user request to stop showing the login popup
   useEffect(() => {
@@ -133,6 +134,14 @@ function AppContent() {
       subscribeToPush();
     }
   }, [user?.id]);
+
+  const [showPricing, setShowPricing] = useState(false);
+
+  useEffect(() => {
+    const handleOpenPricing = () => setShowPricing(true);
+    window.addEventListener('open-pricing-modal', handleOpenPricing);
+    return () => window.removeEventListener('open-pricing-modal', handleOpenPricing);
+  }, []);
 
   // Handle foreground notifications
   useEffect(() => {
@@ -152,10 +161,13 @@ function AppContent() {
     localStorage.setItem('saved-quotations', JSON.stringify(quotations));
   }, [quotations]);
 
+  const hasSyncedRef = useRef(false);
+
   // Sync Trips on Load/Login
   useEffect(() => {
     const fetchTrips = async () => {
-      if (user) {
+      if (user && !hasSyncedRef.current) {
+        hasSyncedRef.current = true; // Lock sync for this user session
         setLoading(true);
         try {
           // 1. Fetch Cloud Trips
@@ -232,6 +244,10 @@ function AppContent() {
       }
     };
     fetchTrips();
+
+    if (!user) {
+      hasSyncedRef.current = false; // Reset lock on logout
+    }
   }, [user]);
 
   const handleSaveTrip = async (trip: Trip) => {
@@ -444,7 +460,7 @@ function AppContent() {
       case 'notes':
         return (
           <Suspense fallback={<LoadingFallback />}>
-            <QuickNotes />
+            <QuickNotes onCreateNew={triggerNoteCreation} />
           </Suspense>
         );
       case 'profile':
@@ -505,9 +521,10 @@ function AppContent() {
               <button
                 onClick={() => setActiveTab('profile')}
                 className="w-10 h-10 rounded-full bg-blue-100 text-[#0047AB] flex items-center justify-center font-black border border-blue-200 hover:bg-blue-200 transition-colors"
+                title={loading ? "Syncing data..." : "View Profile"}
               >
-                {loading ? (
-                  <RefreshCw size={16} className="animate-spin" />
+                {authLoading ? (
+                  <RefreshCw size={16} className="animate-spin text-blue-400" />
                 ) : (
                   user?.user_metadata?.avatar_url ? (
                     <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full rounded-full object-cover" />
@@ -530,14 +547,29 @@ function AppContent() {
       {/* Mobile Layout */}
       <div className="md:hidden h-screen w-full bg-white flex flex-col relative overflow-hidden">
         <Header activeTab={activeTab} setActiveTab={setActiveTab} />
-        <main className="flex-1 overflow-y-auto scrollbar-hide p-4 pb-24 bg-[#F5F7FA]">
+        <main className="flex-1 overflow-y-auto scrollbar-hide p-4 pb-24 bg-[#F5F7FA] relative">
           {renderContent()}
+
+          {/* Quick Notes FAB */}
+
         </main>
-        <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+        <BottomNav
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onNoteClick={() => {
+            setActiveTab('notes');
+            setTriggerNoteCreation(Date.now());
+          }}
+        />
       </div>
 
-      {/* Sarathi AI Assistant (Disabled for cleaner UI) */}
-      {/* <SarathiAI /> */}
+      {/* Pricing Modal */}
+      <Suspense fallback={null}>
+        <PricingModal
+          isOpen={showPricing}
+          onClose={() => setShowPricing(false)}
+        />
+      </Suspense>
 
       {/* Guest Login Nudge */}
       {showLoginNudge && !user && (
@@ -556,11 +588,7 @@ function AppContent() {
               <p className="text-sm text-slate-300 font-medium mb-4">
                 Sign in to sync your trips, expenses, and invoices across all your devices securely.
               </p>
-              <GoogleSignInButton
-                text="Sign in with Google"
-                variant="full"
-                className="w-full"
-              />
+              <GoogleSignInButton className="w-full" />
               <button
                 onClick={() => setShowLoginNudge(false)}
                 className="w-full mt-3 text-slate-400 font-bold text-[10px] uppercase tracking-widest hover:text-white"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { safeJSONParse } from '../utils/storage';
-import { StickyNote, Plus, Trash2, X, Save } from 'lucide-react';
+import { StickyNote, Plus, Trash2, X, Save, Mic } from 'lucide-react';
 
 interface Note {
     id: string;
@@ -9,14 +9,41 @@ interface Note {
     color?: string; // Future proofing for Keep-like colors
 }
 
-const QuickNotes: React.FC = () => {
+interface QuickNotesProps {
+    onCreateNew?: number; // Timestamp to trigger creation
+}
+
+const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
     const [notes, setNotes] = useState<Note[]>(() => {
         const saved = safeJSONParse<Note[]>('driver-quick-notes', []);
+        if (saved.length === 0) {
+            // Default Welcome Notes
+            return [
+                {
+                    id: 'example-1',
+                    content: "Trip Log Example:\n\nStart KM: 45,000\nEnd KM: 45,250\nTotal Run: 250 KM\n\nFuel: ₹2000 (35L)",
+                    createdAt: new Date().toISOString()
+                },
+                {
+                    id: 'example-2',
+                    content: "Pending Payments:\n\n- Saravana: ₹500 (GPay)\n- Airport Trip: ₹1200 (Cash Pending)",
+                    createdAt: new Date(Date.now() - 86400000).toISOString() // Yesterday
+                }
+            ];
+        }
         return saved;
     });
 
     const [selectedNote, setSelectedNote] = useState<Note | null>(null);
     const [isEditing, setIsEditing] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+
+    useEffect(() => {
+        // External trigger to create new note
+        if (onCreateNew) {
+            handleAddNote();
+        }
+    }, [onCreateNew]);
 
     useEffect(() => {
         localStorage.setItem('driver-quick-notes', JSON.stringify(notes));
@@ -76,6 +103,41 @@ const QuickNotes: React.FC = () => {
     const handleClose = () => {
         setSelectedNote(null);
         setIsEditing(false);
+    };
+
+    // Voice Handler
+    const toggleRecording = () => {
+        if (!('webkitSpeechRecognition' in window)) {
+            alert('Voice input is not supported in this browser. Try Chrome.');
+            return;
+        }
+
+        if (isRecording) {
+            setIsRecording(false);
+            return;
+        }
+
+        const recognition = new (window as any).webkitSpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-IN'; // Default to Indian English
+
+        recognition.onstart = () => setIsRecording(true);
+
+        recognition.onresult = (event: any) => {
+            const transcript = event.results[0][0].transcript;
+            if (selectedNote) {
+                setSelectedNote(prev => prev ? {
+                    ...prev,
+                    content: prev.content + (prev.content ? '\n' : '') + transcript
+                } : null);
+            }
+        };
+
+        recognition.onerror = () => setIsRecording(false);
+        recognition.onend = () => setIsRecording(false);
+
+        recognition.start();
     };
 
     return (
@@ -151,6 +213,15 @@ const QuickNotes: React.FC = () => {
                                 {notes.find(n => n.id === selectedNote.id) ? 'Edit Note' : 'New Note'}
                             </span>
                             <div className="flex items-center gap-2">
+                                {/* Voice Button */}
+                                <button
+                                    onClick={toggleRecording}
+                                    className={`p-2 rounded-full transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30' : 'text-slate-400 hover:text-red-500 hover:bg-red-50'}`}
+                                    title="Voice Note"
+                                >
+                                    <Mic size={18} />
+                                </button>
+
                                 <button
                                     onClick={() => handleDelete(selectedNote.id)}
                                     className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
@@ -168,11 +239,16 @@ const QuickNotes: React.FC = () => {
                         </div>
 
                         {/* Editor Area */}
-                        <div className="flex-1 overflow-y-auto p-0">
+                        <div className="flex-1 overflow-y-auto p-0 relative">
+                            {isRecording && (
+                                <div className="absolute top-2 left-1/2 transform -translate-x-1/2 bg-red-100 text-red-600 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider animate-bounce">
+                                    Listening...
+                                </div>
+                            )}
                             <textarea
                                 value={selectedNote.content}
                                 onChange={(e) => setSelectedNote(prev => prev ? { ...prev, content: e.target.value } : null)}
-                                placeholder="Type your note here...&#10;Ex: Start KM: 45000&#10;End KM: 45200"
+                                placeholder="Type or Tap Mic to Speak...&#10;Ex: Trip via Vellore started."
                                 className="w-full h-full min-h-[300px] p-6 bg-transparent text-slate-800 text-base leading-relaxed resize-none focus:outline-none placeholder:text-slate-300"
                                 style={{ fontFamily: 'Noto Sans, sans-serif' }}
                                 autoFocus
