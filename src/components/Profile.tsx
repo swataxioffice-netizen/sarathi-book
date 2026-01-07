@@ -3,8 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import {
     User as UserIcon, LogOut,
-    Contact, Landmark, Car, FileText, ChevronRight, Settings,
-    RefreshCw, Bell, Plus, X, Trash2, Palette, Sparkles, Crown
+    Contact, Landmark, Car, FileText, ChevronRight,
+    RefreshCw, X, Trash2, Sparkles, Crown
 } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { VEHICLES } from '../config/vehicleRates';
@@ -12,7 +12,6 @@ import { validateVehicleNumber } from '../utils/validation';
 
 // Sub-components
 import DocumentVault from './DocumentVault';
-import GoogleSignInButton from './GoogleSignInButton';
 import BusinessCard from './BusinessCard';
 import { subscribeToPush } from '../utils/push';
 
