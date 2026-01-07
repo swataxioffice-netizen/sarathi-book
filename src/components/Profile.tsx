@@ -13,6 +13,7 @@ import { validateVehicleNumber } from '../utils/validation';
 // Sub-components
 import DocumentVault from './DocumentVault';
 import BusinessCard from './BusinessCard';
+import GoogleSignInButton from './GoogleSignInButton';
 import { subscribeToPush } from '../utils/push';
 
 // ----------------------------------------------------------------------
@@ -148,21 +149,29 @@ const Profile: React.FC = () => {
 
                     <div className="flex-1 min-w-0">
                         <h2 className="text-base font-black text-slate-900 uppercase tracking-tight truncate flex items-center gap-2">
-                            {user?.user_metadata?.full_name || 'Driver'}
+                            {user?.user_metadata?.full_name || 'Guest Driver'}
                             {settings.isPremium && (
                                 <span className="bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full text-[8px] font-black border border-amber-200">PRO</span>
                             )}
                         </h2>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            ID: <span className="text-blue-600">{user?.id?.slice(0, 6).toUpperCase() || 'GUEST'}</span>
+                            ID: <span className="text-blue-600">{user?.id?.slice(0, 6).toUpperCase() || 'OFFLINE'}</span>
                         </p>
                         <div className="flex gap-4 mt-2">
-                            <button onClick={() => setShowStudio(true)} className="flex items-center gap-1 text-[10px] font-black text-pink-600 uppercase tracking-widest hover:text-pink-700 transition-colors">
-                                <Sparkles size={12} /> Pro Features
-                            </button>
-                            <button onClick={signOut} className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-red-500 transition-colors">
-                                <LogOut size={12} /> Sign Out
-                            </button>
+                            {user ? (
+                                <>
+                                    <button onClick={() => setShowStudio(true)} className="flex items-center gap-1 text-[10px] font-black text-pink-600 uppercase tracking-widest hover:text-pink-700 transition-colors">
+                                        <Sparkles size={12} /> Pro Features
+                                    </button>
+                                    <button onClick={signOut} className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-red-500 transition-colors">
+                                        <LogOut size={12} /> Sign Out
+                                    </button>
+                                </>
+                            ) : (
+                                <div className="w-full max-w-[200px] mt-1">
+                                    <GoogleSignInButton text="Sign In to Sync" className="py-2 px-4 h-10" />
+                                </div>
+                            )}
                         </div>
                     </div>
 

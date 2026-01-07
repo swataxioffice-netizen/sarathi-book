@@ -123,15 +123,18 @@ function AppContent() {
   const [trips, setTrips] = useState<Trip[]>(() => safeJSONParse<Trip[]>('namma-cab-trips', []));
   const [quotations, setQuotations] = useState<SavedQuotation[]>(() => safeJSONParse<SavedQuotation[]>('saved-quotations', []));
   const [selectedQuotation, setSelectedQuotation] = useState<SavedQuotation | null>(null);
-  const [showLoginNudge, setShowLoginNudge] = useState(false);
+  const [showLoginNudge, setShowLoginNudge] = useState(true);
   const [triggerNoteCreation, setTriggerNoteCreation] = useState<number>(0);
 
-  // Nudge logic removed as per user request to stop showing the login popup
   useEffect(() => {
     if (user?.id) {
       setShowLoginNudge(false);
       // Auto-subscribe to push notifications on login
       subscribeToPush();
+    } else {
+      // Show nudge for guests after a short delay
+      const timer = setTimeout(() => setShowLoginNudge(true), 2000);
+      return () => clearTimeout(timer);
     }
   }, [user?.id]);
 

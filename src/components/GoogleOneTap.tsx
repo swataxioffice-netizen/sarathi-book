@@ -27,7 +27,10 @@ const GoogleOneTap: React.FC = () => {
         }
 
         const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-        if (!clientId) return;
+        if (!clientId) {
+            console.warn('🛡️ GSI: Missing VITE_GOOGLE_CLIENT_ID in environment variables.');
+            return;
+        }
 
         // 2. Auth Handler
         const handleResponse = async (response: any) => {
