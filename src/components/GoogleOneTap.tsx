@@ -20,9 +20,8 @@ const GoogleOneTap: React.FC = () => {
         const isIP = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
 
         // 🛡️ STOP: Google prevents One Tap on IP addresses. 
-        // We stop here to avoid script errors that could cause a white screen on mobile.
         if (isIP && !isLocalhost) {
-            console.log('🛡️ GSI: Disabled on IP origin to ensure stability.');
+            console.log('🛡️ GSI: One Tap is disabled on IP-based origins (use localhost or a domain).');
             return;
         }
 
@@ -34,10 +33,11 @@ const GoogleOneTap: React.FC = () => {
 
         // 2. Auth Handler
         const handleResponse = async (response: any) => {
+            console.log('🛡️ GSI: Credential received, signing in with token...');
             try {
                 await signInWithIdToken(response.credential);
             } catch (err) {
-                console.error('🛡️ GSI: Auth Failed', err);
+                console.error('🛡️ GSI: Supabase Auth failed', err);
             }
         };
 
@@ -61,30 +61,40 @@ const GoogleOneTap: React.FC = () => {
             if (!google?.accounts?.id || initialized.current) return;
 
             try {
-                const isSecure = window.location.protocol === 'https:';
+                // 🔍 DIAGNOSTIC: Check Client ID format
+                if (!clientId.includes('.apps.googleusercontent.com')) {
+                    console.error('🛡️ GSI: Client ID looks invalid. It should end with .apps.googleusercontent.com');
+                }
 
                 google.accounts.id.initialize({
                     client_id: clientId.trim(),
                     callback: handleResponse,
-                    use_fedcm_for_prompt: isSecure, // Only use FedCM on HTTPS (Production)
+                    use_fedcm_for_prompt: false, // 🛠️ FIX: Disable FedCM as it requires complex server setup (.well-known/fedcm.json)
                     itp_support: true,
                     auto_select: false,
+                    cancel_on_tap_outside: false, // Prevent accidental dismissal
                     context: 'signin'
                 });
 
-                google.accounts.id.prompt();
+                // Display the prompt & log the status
+                google.accounts.id.prompt((notification: any) => {
+                    if (notification.isNotDisplayed()) {
+                        console.warn('🛡️ GSI: Prompt hidden -', notification.getNotDisplayedReason());
+                    } else if (notification.isSkippedMoment()) {
+                        console.log('🛡️ GSI: Prompt skipped -', notification.getSkippedReason());
+                    } else if (notification.isDismissedMoment()) {
+                        console.log('🛡️ GSI: Prompt dismissed -', notification.getDismissedReason());
+                    }
+                });
+
                 initialized.current = true;
-                console.log('🛡️ GSI: One Tap initialized successfully.');
+                console.log('🛡️ GSI: One Tap initialized and prompt requested.');
             } catch (err) {
-                console.warn('🛡️ GSI: Background initialization suppressed.', err);
+                console.error('🛡️ GSI: Initialization error', err);
             }
         };
 
         loadAndInit();
-
-        return () => {
-            // No cleanup required for global script
-        };
     }, [user, signInWithIdToken]);
 
     return null;
