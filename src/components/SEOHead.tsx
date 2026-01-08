@@ -25,6 +25,16 @@ const SEOHead: React.FC<SEOHeadProps> = ({ title, description, schema }) => {
             metaDescription.setAttribute('content', description);
         }
 
+        // Handle Open Graph Tags
+        const ogTitle = document.querySelector('meta[property="og:title"]');
+        if (ogTitle) ogTitle.setAttribute('content', title.includes('Sarathi Book') ? title : `${title} | Sarathi Book`);
+
+        const ogDesc = document.querySelector('meta[property="og:description"]');
+        if (ogDesc && description) ogDesc.setAttribute('content', description);
+
+        const ogUrl = document.querySelector('meta[property="og:url"]');
+        if (ogUrl) ogUrl.setAttribute('content', window.location.href);
+
         // Handle Canonical Tag
         let linkCanonical = document.querySelector('link[rel="canonical"]');
         if (!linkCanonical) {
