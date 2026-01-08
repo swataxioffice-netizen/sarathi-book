@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Wallet, Calculator, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, FileText, Wallet, Calculator, ShieldCheck, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface BottomNavProps {
@@ -15,7 +15,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, onNoteCl
         { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'HOME' },
         { id: 'trips', icon: <FileText size={20} />, label: 'TRIPS' },
         // Center Space is reserved
-        { id: 'calculator', icon: <Calculator size={20} />, label: 'CALC' },
+        { id: 'notes', icon: <Plus size={24} />, label: 'NOTES' },
         { id: 'expenses', icon: <Wallet size={20} />, label: 'SPEND' },
     ];
 
@@ -36,7 +36,10 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, onNoteCl
                     {firstHalf.map((item) => (
                         <button
                             key={item.id}
-                            onClick={() => setActiveTab(item.id)}
+                            onClick={() => {
+                                if (item.id === 'notes' && onNoteClick) onNoteClick();
+                                else setActiveTab(item.id);
+                            }}
                             className={`flex flex-col items-center justify-center w-16 p-1 transition-all active:scale-95 ${activeTab === item.id ? 'text-[#0047AB]' : 'text-slate-400'}`}
                         >
                             <div className={`${activeTab === item.id ? 'scale-110' : ''}`}>{item.icon}</div>
@@ -46,23 +49,20 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, onNoteCl
                 </div>
 
                 {/* Center Space Holder */}
-                <div className="w-14 shrink-0"></div>
+                <div className="w-16 shrink-0"></div>
 
-                {/* Center Button (Quick Notes) - Absolute Positioned */}
-                <div className="absolute left-1/2 -translate-x-1/2 -top-5 flex flex-col items-center">
+                {/* Center Button (Calculator) - Absolute Positioned */}
+                <div className="absolute left-1/2 -translate-x-1/2 -top-6 flex flex-col items-center">
                     <button
-                        onClick={() => {
-                            if (onNoteClick) onNoteClick();
-                            else setActiveTab('notes');
-                        }}
-                        className={`w-11 h-11 rounded-full flex items-center justify-center shadow-xl border-[4px] border-[#f8f9fa] transform transition-all duration-300 ${activeTab === 'notes' ? 'scale-110 bg-yellow-400 text-yellow-900 shadow-yellow-400/50' : 'bg-yellow-400 text-yellow-900 hover:scale-105'
+                        onClick={() => setActiveTab('calculator')}
+                        className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-[4px] border-white transform transition-all duration-300 ${activeTab === 'calculator' ? 'scale-110 bg-[#0047AB] text-white shadow-blue-500/30' : 'bg-slate-50 text-slate-400 hover:bg-white hover:text-slate-600 border-slate-50'
                             }`}
                     >
-                        {/* User requested Plus symbol */}
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
+                        <Calculator size={20} strokeWidth={2.5} />
                     </button>
-                    <span className={`text-[9px] font-black uppercase mt-1 tracking-wider transition-colors ${activeTab === 'notes' ? 'text-yellow-600' : 'text-slate-400'}`}>
-                        Notes
+                    <span className={`text-[9px] font-black uppercase mt-1 tracking-wider transition-colors ${activeTab === 'calculator' ? 'text-[#0047AB]' : 'text-slate-400'}`}>
+                        <span className="sm:hidden">CALC</span>
+                        <span className="hidden sm:inline">CALCULATOR</span>
                     </span>
                 </div>
 

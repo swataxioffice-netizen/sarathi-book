@@ -16,7 +16,10 @@ import {
     RotateCcw,
     X,
     FileText,
-    Check
+    Check,
+    TrendingUp,
+    ArrowRight,
+    ChevronRight,
 } from 'lucide-react';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
@@ -26,6 +29,7 @@ import { estimatePermitCharge } from '../utils/permits';
 import { estimateParkingCharge } from '../utils/parking';
 import { calculateFare } from '../utils/fare';
 import { VEHICLES } from '../config/vehicleRates';
+import { supabase } from '../utils/supabase';
 import { Analytics } from '../utils/monitoring';
 import { isHillStationLocation } from '../utils/locationUtils';
 import AdditionalChargesDrawer from './AdditionalChargesDrawer';
@@ -39,9 +43,11 @@ type FareResult = ReturnType<typeof calculateFare>;
 interface CabProps {
     initialPickup?: string;
     initialDrop?: string;
+    initialTripType?: 'oneway' | 'roundtrip' | 'local' | 'airport';
+    initialResult?: any;
 }
 
-const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
+const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initialTripType, initialResult }) => {
     useSettings();
     const [tripType, setTripType] = useState<'oneway' | 'roundtrip' | 'local' | 'airport'>('oneway');
     const [pickup, setPickup] = useState(initialPickup || '');
@@ -51,7 +57,9 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
     useEffect(() => {
         if (initialPickup) setPickup(initialPickup);
         if (initialDrop) setDrop(initialDrop);
-    }, [initialPickup, initialDrop]);
+        if (initialTripType) setTripType(initialTripType);
+    }, [initialPickup, initialDrop, initialTripType]);
+
     const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [dropCoords, setDropCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [distance, setDistance] = useState<string>('');
@@ -61,6 +69,20 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
     const [result, setResult] = useState<{ fare: number; details: string[]; breakdown: FareResult & { total: number } } | null>(null);
     const [calculatingDistance, setCalculatingDistance] = useState(false);
     const [showMap, setShowMap] = useState(false);
+
+    // Initial Result Pre-fill
+    useEffect(() => {
+        if (initialResult) {
+            setDistance(initialResult.distance.toString());
+            setSelectedVehicle(initialResult.vehicle || 'sedan');
+            setResult(initialResult);
+            // Scroll to result slightly
+            setTimeout(() => {
+                const el = document.getElementById('result-card-container');
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 300);
+        }
+    }, [initialResult]);
 
     // Dynamic SEO Callback
     useEffect(() => {
@@ -99,7 +121,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
     const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number, tollAmt?: number) => {
         setPickup(pickupAddr);
         setDrop(dropAddr);
-        setDistance(dist.toString());
+        setDistance(dist.toFixed(1));
         if (tollAmt && tollAmt > 0) {
             let finalToll = tollAmt;
             if (tripType === 'roundtrip') {
@@ -112,12 +134,10 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
         setShowMap(false);
     };
 
-    // Auto-calculate distance, TOLLS, PERMITS AND PARKING when both locations are selected via autocomplete
+    // Auto-calculate distance
     useEffect(() => {
         const autoCalculateTrip = async () => {
-            if (tripType === 'local') {
-                return;
-            }
+            if (tripType === 'local') return;
 
             if (pickupCoords && dropCoords) {
                 setCalculatingDistance(true);
@@ -134,9 +154,9 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
 
                     // Reset Toll/Days to avoid stale data (ONLY if not manual)
                     if (!manualToll) setToll('0');
-                    if (tripType !== 'roundtrip') setDays('1'); // Days logic remains auto for now
+                    if (tripType !== 'roundtrip') setDays('1');
 
-                    // 2. Estimate Parking based on location keywords
+                    // 2. Estimate Parking
                     if (!manualParking) {
                         const pickupParking = estimateParkingCharge(pickup);
                         const dropParking = estimateParkingCharge(drop);
@@ -155,7 +175,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
                         }
                     }
 
-                    // 4. Try Advanced Routes API first (for tolls)
+                    // 4. Try Advanced Routes API first
                     const advanced = await calculateAdvancedRoute(pickupCoords, dropCoords);
                     if (advanced) {
                         const multiplier = tripType === 'roundtrip' ? 2 : 1;
@@ -175,20 +195,18 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
                             } else if (tripType === 'roundtrip') {
                                 const numDays = parseInt(days) || 1;
                                 if (numDays > 1) {
-                                    finalToll = baseToll * 2; // Full double for multi-day
+                                    finalToll = baseToll * 2;
                                 } else {
-                                    finalToll = Math.round(baseToll * 1.6); // Return discount for same day
+                                    finalToll = Math.round(baseToll * 1.6);
                                 }
                             }
-
                             setToll(finalToll.toString());
                         }
 
-                        // Auto-Calculate Days for Rounds Trips (Min 300km/day rule)
+                        // Auto-Calculate Days for Rounds Trips
                         if (tripType === 'roundtrip') {
                             const totalDist = advanced.distanceKm * multiplier;
                             const estDays = Math.max(1, Math.ceil(totalDist / 600));
-                            // Force to minimum if current days is lower
                             if (parseInt(days) < estDays) {
                                 setDays(estDays.toString());
                             }
@@ -217,15 +235,17 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
             }
         };
 
-        autoCalculateTrip();
-    }, [pickupCoords, dropCoords, pickup, drop, selectedVehicle, tripType, manualToll, manualPermit, manualParking, days]);
+        // Don't auto-calculate if we just loaded an initial result (to prevent overwrite)
+        if (!initialResult) {
+            autoCalculateTrip();
+        }
+    }, [pickupCoords, dropCoords, pickup, drop, selectedVehicle, tripType, manualToll, manualPermit, manualParking, days, manualHillStation, initialResult]);
 
     useEffect(() => {
         const vehicle = VEHICLES.find(v => v.id === selectedVehicle);
         if (vehicle) {
             setCustomRate(tripType === 'roundtrip' ? vehicle.roundRate : vehicle.dropRate);
 
-            // Auto-Calculate Driver Bata (Default)
             if (!manualDriverBata) {
                 let batta = 0;
                 const dist = parseFloat(distance) || 0;
@@ -235,7 +255,6 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
                     const d = parseInt(days) || 1;
                     batta = vehicle.batta * d;
                 } else if (tripType === 'oneway') {
-                    // Only apply bata for outstation drops (> 40km) OR heavy vehicles
                     batta = (dist > 40 || isHeavy) ? vehicle.batta : 0;
                 }
                 setDriverBata(batta.toString());
@@ -269,7 +288,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
             dist + (garageBuffer ? 20 : 0),
             durationDays,
             calcExtraHours,
-            false, // isHillStation (legacy)
+            false,
             overrideRate,
             manualDriverBata ? parseFloat(driverBata) : undefined,
             parseFloat(hillStationCharge),
@@ -286,12 +305,12 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
 
         const fullBreakdown = [...res.breakdown];
 
-        // Add Local UI Extras
         if (permitTotal > 0) fullBreakdown.push(`Permit Charges: ₹${permitTotal.toLocaleString()}`);
         if (parkingTotal > 0) fullBreakdown.push(`Parking Charges: ₹${parkingTotal.toLocaleString()}`);
         if (tollTotal > 0) fullBreakdown.push(`Toll Charges: ₹${tollTotal.toLocaleString()}`);
 
-        Analytics.calculateFare(serviceType, selectedVehicle, dist);
+        // Pass full context to Analytics for "Real" Trending Routes
+        Analytics.calculateFare(serviceType, selectedVehicle, dist, pickup, drop, Math.round(finalTotal));
 
         setResult({
             fare: Math.round(finalTotal),
@@ -305,22 +324,26 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
 
     // AUTO-CALCULATE FARE INSTANTLY
     useEffect(() => {
-        if (distance || tripType === 'local') {
-            calculate();
+        // Only auto-calc if we DON'T have an initial result loaded, OR if user changed inputs
+        if (initialResult && distance === initialResult.distance.toString() && selectedVehicle === initialResult.vehicle) {
+            // Do nothing, let initial result persist
+        } else {
+            if (distance || tripType === 'local') {
+                calculate();
+            }
         }
     }, [distance, tripType, days, selectedVehicle, customRate, hillStationCharge, petCharge, toll, permit, parking, garageBuffer, driverBata, nightCharge, hourlyPackage, durationHours]);
 
-    // Handle vehicle selection reset when switching tabs
+    // Handle vehicle selection reset
     useEffect(() => {
         if (tripType === 'oneway' && ['tempo', 'minibus', 'bus'].includes(selectedVehicle)) {
             setSelectedVehicle('hatchback');
         }
     }, [tripType, selectedVehicle]);
 
-    // Calculate total additional charges for summary
+    // Calculate total additional charges
     const totalExtras = (parseFloat(driverBata) || 0) + (parseFloat(toll) || 0) + (parseFloat(parking) || 0) + (parseFloat(permit) || 0) + (parseFloat(hillStationCharge) || 0) + (parseFloat(petCharge) || 0) + (parseFloat(nightCharge) || 0);
 
-    // Calculate minDays with a 50km grace margin (e.g. 640km still allows 1 day)
     const minDays = (tripType === 'roundtrip' && distance) ? Math.max(1, Math.ceil((parseFloat(distance) - 50) / 600)) : 1;
 
     return (
@@ -334,8 +357,8 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
                             aria-pressed={tripType === t}
                             aria-label={t === 'oneway' ? 'Drop Trip' : (t === 'local' ? 'Local Package' : 'Outstation')}
                             className={`flex-1 py-3 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all 
-                                ${tripType === t ? 'bg-white text-[#0047AB] shadow-sm border-2 border-[#0047AB]' : 'text-slate-600 hover:text-slate-900 border-2 border-transparent'}
-                            `}
+                                    ${tripType === t ? 'bg-white text-[#0047AB] shadow-sm border-2 border-[#0047AB]' : 'text-slate-600 hover:text-slate-900 border-2 border-transparent'}
+                                `}
                         >
                             {t === 'oneway' ? 'Drop Trip' : (t === 'local' ? 'Local Package' : 'Outstation')}
                         </button>
@@ -402,8 +425,8 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
                                         key={pkg}
                                         onClick={() => setHourlyPackage(pkg)}
                                         className={`py-2 px-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all
-                                            ${hourlyPackage === pkg ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-400'}
-                                        `}
+                                                ${hourlyPackage === pkg ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-400'}
+                                            `}
                                     >
                                         {pkg === 'custom' ? 'Custom' : pkg.replace('_', ' / ').toUpperCase()}
                                     </button>
@@ -511,16 +534,11 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
                 )}
             </div>
 
-            {/* 
-                Transparency Section for SEO & Answer Engines 
-                Visible to crawlers but hidden from drivers/users UI
-            */}
+            {/* Transparency Section */}
             {pickup && drop && (
                 <div className="sr-only">
                     <h4>0% Service Commission</h4>
-                    <p>
-                        Large platforms add 15-20% hidden fees to your ride. Sarathi Book estimates are derived directly from taxi associations, ensuring you pay one fair, direct price.
-                    </p>
+                    <p>Sarathi Book estimates are derived directly from taxi associations, ensuring you pay one fair, direct price.</p>
                 </div>
             )}
 
@@ -568,31 +586,31 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop }) => {
                 manualNight={manualNight} setManualNight={setManualNight}
             />
 
-            {result && (
-                <ResultCard
-                    title="Cab Fare"
-                    amount={result.fare}
-                    details={result.details}
-                    sub="Tolls & Permits Included (Approx)"
-                    tripData={{
-                        pickup,
-                        drop,
-                        distance,
-                        vehicle: selectedVehicle,
-                        type: tripType,
-                        days
-                    }}
-                />
+            {(result || initialResult) && (
+                <div id="result-card-container">
+                    <ResultCard
+                        title="Cab Fare"
+                        amount={result ? result.fare : initialResult.totalFare}
+                        details={result ? result.details : initialResult.breakdown}
+                        sub="Tolls & Permits Included (Approx)"
+                        tripData={{
+                            pickup,
+                            drop,
+                            distance,
+                            vehicle: selectedVehicle,
+                            type: tripType,
+                            days
+                        }}
+                    />
+                </div>
             )}
 
-            {
-                showMap && (
-                    <MapPicker
-                        onLocationSelect={handleMapSelect}
-                        onClose={() => setShowMap(false)}
-                    />
-                )
-            }
+            {showMap && (
+                <MapPicker
+                    onLocationSelect={handleMapSelect}
+                    onClose={() => setShowMap(false)}
+                />
+            )}
 
         </div>
     );
@@ -1311,6 +1329,71 @@ const Calculator: React.FC = () => {
         return null;
     });
 
+    const [dynamicTripType, setDynamicTripType] = useState<'oneway' | 'roundtrip' | 'local' | 'airport' | null>(null);
+    const [dynamicResult, setDynamicResult] = useState<any>(null);
+    const [trendingRoutes, setTrendingRoutes] = useState<any[]>([]);
+
+    // Fetch Real Trending Data
+    useEffect(() => {
+        const fetchTrends = async () => {
+            // Try to fetch real stats from Supabase
+            try {
+                const { data, error } = await supabase
+                    .from('route_searches')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(50); // Fetch last 50 searches
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    // Aggregate by Route (Pickup-Drop)
+                    const counts: Record<string, any> = {};
+
+                    data.forEach(row => {
+                        // Normalize key
+                        const key = `${row.pickup_location?.trim()}-${row.drop_location?.trim()}`;
+                        if (!row.pickup_location || !row.drop_location) return;
+
+                        if (!counts[key]) {
+                            counts[key] = {
+                                from: row.pickup_location,
+                                to: row.drop_location,
+                                type: row.trip_type === 'roundtrip' ? 'Round Trip' : 'One Way',
+                                mode: row.trip_type,
+                                dist: row.distance_km,
+                                fare: row.estimated_fare,
+                                veh: row.vehicle_type,
+                                count: 0
+                            };
+                        }
+                        counts[key].count++;
+                    });
+
+                    // Sort by popularity
+                    const sorted = Object.values(counts)
+                        .sort((a: any, b: any) => b.count - a.count)
+                        .slice(0, 5) // Top 5
+                        .map((item: any, index) => ({
+                            ...item,
+                            rank: index + 1,
+                            searches: `${item.count} calc`,
+                            trend: item.count > 2 ? 'up' : 'stable'
+                        }));
+
+                    setTrendingRoutes(sorted);
+                } else {
+                    setTrendingRoutes([]); // No data yet
+                }
+            } catch (err) {
+                console.error("Failed to fetch trending routes", err);
+                setTrendingRoutes([]);
+            }
+        };
+
+        fetchTrends();
+    }, []);
+
     // Listen for route changes within calculators
     useEffect(() => {
         const handleRouteUpdate = (e: any) => {
@@ -1400,32 +1483,80 @@ const Calculator: React.FC = () => {
 
                 {/* Popular Routes Section for SEO/AEO */}
                 <div className="pt-4 space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                        <MapPin size={14} className="text-slate-400" />
-                        <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.2em]">Popular Route Estimates</h3>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {[
-                            { route: 'Chennai to Pondicherry', price: '₹2,500+', type: 'Drop Trip' },
-                            { route: 'Bangalore to Mysore', price: '₹3,200+', type: 'Round Trip' },
-                            { route: 'Chennai to Mahabalipuram', price: '₹1,500+', type: 'Local Package' },
-                            { route: 'Coimbatore to Ooty', price: '₹3,500+', type: 'Hills Trip' }
-                        ].map((r, i) => (
-                            <div key={i} className="bg-white border border-slate-100 rounded-2xl p-4 flex justify-between items-center shadow-sm">
-                                <div>
-                                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-tight">{r.route}</h4>
-                                    <p className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase tracking-widest">{r.type}</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-black text-blue-600">{r.price}</p>
-                                    <p className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter">Est. Fare</p>
-                                </div>
+                    {/* Trending Routes Section (Real User Data) */}
+                    <div className="pt-6 space-y-4">
+                        <div className="flex items-center justify-between px-1">
+                            <div className="flex items-center gap-2">
+                                <TrendingUp size={16} className="text-blue-600" />
+                                <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.2em]">Most Calculated Routes</h3>
                             </div>
-                        ))}
+                            <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">Community Hits</span>
+                        </div>
+
+                        {trendingRoutes.length === 0 ? (
+                            <div className="text-center py-8 bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
+                                <p className="text-xs text-slate-400 font-medium">No trending routes yet. Calculate a fare to see it here!</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {trendingRoutes.map((route, i) => (
+                                    <div
+                                        key={i}
+                                        className="group bg-white border border-slate-100 rounded-2xl p-4 flex items-center justify-between shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer active:scale-[0.99]"
+                                        onClick={() => {
+                                            setDynamicRoute({ pickup: route.from, drop: route.to });
+                                            setDynamicTripType(route.mode as any);
+
+                                            // Construct Simulated Result from Real Data
+                                            const simulatedResult = {
+                                                totalFare: route.fare,
+                                                breakdown: [
+                                                    `Trip Charge (${route.dist} km): ₹${(route.fare * 0.85).toFixed(0)}`,
+                                                    `Driver Bata & Allowances: ₹${(route.fare * 0.1).toFixed(0)}`,
+                                                    `Tolls & Permits (Est): ₹${(route.fare * 0.05).toFixed(0)}`
+                                                ],
+                                                effectiveDistance: route.dist,
+                                                rateUsed: 14,
+                                                distance: route.dist,
+                                                mode: route.mode,
+                                                vehicle: route.veh,
+                                                details: {
+                                                    fare: route.fare * 0.85,
+                                                    driverBatta: route.fare * 0.1,
+                                                    hillStation: 0,
+                                                    petCharge: 0,
+                                                    nightCharge: 0
+                                                }
+                                            };
+                                            setDynamicResult(simulatedResult);
+                                            setMode('cab');
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs ${i === 0 ? 'bg-yellow-100 text-yellow-700' : (i === 1 ? 'bg-slate-100 text-slate-600' : 'bg-orange-50 text-orange-600')}`}>
+                                                #{route.rank}
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <h4 className="text-sm font-black text-slate-800">{route.from}</h4>
+                                                    <ArrowRight size={12} className="text-slate-300" />
+                                                    <h4 className="text-sm font-black text-slate-800">{route.to}</h4>
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{route.type}</span>
+                                                    <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                                    <span className="text-[9px] font-bold text-blue-500">{route.searches}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                            <ChevronRight size={16} className="text-slate-400 group-hover:text-white" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
-                    <p className="text-[9px] text-slate-400 font-medium px-1 leading-relaxed">
-                        Prices shown are estimates for Hatchback vehicles. Actual fares for your specific trip from <span className="text-slate-600 font-bold">Chennai to Pondicherry</span> and other cities will be calculated instantly based on real-time distance.
-                    </p>
                 </div>
             </div>
         );
@@ -1438,7 +1569,12 @@ const Calculator: React.FC = () => {
             {/* Minimal Header with Back Button */}
             <div className="px-4 flex items-center justify-between gap-4">
                 <button
-                    onClick={() => setMode(null)}
+                    onClick={() => {
+                        setMode(null);
+                        setDynamicRoute(null);
+                        setDynamicTripType(null);
+                        setDynamicResult(null);
+                    }}
                     className="flex items-center gap-1.5 py-2 px-3 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 uppercase tracking-wider hover:bg-slate-50 transition-all shadow-sm"
                 >
                     <RotateCcw size={12} className="text-blue-600" />
@@ -1486,6 +1622,8 @@ const Calculator: React.FC = () => {
                     <CabCalculator
                         initialPickup={dynamicRoute?.pickup}
                         initialDrop={dynamicRoute?.drop}
+                        initialTripType={dynamicTripType || undefined}
+                        initialResult={dynamicResult}
                     />
                 )}
                 {mode === 'driver' && <ActingDriverCalculator />}

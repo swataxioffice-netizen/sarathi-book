@@ -123,18 +123,15 @@ function AppContent() {
   const [trips, setTrips] = useState<Trip[]>(() => safeJSONParse<Trip[]>('namma-cab-trips', []));
   const [quotations, setQuotations] = useState<SavedQuotation[]>(() => safeJSONParse<SavedQuotation[]>('saved-quotations', []));
   const [selectedQuotation, setSelectedQuotation] = useState<SavedQuotation | null>(null);
-  const [showLoginNudge, setShowLoginNudge] = useState(true);
+  const [showLoginNudge, setShowLoginNudge] = useState(false);
   const [triggerNoteCreation, setTriggerNoteCreation] = useState<number>(0);
 
+  // Nudge logic removed as per user request to stop showing the login popup
   useEffect(() => {
     if (user?.id) {
       setShowLoginNudge(false);
       // Auto-subscribe to push notifications on login
       subscribeToPush();
-    } else {
-      // Show nudge for guests after a short delay
-      const timer = setTimeout(() => setShowLoginNudge(true), 2000);
-      return () => clearTimeout(timer);
     }
   }, [user?.id]);
 
@@ -330,8 +327,38 @@ function AppContent() {
       case 'trips':
         return (
           <div className="relative min-h-[500px]">
-            {/* Blurred Content Preview - Adjusted for higher visibility */}
-            <div className={`space-y-4 transition-all duration-700 ${completion < 100 ? 'blur-[4px] pointer-events-none select-none opacity-70' : ''}`}>
+            {/* Content Container - Removed Blur/Lock */}
+            <div className="space-y-4 transition-all duration-700">
+
+              {/* Non-blocking Profile Nudge */}
+              {completion < 100 && (
+                <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 flex items-start gap-4 animate-fade-in relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-orange-100 rounded-full -mr-10 -mt-10 blur-xl"></div>
+                  <div className="relative z-10 w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                  </div>
+                  <div className="relative z-10 flex-1">
+                    <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight mb-1">Incomplete Profile</h4>
+                    <p className="text-[10px] text-slate-500 font-bold leading-relaxed mb-3">
+                      Your business details are needed for generating invoices.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setActiveTab('profile')}
+                        className="px-4 py-2 bg-slate-900 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-slate-800 transition-colors"
+                      >
+                        Complete Now
+                      </button>
+                    </div>
+                  </div>
+                  <div className="relative z-10 flex flex-col gap-1 items-end justify-center">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{completion}% Done</div>
+                    <div className="w-16 h-1 bg-slate-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-green-500" style={{ width: `${completion}%` }}></div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {!isLocked && (
                 <div className="flex items-center gap-2">
@@ -398,54 +425,6 @@ function AppContent() {
                 </div>
               )}
             </div>
-
-            {/* Incomplete Profile Overlay */}
-            {
-              completion < 100 && (
-                <div className="absolute inset-0 z-30 flex items-center justify-center p-6 animate-fade-in">
-                  <div className="bg-white/90 backdrop-blur-xl w-full max-w-[340px] p-10 rounded-[40px] border border-white shadow-2xl text-center ring-1 ring-black/5">
-                    <div className="w-20 h-20 bg-blue-50/50 rounded-full flex items-center justify-center mb-8 mx-auto relative">
-                      <svg className="w-16 h-16 transform -rotate-90">
-                        <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-blue-100/50" />
-                        <circle
-                          cx="32"
-                          cy="32"
-                          r="28"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                          fill="transparent"
-                          strokeDasharray={175.9}
-                          strokeDashoffset={175.9 * (1 - completion / 100)}
-                          strokeLinecap="round"
-                          className="text-green-500 transition-all duration-1500 ease-out"
-                        />
-                      </svg>
-                      <span className="absolute inset-0 flex items-center justify-center text-xl font-black tracking-tighter text-slate-900">{completion}%</span>
-                    </div>
-
-                    <h3 className="text-hero font-black text-slate-900 uppercase tracking-tight mb-3">Profile Incomplete</h3>
-                    <p className="text-[11px] text-slate-500 font-bold leading-relaxed mb-8">
-                      You must complete your 100% profile details including business info, fleet, and documents to access invoicing features.
-                    </p>
-
-                    <button
-                      onClick={() => setActiveTab('profile')}
-                      className="w-full py-4 bg-[#0047AB] text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.1em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all hover:bg-blue-700"
-                    >
-                      Setup My Profile
-                    </button>
-
-                    <div className="mt-6 pt-6 border-t border-slate-100">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-loose">
-                        {settings.companyName ? '✅ Business Info' : '❌ Business Info'}<br />
-                        {settings.vehicles.length > 0 ? '✅ Fleet Added' : '❌ Fleet Added'}<br />
-                        {docStats.hasFullVehicle && docStats.hasFullDriver ? '✅ Documents Verified' : '❌ Documents Missing'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )
-            }
           </div >
         );
       case 'expenses':

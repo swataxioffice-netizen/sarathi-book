@@ -1,3 +1,4 @@
+import { supabase } from './supabase';
 
 // Wrapper for Google Analytics 4 (GA4)
 // This ensures type safety and centralizes all analytics logic
@@ -38,13 +39,38 @@ export const trackError = (
 // Specific Business Events (Use these in components)
 export const Analytics = {
     // 1. Core Actions
-    calculateFare: (mode: string, vehicle: string, distance: number) => {
+    calculateFare: async (mode: string, vehicle: string, distance: number, pickup: string, drop: string, fare: number) => {
+        // 1. Track in Google Analytics
         trackEvent('calculate_fare', {
             trip_mode: mode,
             vehicle_type: vehicle,
-            distance_km: distance
+            distance_km: distance,
+            origin: pickup,
+            destination: drop,
+            value: fare,
+            currency: 'INR'
         });
+
+        // 2. Save to Supabase for "Trending Routes"
+        try {
+            const { error } = await supabase.from('route_searches').insert({
+                pickup_location: pickup,
+                drop_location: drop,
+                vehicle_type: vehicle,
+                trip_type: mode,
+                distance_km: distance,
+                estimated_fare: fare,
+                created_at: new Date().toISOString()
+            });
+
+            if (error) {
+                console.warn('Failed to log route search to Supabase:', error.message);
+            }
+        } catch (e) {
+            console.error('Error logging search:', e);
+        }
     },
+
 
     generateInvoice: (type: 'invoice' | 'quotation', amount: number) => {
         trackEvent('generate_pdf', {
