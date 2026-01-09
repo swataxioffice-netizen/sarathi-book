@@ -15,6 +15,20 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
     return (
         <header className="bg-white border-b-2 border-slate-100 px-4 py-1.5 flex-none sticky top-0 z-40 shadow-sm">
             <div className="flex justify-between items-center max-w-md mx-auto">
+                {/* Left: Profile Button */}
+                <button
+                    onClick={() => setActiveTab?.('profile')}
+                    aria-label="Profile"
+                    className={`w-9 h-9 flex items-center justify-center rounded-full border transition-colors ${activeTab === 'profile' ? 'bg-[#0047AB] text-white border-[#0047AB]' : 'bg-slate-50 text-slate-400 border-slate-100 hover:bg-blue-50 hover:text-blue-600'}`}
+                >
+                    {user?.user_metadata?.avatar_url ? (
+                        <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                        <User size={18} />
+                    )}
+                </button>
+
+                {/* Center: Logo + Title */}
                 <div className="flex items-center gap-2.5">
                     <div className="w-9 h-9 flex-shrink-0 bg-white rounded-xl flex items-center justify-center border border-slate-50">
                         <img
@@ -33,10 +47,8 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    {/* Language Toggle */}
-
-
+                {/* Right: Update + Notifications */}
+                <div className="flex items-center gap-3">
                     {needRefresh && (
                         <button
                             onClick={() => updateServiceWorker(true)}
@@ -48,22 +60,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                         </button>
                     )}
 
-
-
                     <Notifications />
-
-                    {/* Profile Button */}
-                    <button
-                        onClick={() => setActiveTab?.('profile')}
-                        aria-label="Profile"
-                        className={`w-8 h-8 flex items-center justify-center rounded-full border transition-colors ${activeTab === 'profile' ? 'bg-[#0047AB] text-white border-[#0047AB]' : 'bg-slate-50 text-slate-400 border-slate-100 hover:bg-blue-50 hover:text-blue-600'}`}
-                    >
-                        {user?.user_metadata?.avatar_url ? (
-                            <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full rounded-full object-cover" />
-                        ) : (
-                            <User size={16} />
-                        )}
-                    </button>
                 </div>
             </div>
         </header>

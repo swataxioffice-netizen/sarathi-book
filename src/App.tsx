@@ -124,7 +124,6 @@ function AppContent() {
   const [quotations, setQuotations] = useState<SavedQuotation[]>(() => safeJSONParse<SavedQuotation[]>('saved-quotations', []));
   const [selectedQuotation, setSelectedQuotation] = useState<SavedQuotation | null>(null);
   const [showLoginNudge, setShowLoginNudge] = useState(false);
-  const [triggerNoteCreation, setTriggerNoteCreation] = useState<number>(0);
 
   // Nudge logic removed as per user request to stop showing the login popup
   useEffect(() => {
@@ -442,7 +441,7 @@ function AppContent() {
       case 'notes':
         return (
           <Suspense fallback={<LoadingFallback />}>
-            <QuickNotes onCreateNew={triggerNoteCreation} />
+            <QuickNotes />
           </Suspense>
         );
       case 'profile':
@@ -538,10 +537,6 @@ function AppContent() {
         <BottomNav
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          onNoteClick={() => {
-            setActiveTab('notes');
-            setTriggerNoteCreation(Date.now());
-          }}
         />
       </div>
 

@@ -1,14 +1,12 @@
-import React from 'react';
 import { LayoutDashboard, FileText, Wallet, Calculator, ShieldCheck, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface BottomNavProps {
     activeTab: string;
     setActiveTab: (tab: string) => void;
-    onNoteClick?: () => void;
 }
 
-const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, onNoteClick }) => {
+const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
     const { isAdmin } = useAuth();
 
     const navItems = [
@@ -36,10 +34,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, onNoteCl
                     {firstHalf.map((item) => (
                         <button
                             key={item.id}
-                            onClick={() => {
-                                if (item.id === 'notes' && onNoteClick) onNoteClick();
-                                else setActiveTab(item.id);
-                            }}
+                            onClick={() => setActiveTab(item.id)}
                             className={`flex flex-col items-center justify-center w-16 p-1 transition-all active:scale-95 ${activeTab === item.id ? 'text-[#0047AB]' : 'text-slate-400'}`}
                         >
                             <div className={`${activeTab === item.id ? 'scale-110' : ''}`}>{item.icon}</div>

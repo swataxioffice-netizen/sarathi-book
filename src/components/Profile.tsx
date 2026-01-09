@@ -25,7 +25,7 @@ const Profile: React.FC = () => {
     const { settings, updateSettings, saveSettings, docStats } = useSettings();
 
     // Local State
-    const [activeTab, setActiveTab] = useState<'business' | 'finance' | 'garage' | 'docs'>('business');
+    const [activeTab, setActiveTab] = useState<'business' | 'payments' | 'vehicles' | 'docs'>('business');
     const [showCard, setShowCard] = useState(false);
     const [activeModal, setActiveModal] = useState<string | null>(null);
     const [savingSection, setSavingSection] = useState<string | null>(null);
@@ -178,9 +178,9 @@ const Profile: React.FC = () => {
 
             {/* 2. Tabs Navigation */}
             <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-200 mb-6 sticky top-2 z-20 gap-1">
-                {(['business', 'finance', 'garage', 'docs'] as const).map(tab => {
+                {(['business', 'payments', 'vehicles', 'docs'] as const).map(tab => {
                     const isActive = activeTab === tab;
-                    const icons = { business: <Contact size={14} />, finance: <Landmark size={14} />, garage: <Car size={14} />, docs: <FileText size={14} /> };
+                    const icons = { business: <Contact size={14} />, payments: <Landmark size={14} />, vehicles: <Car size={14} />, docs: <FileText size={14} /> };
                     return (
                         <button
                             key={tab}
@@ -236,7 +236,7 @@ const Profile: React.FC = () => {
                     </div>
                 )}
 
-                {activeTab === 'finance' && (
+                {activeTab === 'payments' && (
                     <div className="space-y-6 animate-scale-in">
                         <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm space-y-4">
                             <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Payment Info</h3>
@@ -250,14 +250,14 @@ const Profile: React.FC = () => {
                                     <input value={settings.holderName || ''} onChange={e => updateSettings({ holderName: e.target.value })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-green-500 outline-none transition-colors" placeholder="Full Name" />
                                 </div>
                             </div>
-                            <button onClick={() => handleSave('finance')} className="w-full h-14 bg-green-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-green-100">
-                                {savingSection === 'finance' ? 'Saving...' : 'Save Finance'}
+                            <button onClick={() => handleSave('payments')} className="w-full h-14 bg-green-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-green-100">
+                                {savingSection === 'payments' ? 'Saving...' : 'Save Payments'}
                             </button>
                         </div>
                     </div>
                 )}
 
-                {activeTab === 'garage' && (
+                {activeTab === 'vehicles' && (
                     <div className="space-y-6 animate-scale-in">
                         <div className="grid gap-4">
                             {settings.vehicles.map(v => (
