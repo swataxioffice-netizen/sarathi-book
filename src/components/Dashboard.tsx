@@ -260,7 +260,7 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
             </div>
 
             {/* Recent Activity Feed */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                         <TrendingUp size={14} className="text-slate-400" /> Recent Activity

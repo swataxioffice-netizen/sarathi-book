@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { safeJSONParse } from './utils/storage';
+import { dbRequest } from './utils/db'; // IndexedDB
 import { supabase } from './utils/supabase';
 import UpdateWatcher from './components/UpdateWatcher';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
@@ -11,7 +12,7 @@ import BottomNav from './components/BottomNav';
 import Dashboard from './components/Dashboard';
 import GoogleSignInButton from './components/GoogleSignInButton';
 import SideNav from './components/SideNav';
-import GoogleOneTap from './components/GoogleOneTap';
+
 import { NotificationProvider, useNotifications } from './contexts/NotificationContext';
 import Notifications from './components/Notifications';
 import { Analytics } from './utils/monitoring';
@@ -20,18 +21,19 @@ import type { Trip } from './utils/fare';
 import type { SavedQuotation } from './utils/pdf';
 
 // Lazy load heavy components to reduce initial bundle size
+import Calculator from './components/Calculator';
 const TripForm = lazy(() => import('./components/TripForm'));
 const History = lazy(() => import('./components/History'));
 const Profile = lazy(() => import('./components/Profile'));
 const ExpenseTracker = lazy(() => import('./components/ExpenseTracker'));
-const Calculator = lazy(() => import('./components/Calculator'));
+// const Calculator = lazy(() => import('./components/Calculator')); // Moved to critical path
 const QuotationForm = lazy(() => import('./components/QuotationForm'));
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
 const PublicProfile = lazy(() => import('./components/PublicProfile'));
 const QuickNotes = lazy(() => import('./components/QuickNotes'));
 const PricingModal = lazy(() => import('./components/PricingModal'));
+const SalaryManager = lazy(() => import('./components/SalaryManager'));
 
-// Loading fallback component
 // Loading fallback component
 const LoadingFallback = () => (
   <div className="flex items-center justify-center h-64">
@@ -49,7 +51,7 @@ function AppContent() {
     // Priority: 1. URL Path, 2. URL Hash (Legacy/Auth), 3. Local Storage, 4. Default 'dashboard'
     const pathname = window.location.pathname.slice(1).split('/')[0];
     const hash = window.location.hash.slice(1).split('/')[0];
-    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin', 'notes'];
+    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin', 'notes', 'staff'];
 
     if (pathname && validTabs.includes(pathname)) return pathname;
     if (hash && validTabs.includes(hash)) return hash;
@@ -82,6 +84,20 @@ function AppContent() {
       window.removeEventListener('nav-tab-change', handleNav);
       window.removeEventListener('nav-tab-quotation', handleQuoteNav);
     };
+  }, []);
+
+  // Scroll inputs into view on focus
+  useEffect(() => {
+    const handleFocus = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
+        setTimeout(() => {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300);
+      }
+    };
+    document.addEventListener('focusin', handleFocus);
+    return () => document.removeEventListener('focusin', handleFocus);
   }, []);
 
   useEffect(() => {
@@ -120,19 +136,22 @@ function AppContent() {
   const [invoiceStep, setInvoiceStep] = useState(1);
   const [quotationStep, setQuotationStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [trips, setTrips] = useState<Trip[]>(() => safeJSONParse<Trip[]>('namma-cab-trips', []));
-  const [quotations, setQuotations] = useState<SavedQuotation[]>(() => safeJSONParse<SavedQuotation[]>('saved-quotations', []));
+  // Initialize as empty, load from IDB in useEffect
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [quotations, setQuotations] = useState<SavedQuotation[]>([]);
   const [selectedQuotation, setSelectedQuotation] = useState<SavedQuotation | null>(null);
   const [showLoginNudge, setShowLoginNudge] = useState(false);
 
-  // Nudge logic removed as per user request to stop showing the login popup
+  // Guest Login Nudge Logic
   useEffect(() => {
     if (user?.id) {
       setShowLoginNudge(false);
-      // Auto-subscribe to push notifications on login
       subscribeToPush();
+    } else if (!authLoading) {
+      const timer = setTimeout(() => setShowLoginNudge(true), 5000);
+      return () => clearTimeout(timer);
     }
-  }, [user?.id]);
+  }, [user?.id, authLoading]);
 
   const [showPricing, setShowPricing] = useState(false);
 
@@ -152,13 +171,46 @@ function AppContent() {
     });
   }, [addNotification]);
 
+  // Load Data from IndexedDB (with Migration Fallback)
   useEffect(() => {
-    localStorage.setItem('namma-cab-trips', JSON.stringify(trips));
-  }, [trips]);
+    const loadData = async () => {
+      try {
+        // 1. Trips
+        let storedTrips = await dbRequest.getAll<Trip>('trips');
+        if (storedTrips.length === 0) {
+          // Migration: Check LocalStorage
+          const lsTrips = safeJSONParse<Trip[]>('namma-cab-trips', []);
+          if (lsTrips.length > 0) {
+            console.log('Migrating Trips to IndexedDB...');
+            await Promise.all(lsTrips.map(t => dbRequest.put('trips', t)));
+            storedTrips = lsTrips;
+            // Optional: localStorage.removeItem('namma-cab-trips');
+          }
+        }
+        setTrips(storedTrips.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
-  useEffect(() => {
-    localStorage.setItem('saved-quotations', JSON.stringify(quotations));
-  }, [quotations]);
+        // 2. Quotations
+        let storedQuotes = await dbRequest.getAll<SavedQuotation>('quotations');
+        if (storedQuotes.length === 0) {
+          // Migration
+          const lsQuotes = safeJSONParse<SavedQuotation[]>('saved-quotations', []);
+          if (lsQuotes.length > 0) {
+            console.log('Migrating Quotations to IndexedDB...');
+            await Promise.all(lsQuotes.map(q => dbRequest.put('quotations', q)));
+            storedQuotes = lsQuotes;
+          }
+        }
+        setQuotations(storedQuotes);
+
+      } catch (error) {
+        console.error("Failed to load data from DB:", error);
+      }
+    };
+    loadData();
+  }, []);
+
+  // Removed localStorage effects as we now save on-demand (Optimistic + DB)
+
 
   const hasSyncedRef = useRef(false);
 
@@ -251,10 +303,25 @@ function AppContent() {
 
   const handleSaveTrip = async (trip: Trip) => {
     // 1. Optimistic Update
-    setTrips(prev => [trip, ...prev]);
+    setTrips(prev => {
+      const idx = prev.findIndex(t => t.id === trip.id);
+      if (idx !== -1) {
+        const newTrips = [...prev];
+        newTrips[idx] = trip;
+        return newTrips;
+      }
+      return [trip, ...prev];
+    });
     setSelectedQuotation(null); // Clear any active template
 
-    // 2. Persistent Save
+    // 2. Persistent Save (IDB)
+    try {
+      await dbRequest.put('trips', trip);
+    } catch (err) {
+      console.error('Failed to save to IDB', err);
+    }
+
+    // 3. Persistent Save (Cloud)
     if (user) {
       try {
         const { error } = await supabase.from('trips').upsert({
@@ -279,6 +346,12 @@ function AppContent() {
   const handleDeleteTrip = async (tripId: string) => {
     if (!window.confirm("Are you sure you want to delete this invoice? This cannot be undone.")) return;
     setTrips(prev => prev.filter(t => t.id !== tripId));
+
+    // IDB
+    try {
+      await dbRequest.delete('trips', tripId);
+    } catch (err) { console.error('IDB delete failed', err); }
+
     if (user) {
       try {
         await supabase.from('trips').delete().eq('id', tripId);
@@ -286,13 +359,15 @@ function AppContent() {
     }
   };
 
-  const handleSaveQuotation = (q: SavedQuotation) => {
+  const handleSaveQuotation = async (q: SavedQuotation) => {
     setQuotations(prev => [q, ...prev]);
+    await dbRequest.put('quotations', q);
   };
 
-  const handleDeleteQuotation = (id: string) => {
+  const handleDeleteQuotation = async (id: string) => {
     if (!window.confirm("Delete this quotation?")) return;
     setQuotations(prev => prev.filter(q => q.id !== id));
+    await dbRequest.delete('quotations', id);
   };
 
   const handleConvertQuotation = (q: SavedQuotation) => {
@@ -434,9 +509,10 @@ function AppContent() {
         );
       case 'calculator':
         return (
-          <Suspense fallback={<LoadingFallback />}>
-            <Calculator />
-          </Suspense>
+          // Suspense is not strictly needed if Calculator is static, but keeping it is fine or removing it.
+          // Since we made it static, we can remove Suspense or keep it as wrapper (it does no harm).
+          // But to be clean:
+          <Calculator />
         );
       case 'notes':
         return (
@@ -448,6 +524,12 @@ function AppContent() {
         return (
           <Suspense fallback={<LoadingFallback />}>
             <Profile />
+          </Suspense>
+        );
+      case 'staff':
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <SalaryManager />
           </Suspense>
         );
       case 'admin':
@@ -476,7 +558,7 @@ function AppContent() {
 
   return (
     <>
-      <GoogleOneTap />
+
       <UpdateWatcher />
       {/* Desktop Layout */}
       <div className="hidden md:flex h-screen w-full bg-slate-100 overflow-hidden">
@@ -508,7 +590,7 @@ function AppContent() {
                   <RefreshCw size={16} className="animate-spin text-blue-400" />
                 ) : (
                   user?.user_metadata?.avatar_url ? (
-                    <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                    <img src={user.user_metadata.avatar_url || user.user_metadata.picture} referrerPolicy="no-referrer" alt="Profile" width="40" height="40" className="w-full h-full rounded-full object-cover" />
                   ) : (
                     user?.user_metadata?.full_name?.[0]?.toUpperCase() || 'U'
                   )
@@ -526,9 +608,9 @@ function AppContent() {
       </div>
 
       {/* Mobile Layout */}
-      <div className="md:hidden h-screen w-full bg-white flex flex-col relative overflow-hidden">
+      <div className="md:hidden h-[100dvh] w-full bg-white flex flex-col relative overflow-hidden">
         <Header activeTab={activeTab} setActiveTab={setActiveTab} />
-        <main className="flex-1 overflow-y-auto scrollbar-hide p-4 pb-24 bg-[#F5F7FA] relative">
+        <main className="flex-1 overflow-y-auto scrollbar-hide px-3 py-4 pb-24 bg-[#F5F7FA] relative">
           {renderContent()}
 
           {/* Quick Notes FAB */}

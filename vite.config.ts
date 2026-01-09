@@ -39,7 +39,74 @@ export default defineConfig({
                 clientsClaim: true,
                 skipWaiting: false, // Wait for user confirmation
                 globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-                importScripts: ['firebase-messaging-sw.js']
+                importScripts: ['firebase-messaging-sw.js'],
+                runtimeCaching: [
+                    {
+                        urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+                        handler: 'CacheFirst',
+                        options: {
+                            cacheName: 'google-fonts-cache',
+                            expiration: {
+                                maxEntries: 10,
+                                maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
+                            },
+                            cacheableResponse: {
+                                statuses: [0, 200]
+                            }
+                        }
+                    },
+                    {
+                        urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+                        handler: 'CacheFirst',
+                        options: {
+                            cacheName: 'gstatic-fonts-cache',
+                            expiration: {
+                                maxEntries: 10,
+                                maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
+                            },
+                            cacheableResponse: {
+                                statuses: [0, 200]
+                            },
+                        }
+                    },
+                    {
+                        // Cache-First for static icons/images
+                        urlPattern: ({ request }) => request.destination === 'image',
+                        handler: 'CacheFirst',
+                        options: {
+                            cacheName: 'images',
+                            expiration: {
+                                maxEntries: 60,
+                                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+                            },
+                        },
+                    },
+                    {
+                        // Stale-While-Revalidate for Supabase Data
+                        urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+                        handler: 'StaleWhileRevalidate',
+                        options: {
+                            cacheName: 'supabase-data-cache',
+                            expiration: {
+                                maxEntries: 100,
+                                maxAgeSeconds: 60 * 60 * 24 // 24 Hours
+                            },
+                            cacheableResponse: {
+                                statuses: [0, 200]
+                            }
+                        }
+                    },
+                    {
+                        // Stale-While-Revalidate for other same-origin resources
+                        // @ts-expect-error self is defined in SW context
+                        urlPattern: ({ url }) => url.origin === self.location.origin,
+                        handler: 'StaleWhileRevalidate',
+                        options: {
+                            cacheName: 'static-resources',
+                            /* formulas removed as it is not a valid property for StaleWhileRevalidate options */
+                        },
+                    }
+                ]
             },
             devOptions: {
                 enabled: true

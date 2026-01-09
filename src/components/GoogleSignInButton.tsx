@@ -34,7 +34,7 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         <button
             onClick={handleLogin}
             disabled={isLoading}
-            className={`group relative flex items-center justify-center gap-3 w-full py-4 px-6 bg-white border border-slate-200 rounded-2xl shadow-lg hover:shadow-blue-500/10 hover:border-blue-400 active:scale-[0.98] transition-all duration-300 disabled:opacity-70 ${className}`}
+            className={`group relative flex items-center justify-center gap-3 w-full py-4 px-6 bg-white text-slate-800 border border-slate-200 rounded-2xl shadow-lg hover:shadow-blue-500/10 hover:border-blue-400 active:scale-[0.98] transition-all duration-300 disabled:opacity-70 ${className}`}
         >
             {isLoading ? (
                 <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
@@ -59,7 +59,7 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
                 </svg>
             )}
 
-            <span className="text-sm font-black text-slate-800 uppercase tracking-tight">
+            <span className="text-sm font-black text-inherit uppercase tracking-tight">
                 {isLoading ? "Connecting..." : text}
             </span>
 

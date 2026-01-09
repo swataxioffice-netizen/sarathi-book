@@ -13,7 +13,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
     const { user } = useAuth();
 
     return (
-        <header className="bg-white border-b-2 border-slate-100 px-4 py-1.5 flex-none sticky top-0 z-40 shadow-sm">
+        <header className="bg-white border-b-2 border-slate-100 px-3 py-1.5 flex-none sticky top-0 z-40 shadow-sm">
             <div className="flex justify-between items-center max-w-md mx-auto">
                 {/* Left: Profile Button */}
                 <button
@@ -22,7 +22,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                     className={`w-9 h-9 flex items-center justify-center rounded-full border transition-colors ${activeTab === 'profile' ? 'bg-[#0047AB] text-white border-[#0047AB]' : 'bg-slate-50 text-slate-400 border-slate-100 hover:bg-blue-50 hover:text-blue-600'}`}
                 >
                     {user?.user_metadata?.avatar_url ? (
-                        <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                        <img src={user.user_metadata.avatar_url || user.user_metadata.picture} referrerPolicy="no-referrer" alt="Profile" width="36" height="36" className="w-full h-full rounded-full object-cover" />
                     ) : (
                         <User size={18} />
                     )}
@@ -34,6 +34,8 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                         <img
                             src="/logo.png"
                             alt="Sarathi Book"
+                            width="36"
+                            height="36"
                             className="w-full h-full object-contain p-0.5"
                         />
                     </div>

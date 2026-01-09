@@ -1,5 +1,4 @@
-import { jsPDF } from 'jspdf';
-import QRCode from 'qrcode';
+// Imports moved to dynamic import inside functions
 import { type Trip } from './fare';
 import { VEHICLES } from '../config/vehicleRates';
 import { numberToWords } from './numberToWords';
@@ -66,7 +65,15 @@ export interface SavedQuotation {
 }
 
 export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQuotation: boolean = false) => {
-    const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true } as any);
+    // Dynamic Import for Code Splitting (Memory Efficiency)
+    const { jsPDF } = await import('jspdf');
+    // @ts-ignore
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+    // ... rest of the function remains identical, just ensuring imports are available ...
+
+    // We need to re-implement the function body here since we are replacing.
+    // Copying the logic from view_file output but wrapped in dynamic import.
+
     const margin = 15;
     let y = 0;
 
@@ -600,6 +607,8 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
 
 // Sustainable Quotation Design (Refactored to match Professional Letterhead Standard)
 export const generateQuotationPDF = async (data: QuotationData, settings: PDFSettings) => {
+    const { jsPDF } = await import('jspdf');
+    // @ts-ignore
     const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
     const margin = 15;
     let y = 15;
@@ -1129,6 +1138,7 @@ export interface Expense {
 }
 
 export const generateFinancialReportPDF = async (trips: Trip[], expenses: Expense[], settings: PDFSettings, periodLabel: string) => {
+    const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({ compress: true });
     const margin = 15;
     let y = 15;
@@ -1151,6 +1161,7 @@ export const generateFinancialReportPDF = async (trips: Trip[], expenses: Expens
     // --- QR CODE (Business Profile) ---
     if (settings.userId) {
         try {
+            const QRCode = await import('qrcode'); // Dynamic Import
             const publicUrl = `${window.location.origin}/?u=${settings.userId}`;
             const qrDataUrl = await QRCode.toDataURL(publicUrl, { margin: 1, width: 100 });
             doc.addImage(qrDataUrl, 'PNG', 170, 8, 18, 18, undefined, 'FAST');

@@ -42,6 +42,28 @@ interface Settings {
     isPremium?: boolean;
     services?: string[];
     signatureUrl?: string;
+
+    // --- Staff & Salary Management (Pro) ---
+    staff: Staff[];
+    defaultSalaryConfig: SalaryConfig;
+}
+
+export interface SalaryConfig {
+    dutyPay: number;     // Daily Rate when generating revenue
+    standbyPay: number;  // Daily Rate when idle
+    pfDeduction: number; // Flat monthly deduction (smart default: 0 or 1800)
+    advanceLimit: number; // Max advance allowed
+}
+
+export interface Staff {
+    id: string;
+    name: string;
+    phone: string;
+    role: 'driver' | 'manager';
+    salaryConfig: SalaryConfig;
+    joinDate: string;
+    status: 'active' | 'inactive';
+    balance: number; // Ledger Balance (Positive = Company owes Driver, Negative = Driver owes Company)
 }
 
 interface SettingsContextType {
@@ -144,6 +166,17 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             // Ensure services array exists if missing
             if (!parsed.services) parsed.services = undefined;
 
+            // Migration: Staff & Salary
+            if (!parsed.staff) parsed.staff = [];
+            if (!parsed.defaultSalaryConfig) {
+                parsed.defaultSalaryConfig = {
+                    dutyPay: 800,
+                    standbyPay: 400,
+                    pfDeduction: 0,
+                    advanceLimit: 5000
+                };
+            }
+
             return parsed;
         }
         return {
@@ -171,7 +204,14 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             secondaryColor: '#6366F1',
             showWatermark: true,
             isPremium: false,
-            services: ['Local', 'Outstation', 'Tours'] // Default Services
+            services: ['Local', 'Outstation', 'Tours'], // Default Services
+            staff: [],
+            defaultSalaryConfig: {
+                dutyPay: 800,
+                standbyPay: 400,
+                pfDeduction: 0,
+                advanceLimit: 5000
+            }
         };
     });
 

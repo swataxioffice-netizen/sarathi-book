@@ -86,9 +86,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const signOut = async () => {
-        const { error } = await supabase.auth.signOut();
-        if (error) console.error('Sign out error:', error);
         setUser(null);
+        try {
+            await supabase.auth.signOut();
+        } catch (error) {
+            console.error('Sign out error:', error);
+        }
+        window.location.href = '/';
     };
 
     const isAdmin = !!(user?.email && ['swa.taxioffice@gmail.com'].includes(user.email));

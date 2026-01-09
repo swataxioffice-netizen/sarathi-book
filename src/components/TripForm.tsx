@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useSettings } from '../contexts/SettingsContext';
-import { calculateFare } from '../utils/fare';
+import { calculateFareAsync } from '../utils/fareWorkerWrapper';
 import { VEHICLES } from '../config/vehicleRates';
 import type { Trip } from '../utils/fare';
 import { shareReceipt, type SavedQuotation } from '../utils/pdf';
@@ -566,7 +566,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         return (maxSeq + 1).toString().padStart(3, '0');
     };
 
-    const getCalculation = () => {
+    const getCalculation = async () => {
         // Map mode to serviceType
         let serviceType = 'one_way';
         if (mode === 'outstation') serviceType = 'round_trip';
@@ -590,7 +590,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         const petChargeAmt = petCharge ? 500 : 0;
         const nightBataAmt = nightBata ? (settings.nightBata || 0) : 0;
 
-        const res = calculateFare(
+        const res = await calculateFareAsync(
             serviceType,
             selectedVehicleId,
             dist,
@@ -630,14 +630,14 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         };
     };
 
-    const handleCalculate = () => {
-        const res = getCalculation();
+    const handleCalculate = async () => {
+        const res = await getCalculation();
         setResult(res);
         setIsCalculated(true);
     };
 
     const handlePreview = async () => {
-        const calcResult = getCalculation();
+        const calcResult = await getCalculation();
         setResult(calcResult);
         if (!calcResult) return;
 

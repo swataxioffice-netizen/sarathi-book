@@ -27,7 +27,8 @@ import { calculateDistance } from '../utils/googleMaps';
 import { calculateAdvancedRoute } from '../utils/routesApi';
 import { estimatePermitCharge } from '../utils/permits';
 import { estimateParkingCharge } from '../utils/parking';
-import { calculateFare } from '../utils/fare';
+import { calculateFare } from '../utils/fare'; // Keep for types if needed, or remove if unused. But wait, I need to remove this if I strictly replace it? No result type uses it.
+import { calculateFareAsync } from '../utils/fareWorkerWrapper';
 import { VEHICLES } from '../config/vehicleRates';
 import { supabase } from '../utils/supabase';
 import { Analytics } from '../utils/monitoring';
@@ -262,7 +263,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
         }
     }, [selectedVehicle, tripType, days, manualDriverBata, distance]);
 
-    const calculate = () => {
+    const calculate = async () => {
         const dist = parseFloat(distance) || 0;
         if (!dist && tripType !== 'local') return;
 
@@ -282,44 +283,48 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
 
         const overrideRate = (customRate && customRate > 0) ? customRate : undefined;
 
-        const res = calculateFare(
-            serviceType,
-            selectedVehicle,
-            dist + (garageBuffer ? 20 : 0),
-            durationDays,
-            calcExtraHours,
-            false,
-            overrideRate,
-            manualDriverBata ? parseFloat(driverBata) : undefined,
-            parseFloat(hillStationCharge),
-            parseFloat(petCharge),
-            parseFloat(nightCharge)
-        );
+        try {
+            const res = await calculateFareAsync(
+                serviceType,
+                selectedVehicle,
+                dist + (garageBuffer ? 20 : 0),
+                durationDays,
+                calcExtraHours,
+                false,
+                overrideRate,
+                manualDriverBata ? parseFloat(driverBata) : undefined,
+                parseFloat(hillStationCharge),
+                parseFloat(petCharge),
+                parseFloat(nightCharge)
+            );
 
-        const permitTotal = parseFloat(permit) || 0;
-        const parkingTotal = parseFloat(parking) || 0;
-        const tollTotal = parseFloat(toll) || 0;
-        const otherExtras = permitTotal + parkingTotal + tollTotal;
+            const permitTotal = parseFloat(permit) || 0;
+            const parkingTotal = parking ? parseFloat(parking) : 0;
+            const tollTotal = toll ? parseFloat(toll) : 0;
+            const otherExtras = permitTotal + parkingTotal + tollTotal;
 
-        const finalTotal = res.totalFare + otherExtras;
+            const finalTotal = res.totalFare + otherExtras;
 
-        const fullBreakdown = [...res.breakdown];
+            const fullBreakdown = [...res.breakdown];
 
-        if (permitTotal > 0) fullBreakdown.push(`Permit Charges: ₹${permitTotal.toLocaleString()}`);
-        if (parkingTotal > 0) fullBreakdown.push(`Parking Charges: ₹${parkingTotal.toLocaleString()}`);
-        if (tollTotal > 0) fullBreakdown.push(`Toll Charges: ₹${tollTotal.toLocaleString()}`);
+            if (permitTotal > 0) fullBreakdown.push(`Permit Charges: ₹${permitTotal.toLocaleString()}`);
+            if (parkingTotal > 0) fullBreakdown.push(`Parking Charges: ₹${parkingTotal.toLocaleString()}`);
+            if (tollTotal > 0) fullBreakdown.push(`Toll Charges: ₹${tollTotal.toLocaleString()}`);
 
-        // Pass full context to Analytics for "Real" Trending Routes
-        Analytics.calculateFare(serviceType, selectedVehicle, dist, pickup, drop, Math.round(finalTotal));
+            // Pass full context to Analytics for "Real" Trending Routes
+            Analytics.calculateFare(serviceType, selectedVehicle, dist, pickup, drop, Math.round(finalTotal));
 
-        setResult({
-            fare: Math.round(finalTotal),
-            details: fullBreakdown,
-            breakdown: {
-                ...res,
-                total: finalTotal
-            }
-        });
+            setResult({
+                fare: Math.round(finalTotal),
+                details: fullBreakdown,
+                breakdown: {
+                    ...res,
+                    total: finalTotal
+                }
+            });
+        } catch (err) {
+            console.error(err);
+        }
     };
 
     // AUTO-CALCULATE FARE INSTANTLY

@@ -4,15 +4,16 @@ import { useSettings } from '../contexts/SettingsContext';
 import {
     User as UserIcon, LogOut,
     Contact, Landmark, Car, FileText, ChevronRight,
-    RefreshCw, X, Trash2, Sparkles, Crown
+    RefreshCw, X, Trash2, Sparkles, Crown, Cloud, Users
 } from 'lucide-react';
+import GoogleSignInButton from './GoogleSignInButton';
 import { supabase } from '../utils/supabase';
 import { VEHICLES } from '../config/vehicleRates';
 import { validateVehicleNumber } from '../utils/validation';
 
-// Sub-components
-import DocumentVault from './DocumentVault';
-import BusinessCard from './BusinessCard';
+// Sub-components (Lazy Loaded)
+const DocumentVault = React.lazy(() => import('./DocumentVault'));
+const BusinessCard = React.lazy(() => import('./BusinessCard'));
 import { subscribeToPush } from '../utils/push';
 
 // ----------------------------------------------------------------------
@@ -78,7 +79,7 @@ const Profile: React.FC = () => {
     const handleAddVehicle = () => {
         if (!newVehicleNumber || !selectedCategoryId) return;
 
-        if (!settings.isPremium && settings.vehicles.length >= 1) {
+        if (!settings.isPremium && settings.vehicles.length >= 4) {
             window.dispatchEvent(new CustomEvent('open-pricing-modal'));
             return;
         }
@@ -135,46 +136,121 @@ const Profile: React.FC = () => {
         <div className="pb-40 animate-fade-in max-w-lg mx-auto px-4 pt-6">
 
             {/* 1. Header Section */}
-            <div className="bg-white border border-slate-200 rounded-[32px] p-5 shadow-sm relative overflow-hidden mb-6">
+            <div className="bg-white border border-slate-200 rounded-[24px] p-4 shadow-sm relative overflow-hidden mb-4">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full -mr-16 -mt-16" />
                 <div className="relative z-10 flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full border-2 border-white shadow-md bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
-                        {user?.user_metadata?.avatar_url ? (
-                            <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-                        ) : (
-                            <UserIcon size={24} className="text-slate-300" />
+                    {/* Avatar with Pro Badge */}
+                    <div className="relative shrink-0">
+                        <div className="w-14 h-14 rounded-full border-2 border-white shadow-md bg-slate-50 flex items-center justify-center overflow-hidden">
+                            {user?.user_metadata?.avatar_url ? (
+                                <img src={user.user_metadata.avatar_url || user.user_metadata.picture} referrerPolicy="no-referrer" alt="Profile" width="56" height="56" className="w-full h-full object-cover" />
+                            ) : (
+                                <UserIcon size={20} className="text-slate-300" />
+                            )}
+                        </div>
+                        {settings.isPremium && (
+                            <div className="absolute -bottom-1 -right-1 bg-amber-100 text-amber-600 text-[8px] font-black px-1.5 py-0.5 rounded-full border border-amber-200 shadow-sm">
+                                PRO
+                            </div>
                         )}
                     </div>
 
+                    {/* User Info */}
                     <div className="flex-1 min-w-0">
-                        <h2 className="text-base font-black text-slate-900 uppercase tracking-tight truncate flex items-center gap-2">
-                            {user?.user_metadata?.full_name || 'Driver'}
-                            {settings.isPremium && (
-                                <span className="bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full text-[8px] font-black border border-amber-200">PRO</span>
-                            )}
+                        <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight truncate mb-0.5">
+                            {user?.user_metadata?.full_name || 'Guest Driver'}
                         </h2>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                             ID: <span className="text-blue-600">{user?.id?.slice(0, 6).toUpperCase() || 'GUEST'}</span>
                         </p>
-                        <div className="flex gap-4 mt-2">
-                            <button onClick={() => setShowStudio(true)} className="flex items-center gap-1 text-[10px] font-black text-pink-600 uppercase tracking-widest hover:text-pink-700 transition-colors">
-                                <Sparkles size={12} /> Pro Features
-                            </button>
-                            <button onClick={signOut} className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-red-500 transition-colors">
+
+                        {!user ? (
+                            <GoogleSignInButton text="Sign In" className="!w-fit !py-1.5 !px-3 !text-[10px] !rounded-lg !shadow-sm !border-slate-200 !gap-2" />
+                        ) : (
+                            <button onClick={signOut} className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 hover:text-red-600 transition-colors uppercase tracking-wider bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 w-fit">
                                 <LogOut size={12} /> Sign Out
                             </button>
-                        </div>
+                        )}
                     </div>
 
-                    <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
+                    {/* Completion Circle */}
+                    <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
                         <svg className="w-full h-full transform -rotate-90">
-                            <circle cx="28" cy="28" r="24" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-slate-100" />
-                            <circle cx="28" cy="28" r="24" stroke="currentColor" strokeWidth="4" fill="transparent" strokeDasharray={150.8} strokeDashoffset={150.8 * (1 - completion / 100)} className="text-green-500 transition-all duration-1000 ease-out" strokeLinecap="round" />
+                            <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-slate-100" />
+                            <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="transparent" strokeDasharray={125.6} strokeDashoffset={125.6 * (1 - completion / 100)} className="text-green-500 transition-all duration-1000 ease-out" strokeLinecap="round" />
                         </svg>
-                        <span className="absolute text-xs font-black text-slate-900">{completion}%</span>
+                        <span className="absolute text-[10px] font-black text-slate-900">{completion}%</span>
                     </div>
                 </div>
             </div>
+
+            {/* 2. Pro Feature / Upgrade Section */}
+            <div className="mb-6 animate-fade-in">
+                {settings.isPremium ? (
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            onClick={() => setShowStudio(true)}
+                            className="bg-slate-900 text-white p-4 rounded-xl flex flex-col justify-between shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all group min-h-[100px]"
+                        >
+                            <div className="p-2 bg-white/10 rounded-lg text-pink-400 w-fit mb-3">
+                                <Sparkles size={18} />
+                            </div>
+                            <div className="text-left">
+                                <p className="text-[10px] font-black uppercase tracking-wider">Business Suite</p>
+                                <p className="text-[8px] text-slate-400 font-medium leading-tight mt-1">Logo & Branding</p>
+                            </div>
+                        </button>
+
+                        <button
+                            onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'staff' }))}
+                            className="bg-white text-slate-900 border border-slate-200 p-4 rounded-xl flex flex-col justify-between shadow-sm hover:border-blue-500 transition-all group min-h-[100px]"
+                        >
+                            <div className="p-2 bg-blue-50 rounded-lg text-blue-600 w-fit mb-3">
+                                <Users size={18} />
+                            </div>
+                            <div className="text-left">
+                                <p className="text-[10px] font-black uppercase tracking-wider">Staff Manager</p>
+                                <p className="text-[8px] text-slate-400 font-medium leading-tight mt-1">Salary & Attendance</p>
+                            </div>
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        onClick={() => window.dispatchEvent(new CustomEvent('open-pricing-modal'))}
+                        className="w-full bg-gradient-to-r from-pink-600 to-purple-600 text-white p-4 rounded-2xl flex items-center justify-between shadow-lg shadow-pink-200 hover:shadow-xl transition-all group relative overflow-hidden"
+                    >
+                        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="flex items-center gap-3 relative z-10">
+                            <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+                                <Crown size={18} />
+                            </div>
+                            <div className="text-left">
+                                <p className="text-xs font-black uppercase tracking-wider">Upgrade to Pro</p>
+                                <p className="text-[9px] text-white/80 font-medium">Unlock Unlimited Vehicles</p>
+                            </div>
+                        </div>
+                        <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm relative z-10">
+                            <ChevronRight size={16} />
+                        </div>
+                    </button>
+                )}
+            </div>
+
+            {/* Sync Banner (Guest Only) */}
+            {!user && (
+                <div className="mb-6 bg-indigo-50 border border-indigo-100 p-4 rounded-2xl flex items-center gap-4 animate-fade-in relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-100 rounded-full blur-2xl -mr-12 -mt-12"></div>
+                    <div className="relative z-10 w-10 h-10 bg-indigo-100/80 rounded-full flex items-center justify-center text-indigo-600 shrink-0">
+                        <Cloud size={20} />
+                    </div>
+                    <div className="relative z-10 flex-1">
+                        <h3 className="text-xs font-black text-indigo-900 uppercase tracking-wide mb-0.5">Sync Your Data</h3>
+                        <p className="text-[10px] font-medium text-indigo-600/80 leading-relaxed">
+                            Sign in to sync your trips & invoices across devices.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* 2. Tabs Navigation */}
             <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-200 mb-6 sticky top-2 z-20 gap-1">
@@ -289,7 +365,9 @@ const Profile: React.FC = () => {
 
                 {activeTab === 'docs' && (
                     <div className="animate-scale-in">
-                        <DocumentVault />
+                        <React.Suspense fallback={<div className="p-8 text-center text-xs text-slate-400 font-bold uppercase tracking-widest">Loading Documents...</div>}>
+                            <DocumentVault />
+                        </React.Suspense>
                     </div>
                 )}
             </div>
@@ -304,7 +382,9 @@ const Profile: React.FC = () => {
                 <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowCard(false)}>
                     <div className="relative w-full max-w-sm" onClick={e => e.stopPropagation()}>
                         <button onClick={() => setShowCard(false)} className="absolute -top-12 right-0 text-white"><X size={32} /></button>
-                        <BusinessCard />
+                        <React.Suspense fallback={<div className="bg-white p-8 rounded-2xl text-center font-bold text-slate-500">Loading Card Editor...</div>}>
+                            <BusinessCard />
+                        </React.Suspense>
                     </div>
                 </div>
             )}

@@ -1,6 +1,15 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+/* Enable View Transitions for Page Navigation */
+@view-transition {
+  navigation: auto;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 :root {
   /* Vibrant 500 Scale Palette */
   --bg-app: #F5F7FA;
@@ -17,6 +26,10 @@
   --border-light: #E2E8F0;
   --border-primary: #3B82F6;
 
+  /* Safe Area Variables */
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+
   --status-success: #22C55E;
   /* Green 500 */
   --status-error: #EF4444;
@@ -29,6 +42,19 @@
   color-scheme: light;
   color: var(--text-main);
   background-color: var(--bg-app);
+}
+
+/* Global Micro-Interactions */
+button,
+a,
+input,
+select,
+textarea {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:active {
+  transform: scale(0.96);
 }
 
 .dark {
@@ -89,6 +115,50 @@ body,
   .tn-label {
     color: var(--text-main);
     @apply text-[11px] font-black uppercase tracking-wider mb-2 block opacity-80;
+  }
+
+  /* Safe Area Utilities */
+  .pt-safe {
+    padding-top: var(--safe-top, 20px);
+  }
+
+  .pb-safe {
+    padding-bottom: var(--safe-bottom, 20px);
+  }
+}
+
+/* Global Safe Area for Header */
+header {
+  padding-top: var(--safe-top, 0px);
+}
+
+/* 1. Viewport & Keyboard Handling */
+input,
+textarea,
+select,
+.tn-input {
+  scroll-margin-top: 120px;
+  /* Prevents keyboard hiding active field */
+}
+
+/* 3. Anti-Glitch: Aspect Ratio Entforcement */
+img {
+  max-width: 100%;
+  height: auto;
+  /* Helps avoid layout shifts if width/height attributes are present */
+  aspect-ratio: attr(width) / attr(height);
+}
+
+/* 4. Input & Form Resilience: Disable animations on low-power/preference */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

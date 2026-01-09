@@ -31,6 +31,8 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                         <img
                             src="/logo.png"
                             alt="Sarathi Book"
+                            width="48"
+                            height="48"
                             className="w-full h-full object-contain"
                         />
                     </div>
