@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Wallet, User, LogOut, Calculator, ShieldCheck, Share2 } from 'lucide-react';
+import { LayoutDashboard, FileText, Wallet, User, LogOut, Calculator, ShieldCheck, Share2, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Analytics } from '../utils/monitoring';
 
@@ -16,6 +16,7 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
         { id: 'trips', icon: <FileText size={20} />, label: 'Invoices' },
         { id: 'expenses', icon: <Wallet size={20} />, label: 'Expenses' },
         { id: 'calculator', icon: <Calculator size={20} />, label: 'Calculator' },
+        { id: 'trending', icon: <TrendingUp size={20} />, label: 'Trending Routes' },
         { id: 'profile', icon: <User size={20} />, label: 'Profile' },
     ];
 
@@ -25,25 +26,20 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
 
     return (
         <aside className="h-full bg-white border-r border-slate-200 flex flex-col w-64">
-            <div className="p-6 border-b border-slate-100">
-                <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 flex-shrink-0">
-                        <img
-                            src="/logo.png"
-                            alt="Sarathi Book"
-                            width="48"
-                            height="48"
-                            className="w-full h-full object-contain"
-                        />
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-black text-[#0047AB] leading-none tracking-tight mb-0.5" style={{ letterSpacing: '-0.02em' }}>
-                            SARATHI BOOK
-                        </h1>
-                        <p className="text-[10px] font-semibold text-slate-500 leading-none tracking-wide" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
-                            Your digital office on car
-                        </p>
-                    </div>
+            <div className="p-6 border-b border-slate-100 flex flex-col items-center justify-center text-center">
+                <div className="w-12 h-12 flex-shrink-0 mb-2">
+                    <img
+                        src="/logo.png"
+                        alt="Sarathi Book"
+                        width="48"
+                        height="48"
+                        className="w-full h-full object-contain"
+                    />
+                </div>
+                <div>
+                    <h1 className="text-xl font-black text-[#0047AB] leading-none tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+                        SARATHI BOOK
+                    </h1>
                 </div>
             </div>
 

@@ -38,7 +38,9 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
 
     // Sync internal state with prop value
     useEffect(() => {
-        setInputValue(value);
+        if (value !== inputValue) {
+            setInputValue(value);
+        }
     }, [value]);
 
     // Close dropdown on click outside
@@ -55,11 +57,12 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
     // Smart Positioning and Scroll Logic
     const ensureVisibility = () => {
         // 1. Scroll into view (delayed for keyboard animation)
-        setTimeout(() => {
-            if (wrapperRef.current) {
-                wrapperRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }, 300);
+        // REMOVED auto-scroll on typing as it causes jumping and poor UX on mobile
+        // setTimeout(() => {
+        //     if (wrapperRef.current) {
+        //         wrapperRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        //     }
+        // }, 300);
 
         // 2. Decide Dropdown Position (Top vs Bottom)
         if (wrapperRef.current) {
@@ -79,10 +82,15 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
             setIsOpen(true);
         }
         ensureVisibility();
+        // Only scroll on explicit focus, not while typing
+        setTimeout(() => {
+            if (wrapperRef.current) {
+                wrapperRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 300);
     };
 
     const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        // ... existing logic ...
         const val = e.target.value;
         setInputValue(val);
         onChange(val);
@@ -93,15 +101,15 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
             return;
         }
 
-        // Re-check visibility when typing creates new results
+        // Re-check visibility (positioning only) when typing creates new results
         ensureVisibility();
 
         setIsLoading(true);
-        // ... rest of handleInputChange ...
+
         try {
             const google = await loadGoogleMaps();
             const service = new google.maps.places.AutocompleteService();
-            // ...
+
             const request: google.maps.places.AutocompletionRequest = {
                 input: val,
                 componentRestrictions: { country: 'in' },

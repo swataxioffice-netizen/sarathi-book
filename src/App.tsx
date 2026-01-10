@@ -26,13 +26,14 @@ const TripForm = lazy(() => import('./components/TripForm'));
 const History = lazy(() => import('./components/History'));
 const Profile = lazy(() => import('./components/Profile'));
 const ExpenseTracker = lazy(() => import('./components/ExpenseTracker'));
-// const Calculator = lazy(() => import('./components/Calculator')); // Moved to critical path
+
 const QuotationForm = lazy(() => import('./components/QuotationForm'));
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
 const PublicProfile = lazy(() => import('./components/PublicProfile'));
 const QuickNotes = lazy(() => import('./components/QuickNotes'));
 const PricingModal = lazy(() => import('./components/PricingModal'));
 const SalaryManager = lazy(() => import('./components/SalaryManager'));
+const TrendingRoutes = lazy(() => import('./components/TrendingRoutes'));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -51,7 +52,7 @@ function AppContent() {
     // Priority: 1. URL Path, 2. URL Hash (Legacy/Auth), 3. Local Storage, 4. Default 'dashboard'
     const pathname = window.location.pathname.slice(1).split('/')[0];
     const hash = window.location.hash.slice(1).split('/')[0];
-    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin', 'notes', 'staff'];
+    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin', 'notes', 'staff', 'trending'];
 
     if (pathname && validTabs.includes(pathname)) return pathname;
     if (hash && validTabs.includes(hash)) return hash;
@@ -62,7 +63,7 @@ function AppContent() {
   useEffect(() => {
     const handlePopState = () => {
       const pathname = window.location.pathname.slice(1).split('/')[0];
-      const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin', 'notes'];
+      const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin', 'notes', 'trending'];
       if (pathname && validTabs.includes(pathname)) {
         setActiveTab(pathname);
       }
@@ -209,7 +210,7 @@ function AppContent() {
     loadData();
   }, []);
 
-  // Removed localStorage effects as we now save on-demand (Optimistic + DB)
+
 
 
   const hasSyncedRef = useRef(false);
@@ -235,11 +236,7 @@ function AppContent() {
           // 2. Identify and Upload Local-Only Trips to Cloud
           const localTipsToUpload: Trip[] = [];
 
-          // Access valid current trips (ignoring any potential state closure staleness if possible, 
-          // but here we rely on 'trips' from closure which is fresh due to [user] dep getting hit after state updates usually)
-          // Actually, 'trips' in this scope might be stale if strict mode runs effect twice? 
-          // Better to use functional access or ref, but for now we trust 'trips' dependency or local read.
-          // Wait, 'trips' is not in dependency array.
+
 
           // Let's use a trick: read from localStorage for source of truth of "Guest Work" to sync up
           const localStored = safeJSONParse<Trip[]>('namma-cab-trips', []);
@@ -509,10 +506,13 @@ function AppContent() {
         );
       case 'calculator':
         return (
-          // Suspense is not strictly needed if Calculator is static, but keeping it is fine or removing it.
-          // Since we made it static, we can remove Suspense or keep it as wrapper (it does no harm).
-          // But to be clean:
           <Calculator />
+        );
+      case 'trending':
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <TrendingRoutes />
+          </Suspense>
         );
       case 'notes':
         return (
@@ -613,7 +613,7 @@ function AppContent() {
         <main className="flex-1 overflow-y-auto scrollbar-hide px-3 py-4 pb-24 bg-[#F5F7FA] relative">
           {renderContent()}
 
-          {/* Quick Notes FAB */}
+
 
         </main>
         <BottomNav
