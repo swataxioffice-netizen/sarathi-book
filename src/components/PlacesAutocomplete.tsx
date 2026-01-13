@@ -108,8 +108,9 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
 
         try {
             const google = await loadGoogleMaps();
-            const service = new google.maps.places.AutocompleteService();
+            if (!google) throw new Error("Google Maps SDK not available");
 
+            const service = new google.maps.places.AutocompleteService();
             const request: google.maps.places.AutocompletionRequest = {
                 input: val,
                 componentRestrictions: { country: 'in' },
@@ -120,16 +121,19 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                 if (status === google.maps.places.PlacesServiceStatus.OK && results) {
                     setPredictions(results);
                     setIsOpen(true);
-                    // Check position again once results are ready
                     ensureVisibility();
                 } else {
+                    // Start: Fallback to empty if API fails (allow manual entry)
                     setPredictions([]);
                     setIsOpen(false);
+                    // End: Fallback
                 }
             });
         } catch (error) {
-            console.error('Error fetching predictions:', error);
+            console.warn('[PlacesAutocomplete] API Error (Falling back to manual input):', error);
             setIsLoading(false);
+            setPredictions([]);
+            setIsOpen(false);
         }
     };
 

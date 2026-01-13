@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { loadGoogleMaps, calculateDistance, getCurrentLocation } from '../utils/googleMaps';
+import { loadGoogleMaps, getCurrentLocation } from '../utils/googleMaps';
 import { calculateAdvancedRoute } from '../utils/routesApi';
 import { MapPin, X, Search, Locate } from 'lucide-react';
 
@@ -302,51 +302,53 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
     // Calculate distance and TOLLS when both locations are set
     useEffect(() => {
         if (pickupLocation && dropLocation && directionsRenderer) {
-            const calculateRoute = async () => {
+            const timer = setTimeout(async () => {
                 try {
-                    // 1. Get basic distance for immediate UI
-                    const basicRes = await calculateDistance(
-                        { lat: pickupLocation.lat, lng: pickupLocation.lng },
-                        { lat: dropLocation.lat, lng: dropLocation.lng }
-                    );
-
-                    if (basicRes) {
-                        setDistance(basicRes.distance);
-                    }
-
-                    // 2. Try Advanced Routes API for TOLL estimates
-                    const advancedRes = await calculateAdvancedRoute(
-                        { lat: pickupLocation.lat, lng: pickupLocation.lng },
-                        { lat: dropLocation.lat, lng: dropLocation.lng }
-                    );
-
-                    if (advancedRes) {
-                        setDistance(advancedRes.distanceKm);
-                        setTollEstimate(advancedRes.tollPrice);
-                    }
-
-                    // 3. Draw route line on map
+                    // 1. Load Google Maps
                     const google = await loadGoogleMaps();
                     const directionsService = new google.maps.DirectionsService();
 
+                    // 2. Call Standard Directions API (Visualize Route + Get Basic Distance)
                     directionsService.route(
                         {
                             origin: { lat: pickupLocation.lat, lng: pickupLocation.lng },
                             destination: { lat: dropLocation.lat, lng: dropLocation.lng },
                             travelMode: google.maps.TravelMode.DRIVING,
                         },
-                        (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
+                        async (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
                             if (status === 'OK' && result) {
+                                // Draw Route
                                 directionsRenderer.setDirections(result);
+
+                                // Extract Distance from Directions API (No need for extra DistanceMatrix call)
+                                if (result.routes[0]?.legs[0]) {
+                                    const leg = result.routes[0].legs[0];
+                                    if (leg.distance?.value) {
+                                        setDistance(Math.round(leg.distance.value / 1000));
+                                    }
+                                }
+
+                                // 3. Call Advanced Routes API (Tolls) - Only if Directions succeeded
+                                // This is the expensive "Compute Routes" call.
+                                const advancedRes = await calculateAdvancedRoute(
+                                    { lat: pickupLocation.lat, lng: pickupLocation.lng },
+                                    { lat: dropLocation.lat, lng: dropLocation.lng }
+                                );
+
+                                if (advancedRes) {
+                                    // Prefer the precise distance from Routes API if available, else stick to Directions API
+                                    // setDistance(advancedRes.distanceKm); 
+                                    setTollEstimate(advancedRes.tollPrice);
+                                }
                             }
                         }
                     );
                 } catch (err) {
                     console.error('Error calculating route:', err);
                 }
-            };
+            }, 1000); // Debounce by 1 second to prevent API spam while dragging
 
-            calculateRoute();
+            return () => clearTimeout(timer);
         }
     }, [pickupLocation, dropLocation, directionsRenderer]);
 

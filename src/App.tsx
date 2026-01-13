@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { safeJSONParse } from './utils/storage';
 import { dbRequest } from './utils/db'; // IndexedDB
 import { supabase } from './utils/supabase';
@@ -669,17 +670,21 @@ function AppContent() {
   );
 }
 
+
+
 function App() {
   return (
-    <UpdateProvider>
-      <AuthProvider>
-        <NotificationProvider>
-          <SettingsProvider>
-            <AppContent />
-          </SettingsProvider>
-        </NotificationProvider>
-      </AuthProvider>
-    </UpdateProvider>
+    <ErrorBoundary>
+      <UpdateProvider>
+        <AuthProvider>
+          <NotificationProvider>
+            <SettingsProvider>
+              <AppContent />
+            </SettingsProvider>
+          </NotificationProvider>
+        </AuthProvider>
+      </UpdateProvider>
+    </ErrorBoundary>
   );
 }
 

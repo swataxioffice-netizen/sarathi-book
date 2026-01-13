@@ -106,6 +106,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerGst, setCustomerGst] = useState('');
+    const [hourlyPackage, setHourlyPackage] = useState<'8hr_80km' | '12hr_120km' | 'custom'>('8hr_80km');
     const [startKm, setStartKm] = useState<number>(0);
     const [endKm, setEndKm] = useState<number>(0);
     const [startTime, setStartTime] = useState('');
@@ -1047,64 +1048,103 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
                             {mode !== 'custom' && (
                                 <>
-                                    <div>
-                                        <label className="tn-label flex items-center justify-between">
-                                            Start{mode === 'hourly' ? ' Details' : ' KM'}
-                                            <label className="text-[9px] text-blue-600 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100">
-                                                <Camera size={10} /> Photo
-                                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={() => alert('Photo attached!')} />
+                                    {mode === 'hourly' && (
+                                        <div className="col-span-2 mb-2 animate-in fade-in slide-in-from-top-2">
+                                            <label className="tn-label">Select Package</label>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {['8hr_80km', '12hr_120km', 'custom'].map((pkg) => (
+                                                    <button
+                                                        key={pkg}
+                                                        onClick={() => setHourlyPackage(pkg as any)}
+                                                        className={`py-3 px-1 rounded-xl border-2 transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5
+                                                            ${hourlyPackage === pkg
+                                                                ? 'bg-blue-50 border-blue-600 text-blue-700 shadow-sm'
+                                                                : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
+                                                            }`}
+                                                    >
+                                                        <Clock size={14} className={hourlyPackage === pkg ? 'text-blue-600' : 'text-slate-300'} />
+                                                        <span className="text-[10px] font-black uppercase tracking-wider leading-none text-center">
+                                                            {pkg === 'custom' ? 'Custom' : pkg.replace('hr_', ' HR/').replace('km', ' KM')}
+                                                        </span>
+                                                        {hourlyPackage === pkg && <div className="hidden sm:block ml-auto w-1.5 h-1.5 rounded-full bg-blue-600" />}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Start Details */}
+                                    <div className={mode === 'hourly' ? "col-span-2" : "col-span-1"}>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <label htmlFor="start_km" className="tn-label mb-0">Start {mode === 'hourly' ? 'Details' : 'KM'}</label>
+                                            <label htmlFor="start_photo" className="text-[9px] text-blue-600 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors border border-blue-100">
+                                                <Camera size={12} />
+                                                <span className="uppercase tracking-wider">Photo</span>
+                                                <input id="start_photo" type="file" accept="image/*" capture="environment" className="hidden" onChange={() => alert('Photo attached!')} />
                                             </label>
-                                        </label>
-                                        <div className={mode === 'hourly' ? "grid grid-cols-2 gap-3" : "flex gap-2"}>
-                                            <input
-                                                id="start_km"
-                                                name="start_km"
-                                                type="number"
-                                                className="tn-input w-full"
-                                                value={startKm || ''}
-                                                onChange={(e) => setStartKm(Number(e.target.value))}
-                                                placeholder="Start KM"
-                                            />
-                                            {mode === 'hourly' && (
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <div className="relative flex-1">
                                                 <input
-                                                    id="start_time"
-                                                    name="start_time"
-                                                    type="time"
-                                                    className="tn-input w-full px-1 text-center text-xs"
-                                                    value={startTime}
-                                                    onChange={(e) => setStartTime(e.target.value)}
+                                                    id="start_km"
+                                                    name="start_km"
+                                                    type="number"
+                                                    className="tn-input w-full font-bold text-slate-800"
+                                                    value={startKm || ''}
+                                                    onChange={(e) => setStartKm(Number(e.target.value))}
+                                                    placeholder="0"
                                                 />
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 pointer-events-none">KM</span>
+                                            </div>
+                                            {mode === 'hourly' && (
+                                                <div className="relative w-1/3">
+                                                    <input
+                                                        id="start_time"
+                                                        name="start_time"
+                                                        type="time"
+                                                        className="tn-input w-full px-1 text-center text-xs font-bold"
+                                                        value={startTime}
+                                                        onChange={(e) => setStartTime(e.target.value)}
+                                                    />
+                                                </div>
                                             )}
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <label className="tn-label flex items-center justify-between">
-                                            End{mode === 'hourly' ? ' Details' : ' KM'}
-                                            <label className="text-[9px] text-blue-600 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100">
-                                                <Camera size={10} /> Photo
-                                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={() => alert('Photo attached!')} />
+                                    {/* End Details */}
+                                    <div className={mode === 'hourly' ? "col-span-2" : "col-span-1"}>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <label htmlFor="end_km" className="tn-label mb-0">End {mode === 'hourly' ? 'Details' : 'KM'}</label>
+                                            <label htmlFor="end_photo" className="text-[9px] text-blue-600 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors border border-blue-100">
+                                                <Camera size={12} />
+                                                <span className="uppercase tracking-wider">Photo</span>
+                                                <input id="end_photo" type="file" accept="image/*" capture="environment" className="hidden" onChange={() => alert('Photo attached!')} />
                                             </label>
-                                        </label>
-                                        <div className={mode === 'hourly' ? "grid grid-cols-2 gap-3" : "flex gap-2"}>
-                                            <input
-                                                id="end_km"
-                                                name="end_km"
-                                                type="number"
-                                                className="tn-input w-full"
-                                                value={endKm || ''}
-                                                onChange={(e) => setEndKm(Number(e.target.value))}
-                                                placeholder="End KM"
-                                            />
-                                            {mode === 'hourly' && (
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <div className="relative flex-1">
                                                 <input
-                                                    id="end_time"
-                                                    name="end_time"
-                                                    type="time"
-                                                    className="tn-input w-full px-1 text-center text-xs"
-                                                    value={endTime}
-                                                    onChange={(e) => setEndTime(e.target.value)}
+                                                    id="end_km"
+                                                    name="end_km"
+                                                    type="number"
+                                                    className="tn-input w-full font-bold text-slate-800"
+                                                    value={endKm || ''}
+                                                    onChange={(e) => setEndKm(Number(e.target.value))}
+                                                    placeholder="0"
                                                 />
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 pointer-events-none">KM</span>
+                                            </div>
+                                            {mode === 'hourly' && (
+                                                <div className="relative w-1/3">
+                                                    <input
+                                                        id="end_time"
+                                                        name="end_time"
+                                                        type="time"
+                                                        className="tn-input w-full px-1 text-center text-xs font-bold"
+                                                        value={endTime}
+                                                        onChange={(e) => setEndTime(e.target.value)}
+                                                    />
+                                                </div>
                                             )}
                                         </div>
                                     </div>

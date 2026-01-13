@@ -92,12 +92,28 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                 </div>
 
                 <div className="mt-5 flex gap-3">
-                    <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">INCOME</p>
+                    <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100 relative group">
+                        <div className="flex justify-between items-start">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">INCOME</p>
+                            <button
+                                onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'trips' }))}
+                                className="text-[9px] font-black bg-white border border-slate-200 text-slate-400 px-2 py-0.5 rounded-full uppercase tracking-wider hover:text-green-600 hover:border-green-200 transition-colors"
+                            >
+                                Add +
+                            </button>
+                        </div>
                         <p className="text-sm font-black mt-0.5 text-slate-700">₹{stats.income.toLocaleString()}</p>
                     </div>
-                    <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">SPENT</p>
+                    <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100 relative group">
+                        <div className="flex justify-between items-start">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">SPENT</p>
+                            <button
+                                onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'expenses' }))}
+                                className="text-[9px] font-black bg-white border border-slate-200 text-slate-400 px-2 py-0.5 rounded-full uppercase tracking-wider hover:text-red-500 hover:border-red-200 transition-colors"
+                            >
+                                Add +
+                            </button>
+                        </div>
                         <p className="text-sm font-black mt-0.5 text-slate-700">₹{stats.spending.toLocaleString()}</p>
                     </div>
                 </div>

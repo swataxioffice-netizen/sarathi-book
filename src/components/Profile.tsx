@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { GSTService } from '../services/gst'; // Import Service
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import {
@@ -32,6 +33,10 @@ const Profile: React.FC = () => {
     const [savingSection, setSavingSection] = useState<string | null>(null);
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [showStudio, setShowStudio] = useState(false);
+
+    // GST State
+    // Validation is done on Save
+
 
     // Garage State
     const [newVehicleNumber, setNewVehicleNumber] = useState('');
@@ -82,6 +87,27 @@ const Profile: React.FC = () => {
 
     const handleSave = async (section: string) => {
         setSavingSection(section);
+
+        // GST Validation (Business Section Only)
+        if (section === 'business' && settings.gstin) {
+            // 1. Format Check
+            if (!GSTService.isValidFormat(settings.gstin)) {
+                alert('Invalid GSTIN Format. Example: 33ABCDE1234F1Z5');
+                setSavingSection(null);
+                return;
+            }
+
+            // 2. Uniqueness Check
+            if (user?.id) {
+                const isUnique = await GSTService.isUnique(settings.gstin, user.id);
+                if (!isUnique) {
+                    alert('This GSTIN is already linked to another account.\n\nGSTIN must be unique per account.');
+                    setSavingSection(null);
+                    return;
+                }
+            }
+        }
+
         await saveSettings();
         await new Promise(r => setTimeout(r, 400));
         setSavingSection(null);
@@ -136,6 +162,8 @@ const Profile: React.FC = () => {
             setUploadingLogo(false);
         }
     };
+
+
 
     if (authLoading) return (
         <div className="flex h-screen items-center justify-center bg-slate-50">
@@ -301,22 +329,33 @@ const Profile: React.FC = () => {
                                     <input value={settings.companyAddress} onChange={e => updateSettings({ companyAddress: e.target.value })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-blue-500 outline-none transition-colors" placeholder="City, State" />
                                 </div>
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">GST Number (Optional)</label>
-                                    <input value={settings.gstin || ''} onChange={e => updateSettings({ gstin: e.target.value.toUpperCase() })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-blue-500 outline-none transition-colors uppercase" placeholder="GSTIN" maxLength={15} />
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex justify-between">
+                                        GST Number (Optional)
+                                    </label>
+                                    <input
+                                        value={settings.gstin || ''}
+                                        onChange={e => updateSettings({ gstin: e.target.value.toUpperCase() })}
+                                        className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-blue-500 outline-none transition-colors uppercase"
+                                        placeholder="29ABCDE1234F1Z5"
+                                        maxLength={15}
+                                    />
+                                    <p className="text-[9px] text-slate-400 mt-1 font-medium">
+                                        Must be a unique 15-digit GSTIN. We validate this on save.
+                                    </p>
                                 </div>
+                                <button onClick={() => handleSave('business')} className="w-full h-14 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100">
+                                    {savingSection === 'business' ? 'Saving...' : 'Save Details'}
+                                </button>
                             </div>
-                            <button onClick={() => handleSave('business')} className="w-full h-14 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100">
-                                {savingSection === 'business' ? 'Saving...' : 'Save Details'}
-                            </button>
-                        </div>
 
-                        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 rounded-[32px] text-white shadow-xl relative overflow-hidden group cursor-pointer" onClick={() => setShowCard(true)}>
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform" />
-                            <div className="relative z-10">
-                                <h3 className="font-black text-xl uppercase italic">Digital Card</h3>
-                                <p className="text-xs opacity-90 mb-6">Your professional visiting card is ready</p>
-                                <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-wider">
-                                    View Card <ChevronRight size={14} />
+                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 rounded-[32px] text-white shadow-xl relative overflow-hidden group cursor-pointer" onClick={() => setShowCard(true)}>
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform" />
+                                <div className="relative z-10">
+                                    <h3 className="font-black text-xl uppercase italic">Digital Card</h3>
+                                    <p className="text-xs opacity-90 mb-6">Your professional visiting card is ready</p>
+                                    <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-wider">
+                                        View Card <ChevronRight size={14} />
+                                    </div>
                                 </div>
                             </div>
                         </div>

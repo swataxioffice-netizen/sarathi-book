@@ -12,11 +12,22 @@ export interface RouteTollData {
  * Advanced Route Calculation using the Google Routes API (v2)
  * Specifically supports Toll Prices for India.
  */
+const routeCache = new Map<string, RouteTollData>();
+
 export const calculateAdvancedRoute = async (
     origin: { lat: number; lng: number },
     destination: { lat: number; lng: number }
 ): Promise<RouteTollData | null> => {
     if (!API_KEY) return null;
+
+    // Create a unique cache key based on coordinates (rounded to 4 decimals for meaningful change ~11m)
+    const key = `${origin.lat.toFixed(4)},${origin.lng.toFixed(4)}|${destination.lat.toFixed(4)},${destination.lng.toFixed(4)}`;
+
+    // Return cached result if available
+    if (routeCache.has(key)) {
+        console.log('[RoutesAPI] Serving from Cache:', key);
+        return routeCache.get(key) || null;
+    }
 
     try {
         const body = {
@@ -60,7 +71,7 @@ export const calculateAdvancedRoute = async (
         }
 
         const data = await response.json();
-        console.log('[RoutesAPI] Response:', data);
+        // console.log('[RoutesAPI] Response:', data);
 
         if (!data.routes || data.routes.length === 0) {
             return null;
@@ -82,12 +93,17 @@ export const calculateAdvancedRoute = async (
             currency = price.currencyCode || 'INR';
         }
 
-        return {
+        const result = {
             tollPrice: Math.round(totalToll),
             currencyCode: currency,
             distanceKm: Math.round(route.distanceMeters / 1000),
             durationMin: Math.round(parseInt(route.duration?.replace('s', '') || '0') / 60)
         };
+
+        // Save to cache
+        routeCache.set(key, result);
+        return result;
+
     } catch (error) {
         console.error('Error fetching Advanced Route Data:', error);
         return null;
