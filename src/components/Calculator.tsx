@@ -494,13 +494,23 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
 
             {/* Input Section - Hidden in Landing View */}
             {!isLandingView && (
-                <div className="space-y-4 animate-fade-in">
+                <div className="space-y-4 animate-fade-in peer">
                     <div className="flex p-1 bg-slate-50 rounded-xl" role="group" aria-label="Trip type selection">
                         {(['oneway', 'roundtrip', 'local'] as const).map((t) => {
                             return (
                                 <button
                                     key={t}
-                                    onClick={() => setTripType(t)}
+                                    onClick={() => {
+                                        if (tripType === 'local' && t !== 'local') {
+                                            setPickup('');
+                                            setDrop('');
+                                            setPickupCoords(null);
+                                            setDropCoords(null);
+                                            setDistance('');
+                                            setResult(null);
+                                        }
+                                        setTripType(t);
+                                    }}
                                     aria-pressed={tripType === t}
                                     aria-label={t === 'oneway' ? 'Drop Trip' : (t === 'local' ? 'Local Package' : 'Outstation')}
                                     className={`flex-1 py-3 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all 
@@ -538,29 +548,31 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                     </button>
                                 )}
                             />
-                            <PlacesAutocomplete
-                                label="Drop"
-                                icon={<MapPin size={10} aria-hidden="true" />}
-                                value={drop}
-                                onChange={setDrop}
-                                onPlaceSelected={(place) => {
-                                    setDrop(place.address);
-                                    setDropCoords({ lat: place.lat, lng: place.lng });
-                                }}
-                                onMapClick={() => setShowMap(true)}
-                                placeholder="Start typing..."
-                                rightContent={drop && (
-                                    <button
-                                        onClick={() => {
-                                            setDrop('');
-                                            setDropCoords(null);
-                                        }}
-                                        className="p-1 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
-                                    >
-                                        <X size={14} />
-                                    </button>
-                                )}
-                            />
+                            {tripType !== 'local' && (
+                                <PlacesAutocomplete
+                                    label="Drop"
+                                    icon={<MapPin size={10} aria-hidden="true" />}
+                                    value={drop}
+                                    onChange={setDrop}
+                                    onPlaceSelected={(place) => {
+                                        setDrop(place.address);
+                                        setDropCoords({ lat: place.lat, lng: place.lng });
+                                    }}
+                                    onMapClick={() => setShowMap(true)}
+                                    placeholder="Start typing..."
+                                    rightContent={drop && (
+                                        <button
+                                            onClick={() => {
+                                                setDrop('');
+                                                setDropCoords(null);
+                                            }}
+                                            className="p-1 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                />
+                            )}
                         </div>
 
                         <div className="space-y-1">
@@ -744,7 +756,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
 
             {/* Standard Result Card - Only show if valid result AND NOT in Landing View (since SeoFareDisplay handles that) */}
             {(result || initialResult) && !isLandingView && (
-                <div id="result-card-container">
+                <div id="result-card-container" className="peer-focus-within:hidden">
                     <ResultCard
                         title="Cab Fare"
                         amount={result ? result.fare : initialResult.totalFare}
@@ -775,6 +787,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
 // --- 2. Acting Driver Calculator ---
 const ActingDriverCalculator: React.FC = () => {
     useSettings();
+    const { showAd, setShowAd, triggerAction, onAdComplete } = useAdProtection();
     const [serviceType, setServiceType] = useState<'local8' | 'local12' | 'outstation'>('local8');
     const [days, setDays] = useState('1');
     const [stayProvided, setStayProvided] = useState(false);
@@ -820,6 +833,10 @@ const ActingDriverCalculator: React.FC = () => {
             fare: totalFare,
             details
         });
+    };
+
+    const handleCalculate = () => {
+        triggerAction(calculate);
     };
 
 
@@ -892,7 +909,10 @@ const ActingDriverCalculator: React.FC = () => {
                 )}
             </div>
 
-            <Button onClick={calculate} disabled={!days} text="Calculate Driver Cost" ariaLabel="Calculate Acting Driver Cost" />
+            <Button onClick={handleCalculate} disabled={!days} text="Calculate Driver Cost" ariaLabel="Calculate Acting Driver Cost" />
+            <React.Suspense fallback={null}>
+                {showAd && <InterstitialAd isOpen={showAd} onClose={() => setShowAd(false)} onComplete={onAdComplete} />}
+            </React.Suspense>
             {result && (
                 <ResultCard
                     title="Estimated Fare"
@@ -930,6 +950,8 @@ const RelocationCalculator: React.FC = () => {
     const [driverReturnIncluded, setDriverReturnIncluded] = useState(false);
 
     const [result, setResult] = useState<{ fare: number; details: string[] } | null>(null);
+
+    const { showAd, setShowAd, triggerAction, onAdComplete } = useAdProtection();
 
     // Auto-calculate distance
     useEffect(() => {
@@ -1024,6 +1046,10 @@ const RelocationCalculator: React.FC = () => {
             fare: totalFare,
             details: details.filter(Boolean)
         });
+    };
+
+    const handleCalculate = () => {
+        triggerAction(calculate);
     };
 
 
@@ -1162,7 +1188,10 @@ const RelocationCalculator: React.FC = () => {
                 </div>
             </div>
 
-            <Button onClick={calculate} disabled={!distance} text="Calculate Relocation Cost" ariaLabel="Calculate Vehicle Relocation Cost" />
+            <Button onClick={handleCalculate} disabled={!distance} text="Calculate Relocation Cost" ariaLabel="Calculate Vehicle Relocation Cost" />
+            <React.Suspense fallback={null}>
+                {showAd && <InterstitialAd isOpen={showAd} onClose={() => setShowAd(false)} onComplete={onAdComplete} />}
+            </React.Suspense>
             {result && <ResultCard title="Vehicle Relocation" amount={result.fare} details={result.details} sub="Safe & Professional Driver" />}
 
             {showMap && (
@@ -1390,7 +1419,13 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
 
                         <div className="flex items-center gap-3 shrink-0 mr-1">
                             <button
-                                onClick={() => setExpanded(!expanded)}
+                                onClick={() => {
+                                    if (!expanded) {
+                                        triggerAction(() => setExpanded(true));
+                                    } else {
+                                        setExpanded(false);
+                                    }
+                                }}
                                 className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border whitespace-nowrap flex items-center gap-2 ${expanded ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-slate-50 text-[#0047AB] border-slate-200 hover:bg-slate-100'}`}
                             >
                                 {expanded ? 'Hide Details' : 'View Detail'}
