@@ -113,4 +113,5 @@ export default defineConfig({
             }
         })
     ],
+    // Removed manualChunks causing build failure
 })

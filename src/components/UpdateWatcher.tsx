@@ -1,25 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useUpdate } from '../contexts/UpdateContext';
-import { useNotifications } from '../contexts/NotificationContext';
 
 const UpdateWatcher: React.FC = () => {
     const { needRefresh, updateServiceWorker } = useUpdate();
-    const { addNotification } = useNotifications();
-    const notifiedRef = useRef(false);
 
-    useEffect(() => {
-        if (needRefresh && !notifiedRef.current) {
-            addNotification(
-                'New Update Available!',
-                'A new version of Sarathi Book is available. Please update now to access new features and fixes.',
-                'warning'
-            );
-            notifiedRef.current = true;
-        } else if (!needRefresh) {
-            notifiedRef.current = false;
-        }
-    }, [needRefresh, addNotification]);
+
 
     if (!needRefresh) return null;
 

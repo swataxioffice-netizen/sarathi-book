@@ -7,6 +7,8 @@ import PDFPreviewModal from './PDFPreviewModal';
 import { saveToHistory, getHistory } from '../utils/history';
 import { toTitleCase, formatAddress } from '../utils/stringUtils';
 import { useAuth } from '../contexts/AuthContext';
+const InterstitialAd = React.lazy(() => import('./InterstitialAd'));
+import { useAdProtection } from '../hooks/useAdProtection';
 
 interface QuotationFormProps {
     onSaveQuotation: (q: SavedQuotation) => void;
@@ -234,9 +236,17 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
         setItems(tmpl.items.map(i => ({ ...i, quantity: 1 }))); // Deep copy to avoid ref issues
     };
 
+    // Ad Logic
+    const { showAd, setShowAd, triggerAction, onAdComplete } = useAdProtection();
+
     return (
 
         <div className="space-y-4">
+            {/* Ad Overlay */}
+            <React.Suspense fallback={null}>
+                {showAd && <InterstitialAd isOpen={showAd} onClose={() => setShowAd(false)} onComplete={onAdComplete} />}
+            </React.Suspense>
+
             {/* Step Indicator */}
             <div className="flex items-center justify-between mb-2">
                 <div className="flex gap-1.5">
@@ -319,7 +329,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                         </div>
 
                         <div className="flex gap-3 pt-4 border-t border-slate-100">
-                            <button onClick={handlePreview} className="flex-1 bg-white border-2 border-slate-200 text-slate-800 font-black py-4 rounded-xl uppercase tracking-widest text-[10px] shadow-sm hover:bg-slate-50 transition-all">Preview</button>
+                            <button onClick={() => triggerAction(handlePreview)} className="flex-1 bg-white border-2 border-slate-200 text-slate-800 font-black py-4 rounded-xl uppercase tracking-widest text-[10px] shadow-sm hover:bg-slate-50 transition-all">Preview</button>
                             <button onClick={() => setCurrentStep(2)} className="flex-[2] bg-[#0047AB] text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[11px] shadow-lg shadow-blue-500/30 hover:bg-blue-700 active:scale-95 transition-all">Next: Add Items</button>
                         </div>
                     </div>
@@ -439,7 +449,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                         <div className="flex gap-3 pt-4 border-t border-slate-100 mt-4">
                             <button onClick={() => setCurrentStep(1)} className="flex-1 py-4 font-bold text-slate-400 uppercase tracking-widest text-[11px] border-2 border-slate-100 rounded-2xl hover:bg-slate-50 transition-colors">Back</button>
                             <div className="flex-[2] flex gap-2">
-                                <button onClick={handlePreview} className="flex-1 bg-white border-2 border-slate-200 text-slate-800 font-black py-4 rounded-xl uppercase tracking-widest text-[10px] shadow-sm hover:bg-slate-50">Preview</button>
+                                <button onClick={() => triggerAction(handlePreview)} className="flex-1 bg-white border-2 border-slate-200 text-slate-800 font-black py-4 rounded-xl uppercase tracking-widest text-[10px] shadow-sm hover:bg-slate-50">Preview</button>
                                 <button onClick={() => setCurrentStep(3)} className="flex-[2] bg-[#0047AB] text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[11px] shadow-lg shadow-blue-500/30 hover:bg-blue-700 active:scale-95 transition-all">Continue</button>
                             </div>
                         </div>
@@ -549,8 +559,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                         <div className="flex gap-3 pt-4 border-t border-slate-100">
                             <button onClick={() => setCurrentStep(2)} className="flex-1 py-4 font-bold text-slate-400 uppercase tracking-widest text-[11px] border-2 border-slate-100 rounded-2xl hover:bg-slate-50 transition-colors">Back</button>
                             <div className="flex-[2] flex gap-2">
-                                <button onClick={handlePreview} className="flex-1 bg-white border-2 border-slate-200 text-slate-800 font-black py-4 rounded-xl uppercase tracking-widest text-[10px] shadow-sm hover:bg-slate-50">Preview</button>
-                                <button onClick={handleShareQuote} className="flex-[2] bg-[#0047AB] text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[11px] shadow-lg shadow-blue-500/30 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2">
+                                <button onClick={() => triggerAction(handlePreview)} className="flex-1 bg-white border-2 border-slate-200 text-slate-800 font-black py-4 rounded-xl uppercase tracking-widest text-[10px] shadow-sm hover:bg-slate-50">Preview</button>
+                                <button onClick={() => triggerAction(handleShareQuote)} className="flex-[2] bg-[#0047AB] text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[11px] shadow-lg shadow-blue-500/30 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2">
                                     Share <Send size={16} />
                                 </button>
                             </div>
@@ -563,7 +573,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, quotatio
                 isOpen={showPreview}
                 onClose={() => setShowPreview(false)}
                 pdfUrl={previewPdfUrl || ''}
-                onShare={handleShareQuote}
+                onShare={() => triggerAction(handleShareQuote)}
                 title="Quotation Preview"
             />
         </div >

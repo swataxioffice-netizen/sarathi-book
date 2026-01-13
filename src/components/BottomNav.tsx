@@ -39,8 +39,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
     }, []);
 
     const navItems = [
-        { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'HOME' },
-        { id: 'trips', icon: <FileText size={20} />, label: 'TRIPS' },
+        { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'DASHBOARD' },
+        { id: 'trips', icon: <FileText size={20} />, label: 'INVOICES' },
         // Center Space is reserved
         { id: 'notes', icon: <Plus size={24} />, label: 'NOTES' },
         { id: 'expenses', icon: <Wallet size={20} />, label: 'SPEND' },

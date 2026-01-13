@@ -26,7 +26,7 @@ const Profile: React.FC = () => {
     const { settings, updateSettings, saveSettings, docStats } = useSettings();
 
     // Local State
-    const [activeTab, setActiveTab] = useState<'business' | 'payments' | 'vehicles' | 'docs'>('business');
+    const [activeTab, setActiveTab] = useState<'business' | 'payments' | 'vehicles' | 'staff' | 'docs'>('business');
     const [showCard, setShowCard] = useState(false);
     const [activeModal, setActiveModal] = useState<string | null>(null);
     const [savingSection, setSavingSection] = useState<string | null>(null);
@@ -53,6 +53,17 @@ const Profile: React.FC = () => {
         };
         fetchProfile();
     }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Tab Navigation Listener
+    useEffect(() => {
+        const handleTabChange = (e: CustomEvent) => {
+            if (e.detail && ['business', 'payments', 'vehicles', 'staff', 'docs'].includes(e.detail)) {
+                setActiveTab(e.detail);
+            }
+        };
+        window.addEventListener('nav-tab-change', handleTabChange as EventListener);
+        return () => window.removeEventListener('nav-tab-change', handleTabChange as EventListener);
+    }, []);
 
     // Computed Completion
     const completion = useMemo(() => {
@@ -136,7 +147,7 @@ const Profile: React.FC = () => {
         <div className="pb-40 animate-fade-in max-w-lg mx-auto px-4 pt-6">
 
             {/* 1. Header Section */}
-            <div className="bg-white border border-slate-200 rounded-[24px] p-4 shadow-sm relative overflow-hidden mb-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm relative overflow-hidden mb-4">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full -mr-16 -mt-16" />
                 <div className="relative z-10 flex items-center gap-4">
                     {/* Avatar with Pro Badge */}
@@ -254,9 +265,9 @@ const Profile: React.FC = () => {
 
             {/* 2. Tabs Navigation */}
             <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-200 mb-6 sticky top-2 z-20 gap-1">
-                {(['business', 'payments', 'vehicles', 'docs'] as const).map(tab => {
+                {(['business', 'payments', 'vehicles', 'staff', 'docs'] as const).map(tab => {
                     const isActive = activeTab === tab;
-                    const icons = { business: <Contact size={14} />, payments: <Landmark size={14} />, vehicles: <Car size={14} />, docs: <FileText size={14} /> };
+                    const icons = { business: <Contact size={14} />, payments: <Landmark size={14} />, vehicles: <Car size={14} />, staff: <Users size={14} />, docs: <FileText size={14} /> };
                     return (
                         <button
                             key={tab}
@@ -359,6 +370,21 @@ const Profile: React.FC = () => {
                                 <button onClick={handleAddVehicle} className="h-12 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest">Add Vehicle</button>
                             </div>
                             {!settings.isPremium && <p className="text-[10px] text-center font-bold text-slate-400">Unlimited vehicles in <span className="text-pink-600">PRO</span></p>}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'staff' && (
+                    <div className="animate-scale-in bg-white p-8 rounded-[32px] border border-slate-200 text-center space-y-4">
+                        <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mx-auto">
+                            <Users size={32} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-black text-slate-900 uppercase">Staff Manager</h3>
+                            <p className="text-xs text-slate-500 font-bold mt-1">Manage Drivers, Salaries & Attendance</p>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Coming Soon in Next Update</p>
                         </div>
                     </div>
                 )}

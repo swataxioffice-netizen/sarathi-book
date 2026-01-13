@@ -22,29 +22,14 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
             name: 'Pro Monthly',
             price: 199,
             savings: null,
+            popular: true, // Make monthly popular now
             features: [
                 'Unlimited Vehicles (Fleet Mode)',
-                'Remove Sarathi Watermark',
+                'Instant Generation (No Ads)',
                 'Custom Business Logo',
-                'Custom Brand Colors',
-                'Financial Reports',
+                'Staff Management (New)',
+                'Unlimited Invoices/Quotes',
                 'Premium Support'
-            ]
-        },
-        {
-            id: 'yearly',
-            name: 'Pro Yearly',
-            price: 999,
-            originalPrice: 1999,
-            savings: '50% OFF',
-            popular: true,
-            features: [
-                'Everything in Monthly',
-                'Priority Cloud Sync',
-                'Advanced Fleet Analytics',
-                'Expense Tracking',
-                'Client Database',
-                'Beta Feature Access'
             ]
         }
     ];
@@ -114,7 +99,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                         </div>
 
                         {/* Plans Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                        <div className="grid grid-cols-1 max-w-md mx-auto gap-6 mb-12">
                             {plans.map((plan) => (
                                 <div
                                     key={plan.id}
@@ -135,12 +120,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                                             <span className="text-4xl font-black text-slate-900">₹{plan.price}</span>
                                             <span className="text-slate-400 font-bold text-sm">/ {plan.id === 'yearly' ? 'year' : 'month'}</span>
                                         </div>
-                                        {plan.originalPrice && (
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <span className="text-slate-400 font-bold text-xs line-through">₹{plan.originalPrice}</span>
-                                                <span className="bg-green-100 text-green-600 px-2 py-0.5 rounded-md text-[9px] font-black">{plan.savings}</span>
-                                            </div>
-                                        )}
+                                        {/* Original Price Logic Removed */}
                                     </div>
 
                                     <div className="space-y-3.5 mb-8 flex-1">

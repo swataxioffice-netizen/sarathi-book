@@ -7,6 +7,8 @@ import type { Trip } from '../utils/fare';
 import { shareReceipt, type SavedQuotation } from '../utils/pdf';
 import PlacesAutocomplete from './PlacesAutocomplete';
 const MapPicker = React.lazy(() => import('./MapPicker'));
+const InterstitialAd = React.lazy(() => import('./InterstitialAd'));
+import { useAdProtection } from '../hooks/useAdProtection';
 import { calculateDistance } from '../utils/googleMaps';
 import { calculateAdvancedRoute } from '../utils/routesApi';
 import { estimatePermitCharge } from '../utils/permits';
@@ -162,6 +164,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         addresses: getHistory('customer_address'),
         locations: getHistory('location')
     });
+
+    // Ad Logic
+    const { showAd, setShowAd, triggerAction, onAdComplete } = useAdProtection();
 
     // Populate from Quotation Template
     useEffect(() => {
@@ -1044,28 +1049,28 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                 <>
                                     <div>
                                         <label className="tn-label flex items-center justify-between">
-                                            Start KM
+                                            Start{mode === 'hourly' ? ' Details' : ' KM'}
                                             <label className="text-[9px] text-blue-600 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100">
                                                 <Camera size={10} /> Photo
                                                 <input type="file" accept="image/*" capture="environment" className="hidden" onChange={() => alert('Photo attached!')} />
                                             </label>
                                         </label>
-                                        <div className="flex gap-2">
+                                        <div className={mode === 'hourly' ? "grid grid-cols-2 gap-3" : "flex gap-2"}>
                                             <input
                                                 id="start_km"
                                                 name="start_km"
                                                 type="number"
-                                                className="tn-input flex-1"
+                                                className="tn-input w-full"
                                                 value={startKm || ''}
                                                 onChange={(e) => setStartKm(Number(e.target.value))}
-                                                placeholder="KM"
+                                                placeholder="Start KM"
                                             />
                                             {mode === 'hourly' && (
                                                 <input
                                                     id="start_time"
                                                     name="start_time"
                                                     type="time"
-                                                    className="tn-input w-24 px-1 text-center text-xs"
+                                                    className="tn-input w-full px-1 text-center text-xs"
                                                     value={startTime}
                                                     onChange={(e) => setStartTime(e.target.value)}
                                                 />
@@ -1075,28 +1080,28 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
                                     <div>
                                         <label className="tn-label flex items-center justify-between">
-                                            End KM
+                                            End{mode === 'hourly' ? ' Details' : ' KM'}
                                             <label className="text-[9px] text-blue-600 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100">
                                                 <Camera size={10} /> Photo
                                                 <input type="file" accept="image/*" capture="environment" className="hidden" onChange={() => alert('Photo attached!')} />
                                             </label>
                                         </label>
-                                        <div className="flex gap-2">
+                                        <div className={mode === 'hourly' ? "grid grid-cols-2 gap-3" : "flex gap-2"}>
                                             <input
                                                 id="end_km"
                                                 name="end_km"
                                                 type="number"
-                                                className="tn-input flex-1"
+                                                className="tn-input w-full"
                                                 value={endKm || ''}
                                                 onChange={(e) => setEndKm(Number(e.target.value))}
-                                                placeholder="KM"
+                                                placeholder="End KM"
                                             />
                                             {mode === 'hourly' && (
                                                 <input
                                                     id="end_time"
                                                     name="end_time"
                                                     type="time"
-                                                    className="tn-input w-24 px-1 text-center text-xs"
+                                                    className="tn-input w-full px-1 text-center text-xs"
                                                     value={endTime}
                                                     onChange={(e) => setEndTime(e.target.value)}
                                                 />
@@ -1129,7 +1134,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
                         <div className="flex gap-3">
                             <button onClick={prevStep} className="flex-1 py-4 font-bold text-slate-400 uppercase tracking-widest text-[11px] border-2 border-slate-100 rounded-2xl">Back</button>
-                            <button onClick={handlePreview} className="bg-white border-2 border-slate-200 text-slate-800 font-black py-4 px-6 rounded-2xl uppercase tracking-widest text-[11px] shadow-sm hover:bg-slate-50 transition-colors flex items-center justify-center" title="Preview"><Eye size={18} /></button>
+                            <button onClick={() => triggerAction(handlePreview)} className="bg-white border-2 border-slate-200 text-slate-800 font-black py-4 px-6 rounded-2xl uppercase tracking-widest text-[11px] shadow-sm hover:bg-slate-50 transition-colors flex items-center justify-center" title="Preview"><Eye size={18} /></button>
                             <button onClick={nextStep} className="flex-[2] tn-button-primary">Continue</button>
                         </div>
                     </div>
@@ -1248,7 +1253,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
                         <div className="flex gap-3 pt-2">
                             <button onClick={prevStep} className="flex-1 py-4 font-bold text-slate-400 uppercase tracking-widest text-[11px] border-2 border-slate-100 rounded-2xl">Back</button>
-                            <button onClick={handlePreview} className="bg-white border-2 border-slate-200 text-slate-800 font-black py-4 px-6 rounded-2xl uppercase tracking-widest text-[11px] shadow-sm hover:bg-slate-50 transition-colors flex items-center justify-center" title="Preview"><Eye size={18} /></button>
+                            <button onClick={() => triggerAction(handlePreview)} className="bg-white border-2 border-slate-200 text-slate-800 font-black py-4 px-6 rounded-2xl uppercase tracking-widest text-[11px] shadow-sm hover:bg-slate-50 transition-colors flex items-center justify-center" title="Preview"><Eye size={18} /></button>
                             <button onClick={nextStep} className="flex-[2] tn-button-primary">Continue</button>
                         </div>
                     </div>
@@ -1459,7 +1464,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
                         <div className="flex gap-3">
                             <button onClick={prevStep} className="flex-1 py-4 font-bold text-slate-400 uppercase tracking-widest text-[11px] border-2 border-slate-100 rounded-2xl">Back</button>
-                            <button onClick={handlePreview} className="bg-white border-2 border-slate-200 text-slate-800 font-black py-4 px-6 rounded-2xl uppercase tracking-widest text-[11px] shadow-sm hover:bg-slate-50 transition-colors flex items-center justify-center" title="Preview"><Eye size={18} /></button>
+                            <button onClick={() => triggerAction(handlePreview)} className="bg-white border-2 border-slate-200 text-slate-800 font-black py-4 px-6 rounded-2xl uppercase tracking-widest text-[11px] shadow-sm hover:bg-slate-50 transition-colors flex items-center justify-center" title="Preview"><Eye size={18} /></button>
                             <button
                                 onClick={() => { handleCalculate(); nextStep(); }}
                                 className="flex-[2] tn-button-primary"
@@ -1585,14 +1590,14 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                         <span>Save Invoice</span>
                                     </button>
                                     <button
-                                        onClick={handlePreview}
+                                        onClick={() => triggerAction(handlePreview)}
                                         className="w-full py-4 rounded-2xl border-2 border-slate-200 bg-white font-black text-[11px] uppercase tracking-widest text-slate-700 flex items-center justify-center gap-2 hover:bg-slate-50 transition-all"
                                     >
                                         <Eye size={18} />
                                         Preview Invoice
                                     </button>
                                     <button
-                                        onClick={handleWhatsAppShare}
+                                        onClick={() => triggerAction(handleWhatsAppShare)}
                                         className="w-full py-4 rounded-2xl border-2 border-[#25D366] bg-[#25D366]/5 font-black text-[11px] uppercase tracking-widest text-[#25D366] flex items-center justify-center gap-2 hover:bg-[#25D366]/10"
                                     >
                                         <MessageCircle size={18} />
@@ -1634,9 +1639,13 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 isOpen={showPreview}
                 onClose={() => setShowPreview(false)}
                 pdfUrl={previewPdfUrl || ''}
-                onShare={handleWhatsAppShare}
+                onShare={() => triggerAction(handleWhatsAppShare)}
                 title="Invoice Preview"
             />
+            {/* Ad Overlay */}
+            <React.Suspense fallback={null}>
+                {showAd && <InterstitialAd isOpen={showAd} onClose={() => setShowAd(false)} onComplete={onAdComplete} />}
+            </React.Suspense>
         </div >
     );
 };

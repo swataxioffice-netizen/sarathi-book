@@ -143,13 +143,12 @@ const ExpenseTracker: React.FC = () => {
         <div className="space-y-4 pb-24">
             {/* Cash Flow Summary - Dynamic Grid */}
             <div className="space-y-3">
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex items-center justify-between">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-[#0047AB]/20 blur-3xl rounded-full -mr-8 -mt-8"></div>
-                    <div className="relative z-10">
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center justify-between">
+                    <div>
                         <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">TOTAL SPENT TODAY</p>
-                        <h2 className="text-3xl font-black tabular-nums tracking-tight text-white">₹{totalSpentToday.toLocaleString()}</h2>
+                        <h2 className="text-3xl font-black tabular-nums tracking-tight text-slate-900">₹{totalSpentToday.toLocaleString()}</h2>
                     </div>
-                    <div className="relative z-10 p-3 bg-white/10 rounded-xl border border-white/10">
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-600">
                         <PieChart size={20} />
                     </div>
                 </div>

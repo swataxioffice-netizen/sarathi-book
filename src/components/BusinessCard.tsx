@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import html2canvas from 'html2canvas';
 import { Share2, Car, Download, UserPlus, Zap, Globe } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -64,6 +63,8 @@ const BusinessCard: React.FC = () => {
         if (!cardRef.current) return null;
         // Wait for images
         await new Promise(resolve => setTimeout(resolve, 200));
+
+        const html2canvas = (await import('html2canvas')).default;
 
         const canvas = await html2canvas(cardRef.current, {
             scale: scale,

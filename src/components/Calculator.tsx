@@ -38,6 +38,9 @@ import SEOHead from './SEOHead';
 // Define result type based on calculation output
 type FareResult = ReturnType<typeof calculateFare>;
 
+import { useAdProtection } from '../hooks/useAdProtection';
+const InterstitialAd = React.lazy(() => import('./InterstitialAd'));
+
 // --- Seo Fare Display Component (New Request) ---
 const SeoFareDisplay = ({ result, tripData, onEdit }: { result: any, tripData: any, onEdit: () => void }) => {
     if (!result) return null;
@@ -1234,6 +1237,9 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
     const [expanded, setExpanded] = useState(false);
     const [includeGst, setIncludeGst] = useState(false);
 
+    // Ad Logic
+    const { showAd, setShowAd, triggerAction, onAdComplete } = useAdProtection();
+
     const gstAmount = Math.round(amount * 0.05);
     const finalAmount = includeGst ? amount + gstAmount : amount;
 
@@ -1343,6 +1349,11 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                     schema={seoData.schema}
                 />
             )}
+            {/* Ad Overlay */}
+            <React.Suspense fallback={null}>
+                {showAd && <InterstitialAd isOpen={showAd} onClose={() => setShowAd(false)} onComplete={onAdComplete} />}
+            </React.Suspense>
+
             {/* Overlay for Expanded State */}
             {expanded && (
                 <div
@@ -1461,14 +1472,14 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                                 {/* Bottom Actions Area */}
                                 <div className="grid grid-cols-5 gap-2 mt-4 pt-4 border-t border-slate-100">
                                     <button
-                                        onClick={handleCreateQuote}
+                                        onClick={() => triggerAction(handleCreateQuote)}
                                         className="col-span-4 bg-[#6366F1] text-white font-black py-3.5 rounded-xl flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                                     >
                                         <FileText size={16} />
                                         Create Formal Quotation
                                     </button>
                                     <button
-                                        onClick={shareToWhatsApp}
+                                        onClick={() => triggerAction(shareToWhatsApp)}
                                         className="col-span-1 bg-[#25D366] text-white rounded-xl flex items-center justify-center shadow-lg active:scale-95 transition-all"
                                         aria-label="Share via WhatsApp"
                                     >

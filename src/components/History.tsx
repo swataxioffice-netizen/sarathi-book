@@ -4,6 +4,8 @@ import type { Trip } from '../utils/fare';
 import { shareReceipt, shareQuotation, type SavedQuotation } from '../utils/pdf';
 import { FileText, Share2, Eye, Trash2, Quote, ArrowRightLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useAdProtection } from '../hooks/useAdProtection';
+const InterstitialAd = React.lazy(() => import('./InterstitialAd'));
 
 interface HistoryProps {
     trips?: Trip[];
@@ -80,8 +82,19 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
         });
     };
 
+    // Ad Logic
+    const { showAd, setShowAd, triggerAction, onAdComplete } = useAdProtection();
+
     return (
         <div className="space-y-4 pt-2 pb-24">
+            {/* Ad Overlay */}
+            <React.Suspense fallback={null}>
+                {showAd && <InterstitialAd isOpen={showAd} onClose={() => setShowAd(false)} onComplete={onAdComplete} />}
+            </React.Suspense>
+            {/* Note: Dynamic import inside render is tricky in React without Suspense/Lazy properly set up. 
+               Better to Lazy load component at top level. 
+               Let's stick to standard import for now to avoid complexity, or Lazy at top.
+            */}
 
             {/* Filter & Summary Section */}
             <div className="flex flex-col gap-3">
@@ -103,16 +116,13 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                 </div>
 
                 {/* Total Card */}
-                <div className={`rounded-xl p-4 text-white shadow-lg relative overflow-hidden bg-gradient-to-r ${type === 'invoice' ? 'from-slate-900 to-slate-800' : 'from-[#4F46E5] to-[#6366F1]'}`}>
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-10 -mt-10 blur-xl"></div>
-                    <div className="relative z-10 flex justify-between items-end">
-                        <div>
-                            <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mb-1">Total {filter === 'all' ? 'Volume' : filter + ' Volume'}</p>
-                            <h2 className="text-2xl font-black tracking-tight">₹{Math.round(totalAmount).toLocaleString('en-IN')}</h2>
-                        </div>
-                        <div className="mb-1">
-                            <span className="text-[10px] bg-white/10 px-2 py-1 rounded-full font-medium">{filteredItems.length} {type === 'invoice' ? 'Invoices' : 'Quotes'}</span>
-                        </div>
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex justify-between items-end">
+                    <div>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total {filter === 'all' ? 'Volume' : filter + ' Volume'}</p>
+                        <h2 className="text-2xl font-black tracking-tight text-slate-900">₹{Math.round(totalAmount).toLocaleString('en-IN')}</h2>
+                    </div>
+                    <div className="mb-1">
+                        <span className="text-[10px] bg-slate-50 text-slate-600 border border-slate-100 px-2 py-1 rounded-full font-bold uppercase tracking-wide">{filteredItems.length} {type === 'invoice' ? 'Invoices' : 'Quotes'}</span>
                     </div>
                 </div>
             </div>
@@ -158,14 +168,14 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                         </span>
                                         <div className="flex gap-1.5">
                                             <button
-                                                onClick={() => type === 'invoice' ? shareReceipt(item, { ...settings, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A', userId: user?.id }) : handleShareQuotation(item)}
+                                                onClick={() => triggerAction(() => type === 'invoice' ? shareReceipt(item, { ...settings, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A', userId: user?.id }) : handleShareQuotation(item))}
                                                 className={`p-2 rounded-lg transition-all border ${type === 'invoice' ? 'bg-blue-50 text-[#0047AB] border-blue-100 hover:bg-[#0047AB]' : 'bg-indigo-50 text-[#6366F1] border-indigo-100 hover:bg-[#6366F1]'} hover:text-white`}
                                                 title="View/Download"
                                             >
                                                 <Eye size={14} />
                                             </button>
                                             <button
-                                                onClick={() => type === 'invoice' ? shareReceipt(item, { ...settings, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A', userId: user?.id }) : handleShareQuotation(item)}
+                                                onClick={() => triggerAction(() => type === 'invoice' ? shareReceipt(item, { ...settings, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A', userId: user?.id }) : handleShareQuotation(item))}
                                                 className="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all border border-green-100"
                                                 title="Share"
                                             >
