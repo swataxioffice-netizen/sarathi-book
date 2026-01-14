@@ -90,7 +90,9 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
         }, 300);
     };
 
-    const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         setInputValue(val);
         onChange(val);
@@ -101,40 +103,48 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
             return;
         }
 
-        // Re-check visibility (positioning only) when typing creates new results
-        ensureVisibility();
-
-        setIsLoading(true);
-
-        try {
-            const google = await loadGoogleMaps();
-            if (!google) throw new Error("Google Maps SDK not available");
-
-            const service = new google.maps.places.AutocompleteService();
-            const request: google.maps.places.AutocompletionRequest = {
-                input: val,
-                componentRestrictions: { country: 'in' },
-            };
-
-            service.getPlacePredictions(request, (results, status) => {
-                setIsLoading(false);
-                if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-                    setPredictions(results);
-                    setIsOpen(true);
-                    ensureVisibility();
-                } else {
-                    // Start: Fallback to empty if API fails (allow manual entry)
-                    setPredictions([]);
-                    setIsOpen(false);
-                    // End: Fallback
-                }
-            });
-        } catch (error) {
-            console.warn('[PlacesAutocomplete] API Error (Falling back to manual input):', error);
-            setIsLoading(false);
-            setPredictions([]);
-            setIsOpen(false);
+        // Clear previous timer
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
         }
+
+        // Set a new timer (Debounce for 500ms)
+        debounceTimerRef.current = setTimeout(async () => {
+            // Re-check visibility (positioning only) when typing creates new results
+            ensureVisibility();
+
+            setIsLoading(true);
+
+            try {
+                const google = await loadGoogleMaps();
+                if (!google) throw new Error("Google Maps SDK not available");
+
+                const service = new google.maps.places.AutocompleteService();
+                const request: google.maps.places.AutocompletionRequest = {
+                    input: val,
+                    componentRestrictions: { country: 'in' },
+                };
+
+                service.getPlacePredictions(request, (results, status) => {
+                    setIsLoading(false);
+                    if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+                        setPredictions(results);
+                        setIsOpen(true);
+                        ensureVisibility();
+                    } else {
+                        // Start: Fallback to empty if API fails (allow manual entry)
+                        setPredictions([]);
+                        setIsOpen(false);
+                        // End: Fallback
+                    }
+                });
+            } catch (error) {
+                console.warn('[PlacesAutocomplete] API Error (Falling back to manual input):', error);
+                setIsLoading(false);
+                setPredictions([]);
+                setIsOpen(false);
+            }
+        }, 500); // 500ms debounce delay
     };
 
     const handlePlaceSelect = async (placeId: string, description: string) => {
