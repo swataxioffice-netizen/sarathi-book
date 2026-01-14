@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Play } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface InterstitialAdProps {
     isOpen: boolean;
@@ -25,6 +25,15 @@ const InterstitialAd: React.FC<InterstitialAdProps> = ({ isOpen, onClose, onComp
                     return prev - 1;
                 });
             }, 1000);
+
+            // Initialize Ad
+            try {
+                // @ts-ignore
+                (window.adsbygoogle = window.adsbygoogle || []).push({});
+            } catch (e) {
+                console.error('AdSense error', e);
+            }
+
             return () => clearInterval(timer);
         }
     }, [isOpen]);
@@ -49,20 +58,13 @@ const InterstitialAd: React.FC<InterstitialAdProps> = ({ isOpen, onClose, onComp
                 </div>
 
                 {/* Ad Content Placeholder */}
-                <div className="bg-slate-100 h-64 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden group">
-                    {/* Placeholder Pattern to look like an ad slot */}
-                    <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '10px 10px' }}></div>
-
-                    <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 z-10 text-blue-500">
-                        <Play size={32} fill="currentColor" />
-                    </div>
-                    <h3 className="text-lg font-black text-slate-800 mb-1 z-10">Sarathi Book Pro</h3>
-                    <p className="text-xs font-semibold text-slate-500 max-w-[200px] z-10">
-                        Upgrade to remove ads and unlock unlimited fleet management.
-                    </p>
-                    <div className="mt-4 px-3 py-1 bg-white/50 backdrop-blur rounded-full border border-slate-200 text-[9px] font-bold text-slate-400 z-10">
-                        Advertisement
-                    </div>
+                <div className="bg-slate-100 min-h-[250px] flex flex-col items-center justify-center text-center relative overflow-hidden">
+                    <ins className="adsbygoogle"
+                        style={{ display: 'block', width: '100%' }}
+                        data-ad-client="ca-pub-6322167461169822"
+                        data-ad-slot="1232694108"
+                        data-ad-format="auto"
+                        data-full-width-responsive="true"></ins>
                 </div>
 
                 {/* Footer / Action Area */}
