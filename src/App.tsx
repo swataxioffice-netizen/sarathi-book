@@ -5,6 +5,7 @@ import { dbRequest } from './utils/db'; // IndexedDB
 import { supabase } from './utils/supabase';
 import UpdateWatcher from './components/UpdateWatcher';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
+// Staging Environment Trigger
 import { X, RefreshCw } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useUpdate, UpdateProvider } from './contexts/UpdateContext';
