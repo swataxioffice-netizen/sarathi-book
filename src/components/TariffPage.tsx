@@ -38,11 +38,15 @@ const TariffPage = () => {
             <div className="bg-[#0047AB] text-white pt-24 pb-12 px-6">
                 <div className="max-w-4xl mx-auto text-center">
                     <h1 className="text-3xl md:text-4xl font-black uppercase tracking-wider mb-4">
-                        Transparent Tariff
+                        Tamil Nadu Tariff
                     </h1>
-                    <p className="text-blue-100 text-lg md:text-xl font-medium max-w-2xl mx-auto leading-relaxed">
+                    <p className="text-blue-100 text-lg md:text-xl font-medium max-w-2xl mx-auto leading-relaxed mb-6">
                         Official Union Rates. Zero Commission. 100% Direct to Drivers.
                     </p>
+                    <div className="inline-flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full border border-white/20">
+                        <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div>
+                        <span className="text-xs font-bold text-blue-50 tracking-wide">Rates for other states coming soon</span>
+                    </div>
                 </div>
             </div>
 
