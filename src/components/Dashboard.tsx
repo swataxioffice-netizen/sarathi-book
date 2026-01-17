@@ -196,6 +196,20 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
 
             {/* Active Widgets Grid */}
             <div className={`grid grid-cols-1 gap-3`}>
+                <div
+                    onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'tariff' }))}
+                    className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-blue-600">
+                            <IndianRupee size={20} />
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-black uppercase tracking-widest text-slate-900 leading-tight">Rate Card</p>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1 tracking-tight">Check current tariff & charges</p>
+                        </div>
+                    </div>
+                </div>
 
             </div>
 
