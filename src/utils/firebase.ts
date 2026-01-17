@@ -16,6 +16,12 @@ console.log('Firebase Config:', { ...firebaseConfig, apiKey: '***' }); // Log fo
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase Cloud Messaging and get a reference to the service
-const messaging = getMessaging(app);
+// Initialize Firebase Cloud Messaging and get a reference to the service
+let messaging: any = null;
+try {
+    messaging = getMessaging(app);
+} catch (error) {
+    console.warn('Firebase Messaging not supported in this environment:', error);
+}
 
 export { messaging, getToken, onMessage };

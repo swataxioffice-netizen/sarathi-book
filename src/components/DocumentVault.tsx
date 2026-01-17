@@ -33,11 +33,7 @@ const VEHICLE_DOC_TYPES = [
     { id: 'Pollution', label: 'Pollution (PUC)', desc: 'Emission Test Certificate' }
 ];
 
-const DRIVER_DOC_TYPES = [
-    { id: 'License', label: 'Driving License', desc: 'Original DL with Badge number' },
-    { id: 'Badge', label: 'Driver Badge', desc: 'Public Service Vehicle Badge' },
-    { id: 'Police', label: 'Police Verification', desc: 'Background check certificate' }
-];
+
 
 const DocumentVault: React.FC<{ onStatsUpdate?: (stats: any) => void }> = ({ onStatsUpdate }) => {
     const { user } = useAuth();
@@ -99,8 +95,7 @@ const DocumentVault: React.FC<{ onStatsUpdate?: (stats: any) => void }> = ({ onS
         const vNumber = currentVehicle?.number;
         const hasFullVehicle = VEHICLE_DOC_TYPES.every(req =>
             relevantDocs.some(d => d.type === req.id && d.name === vNumber));
-        const hasLicense = relevantDocs.some(d => d.type === 'License');
-        return { hasFullVehicle, hasFullDriver: hasLicense };
+        return { hasFullVehicle, hasFullDriver: true };
     }, [allDocs, currentVehicle]);
 
     useEffect(() => {
@@ -137,23 +132,52 @@ const DocumentVault: React.FC<{ onStatsUpdate?: (stats: any) => void }> = ({ onS
         if (user) {
             const syncToDb = async () => {
                 try {
-                    const existing = previousDocs.find(d => d.type === docType && d.name === docName);
+                    // Check DB for existing record to avoid ID mismatches or duplicates
+                    const { data: dbRecord, error: fetchError } = await supabase
+                        .from('user_documents')
+                        .select('id')
+                        .eq('user_id', user.id)
+                        .eq('name', docName)
+                        .eq('type', docType)
+                        .maybeSingle();
+
+                    if (fetchError) throw fetchError;
+
+                    // Preserve existing file connection if updating
+                    const existingLocal = previousDocs.find(d => d.type === docType && d.name === docName);
                     const payload = {
                         user_id: user.id, name: docName, type: docType, expiry_date: formDate,
-                        file_url: existing?.fileUrl || null, file_path: existing?.filePath || null
+                        file_url: existingLocal?.fileUrl || null, file_path: existingLocal?.filePath || null
                     };
 
-                    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Network timeout')), 10000));
-                    const dbCall = existing
-                        ? supabase.from('user_documents').update(payload).eq('id', existing.id)
-                        : supabase.from('user_documents').insert(payload);
+                    let result;
+                    if (dbRecord) {
+                        result = await supabase
+                            .from('user_documents')
+                            .update(payload)
+                            .eq('id', dbRecord.id)
+                            .select()
+                            .single();
+                    } else {
+                        result = await supabase
+                            .from('user_documents')
+                            .insert(payload)
+                            .select()
+                            .single();
+                    }
 
-                    const { error } = await Promise.race([dbCall, timeout]) as any;
-                    if (error) throw error;
-                } catch (err) {
+                    if (result.error) throw result.error;
+
+                    // Update the local state with the REAL database ID to ensure future updates work
+                    if (result.data) {
+                        setAllDocs(current => current.map(d =>
+                            (d.type === docType && d.name === docName) ? { ...d, id: result.data.id } : d
+                        ));
+                    }
+                } catch (err: any) {
                     console.error('Background Save Failed:', err);
                     setAllDocs(previousDocs); // Revert
-                    alert('Save failed due to network. Please try again.');
+                    alert(`Save failed: ${err.message || 'Network error'}`);
                 }
             };
             syncToDb();
@@ -305,15 +329,8 @@ const DocumentVault: React.FC<{ onStatsUpdate?: (stats: any) => void }> = ({ onS
                     <div className="space-y-3">{VEHICLE_DOC_TYPES.map(def => renderCard(def, 'vehicle'))}</div>
                 )}
             </section>
-            <section className="space-y-4 pt-8 border-t border-slate-100">
-                <div className="px-2">
-                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Driver Documents</h3>
-                    <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Personal Credentials</p>
-                </div>
-                <div className="space-y-3">{DRIVER_DOC_TYPES.map(def => renderCard(def, 'driver'))}</div>
-            </section>
             {scannerType && <DocumentScanner label="Scan Expiry Date" onClose={() => setScannerType(null)} onScanComplete={handleScanComplete} />}
-        </div>
+        </div >
     );
 };
 

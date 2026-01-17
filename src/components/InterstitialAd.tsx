@@ -78,7 +78,7 @@ const InterstitialAd: React.FC<InterstitialAdProps> = ({ isOpen, onClose, onComp
                             }`}
                     >
                         {canSkip ? (
-                            'Skip to Content'
+                            'Continue'
                         ) : (
                             <>
                                 <span>Wait {timeLeft}s</span>

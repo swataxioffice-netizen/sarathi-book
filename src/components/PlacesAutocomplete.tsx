@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { loadGoogleMaps } from '../utils/googleMaps';
-import { Map, Loader2, MapPin } from 'lucide-react';
+import { Map, Loader2, MapPin, X } from 'lucide-react';
 
 interface PlacesAutocompleteProps {
     id?: string;
@@ -35,6 +35,8 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
     const [isLoading, setIsLoading] = useState(false);
     const [dropdownPosition, setDropdownPosition] = useState<'top' | 'bottom'>('bottom');
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
+    const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null);
 
     // Sync internal state with prop value
     useEffect(() => {
@@ -119,10 +121,16 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                 const google = await loadGoogleMaps();
                 if (!google) throw new Error("Google Maps SDK not available");
 
+                // Initialize Session Token if needed
+                if (!sessionTokenRef.current) {
+                    sessionTokenRef.current = new google.maps.places.AutocompleteSessionToken();
+                }
+
                 const service = new google.maps.places.AutocompleteService();
                 const request: google.maps.places.AutocompletionRequest = {
                     input: val,
                     componentRestrictions: { country: 'in' },
+                    sessionToken: sessionTokenRef.current,
                 };
 
                 service.getPlacePredictions(request, (results, status) => {
@@ -132,10 +140,8 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                         setIsOpen(true);
                         ensureVisibility();
                     } else {
-                        // Start: Fallback to empty if API fails (allow manual entry)
                         setPredictions([]);
                         setIsOpen(false);
-                        // End: Fallback
                     }
                 });
             } catch (error) {
@@ -156,13 +162,24 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
         if (onPlaceSelected) {
             try {
                 const google = await loadGoogleMaps();
-                const geocoder = new google.maps.Geocoder();
+                if (!google) return;
 
-                geocoder.geocode({ placeId: placeId }, (results, status) => {
-                    if (status === 'OK' && results && results[0]) {
-                        const lat = results[0].geometry.location.lat();
-                        const lng = results[0].geometry.location.lng();
-                        const formattedAddress = results[0].formatted_address || description;
+                // Use PlacesService to get details (concludes the billing session)
+                if (!placesServiceRef.current) {
+                    placesServiceRef.current = new google.maps.places.PlacesService(document.createElement('div'));
+                }
+
+                const request: google.maps.places.PlaceDetailsRequest = {
+                    placeId: placeId,
+                    fields: ['geometry', 'formatted_address'],
+                    sessionToken: sessionTokenRef.current || undefined
+                };
+
+                placesServiceRef.current.getDetails(request, (place, status) => {
+                    if (status === google.maps.places.PlacesServiceStatus.OK && place && place.geometry && place.geometry.location) {
+                        const lat = place.geometry.location.lat();
+                        const lng = place.geometry.location.lng();
+                        const formattedAddress = place.formatted_address || description;
 
                         onPlaceSelected({
                             address: formattedAddress,
@@ -170,11 +187,18 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                             lng
                         });
 
-                        // Update input with full formatted address if available
+                        // Update input with full formatted address
                         setInputValue(formattedAddress);
                         onChange(formattedAddress);
+
+                        // Reset Session Token for next search
+                        sessionTokenRef.current = null;
+
+                    } else {
+                        console.error('Places Details fetch failed status:', status);
                     }
                 });
+
             } catch (error) {
                 console.error('Error fetching place details:', error);
             }
@@ -191,15 +215,18 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
             )}
 
             <div className="relative group">
-                {/* ... map button ... */}
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none z-10">
+                    <MapPin size={16} />
+                </div>
+
                 {onMapClick && (
                     <button
                         type="button"
                         onClick={onMapClick}
-                        className="absolute left-1 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors z-10"
+                        className="absolute left-10 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors z-10"
                         title="Select on map"
                     >
-                        <Map size={18} />
+                        <Map size={16} />
                     </button>
                 )}
 
@@ -211,13 +238,27 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                     onChange={handleInputChange}
                     onFocus={handleFocus}
                     onBlur={onBlur}
-                    className={className || `tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs ${onMapClick ? 'pl-10' : 'pl-3'} pr-10`}
+                    className={className || `tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs ${onMapClick ? 'pl-16' : 'pl-10'} pr-10`}
                     placeholder={placeholder || "Start typing..."}
                     autoComplete="off"
                 />
 
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     {isLoading && <Loader2 size={14} className="animate-spin text-slate-400" />}
+                    {inputValue && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setInputValue('');
+                                onChange('');
+                                setPredictions([]);
+                                setIsOpen(false);
+                            }}
+                            className="p-1 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
+                        >
+                            <X size={14} />
+                        </button>
+                    )}
                     {rightContent}
                 </div>
 

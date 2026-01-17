@@ -109,7 +109,7 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({ isOpen, onClose, pdfU
                         >
                             <Page
                                 pageNumber={pageNumber}
-                                width={containerWidth || 300}
+                                width={Math.min(containerWidth || 600, 650)}
                                 renderAnnotationLayer={false}
                                 renderTextLayer={false}
                                 className="shadow-sm"

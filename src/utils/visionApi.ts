@@ -178,3 +178,36 @@ export function parseDocument(lines: string[]): { expiryDate?: string; docNumber
 
     return { expiryDate, docNumber };
 }
+
+/**
+ * Specifically parses Odometer images for KM reading
+ */
+export function parseOdometer(lines: string[]): { mileage?: number } {
+    let mileage: number | undefined;
+
+    // Odometer patterns (usually 5-6 digits)
+    const odoPatterns = [
+        /ODO\s*[:\-\s]*(\d{4,7})/i,
+        /TOTAL\s*[:\-\s]*(\d{4,7})/i,
+        /KM\s*[:\-\s]*(\d{4,7})/i,
+        /(\d{5,7})\s*KM/i,
+        /(\d{4,7})/ // Last resort: find any 4-7 digit number
+    ];
+
+    for (const line of lines) {
+        if (!mileage) {
+            for (const pattern of odoPatterns) {
+                const match = line.match(pattern);
+                if (match && match[1]) {
+                    const val = parseInt(match[1]);
+                    if (val > 100) { // Basic sanity check
+                        mileage = val;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    return { mileage };
+}

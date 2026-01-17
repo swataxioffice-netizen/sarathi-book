@@ -116,7 +116,7 @@ export const getDirections = async (
 /**
  * Geocode an address to get coordinates
  */
-export const geocodeAddress = async (address: string): Promise<google.maps.LatLngLiteral | null> => {
+export const geocodeAddress = async (address: string): Promise<{ lat: number; lng: number; formattedAddress: string } | null> => {
     try {
         const google = await loadGoogleMaps();
         const geocoder = new google.maps.Geocoder();
@@ -128,6 +128,7 @@ export const geocodeAddress = async (address: string): Promise<google.maps.LatLn
                     resolve({
                         lat: location.lat(),
                         lng: location.lng(),
+                        formattedAddress: results[0].formatted_address
                     });
                 } else {
                     reject(new Error(`Geocoding failed: ${status}`));

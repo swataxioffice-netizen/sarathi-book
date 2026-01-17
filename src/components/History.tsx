@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import type { Trip } from '../utils/fare';
-import { shareReceipt, shareQuotation, type SavedQuotation } from '../utils/pdf';
-import { FileText, Share2, Eye, Trash2, Quote, ArrowRightLeft } from 'lucide-react';
+import { shareReceipt, shareQuotation, generateQuotationPDF, type SavedQuotation } from '../utils/pdf';
+import { FileText, Share2, Eye, Trash2, Quote } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAdProtection } from '../hooks/useAdProtection';
+import PDFPreviewModal from './PDFPreviewModal';
+
 const InterstitialAd = React.lazy(() => import('./InterstitialAd'));
 
 interface HistoryProps {
@@ -18,10 +20,15 @@ interface HistoryProps {
 
 type TimeFilter = 'all' | 'today' | 'week' | 'month';
 
-const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, onDeleteTrip, onDeleteQuotation, onConvertQuotation }) => {
+const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, onDeleteTrip, onDeleteQuotation }) => {
     const { settings } = useSettings();
     const { user } = useAuth();
     const [filter, setFilter] = useState<TimeFilter>('all');
+
+    // Preview State
+    const [showPreview, setShowPreview] = useState(false);
+    const [previewPdfUrl, setPreviewPdfUrl] = useState('');
+    const [selectedQuotation, setSelectedQuotation] = useState<SavedQuotation | null>(null);
 
     // Filter Logic
     const filteredItems = useMemo(() => {
@@ -67,17 +74,42 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
         });
     };
 
+    const handlePreviewQuotation = async (q: SavedQuotation) => {
+        const quoteData = {
+            customerName: q.customerName,
+            subject: q.subject,
+            date: q.date,
+            items: q.items,
+            gstEnabled: q.gstEnabled,
+            quotationNo: q.quotationNo,
+            terms: q.terms,
+            customerAddress: q.customerAddress,
+            customerGstin: q.customerGstin
+        };
+        const doc = await generateQuotationPDF(quoteData, {
+            ...settings,
+            vehicleNumber: 'N/A' // Quotations are generic
+        });
+        setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
+        setSelectedQuotation(q);
+        setShowPreview(true);
+    };
+
     const handleShareQuotation = async (q: SavedQuotation) => {
         const quoteData = {
             customerName: q.customerName,
             subject: q.subject,
             date: q.date,
             items: q.items,
-            gstEnabled: q.gstEnabled
+            gstEnabled: q.gstEnabled,
+            quotationNo: q.quotationNo,
+            terms: q.terms,
+            customerAddress: q.customerAddress,
+            customerGstin: q.customerGstin
         };
         await shareQuotation(quoteData, {
             ...settings,
-            vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A',
+            vehicleNumber: 'N/A', // Quotations are generic usually
             userId: user?.id
         });
     };
@@ -91,10 +123,14 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
             <React.Suspense fallback={null}>
                 {showAd && <InterstitialAd isOpen={showAd} onClose={() => setShowAd(false)} onComplete={onAdComplete} />}
             </React.Suspense>
-            {/* Note: Dynamic import inside render is tricky in React without Suspense/Lazy properly set up. 
-               Better to Lazy load component at top level. 
-               Let's stick to standard import for now to avoid complexity, or Lazy at top.
-            */}
+
+            <PDFPreviewModal
+                isOpen={showPreview}
+                onClose={() => setShowPreview(false)}
+                pdfUrl={previewPdfUrl}
+                onShare={() => selectedQuotation && handleShareQuotation(selectedQuotation)}
+                title="Quotation Preview"
+            />
 
             {/* Filter & Summary Section */}
             <div className="flex flex-col gap-3">
@@ -140,24 +176,31 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                 <div className={`absolute left-0 top-0 bottom-0 w-1 ${type === 'invoice' ? (item.mode === 'outstation' ? 'bg-purple-500' : 'bg-[#0047AB]') : 'bg-[#6366F1]'}`}></div>
 
                                 <div className="flex justify-between items-start">
-                                    <div className="flex items-start gap-3 pl-1.5">
-                                        <div className={`p-2.5 rounded-xl border ${type === 'invoice' ? (item.mode === 'outstation' ? 'bg-purple-50 border-purple-100 text-purple-600' : 'bg-blue-50 border-blue-100 text-[#0047AB]') : 'bg-indigo-50 border-indigo-100 text-[#6366F1]'}`}>
+                                    <div className="flex items-start gap-3 pl-1.5 w-full overflow-hidden">
+                                        <div className={`p-2.5 rounded-xl border shrink-0 ${type === 'invoice' ? (item.mode === 'outstation' ? 'bg-purple-50 border-purple-100 text-purple-600' : 'bg-blue-50 border-blue-100 text-[#0047AB]') : 'bg-indigo-50 border-indigo-100 text-[#6366F1]'}`}>
                                             {type === 'invoice' ? <FileText size={18} /> : <Quote size={18} />}
                                         </div>
-                                        <div className="flex flex-col">
-                                            <h4 className="text-sm font-black text-slate-900 leading-none truncate max-w-[140px]">{item.customerName || 'Guest User'}</h4>
+                                        <div className="flex flex-col min-w-0">
+                                            <h4 className="text-sm font-black text-slate-900 leading-none truncate">{item.customerName || 'Guest User'}</h4>
 
-                                            <div className="flex items-center gap-2 mt-1.5">
-                                                <span className="text-[10px] font-bold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
-                                                    {formatDate(item.date)}
+                                            {/* Invoice Number & Date Row */}
+                                            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                                <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 truncate max-w-[120px]">
+                                                    {type === 'invoice' ? (item.invoiceNo ? `#${item.invoiceNo}` : 'No Invoice #') : (item.quotationNo || 'No Quote #')}
                                                 </span>
-                                                <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${type === 'invoice' ? (item.mode === 'outstation' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700') : 'bg-indigo-100 text-indigo-700'}`}>
-                                                    {type === 'invoice' ? (item.mode === 'package' ? 'PACKAGE' : item.mode === 'hourly' ? 'RENTAL' : item.mode === 'outstation' ? 'OUTSTATION' : 'DROP') : (item.quotationNo || 'QUOTATION')}
+                                                <span className="text-[10px] font-medium text-slate-500 flex items-center gap-1">
+                                                    <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                                    {formatDate(item.date)}
                                                 </span>
                                             </div>
 
-                                            <div className="mt-1 text-[10px] text-slate-400 font-medium truncate max-w-[150px]">
-                                                {type === 'invoice' ? `${item.from}${item.to ? ` ➔ ${item.to}` : ''}` : item.subject}
+                                            <div className="mt-1 flex items-center gap-2">
+                                                <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded shrink-0 ${type === 'invoice' ? (item.mode === 'outstation' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700') : 'bg-indigo-100 text-indigo-700'}`}>
+                                                    {type === 'invoice' ? (item.mode === 'package' ? 'PACKAGE' : item.mode === 'hourly' ? 'RENTAL' : item.mode === 'outstation' ? 'OUTSTATION' : 'DROP') : 'QUOTE'}
+                                                </span>
+                                                <span className="text-[10px] text-slate-400 font-medium truncate">
+                                                    {type === 'invoice' ? `${item.from}${item.to ? ` ➔ ${item.to}` : ''}` : item.subject}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -168,9 +211,9 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                         </span>
                                         <div className="flex gap-1.5">
                                             <button
-                                                onClick={() => triggerAction(() => type === 'invoice' ? shareReceipt(item, { ...settings, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A', userId: user?.id }) : handleShareQuotation(item))}
+                                                onClick={() => triggerAction(() => type === 'invoice' ? shareReceipt(item, { ...settings, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A', userId: user?.id }) : handlePreviewQuotation(item))}
                                                 className={`p-2 rounded-lg transition-all border ${type === 'invoice' ? 'bg-blue-50 text-[#0047AB] border-blue-100 hover:bg-[#0047AB]' : 'bg-indigo-50 text-[#6366F1] border-indigo-100 hover:bg-[#6366F1]'} hover:text-white`}
-                                                title="View/Download"
+                                                title="View"
                                             >
                                                 <Eye size={14} />
                                             </button>
@@ -182,18 +225,6 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                                 <Share2 size={14} />
                                             </button>
 
-                                            {/* Convert to Invoice (Quotation Only) */}
-                                            {type === 'quotation' && onConvertQuotation && (
-                                                <button
-                                                    onClick={() => onConvertQuotation(item)}
-                                                    className="p-2 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white transition-all border border-orange-100"
-                                                    title="Convert to Invoice"
-                                                >
-                                                    <ArrowRightLeft size={14} />
-                                                </button>
-                                            )}
-
-                                            {/* Delete Button */}
                                             {(type === 'invoice' ? onDeleteTrip : onDeleteQuotation) && (
                                                 <button
                                                     onClick={() => type === 'invoice' ? onDeleteTrip!(item.id) : onDeleteQuotation!(item.id)}

@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { X, RotateCcw } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, RotateCcw, Plus, Trash2 } from 'lucide-react';
 
 interface AdditionalChargesDrawerProps {
     isOpen: boolean;
@@ -45,6 +45,10 @@ interface AdditionalChargesDrawerProps {
     setNightCharge: (v: string) => void;
     manualNight: boolean;
     setManualNight: (v: boolean) => void;
+
+    // Custom Charges
+    extraItems: { description: string; amount: number }[];
+    setExtraItems: React.Dispatch<React.SetStateAction<{ description: string; amount: number }[]>>;
 }
 
 const AdditionalChargesDrawer: React.FC<AdditionalChargesDrawerProps> = ({
@@ -56,8 +60,30 @@ const AdditionalChargesDrawer: React.FC<AdditionalChargesDrawerProps> = ({
     permit, setPermit, manualPermit, setManualPermit,
     hillStationCharge, setHillStationCharge, manualHillStation, setManualHillStation,
     petCharge, setPetCharge, manualPet, setManualPet,
-    nightCharge, setNightCharge, manualNight, setManualNight
+    nightCharge, setNightCharge, manualNight, setManualNight,
+    extraItems, setExtraItems
 }) => {
+    const [selectedChargeType, setSelectedChargeType] = useState('');
+    const [customChargeName, setCustomChargeName] = useState('');
+    const [customChargeAmount, setCustomChargeAmount] = useState('');
+
+    const handleAddCharge = () => {
+        const desc = selectedChargeType === 'Custom' ? customChargeName : selectedChargeType;
+        const amount = parseFloat(customChargeAmount);
+
+        if (desc && amount > 0) {
+            setExtraItems(prev => [...prev, { description: desc, amount }]);
+            setCustomChargeName('');
+            setCustomChargeAmount('');
+            setSelectedChargeType('');
+            // Keep drawer open
+        }
+    };
+
+    const handleDeleteCharge = (index: number) => {
+        setExtraItems(prev => prev.filter((_, i) => i !== index));
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -80,7 +106,7 @@ const AdditionalChargesDrawer: React.FC<AdditionalChargesDrawerProps> = ({
                 </div>
 
                 {/* Scrollable Content */}
-                <div className="p-4 space-y-5 overflow-y-auto pb-8">
+                <div className="p-4 space-y-5 overflow-y-auto pb-8 flex-1">
 
                     {/* Driver Bata */}
                     <div className="space-y-1">
@@ -207,6 +233,78 @@ const AdditionalChargesDrawer: React.FC<AdditionalChargesDrawerProps> = ({
                             className={`tn-input h-10 w-full text-sm ${manualNight ? 'bg-yellow-50 border-yellow-400 text-yellow-800' : 'bg-slate-50 border-slate-200'}`}
                             placeholder="0"
                         />
+                    </div>
+
+                    {/* Other Charges */}
+                    <div className="space-y-4 pt-4 border-t border-slate-100 bg-slate-50/50 p-4 -mx-4 -mb-4">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Other Charges</label>
+
+                        <div className="flex gap-2">
+                            <select
+                                className="tn-input h-10 flex-1 text-sm bg-white border-slate-200"
+                                value={selectedChargeType}
+                                onChange={(e) => {
+                                    setSelectedChargeType(e.target.value);
+                                    if (e.target.value !== 'Custom') setCustomChargeName('');
+                                }}
+                            >
+                                <option value="">Select Charge Type</option>
+                                <option value="Custom">Custom Charge</option>
+                                <option value="Cleaning Fee">Cleaning Fee</option>
+                                <option value="Driver Allowance">Driver Allowance</option>
+                                <option value="Guide Fee">Guide Fee</option>
+                                <option value="Luggage Charge">Luggage Charge</option>
+                                <option value="Airport Entry">Airport Entry</option>
+                                <option value="FastTag Recharge">FastTag Recharge</option>
+                                <option value="Decoration">Decoration</option>
+                                <option value="Waiting Charge">Waiting Charge</option>
+                            </select>
+                        </div>
+
+                        {selectedChargeType && (
+                            <div className="flex gap-2 animate-in slide-in-from-top-2">
+                                {selectedChargeType === 'Custom' && (
+                                    <input
+                                        placeholder="Charge Name"
+                                        className="tn-input h-10 flex-[2] bg-white"
+                                        value={customChargeName}
+                                        onChange={e => setCustomChargeName(e.target.value)}
+                                        autoFocus
+                                    />
+                                )}
+                                <input
+                                    type="number"
+                                    placeholder="Amount"
+                                    className="tn-input h-10 flex-1 bg-white"
+                                    value={customChargeAmount}
+                                    onChange={e => setCustomChargeAmount(e.target.value)}
+                                />
+                                <button
+                                    onClick={handleAddCharge}
+                                    className="h-10 w-10 bg-black text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-slate-200 active:scale-95 transition-all"
+                                >
+                                    <Plus size={18} />
+                                </button>
+                            </div>
+                        )}
+
+                        {/* List of added items */}
+                        <div className="space-y-2">
+                            {extraItems.map((item, idx) => (
+                                // Only show if amount > 0 or meaningful description, to avoid showing the 'empty' init item if step 2 created one
+                                (item.amount > 0 || item.description) && (
+                                    <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm animate-in fade-in">
+                                        <span className="text-xs font-bold text-slate-700">{item.description || 'Item'}</span>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs font-black text-slate-900">₹{item.amount}</span>
+                                            <button onClick={() => handleDeleteCharge(idx)} className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )
+                            ))}
+                        </div>
                     </div>
 
                 </div>

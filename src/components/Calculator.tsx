@@ -18,6 +18,7 @@ import {
     FileText,
     Check,
     TrendingUp,
+    FilePlus,
 } from 'lucide-react';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
@@ -28,6 +29,7 @@ import { estimateParkingCharge } from '../utils/parking';
 import { calculateFare } from '../utils/fare';
 import { calculateFareAsync } from '../utils/fareWorkerWrapper';
 import { VEHICLES } from '../config/vehicleRates';
+import { TRIP_LIMITS } from '../config/tariff_config';
 import { supabase } from '../utils/supabase';
 import { Analytics } from '../utils/monitoring';
 import { isHillStationLocation } from '../utils/locationUtils';
@@ -213,8 +215,25 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
     }, [pickup, drop]);
 
     // Hourly / Local Package State
-    const [hourlyPackage, setHourlyPackage] = useState<string>('8hr_80km');
-    const [durationHours, setDurationHours] = useState<number>(8); // Default 8
+    const [hourlyPackage, setHourlyPackage] = useState<string>('');
+    const [durationHours, setDurationHours] = useState<number>(0);
+
+    // Auto-update inputs when package changes
+    useEffect(() => {
+        if (hourlyPackage === '2hr_20km') {
+            setDurationHours(2);
+            setDistance('20');
+        } else if (hourlyPackage === '4hr_40km') {
+            setDurationHours(4);
+            setDistance('40');
+        } else if (hourlyPackage === '8hr_80km') {
+            setDurationHours(8);
+            setDistance('80');
+        } else if (hourlyPackage === '12hr_120km') {
+            setDurationHours(12);
+            setDistance('120');
+        }
+    }, [hourlyPackage]);
 
     // Additional Charges State
     const [hillStationCharge, setHillStationCharge] = useState<string>('0');
@@ -236,6 +255,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
     const [manualHillStation, setManualHillStation] = useState(false);
     const [manualPet, setManualPet] = useState(false);
     const [manualNight, setManualNight] = useState(false);
+    const [extraItems, setExtraItems] = useState<{ description: string, amount: number }[]>([]);
 
     const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number, tollAmt?: number) => {
         setPickup(pickupAddr);
@@ -327,7 +347,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                         // Auto-Calculate Days for Rounds Trips
                         if (tripType === 'roundtrip') {
                             const totalDist = advanced.distanceKm * multiplier;
-                            const estDays = Math.max(1, Math.ceil(totalDist / 600));
+                            const estDays = Math.max(1, Math.ceil(totalDist / TRIP_LIMITS.max_km_per_day));
                             if (parseInt(days) < estDays) {
                                 setDays(estDays.toString());
                             }
@@ -341,7 +361,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                             setDistance(totalDist.toString());
 
                             if (tripType === 'roundtrip') {
-                                const estDays = Math.max(1, Math.ceil(totalDist / 600));
+                                const estDays = Math.max(1, Math.ceil(totalDist / TRIP_LIMITS.max_km_per_day));
                                 if (parseInt(days) < estDays) {
                                     setDays(estDays.toString());
                                 }
@@ -376,7 +396,9 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                     const d = parseInt(days) || 1;
                     batta = vehicle.batta * d;
                 } else if (tripType === 'oneway') {
-                    batta = (dist > 40 || isHeavy) ? vehicle.batta : 0;
+                    // Calculate days for drop trip based on max km per day
+                    const estDays = Math.max(1, Math.ceil(dist / TRIP_LIMITS.max_km_per_day));
+                    batta = (dist > 40 || isHeavy) ? vehicle.batta * estDays : 0;
                 }
                 setDriverBata(batta.toString());
             }
@@ -387,6 +409,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
 
     const calculate = async () => {
         if (!selectedVehicle) return; // Require vehicle selection
+        if (tripType === 'local' && !hourlyPackage) return; // Require package selection
         const dist = parseFloat(distance) || 0;
         if (!dist && tripType !== 'local') return;
 
@@ -401,7 +424,12 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
 
         let calcExtraHours = 0;
         if (serviceType === 'local_hourly') {
-            calcExtraHours = Math.max(0, durationHours - 8);
+            let baseHours = 8;
+            if (hourlyPackage === '2hr_20km') baseHours = 2;
+            if (hourlyPackage === '4hr_40km') baseHours = 4;
+            if (hourlyPackage === '12hr_120km') baseHours = 12;
+
+            calcExtraHours = Math.max(0, durationHours - baseHours);
         }
 
         const overrideRate = (customRate && customRate > 0) ? customRate : undefined;
@@ -418,13 +446,15 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                 manualDriverBata ? parseFloat(driverBata) : undefined,
                 parseFloat(hillStationCharge),
                 parseFloat(petCharge),
-                parseFloat(nightCharge)
+                parseFloat(nightCharge),
+                hourlyPackage // NEW ARGUMENT for worker
             );
 
             const permitTotal = parseFloat(permit) || 0;
             const parkingTotal = parking ? parseFloat(parking) : 0;
             const tollTotal = toll ? parseFloat(toll) : 0;
-            const otherExtras = permitTotal + parkingTotal + tollTotal;
+            const extraItemsTotal = extraItems.reduce((acc, item) => acc + (item.amount || 0), 0);
+            const otherExtras = permitTotal + parkingTotal + tollTotal + extraItemsTotal;
 
             const finalTotal = res.totalFare + otherExtras;
 
@@ -433,6 +463,9 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
             if (permitTotal > 0) fullBreakdown.push(`Permit Charges: ₹${permitTotal.toLocaleString()}`);
             if (parkingTotal > 0) fullBreakdown.push(`Parking Charges: ₹${parkingTotal.toLocaleString()}`);
             if (tollTotal > 0) fullBreakdown.push(`Toll Charges: ₹${tollTotal.toLocaleString()}`);
+            extraItems.forEach(item => {
+                if (item.amount > 0) fullBreakdown.push(`${item.description}: ₹${item.amount.toLocaleString()}`);
+            });
 
             // Pass full context to Analytics for "Real" Trending Routes
             Analytics.calculateFare(serviceType, selectedVehicle, dist, pickup, drop, Math.round(finalTotal));
@@ -460,7 +493,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                 calculate();
             }
         }
-    }, [distance, tripType, days, selectedVehicle, customRate, hillStationCharge, petCharge, toll, permit, parking, garageBuffer, driverBata, nightCharge, hourlyPackage, durationHours]);
+    }, [distance, tripType, days, selectedVehicle, customRate, hillStationCharge, petCharge, toll, permit, parking, garageBuffer, driverBata, nightCharge, hourlyPackage, durationHours, extraItems, manualDriverBata]);
 
     // Handle vehicle selection reset
     useEffect(() => {
@@ -470,9 +503,43 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
     }, [tripType, selectedVehicle]);
 
     // Calculate total additional charges
-    const totalExtras = (parseFloat(driverBata) || 0) + (parseFloat(toll) || 0) + (parseFloat(parking) || 0) + (parseFloat(permit) || 0) + (parseFloat(hillStationCharge) || 0) + (parseFloat(petCharge) || 0) + (parseFloat(nightCharge) || 0);
+    const extraItemsTotal = extraItems.reduce((acc, item) => acc + (item.amount || 0), 0);
+    const totalExtras = (parseFloat(driverBata) || 0) + (parseFloat(toll) || 0) + (parseFloat(parking) || 0) + (parseFloat(permit) || 0) + (parseFloat(hillStationCharge) || 0) + (parseFloat(petCharge) || 0) + (parseFloat(nightCharge) || 0) + extraItemsTotal;
 
-    const minDays = (tripType === 'roundtrip' && distance) ? Math.max(1, Math.ceil((parseFloat(distance) - 50) / 600)) : 1;
+    const minDays = (tripType === 'roundtrip' && distance) ? Math.max(1, Math.ceil((parseFloat(distance) - 50) / TRIP_LIMITS.max_km_per_day)) : 1;
+
+    const vehicleSelector = (
+        <div className={`grid grid-cols-1 ${tripType !== 'local' ? 'sm:grid-cols-2' : ''} gap-3`}>
+            <div className="space-y-1">
+                <Label icon={<Car size={10} aria-hidden="true" />} text="Vehicle" htmlFor="cab-vehicle" />
+                <select
+                    id="cab-vehicle"
+                    value={selectedVehicle}
+                    onChange={e => setSelectedVehicle(e.target.value)}
+                    className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
+                >
+                    <option value="" disabled>Select Vehicle Type</option>
+                    {VEHICLES.filter(v => {
+                        if (tripType === 'oneway') {
+                            return !['tempo', 'minibus', 'bus'].includes(v.id);
+                        }
+                        return true;
+                    }).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                </select>
+            </div>
+
+            {tripType !== 'local' && (
+                <Input
+                    label="Rate/Km"
+                    icon={<Hash size={10} aria-hidden="true" />}
+                    value={customRate}
+                    onChange={(val) => setCustomRate(Number(val))}
+                    type="number"
+                    highlight
+                />
+            )}
+        </div>
+    );
 
     return (
         <div className="space-y-4">
@@ -529,7 +596,14 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                 label="Pickup"
                                 icon={<MapPin size={10} aria-hidden="true" />}
                                 value={pickup}
-                                onChange={setPickup}
+
+                                onChange={(val) => {
+                                    setPickup(val);
+                                    // Clear coords if user is manually typing to prevent stale calc
+                                    if (pickupCoords) setPickupCoords(null);
+                                    setResult(null);
+                                    setDistance('');
+                                }}
                                 onPlaceSelected={(place) => {
                                     setPickup(place.address);
                                     setPickupCoords({ lat: place.lat, lng: place.lng });
@@ -553,7 +627,13 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                     label="Drop"
                                     icon={<MapPin size={10} aria-hidden="true" />}
                                     value={drop}
-                                    onChange={setDrop}
+                                    onChange={(val) => {
+                                        setDrop(val);
+                                        // Clear coords if user is manually typing to prevent stale calc
+                                        if (dropCoords) setDropCoords(null);
+                                        setResult(null);
+                                        setDistance('');
+                                    }}
                                     onPlaceSelected={(place) => {
                                         setDrop(place.address);
                                         setDropCoords({ lat: place.lat, lng: place.lng });
@@ -575,43 +655,83 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                             )}
                         </div>
 
+                        {/* Local Package Flow: Vehicle First */}
+                        {tripType === 'local' && vehicleSelector}
+
                         <div className="space-y-1">
                             {tripType === 'local' ? (
-                                <div className="space-y-3">
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {['8hr_80km', '12hr_120km', 'custom'].map(pkg => (
-                                            <button
-                                                key={pkg}
-                                                onClick={() => setHourlyPackage(pkg)}
-                                                className={`py-2 px-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all
-                                                        ${hourlyPackage === pkg ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-400'}
+                                <div className="space-y-3 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                                    <div className="space-y-2">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Select Package</p>
+                                        <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none snap-x">
+                                            {[
+                                                { id: '2hr_20km', hr: '2 Hr', km: '20 Km' },
+                                                { id: '4hr_40km', hr: '4 Hr', km: '40 Km' },
+                                                { id: '8hr_80km', hr: '8 Hr', km: '80 Km', label: 'Std' },
+                                                { id: '12hr_120km', hr: '12 Hr', km: '120 Km' },
+                                                { id: 'custom', hr: 'Custom', km: 'Trip' }
+                                            ].map(pkg => (
+                                                <button
+                                                    key={pkg.id}
+                                                    onClick={() => setHourlyPackage(pkg.id)}
+                                                    className={`min-w-[70px] flex-shrink-0 flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all snap-start
+                                                        ${hourlyPackage === pkg.id
+                                                            ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200 ring-1 ring-blue-600 ring-offset-1'
+                                                            : 'bg-white border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600'}
+                                                        ${!selectedVehicle ? 'opacity-50 cursor-not-allowed' : ''}
                                                     `}
-                                            >
-                                                {pkg === 'custom' ? 'Custom' : pkg.replace('_', ' / ').toUpperCase()}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <Input
-                                            label="Duration (Hrs)"
-                                            icon={<Clock size={10} />}
-                                            value={durationHours}
-                                            onChange={(v) => setDurationHours(Number(v))}
-                                            type="number"
-                                        />
-                                        <div className="space-y-1">
-                                            <Label icon={<AlertCircle size={10} aria-hidden="true" />} text="Est. Distance (Km)" htmlFor="local-dist" />
-                                            <input
-                                                id="local-dist"
-                                                type="number"
-                                                value={distance}
-                                                onChange={(e) => setDistance(e.target.value)}
-                                                className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs"
-                                                placeholder="0"
-                                            />
+                                                    disabled={!selectedVehicle}
+                                                >
+                                                    {pkg.label && (
+                                                        <span className={`text-[8px] font-black uppercase tracking-wider mb-0.5 ${hourlyPackage === pkg.id ? 'text-blue-200' : 'text-blue-600'}`}>
+                                                            {pkg.label}
+                                                        </span>
+                                                    )}
+                                                    <span className="text-xs font-black uppercase tracking-wider leading-none">{pkg.hr}</span>
+                                                    <span className={`text-[9px] font-bold uppercase tracking-wider leading-none mt-1 ${hourlyPackage === pkg.id ? 'text-blue-100' : 'text-slate-400'}`}>
+                                                        {pkg.km}
+                                                    </span>
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
+
+                                    {hourlyPackage !== 'custom' ? (
+                                        <div className="flex items-center gap-4 p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+                                            <div className="flex-1 text-center border-r border-slate-100">
+                                                <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mb-0.5">Includes</p>
+                                                <p className="text-base font-black text-slate-700">{distance} KM</p>
+                                            </div>
+                                            <div className="flex-1 text-center">
+                                                <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mb-0.5">Duration</p>
+                                                <p className="text-base font-black text-slate-700">{durationHours} HRS</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 pt-1">
+                                            <Input
+                                                label="Duration (Hrs)"
+                                                icon={<Clock size={10} />}
+                                                value={durationHours}
+                                                onChange={(v) => {
+                                                    const val = Number(v);
+                                                    setDurationHours(val > 24 ? 24 : val);
+                                                }}
+                                                type="number"
+                                            />
+                                            <div className="space-y-1">
+                                                <Label icon={<AlertCircle size={10} aria-hidden="true" />} text="Distance (Km)" htmlFor="local-dist" />
+                                                <input
+                                                    id="local-dist"
+                                                    type="number"
+                                                    value={distance}
+                                                    onChange={(e) => setDistance(e.target.value)}
+                                                    className="tn-input h-10 w-full bg-white border-slate-200 text-xs shadow-sm focus:border-blue-500 focus:border-blue-500"
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="space-y-1">
@@ -657,34 +777,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                             )}
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <Label icon={<Car size={10} aria-hidden="true" />} text="Vehicle" htmlFor="cab-vehicle" />
-                                <select
-                                    id="cab-vehicle"
-                                    value={selectedVehicle}
-                                    onChange={e => setSelectedVehicle(e.target.value)}
-                                    className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
-                                >
-                                    <option value="" disabled>Select Vehicle Type</option>
-                                    {VEHICLES.filter(v => {
-                                        if (tripType === 'oneway') {
-                                            return !['tempo', 'minibus', 'bus'].includes(v.id);
-                                        }
-                                        return true;
-                                    }).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                                </select>
-                            </div>
-
-                            <Input
-                                label="Rate/Km"
-                                icon={<Hash size={10} aria-hidden="true" />}
-                                value={customRate}
-                                onChange={(val) => setCustomRate(Number(val))}
-                                type="number"
-                                highlight
-                            />
-                        </div>
+                        {tripType !== 'local' && vehicleSelector}
 
                         {(tripType === 'roundtrip' || (tripType === 'oneway' && parseFloat(distance) > 30)) && (
                             <label className="flex items-center gap-1.5 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-100">
@@ -750,13 +843,14 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                         manualPet={manualPet} setManualPet={setManualPet}
                         nightCharge={nightCharge} setNightCharge={setNightCharge}
                         manualNight={manualNight} setManualNight={setManualNight}
+                        extraItems={extraItems} setExtraItems={setExtraItems}
                     />
                 </div>
             )}
 
             {/* Standard Result Card - Only show if valid result AND NOT in Landing View (since SeoFareDisplay handles that) */}
             {(result || initialResult) && !isLandingView && (
-                <div id="result-card-container" className="peer-focus-within:hidden">
+                <div id="result-card-container">
                     <ResultCard
                         title="Cab Fare"
                         amount={result ? result.fare : initialResult.totalFare}
@@ -768,7 +862,12 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                             distance,
                             vehicle: selectedVehicle,
                             type: tripType,
-                            days
+                            days,
+                            durationHours,
+                            hourlyPackage,
+                            charges: {
+                                toll, parking, permit, driverBatta: driverBata, nightBata: nightCharge, hillStation: hillStationCharge, petCharge, extraItems
+                            }
                         }}
                     />
                 </div>
@@ -1259,6 +1358,18 @@ interface ResultCardProps {
         vehicle: string;
         type: string;
         days?: string;
+        durationHours?: number;
+        hourlyPackage?: string;
+        charges?: {
+            toll: string;
+            parking: string;
+            permit: string;
+            driverBatta: string;
+            nightBata: string;
+            hillStation: string;
+            petCharge: string;
+            extraItems: any[];
+        };
     };
 }
 
@@ -1327,19 +1438,50 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
         window.dispatchEvent(new CustomEvent('nav-tab-quotation'));
     };
 
+    const handleCreateInvoice = () => {
+        if (!tripData) return;
+
+        const draftData = {
+            pickup: tripData.pickup,
+            drop: tripData.drop,
+            distance: tripData.distance,
+            vehicle: tripData.vehicle,
+            mode: tripData.type,
+            days: tripData.days,
+            // Charges from props
+            toll: tripData.charges?.toll,
+            parking: tripData.charges?.parking,
+            permit: tripData.charges?.permit,
+            driverBatta: tripData.charges?.driverBatta,
+            nightBata: tripData.charges?.nightBata,
+            hillStation: tripData.charges?.hillStation,
+            petCharge: tripData.charges?.petCharge,
+            extraItems: tripData.charges?.extraItems,
+            // Pass Hourly Details
+            durationHours: tripData.durationHours,
+            hourlyPackage: tripData.hourlyPackage,
+            includeGst: includeGst,
+            timestamp: Date.now()
+        };
+
+        localStorage.setItem('draft-invoice-data', JSON.stringify(draftData));
+        window.dispatchEvent(new CustomEvent('nav-tab-invoice'));
+    };
+
     if (!amount) return null;
 
     // AEO/SEO Logic: Construct detailed answer for search engines
     const seoData = tripData ? (() => {
-        const pCity = tripData.pickup.split(',')[0];
-        const dCity = tripData.drop.split(',')[0];
-        const vehicleName = tripData.vehicle.charAt(0).toUpperCase() + tripData.vehicle.slice(1);
+        const pCity = (tripData.pickup || 'Location').split(',')[0];
+        const dCity = (tripData.drop || 'Location').split(',')[0];
+        const vRaw = tripData.vehicle || 'Cab';
+        const vehicleName = vRaw.charAt(0).toUpperCase() + vRaw.slice(1);
 
         let extras = '';
         if (Array.isArray(details)) {
-            const extraItems = details.filter(d => d.toLowerCase().match(/(toll|permit|bata|allowance|night)/));
+            const extraItems = details.filter(d => typeof d === 'string' && d.toLowerCase().match(/(toll|permit|bata|allowance|night)/));
             if (extraItems.length > 0) {
-                extras = 'Includes ' + extraItems.map(e => e.split(/[:=]/)[0].trim()).join(', ') + '.';
+                extras = 'Includes ' + extraItems.map(e => (typeof e === 'string' ? e.split(/[:=]/)[0].trim() : '')).join(', ') + '.';
             }
         }
 
@@ -1505,20 +1647,27 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                                 </div>
 
                                 {/* Bottom Actions Area */}
-                                <div className="grid grid-cols-5 gap-2 mt-4 pt-4 border-t border-slate-100">
+                                <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-100">
+                                    <button
+                                        onClick={() => triggerAction(handleCreateInvoice)}
+                                        className="bg-[#0047AB] text-white font-black py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-[9px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                                    >
+                                        <FilePlus size={16} />
+                                        Invoice
+                                    </button>
                                     <button
                                         onClick={() => triggerAction(handleCreateQuote)}
-                                        className="col-span-4 bg-[#6366F1] text-white font-black py-3.5 rounded-xl flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                                        className="bg-[#6366F1] text-white font-black py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-[9px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                                     >
                                         <FileText size={16} />
-                                        Create Formal Quotation
+                                        Quotation
                                     </button>
                                     <button
                                         onClick={() => triggerAction(shareToWhatsApp)}
-                                        className="col-span-1 bg-[#25D366] text-white rounded-xl flex items-center justify-center shadow-lg active:scale-95 transition-all"
-                                        aria-label="Share via WhatsApp"
+                                        className="bg-[#25D366] text-white font-black py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-[9px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                                     >
-                                        <Share2 size={20} />
+                                        <Share2 size={16} />
+                                        Share
                                     </button>
                                 </div>
                             </div>

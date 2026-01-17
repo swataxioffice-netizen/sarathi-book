@@ -28,8 +28,13 @@ export async function subscribeToPush() {
             return;
         }
 
-        // Wait for Service Worker to be ready to avoid "Registration failed" errors
+        // Wait for Service Worker to be ready
         const registration = await navigator.serviceWorker.ready;
+
+        if (!messaging) {
+            console.warn('Firebase Messaging instance is not available.');
+            return;
+        }
 
         // Get FCM Token
         const currentToken = await getToken(messaging, {
@@ -76,9 +81,17 @@ export async function subscribeToPush() {
 // Listen for foreground messages
 export function onMessageListener() {
     return new Promise((resolve) => {
-        onMessage(messaging, (payload) => {
-            console.log('Foreground message received:', payload);
-            resolve(payload);
-        });
+        try {
+            if (messaging) {
+                onMessage(messaging, (payload) => {
+                    console.log('Foreground message received:', payload);
+                    resolve(payload);
+                });
+            } else {
+                console.warn('Firebase Messaging not initialized, skipping listener.');
+            }
+        } catch (e) {
+            console.warn('Failed to listen for messages:', e);
+        }
     });
 }

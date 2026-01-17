@@ -86,12 +86,18 @@ function AppContent() {
       setActiveTab('trips');
       setInvoiceQuotationToggle('quotation');
     };
+    const handleInvoiceNav = () => {
+      setActiveTab('trips');
+      setInvoiceQuotationToggle('invoice');
+    };
 
     window.addEventListener('nav-tab-change', handleNav);
     window.addEventListener('nav-tab-quotation', handleQuoteNav);
+    window.addEventListener('nav-tab-invoice', handleInvoiceNav);
     return () => {
       window.removeEventListener('nav-tab-change', handleNav);
       window.removeEventListener('nav-tab-quotation', handleQuoteNav);
+      window.removeEventListener('nav-tab-invoice', handleInvoiceNav);
     };
   }, []);
 
@@ -152,15 +158,28 @@ function AppContent() {
   const [showLoginNudge, setShowLoginNudge] = useState(false);
 
   // Guest Login Nudge Logic
+  // Guest Login Nudge Logic
   useEffect(() => {
     if (user?.id) {
       setShowLoginNudge(false);
       subscribeToPush();
     } else if (!authLoading) {
-      const timer = setTimeout(() => setShowLoginNudge(true), 5000);
-      return () => clearTimeout(timer);
+      const lastClosed = localStorage.getItem('login_nudge_closed_at');
+      const COOLDOWN = 24 * 60 * 60 * 1000; // 24 Hours
+
+      const shouldShow = !lastClosed || (Date.now() - parseInt(lastClosed) > COOLDOWN);
+
+      if (shouldShow) {
+        const timer = setTimeout(() => setShowLoginNudge(true), 15000); // Increased initial delay to 15s to be less intrusive
+        return () => clearTimeout(timer);
+      }
     }
   }, [user?.id, authLoading]);
+
+  const handleCloseNudge = () => {
+    setShowLoginNudge(false);
+    localStorage.setItem('login_nudge_closed_at', Date.now().toString());
+  };
 
   const [showPricing, setShowPricing] = useState(false);
 
@@ -470,35 +489,43 @@ function AppContent() {
 
               {/* Show Invoice or Quotation based on toggle */}
               {invoiceQuotationToggle === 'invoice' ? (
-                <div className="space-y-2">
-                  <Suspense fallback={<LoadingFallback />}>
-                    <TripForm onSaveTrip={handleSaveTrip} onStepChange={setInvoiceStep} invoiceTemplate={selectedQuotation} trips={trips} />
-                  </Suspense>
+                <div className={invoiceStep === 1 ? "grid grid-cols-1 lg:grid-cols-12 gap-8 items-start" : "max-w-4xl mx-auto space-y-4"}>
+                  <div className={invoiceStep === 1 ? "lg:col-span-7 w-full" : "w-full"}>
+                    <Suspense fallback={<LoadingFallback />}>
+                      <TripForm onSaveTrip={handleSaveTrip} onStepChange={setInvoiceStep} invoiceTemplate={selectedQuotation} trips={trips} />
+                    </Suspense>
+                  </div>
 
                   {invoiceStep === 1 && (
-                    <div className="mt-8 pt-6 border-t border-slate-200">
-                      <Suspense fallback={<LoadingFallback />}>
-                        <History trips={trips} type="invoice" onDeleteTrip={handleDeleteTrip} />
-                      </Suspense>
+                    <div className="lg:col-span-5 w-full mt-4 lg:mt-0">
+                      <div className="sticky top-4">
+                        <Suspense fallback={<LoadingFallback />}>
+                          <History trips={trips} type="invoice" onDeleteTrip={handleDeleteTrip} />
+                        </Suspense>
+                      </div>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <Suspense fallback={<LoadingFallback />}>
-                    <QuotationForm onSaveQuotation={handleSaveQuotation} quotations={quotations} onStepChange={setQuotationStep} />
-                  </Suspense>
+                <div className={quotationStep === 1 ? "grid grid-cols-1 lg:grid-cols-12 gap-8 items-start" : "max-w-4xl mx-auto space-y-4"}>
+                  <div className={quotationStep === 1 ? "lg:col-span-7 w-full" : "w-full"}>
+                    <Suspense fallback={<LoadingFallback />}>
+                      <QuotationForm onSaveQuotation={handleSaveQuotation} quotations={quotations} onStepChange={setQuotationStep} />
+                    </Suspense>
+                  </div>
 
                   {quotationStep === 1 && (
-                    <div className="mt-8 pt-6 border-t border-slate-200 text-left">
-                      <Suspense fallback={<LoadingFallback />}>
-                        <History
-                          quotations={quotations}
-                          type="quotation"
-                          onDeleteQuotation={handleDeleteQuotation}
-                          onConvertQuotation={handleConvertQuotation}
-                        />
-                      </Suspense>
+                    <div className="lg:col-span-5 w-full mt-4 lg:mt-0">
+                      <div className="sticky top-4">
+                        <Suspense fallback={<LoadingFallback />}>
+                          <History
+                            quotations={quotations}
+                            type="quotation"
+                            onDeleteQuotation={handleDeleteQuotation}
+                            onConvertQuotation={handleConvertQuotation}
+                          />
+                        </Suspense>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -648,7 +675,7 @@ function AppContent() {
             <div className="relative z-10">
               <div className="flex justify-between items-start mb-3">
                 <h3 className="font-black text-lg">Enjoying Sarathi?</h3>
-                <button onClick={() => setShowLoginNudge(false)} className="text-slate-400 hover:text-white transition-colors">
+                <button onClick={handleCloseNudge} className="text-slate-400 hover:text-white transition-colors">
                   <X size={20} />
                 </button>
               </div>
@@ -657,7 +684,7 @@ function AppContent() {
               </p>
               <GoogleSignInButton className="w-full" />
               <button
-                onClick={() => setShowLoginNudge(false)}
+                onClick={handleCloseNudge}
                 className="w-full mt-3 text-slate-400 font-bold text-[10px] uppercase tracking-widest hover:text-white"
               >
                 Continue as Guest

@@ -27,7 +27,7 @@ const Profile: React.FC = () => {
     const { settings, updateSettings, saveSettings, docStats } = useSettings();
 
     // Local State
-    const [activeTab, setActiveTab] = useState<'business' | 'payments' | 'vehicles' | 'staff' | 'docs'>('business');
+    const [activeTab, setActiveTab] = useState<'business' | 'payments' | 'vehicles' | 'docs' | 'staff'>('business');
     const [showCard, setShowCard] = useState(false);
     const [activeModal, setActiveModal] = useState<string | null>(null);
     const [savingSection, setSavingSection] = useState<string | null>(null);
@@ -62,7 +62,7 @@ const Profile: React.FC = () => {
     // Tab Navigation Listener
     useEffect(() => {
         const handleTabChange = (e: CustomEvent) => {
-            if (e.detail && ['business', 'payments', 'vehicles', 'staff', 'docs'].includes(e.detail)) {
+            if (e.detail && ['business', 'payments', 'vehicles', 'docs', 'staff'].includes(e.detail)) {
                 setActiveTab(e.detail);
             }
         };
@@ -187,9 +187,13 @@ const Profile: React.FC = () => {
                                 <UserIcon size={20} className="text-slate-300" />
                             )}
                         </div>
-                        {settings.isPremium && (
+                        {settings.isPremium ? (
                             <div className="absolute -bottom-1 -right-1 bg-amber-100 text-amber-600 text-[8px] font-black px-1.5 py-0.5 rounded-full border border-amber-200 shadow-sm">
                                 PRO
+                            </div>
+                        ) : (
+                            <div className="absolute -bottom-1 -right-1 bg-slate-100 text-slate-500 text-[8px] font-black px-1.5 py-0.5 rounded-full border border-slate-200 shadow-sm">
+                                FREE
                             </div>
                         )}
                     </div>
@@ -201,6 +205,8 @@ const Profile: React.FC = () => {
                         </h2>
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                             ID: <span className="text-blue-600">{user?.id?.slice(0, 6).toUpperCase() || 'GUEST'}</span>
+                            <span className="mx-1.5 opacity-30">|</span>
+                            <span className={settings.isPremium ? "text-amber-600" : "text-slate-500"}>{settings.isPremium ? "PRO MEMBER" : "FREE PLAN"}</span>
                         </p>
 
                         {!user ? (
@@ -293,7 +299,7 @@ const Profile: React.FC = () => {
 
             {/* 2. Tabs Navigation */}
             <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-200 mb-6 sticky top-2 z-20 gap-1">
-                {(['business', 'payments', 'vehicles', 'staff', 'docs'] as const).map(tab => {
+                {(['business', 'payments', 'vehicles', 'docs', 'staff'] as const).map(tab => {
                     const isActive = activeTab === tab;
                     const icons = { business: <Contact size={14} />, payments: <Landmark size={14} />, vehicles: <Car size={14} />, staff: <Users size={14} />, docs: <FileText size={14} /> };
                     return (
