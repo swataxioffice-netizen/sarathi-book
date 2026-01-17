@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Wallet, User, LogOut, Calculator, ShieldCheck, Share2, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, FileText, Wallet, User, LogOut, Calculator, ShieldCheck, Share2, TrendingUp, BadgeIndianRupee } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Analytics } from '../utils/monitoring';
 
@@ -17,6 +17,7 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
         { id: 'expenses', icon: <Wallet size={20} />, label: 'Expenses' },
         { id: 'calculator', icon: <Calculator size={20} />, label: 'Calculator' },
         { id: 'trending', icon: <TrendingUp size={20} />, label: 'Trending Routes' },
+        { id: 'tariff', icon: <BadgeIndianRupee size={20} />, label: 'Tariff Card' },
         { id: 'profile', icon: <User size={20} />, label: 'Profile' },
     ];
 

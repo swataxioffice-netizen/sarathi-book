@@ -37,6 +37,7 @@ const PricingModal = lazy(() => import('./components/PricingModal'));
 const SalaryManager = lazy(() => import('./components/SalaryManager'));
 const TrendingRoutes = lazy(() => import('./components/TrendingRoutes'));
 const RoutesDirectory = lazy(() => import('./components/RoutesDirectory'));
+const TariffPage = lazy(() => import('./components/TariffPage'));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -55,7 +56,7 @@ function AppContent() {
     // Priority: 1. URL Path, 2. URL Hash (Legacy/Auth), 3. Local Storage, 4. Default 'calculator'
     const pathname = window.location.pathname.slice(1).split('/')[0];
     const hash = window.location.hash.slice(1).split('/')[0];
-    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin', 'notes', 'staff', 'trending', 'routes'];
+    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin', 'notes', 'staff', 'trending', 'routes', 'tariff'];
 
     // Migration: specific check to force old defaults (dashboard) to new default (calculator) one time
     const storedTab = localStorage.getItem('nav-active-tab');
@@ -555,6 +556,12 @@ function AppContent() {
         return (
           <Suspense fallback={<LoadingFallback />}>
             <RoutesDirectory />
+          </Suspense>
+        );
+      case 'tariff':
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <TariffPage />
           </Suspense>
         );
       case 'notes':
