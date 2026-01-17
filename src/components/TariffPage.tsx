@@ -110,7 +110,7 @@ const TariffPage = () => {
                                         <td className="p-4 text-center">
                                             <a
                                                 href={`/calculator/cab`}
-                                                className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-blue-700 transition-colors"
+                                                className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider hover:bg-blue-700 transition-colors"
                                             >
                                                 Calculate
                                                 <ArrowRight size={12} />
@@ -160,7 +160,7 @@ const TariffPage = () => {
                                 </div>
                                 <a
                                     href={`/calculator/cab`}
-                                    className="inline-flex items-center gap-1 bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-slate-800 transition-all active:scale-95"
+                                    className="inline-flex items-center gap-1 bg-slate-900 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider hover:bg-slate-800 transition-all active:scale-95"
                                 >
                                     Calculate
                                     <ArrowRight size={12} />
