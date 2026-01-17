@@ -511,7 +511,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
     const vehicleSelector = (
         <div className={`grid grid-cols-1 ${tripType !== 'local' ? 'sm:grid-cols-2' : ''} gap-3`}>
             <div className="space-y-1">
-                <Label icon={<Car size={10} aria-hidden="true" />} text="Vehicle" htmlFor="cab-vehicle" />
+                <Label text="Vehicle" htmlFor="cab-vehicle" />
                 <select
                     id="cab-vehicle"
                     value={selectedVehicle}
@@ -531,7 +531,6 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
             {tripType !== 'local' && (
                 <Input
                     label="Rate/Km"
-                    icon={<Hash size={10} aria-hidden="true" />}
                     value={customRate}
                     onChange={(val) => setCustomRate(Number(val))}
                     type="number"
@@ -686,7 +685,6 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                         <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 pt-1">
                                             <Input
                                                 label="Duration (Hrs)"
-                                                icon={<Clock size={10} />}
                                                 value={durationHours}
                                                 onChange={(v) => {
                                                     const val = Number(v);
@@ -695,7 +693,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                                 type="number"
                                             />
                                             <div className="space-y-1">
-                                                <Label icon={<AlertCircle size={10} aria-hidden="true" />} text="Distance (Km)" htmlFor="local-dist" />
+                                                <Label text="Distance (Km)" htmlFor="local-dist" />
                                                 <input
                                                     id="local-dist"
                                                     type="number"
@@ -710,7 +708,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                 </div>
                             ) : (
                                 <div className="space-y-1">
-                                    <Label icon={<AlertCircle size={10} aria-hidden="true" />} text="Distance (Km)" htmlFor="cab-distance" />
+                                    <Label text="Distance (Km)" htmlFor="cab-distance" />
                                     <div className="flex items-center gap-3">
                                         <div className="relative w-1/2">
                                             <input
@@ -740,7 +738,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
 
                             {tripType === 'roundtrip' && (
                                 <div className="space-y-1">
-                                    <Label icon={<Clock size={10} aria-hidden="true" />} text="Trip Duration" htmlFor="cab-days" />
+                                    <Label text="Trip Duration" htmlFor="cab-days" />
                                     <select id="cab-days" value={days} onChange={e => setDays(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
                                         {[1, 2, 3, 4, 5, 6, 7, 10, 15].map(n => (
                                             <option key={n} value={n} disabled={n < minDays}>
