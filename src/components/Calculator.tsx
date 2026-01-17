@@ -594,9 +594,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                         <div className="grid grid-cols-1 gap-3">
                             <PlacesAutocomplete
                                 label="Pickup"
-                                icon={<MapPin size={10} aria-hidden="true" />}
                                 value={pickup}
-
                                 onChange={(val) => {
                                     setPickup(val);
                                     // Clear coords if user is manually typing to prevent stale calc
@@ -610,22 +608,10 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                 }}
                                 onMapClick={() => setShowMap(true)}
                                 placeholder="Start typing..."
-                                rightContent={pickup && (
-                                    <button
-                                        onClick={() => {
-                                            setPickup('');
-                                            setPickupCoords(null);
-                                        }}
-                                        className="p-1 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
-                                    >
-                                        <X size={14} />
-                                    </button>
-                                )}
                             />
                             {tripType !== 'local' && (
                                 <PlacesAutocomplete
                                     label="Drop"
-                                    icon={<MapPin size={10} aria-hidden="true" />}
                                     value={drop}
                                     onChange={(val) => {
                                         setDrop(val);
@@ -640,17 +626,6 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                     }}
                                     onMapClick={() => setShowMap(true)}
                                     placeholder="Start typing..."
-                                    rightContent={drop && (
-                                        <button
-                                            onClick={() => {
-                                                setDrop('');
-                                                setDropCoords(null);
-                                            }}
-                                            className="p-1 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
-                                        >
-                                            <X size={14} />
-                                        </button>
-                                    )}
                                 />
                             )}
                         </div>
