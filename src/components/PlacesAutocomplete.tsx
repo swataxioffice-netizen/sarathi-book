@@ -215,9 +215,8 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
             )}
 
             <div className="relative group">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none z-10">
-                    <MapPin size={16} />
-                </div>
+                {/* Removed duplicate internal MapPin icon */}
+
 
                 {onMapClick && (
                     <button
@@ -238,7 +237,7 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                     onChange={handleInputChange}
                     onFocus={handleFocus}
                     onBlur={onBlur}
-                    className={className || `tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs ${onMapClick ? 'pl-16' : 'pl-10'} pr-10`}
+                    className={className || `tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs ${onMapClick ? 'pl-16' : 'pl-3'} pr-10`}
                     placeholder={placeholder || "Start typing..."}
                     autoComplete="off"
                 />
