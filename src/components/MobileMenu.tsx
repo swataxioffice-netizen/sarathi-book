@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { X, User, Crown, Users, BadgeIndianRupee, LogOut, ChevronRight, LogIn } from 'lucide-react';
+import { X, User, Crown, Users, BadgeIndianRupee, LogOut, ChevronRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 
@@ -11,7 +11,7 @@ interface MobileMenuProps {
 }
 
 const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, activeTab, setActiveTab }) => {
-    const { user, signOut, signInWithGoogle } = useAuth();
+    const { user, signOut } = useAuth();
     const { settings } = useSettings();
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -87,12 +87,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, activeTab, set
                         ) : (
                             <div className="w-full">
                                 <h3 className="font-bold text-lg mb-1">Welcome Guest</h3>
-                                <button
-                                    onClick={() => { signInWithGoogle(); onClose(); }}
-                                    className="mt-3 w-full py-2 bg-white text-[#0047AB] rounded-lg text-xs font-black uppercase tracking-widest shadow-lg hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <LogIn size={14} /> Sign In
-                                </button>
+                                <p className="text-xs text-blue-200 mt-1 font-medium">Sign in to sync data</p>
                             </div>
                         )}
                     </div>
