@@ -222,7 +222,7 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                     <button
                         type="button"
                         onClick={onMapClick}
-                        className="absolute left-10 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors z-10"
+                        className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors z-10"
                         title="Select on map"
                     >
                         <Map size={16} />
@@ -237,7 +237,7 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                     onChange={handleInputChange}
                     onFocus={handleFocus}
                     onBlur={onBlur}
-                    className={className || `tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs ${onMapClick ? 'pl-16' : 'pl-3'} pr-10`}
+                    className={className || `tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs ${onMapClick ? 'pl-10' : 'pl-3'} pr-10`}
                     placeholder={placeholder || "Start typing..."}
                     autoComplete="off"
                 />
