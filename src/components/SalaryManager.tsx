@@ -10,9 +10,31 @@ const SalaryManager: React.FC = () => {
 
     // Security Check: Pro Feature
     if (!settings.isPremium) {
-        // Redirect back to profile if trying to access directly
-        window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'profile' }));
-        return null;
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center animate-fade-in">
+                <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6">
+                    <Users size={40} className="text-slate-400" />
+                </div>
+                <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2">Staff Management</h2>
+                <p className="text-sm text-slate-500 font-medium max-w-xs mb-8">
+                    Manage driver salaries, attendance, and generate payslips with the Pro plan.
+                </p>
+                <div className="w-full max-w-xs space-y-3">
+                    <button
+                        onClick={() => window.dispatchEvent(new CustomEvent('open-pricing-modal'))}
+                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-200"
+                    >
+                        Upgrade to Stock Pro
+                    </button>
+                    <button
+                        onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'profile' }))}
+                        className="w-full py-4 bg-white text-slate-400 rounded-xl font-bold uppercase text-[10px] tracking-widest hover:text-slate-600"
+                    >
+                        Go Back
+                    </button>
+                </div>
+            </div>
+        );
     }
 
     const [showAddModal, setShowAddModal] = useState(false);
