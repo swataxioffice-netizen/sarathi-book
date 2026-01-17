@@ -38,6 +38,7 @@ const SalaryManager = lazy(() => import('./components/SalaryManager'));
 const TrendingRoutes = lazy(() => import('./components/TrendingRoutes'));
 const RoutesDirectory = lazy(() => import('./components/RoutesDirectory'));
 const TariffPage = lazy(() => import('./components/TariffPage'));
+const MobileMenu = lazy(() => import('./components/MobileMenu'));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -606,9 +607,10 @@ function AppContent() {
     );
   }
 
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   return (
     <>
-
       <UpdateWatcher />
       {/* Desktop Layout */}
       <div className="hidden md:flex h-screen w-full bg-slate-100 overflow-hidden">
@@ -659,17 +661,28 @@ function AppContent() {
 
       {/* Mobile Layout */}
       <div className="md:hidden h-[100dvh] w-full bg-white flex flex-col relative overflow-hidden">
-        <Header activeTab={activeTab} setActiveTab={setActiveTab} />
+        <Header
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onMenuClick={() => setIsMobileMenuOpen(true)}
+        />
         <main className="flex-1 overflow-y-auto scrollbar-hide px-3 py-4 pb-24 bg-[#F5F7FA] relative">
           {renderContent()}
-
-
-
         </main>
+
         <BottomNav
           activeTab={activeTab}
           setActiveTab={setActiveTab}
         />
+
+        <Suspense fallback={null}>
+          <MobileMenu
+            isOpen={isMobileMenuOpen}
+            onClose={() => setIsMobileMenuOpen(false)}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+          />
+        </Suspense>
       </div>
 
       {/* Pricing Modal */}

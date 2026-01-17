@@ -6,20 +6,21 @@ import { useAuth } from '../contexts/AuthContext';
 interface HeaderProps {
     activeTab?: string;
     setActiveTab?: (tab: string) => void;
+    onMenuClick?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
+const Header: React.FC<HeaderProps> = ({ activeTab, onMenuClick }) => {
     const { needRefresh, updateServiceWorker } = useUpdate();
     const { user } = useAuth();
 
     return (
         <header className="bg-white border-b-2 border-slate-100 px-3 py-1.5 flex-none sticky top-0 z-40 shadow-sm">
             <div className="flex justify-between items-center max-w-md mx-auto relative">
-                {/* Left: Profile Button */}
+                {/* Left: Profile/Menu Button */}
                 <div className="flex-1 flex justify-start">
                     <button
-                        onClick={() => setActiveTab?.('profile')}
-                        aria-label="Profile"
+                        onClick={onMenuClick}
+                        aria-label="Open Menu"
                         className={`w-9 h-9 flex items-center justify-center rounded-full border transition-colors ${activeTab === 'profile' ? 'bg-[#0047AB] text-white border-[#0047AB]' : 'bg-slate-50 text-slate-400 border-slate-100 hover:bg-blue-50 hover:text-blue-600'}`}
                     >
                         {user?.user_metadata?.avatar_url ? (
