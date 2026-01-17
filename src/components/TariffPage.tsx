@@ -110,7 +110,7 @@ const TariffPage = () => {
                                         <td className="p-4 text-center">
                                             <a
                                                 href={`/calculator/cab`}
-                                                className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider hover:bg-blue-700 transition-colors"
+                                                className="inline-flex items-center gap-1 bg-[#0047AB] text-white px-4 py-3 rounded-xl shadow-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-800 transition-all active:scale-[0.98]"
                                             >
                                                 Calculate
                                                 <ArrowRight size={12} />
@@ -138,18 +138,18 @@ const TariffPage = () => {
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{v.popularModels}</p>
                                 </div>
                                 <div className="bg-blue-50 px-2 py-1 rounded text-right">
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase">Min Km/Day</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Min Km/Day</p>
                                     <p className="font-black text-slate-700">{v.minKm} KM</p>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3 mb-4">
                                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">One Way</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">One Way</p>
                                     <p className="text-xl font-black text-slate-900">₹{v.dropRate}<span className="text-[10px] text-slate-400 font-bold ml-1">/km</span></p>
                                 </div>
                                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Round Trip</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Round Trip</p>
                                     <p className="text-xl font-black text-slate-900">₹{v.roundRate}<span className="text-[10px] text-slate-400 font-bold ml-1">/km</span></p>
                                 </div>
                             </div>
@@ -160,7 +160,7 @@ const TariffPage = () => {
                                 </div>
                                 <a
                                     href={`/calculator/cab`}
-                                    className="inline-flex items-center gap-1 bg-slate-900 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider hover:bg-slate-800 transition-all active:scale-95"
+                                    className="inline-flex items-center gap-1 bg-[#0047AB] text-white px-4 py-3 rounded-xl shadow-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-800 transition-all active:scale-[0.98]"
                                 >
                                     Calculate
                                     <ArrowRight size={12} />
@@ -230,15 +230,15 @@ const TariffPage = () => {
 
                                     <div className="grid grid-cols-3 gap-2 text-center">
                                         <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-100">
-                                            <p className="text-[9px] font-bold text-blue-400 uppercase mb-0.5">4 Hr</p>
+                                            <p className="text-[10px] font-bold text-blue-400 uppercase mb-0.5">4 Hr</p>
                                             <p className="font-black text-slate-900">₹{data.local_4hr_pkg}</p>
                                         </div>
                                         <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-100">
-                                            <p className="text-[9px] font-bold text-blue-400 uppercase mb-0.5">8 Hr</p>
+                                            <p className="text-[10px] font-bold text-blue-400 uppercase mb-0.5">8 Hr</p>
                                             <p className="font-black text-slate-900">₹{data.local_8hr_pkg}</p>
                                         </div>
                                         <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-100">
-                                            <p className="text-[9px] font-bold text-blue-400 uppercase mb-0.5">12 Hr</p>
+                                            <p className="text-[10px] font-bold text-blue-400 uppercase mb-0.5">12 Hr</p>
                                             <p className="font-black text-slate-900">₹{data.local_12hr_pkg}</p>
                                         </div>
                                     </div>
