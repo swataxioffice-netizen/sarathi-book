@@ -43,15 +43,40 @@ type FareResult = ReturnType<typeof calculateFare>;
 import { useAdProtection } from '../hooks/useAdProtection';
 const InterstitialAd = React.lazy(() => import('./InterstitialAd'));
 
+import { generateTripSchema } from '../utils/seoSchema';
+
 // --- Seo Fare Display Component (New Request) ---
 const SeoFareDisplay = ({ result, tripData, onEdit }: { result: any, tripData: any, onEdit: () => void }) => {
     if (!result) return null;
 
     const { details, fare } = result;
 
+    // Generate Schema for Landing View
+    const schema = generateTripSchema({
+        pickup: tripData.pickup,
+        drop: tripData.drop,
+        distance: tripData.distance,
+        vehicle: tripData.vehicle,
+        amount: fare,
+        tripType: tripData.type,
+        details: details
+    });
+
+    const pCity = (tripData.pickup || 'Location').split(',')[0];
+    const dCity = (tripData.drop || 'Location').split(',')[0];
+    const vRaw = tripData.vehicle || 'Cab';
+    const vehicleName = vRaw.charAt(0).toUpperCase() + vRaw.slice(1);
+
+    const title = `${fare} INR - Cab from ${pCity} to ${dCity} Fare Estimate (${vehicleName})`;
+    const description = `Get exact cab fare from ${pCity} to ${dCity}. ${vehicleName} Taxi price is ₹${fare} approx for ${tripData.distance} km. Best rates for Outstation & Local trips with Sarathi Book.`;
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-fade-in-up">
+            <SEOHead
+                title={title}
+                description={description}
+                schema={schema}
+            />
             <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center">
                 <h2 className="text-sm font-black text-slate-700 uppercase tracking-widest">
                     Trip Estimate Details
@@ -214,6 +239,44 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
         }
     }, [pickup, drop]);
 
+    // Parse URL Query Params for Deep Linking / SEO
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const urlPickup = params.get('pickup') || params.get('from');
+        const urlDrop = params.get('drop') || params.get('to');
+        const urlDist = params.get('distance') || params.get('km') || params.get('dist');
+        const urlVehicle = params.get('vehicle') || params.get('car') || params.get('veh');
+        const urlType = params.get('type') || params.get('tripType');
+        const urlDays = params.get('days');
+
+        if (urlPickup) setPickup(urlPickup);
+        if (urlDrop) setDrop(urlDrop);
+
+        if (urlDist) {
+            setDistance(urlDist);
+            // If we have enough info, enable landing view for SEO
+            if (urlPickup && urlDrop) {
+                setIsLandingView(true);
+            }
+        }
+
+        if (urlVehicle) {
+            // Check if vehicle exists in config
+            const valid = VEHICLES.some(v => v.id === urlVehicle);
+            if (valid) setSelectedVehicle(urlVehicle);
+        } else if (urlDist) {
+            // Default to Sedan if not specified but likely an SEO link
+            setSelectedVehicle('sedan');
+        }
+
+        if (urlType && ['oneway', 'roundtrip', 'local', 'airport'].includes(urlType)) {
+            setTripType(urlType as any);
+        }
+
+        if (urlDays) setDays(urlDays);
+
+    }, []);
+
     // Hourly / Local Package State
     const [hourlyPackage, setHourlyPackage] = useState<string>('');
     const [durationHours, setDurationHours] = useState<number>(0);
@@ -257,9 +320,11 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
     const [manualNight, setManualNight] = useState(false);
     const [extraItems, setExtraItems] = useState<{ description: string, amount: number }[]>([]);
 
-    const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number, tollAmt?: number) => {
+    const handleMapSelect = (pickupAddr: string, dropAddr: string, dist: number, tollAmt?: number, pickupLat?: number, pickupLng?: number, dropLat?: number, dropLng?: number) => {
         setPickup(pickupAddr);
         setDrop(dropAddr);
+        if (pickupLat && pickupLng) setPickupCoords({ lat: pickupLat, lng: pickupLng });
+        if (dropLat && dropLng) setDropCoords({ lat: dropLat, lng: dropLng });
         setDistance(dist.toFixed(1));
         if (tollAmt && tollAmt > 0) {
             let finalToll = tollAmt;
@@ -1458,29 +1523,20 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
             }
         }
 
+        const schema = generateTripSchema({
+            pickup: tripData.pickup,
+            drop: tripData.drop,
+            distance: tripData.distance,
+            vehicle: tripData.vehicle,
+            amount: amount,
+            tripType: tripData.type,
+            details: details
+        });
+
         return {
             title: `${amount} INR - Cab from ${pCity} to ${dCity} Fare Estimate (${vehicleName})`,
             description: `Get exact cab fare from ${pCity} to ${dCity}. ${vehicleName} Taxi price is ₹${amount} approx for ${tripData.distance} km. ${extras} Best rates for Outstation & Local trips with Sarathi Book.`,
-            schema: {
-                "@context": "https://schema.org",
-                "@type": "Product",
-                "name": `Cab Service: ${pCity} to ${dCity} (${vehicleName})`,
-                "description": `Professional ${vehicleName} cab service from ${tripData.pickup} to ${tripData.drop}. distance: ${tripData.distance}km.`,
-                "image": "https://sarathibook.com/icon-192.png",
-                "brand": {
-                    "@type": "Brand",
-                    "name": "Sarathi Book"
-                },
-                "offers": {
-                    "@type": "Offer",
-                    "url": window.location.href,
-                    "priceCurrency": "INR",
-                    "price": amount.toString(),
-                    "priceValidUntil": new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-                    "availability": "https://schema.org/InStock",
-                    "itemCondition": "https://schema.org/NewCondition"
-                }
-            }
+            schema: schema
         };
     })() : null;
 

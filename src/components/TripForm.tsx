@@ -6,13 +6,14 @@ import { Trip } from '../utils/fare';
 import { estimateParkingCharge } from '../utils/parking';
 import { estimatePermitCharge } from '../utils/permits';
 import PlacesAutocomplete from './PlacesAutocomplete';
+import MapPicker from './MapPicker';
 import { useAdProtection } from '../hooks/useAdProtection';
 import {
     MoveRight, MapPin, Plus, Eye,
-    CheckCircle2, Phone, Building2,
-    User, Repeat, Clock, UserCheck,
+    CheckCircle2,
+    Repeat, Clock, UserCheck,
     Camera, Car, ChevronLeft,
-    RotateCcw, Trash2, Share2, PenLine, Hash, StickyNote, Check
+    RotateCcw, Trash2, Share2, StickyNote, Check, PenLine
 } from 'lucide-react';
 import { generateReceiptPDF, SavedQuotation, shareReceipt } from '../utils/pdf';
 import { saveToHistory } from '../utils/history';
@@ -155,6 +156,25 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     // Local Trip Log
     const [startTimeLog, setStartTimeLog] = useState('');
     const [endTimeLog, setEndTimeLog] = useState('');
+    const [showMap, setShowMap] = useState(false);
+
+    const handleMapSelect = (pickup: string, drop: string, dist: number, tollAmt?: number, pLat?: number, pLng?: number, dLat?: number, dLng?: number) => {
+        setFromLoc(pickup);
+        setToLoc(drop);
+        setDistanceOverride(dist.toString());
+        if (pLat && pLng) setPickupCoords({ lat: pLat, lng: pLng });
+        if (dLat && dLng) setDropCoords({ lat: dLat, lng: dLng });
+
+        if (tollAmt && tollAmt > 0) {
+            let finalToll = tollAmt;
+            if (mode === 'outstation') {
+                // Multi-day round trip logic for toll
+                finalToll = days > 1 ? tollAmt * 2 : Math.round(tollAmt * 1.6);
+            }
+            setToll(finalToll.toString());
+        }
+        setShowMap(false);
+    };
 
     // --- Derived Values ---
     const userVehicles = useMemo(() => settings.vehicles || [], [settings.vehicles]);
@@ -740,11 +760,30 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><MapPin size={12} /> Journey Details</h3>
                 <div className="space-y-3">
-                    <PlacesAutocomplete label="Pickup Point" icon={<MapPin size={12} />} value={fromLoc} onChange={setFromLoc} onPlaceSelected={(p) => { setFromLoc(p.address); setPickupCoords({ lat: p.lat, lng: p.lng }); }} />
+                    <PlacesAutocomplete
+                        label="Pickup"
+                        value={fromLoc}
+                        onChange={setFromLoc}
+                        onPlaceSelected={(p) => { setFromLoc(p.address); setPickupCoords({ lat: p.lat, lng: p.lng }); }}
+                        onMapClick={() => setShowMap(true)}
+                    />
                     {mode !== 'local' && (
-                        <PlacesAutocomplete label="Drop Point" icon={<MapPin size={12} />} value={toLoc} onChange={setToLoc} onPlaceSelected={(p) => { setToLoc(p.address); setDropCoords({ lat: p.lat, lng: p.lng }); }} />
+                        <PlacesAutocomplete
+                            label="Drop"
+                            value={toLoc}
+                            onChange={setToLoc}
+                            onPlaceSelected={(p) => { setToLoc(p.address); setDropCoords({ lat: p.lat, lng: p.lng }); }}
+                            onMapClick={() => setShowMap(true)}
+                        />
                     )}
                 </div>
+
+                {showMap && (
+                    <MapPicker
+                        onLocationSelect={handleMapSelect}
+                        onClose={() => setShowMap(false)}
+                    />
+                )}
 
                 <div className="pt-1 border-t border-slate-50 space-y-3">
                     <div className="flex items-center justify-between">
@@ -760,12 +799,12 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                         <div className="pt-3 border-t border-slate-50 space-y-3">
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Start Time</label>
-                                    <input type="time" value={startTimeLog} onChange={e => setStartTimeLog(e.target.value)} className="tn-input h-10 w-full font-black text-sm bg-slate-50 border-transparent" />
+                                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Start Time</label>
+                                    <input type="time" value={startTimeLog} onChange={e => setStartTimeLog(e.target.value)} className="tn-input h-10 w-full font-bold text-xs bg-slate-50 border-slate-200" />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">End Time</label>
-                                    <input type="time" value={endTimeLog} onChange={e => setEndTimeLog(e.target.value)} className="tn-input h-10 w-full font-black text-sm bg-slate-50 border-transparent" />
+                                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1">End Time</label>
+                                    <input type="time" value={endTimeLog} onChange={e => setEndTimeLog(e.target.value)} className="tn-input h-10 w-full font-bold text-xs bg-slate-50 border-slate-200" />
                                 </div>
                             </div>
 
@@ -781,18 +820,14 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
                     <div className="pt-1 border-t border-slate-50 space-y-3">
                         {!isOdometerMode && mode !== 'local' && (
-                            <div className="relative">
-                                <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
-                                <input type="number"
-                                    value={isFetchingKM ? '' : distanceOverride}
-                                    onChange={(e) => {
-                                        setDistanceOverride(e.target.value);
-                                    }}
-                                    className="tn-input pl-12 h-10 w-full font-black text-sm bg-slate-50 border-transparent focus:bg-white"
-                                    placeholder={isFetchingKM ? "Calculating..." : "0"}
-                                />
-                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 uppercase tracking-widest">KM</span>
-                            </div>
+                            <input type="number"
+                                value={isFetchingKM ? '' : distanceOverride}
+                                onChange={(e) => {
+                                    setDistanceOverride(e.target.value);
+                                }}
+                                className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
+                                placeholder={isFetchingKM ? "Calculating..." : "0"}
+                            />
                         )}
                         {isOdometerMode && mode !== 'local' && (
                             <label className="flex items-center gap-1.5 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-100 w-fit mt-2">
@@ -808,7 +843,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                         {(isOdometerMode || (mode === 'outstation' || (mode === 'drop' && parseFloat(distanceOverride) > 30))) && mode !== 'local' && (
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
-                                    <p className="text-[8px] font-black text-slate-400 uppercase ml-1 flex justify-between items-center">Start KM <button onClick={() => { setIsScanning('start'); fileInputRef.current?.click(); }} className="text-blue-600"><Camera size={10} /></button></p>
+                                    <p className="text-[9px] font-black text-slate-500 uppercase ml-1 flex justify-between items-center">Start KM <button onClick={() => { setIsScanning('start'); fileInputRef.current?.click(); }} className="text-blue-600"><Camera size={10} /></button></p>
                                     <input
                                         type="number"
                                         value={startKm || ''}
@@ -821,13 +856,13 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                                 setEndKm(val + d);
                                             }
                                         }}
-                                        className="tn-input h-10 w-full font-black text-sm bg-slate-50"
+                                        className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
                                         placeholder="0"
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[8px] font-black text-slate-400 uppercase ml-1 flex justify-between items-center">End KM <button onClick={() => { setIsScanning('end'); fileInputRef.current?.click(); }} className="text-blue-600"><Camera size={10} /></button></p>
-                                    <input type="number" value={endKm || ''} onChange={(e) => setEndKm(parseFloat(e.target.value) || 0)} className="tn-input h-10 w-full font-black text-sm bg-slate-50" placeholder="0" />
+                                    <p className="text-[9px] font-black text-slate-500 uppercase ml-1 flex justify-between items-center">End KM <button onClick={() => { setIsScanning('end'); fileInputRef.current?.click(); }} className="text-blue-600"><Camera size={10} /></button></p>
+                                    <input type="number" value={endKm || ''} onChange={(e) => setEndKm(parseFloat(e.target.value) || 0)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
                                 </div>
                             </div>
                         )}
@@ -841,11 +876,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
                 <div className="space-y-3">
                     <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Select Cab</label>
+                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Select Cab</label>
                         <select
                             value={selectedVehicleId}
                             onChange={(e) => setSelectedVehicleId(e.target.value)}
-                            className="tn-input h-10 w-full font-bold text-xs bg-slate-50 border-transparent pr-10"
+                            className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
                         >
                             <option value="">Choose from Fleet</option>
                             {userVehicles.map((v) => (
@@ -857,22 +892,19 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-50">
                         {mode !== 'local' && (
                             <div className="space-y-1">
-                                <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Base Rate / KM</label>
-                                <div className="relative">
-                                    <PenLine className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
-                                    <input type="number" value={customRate || ''} onChange={e => setCustomRate(parseFloat(e.target.value) || 0)} className="tn-input pl-10 h-10 w-full font-black text-blue-600 bg-slate-50 text-sm" placeholder="0" />
-                                </div>
+                                <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Base Rate / KM</label>
+                                <input type="number" value={customRate || ''} onChange={e => setCustomRate(parseFloat(e.target.value) || 0)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
                             </div>
                         )}
                         {mode === 'outstation' ? (
                             <div className="space-y-1">
-                                <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Trip Days</label>
-                                <input type="number" value={days} onChange={e => setDays(parseFloat(e.target.value) || 1)} className="tn-input h-10 w-full font-black bg-slate-50 text-sm" placeholder="1" />
+                                <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Trip Days</label>
+                                <input type="number" value={days} onChange={e => setDays(parseFloat(e.target.value) || 1)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="1" />
                             </div>
                         ) : mode === 'local' ? (
                             <div className="space-y-3">
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Local Package</label>
+                                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Local Package</label>
                                     <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none snap-x">
                                         {[
                                             { id: '2hr_20km', hr: '2 Hr', km: '20 Km' },
@@ -958,31 +990,31 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                         <div className="flex justify-between items-center px-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Batta</label>
+                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Batta</label>
                             {manualDriverBatta && <button onClick={() => setManualDriverBatta(false)} className="text-blue-600"><RotateCcw size={10} /></button>}
                         </div>
-                        <input type="number" value={driverBatta} onChange={e => { setDriverBatta(e.target.value); setManualDriverBatta(true); }} className={`tn-input h-10 w-full font-black text-sm ${manualDriverBatta ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-transparent'}`} placeholder="0" />
+                        <input type="number" value={driverBatta} onChange={e => { setDriverBatta(e.target.value); setManualDriverBatta(true); }} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 ${manualDriverBatta ? 'bg-blue-50 text-blue-700' : ''}`} placeholder="0" />
                     </div>
                     <div className="space-y-1">
                         <div className="flex justify-between items-center px-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tolls</label>
+                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Tolls</label>
                             {manualToll && <button onClick={() => setManualToll(false)} className="text-blue-600"><RotateCcw size={10} /></button>}
                         </div>
-                        <input type="number" value={toll} onChange={e => { setToll(e.target.value); setManualToll(true); }} className={`tn-input h-10 w-full font-black text-sm ${manualToll ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-transparent'}`} placeholder="0" />
+                        <input type="number" value={toll} onChange={e => { setToll(e.target.value); setManualToll(true); }} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 ${manualToll ? 'bg-blue-50 text-blue-700' : ''}`} placeholder="0" />
                     </div>
                     <div className="space-y-1">
                         <div className="flex justify-between items-center px-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Parking</label>
+                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Parking</label>
                             {manualParking && <button onClick={() => setManualParking(false)} className="text-blue-600"><RotateCcw size={10} /></button>}
                         </div>
-                        <input type="number" value={parking} onChange={e => { setParking(e.target.value); setManualParking(true); }} className={`tn-input h-10 w-full font-black text-sm ${manualParking ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-transparent'}`} placeholder="0" />
+                        <input type="number" value={parking} onChange={e => { setParking(e.target.value); setManualParking(true); }} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 ${manualParking ? 'bg-blue-50 text-blue-700' : ''}`} placeholder="0" />
                     </div>
                     <div className="space-y-1">
                         <div className="flex justify-between items-center px-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Permit</label>
+                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Permit</label>
                             {manualPermit && <button onClick={() => setManualPermit(false)} className="text-blue-600"><RotateCcw size={10} /></button>}
                         </div>
-                        <input type="number" value={permit} onChange={e => { setPermit(e.target.value); setManualPermit(true); }} className={`tn-input h-10 w-full font-black text-sm ${manualPermit ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-transparent'}`} placeholder="0" />
+                        <input type="number" value={permit} onChange={e => { setPermit(e.target.value); setManualPermit(true); }} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 ${manualPermit ? 'bg-blue-50 text-blue-700' : ''}`} placeholder="0" />
                     </div>
                 </div>
 
@@ -990,24 +1022,24 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
                 <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Hill Station</label>
-                        <input type="number" value={hillStationCharge} onChange={e => { setHillStationCharge(e.target.value); setManualHillStation(true); }} className="tn-input h-10 w-full font-black text-sm bg-slate-50 border-transparent" placeholder="0" />
+                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Hill Station</label>
+                        <input type="number" value={hillStationCharge} onChange={e => { setHillStationCharge(e.target.value); setManualHillStation(true); }} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
                     </div>
                     <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Pet Charge</label>
-                        <input type="number" value={petCharge} onChange={e => setPetCharge(e.target.value)} className="tn-input h-10 w-full font-black text-sm bg-slate-50 border-transparent" placeholder="0" />
+                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Pet Charge</label>
+                        <input type="number" value={petCharge} onChange={e => setPetCharge(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
                     </div>
                 </div>
 
                 <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Night Drive (11 PM - 5 AM)</label>
-                    <input type="number" value={nightCharge} onChange={e => setNightCharge(e.target.value)} className="tn-input h-10 w-full font-black text-sm bg-slate-50 border-transparent" placeholder="0" />
+                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Night Drive (11 PM - 5 AM)</label>
+                    <input type="number" value={nightCharge} onChange={e => setNightCharge(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
                 </div>
 
                 <div className="pt-4 border-t border-slate-50 space-y-3">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">More Charges</label>
+                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1">More Charges</label>
                     <div className="flex gap-2">
-                        <select className="tn-input h-10 flex-1 font-bold text-xs bg-slate-50 border-transparent shadow-none" value={selectedChargeType} onChange={(e) => { setSelectedChargeType(e.target.value); if (e.target.value !== 'Custom') setCustomChargeName(''); }}>
+                        <select className="tn-input h-10 flex-1 bg-slate-50 border-slate-200 text-xs text-slate-900 shadow-none" value={selectedChargeType} onChange={(e) => { setSelectedChargeType(e.target.value); if (e.target.value !== 'Custom') setCustomChargeName(''); }}>
                             <option value="">Select Charge Type</option>
                             <option value="Custom">Custom Charge</option>
                             <option value="Cleaning Fee">Cleaning Fee</option>
@@ -1070,21 +1102,23 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                     </div>
                 </div>
                 <div className="space-y-3">
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1 flex items-center gap-1.5"><User size={10} /> Client Name</label>
-                        <input placeholder="Client Name" className="tn-input h-10 w-full" value={customerName} onChange={e => setCustomerName(e.target.value)} />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1 flex items-center gap-1.5"><Phone size={10} /> Phone</label>
-                        <input placeholder="Phone" className="tn-input h-10 w-full" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1 flex items-center gap-1.5"><Building2 size={10} /> Address</label>
-                        <textarea placeholder="Address" className="tn-input h-16 w-full py-2 resize-none" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1 flex items-center gap-1.5"><Hash size={10} /> GSTIN (Optional)</label>
-                        <input placeholder="GSTIN" className="tn-input h-10 w-full uppercase" value={customerGst} onChange={e => setCustomerGst(e.target.value)} />
+                    <div className="space-y-3">
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Client Name</label>
+                            <input placeholder="Client Name" className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" value={customerName} onChange={e => setCustomerName(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Phone</label>
+                            <input placeholder="Phone" className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Address</label>
+                            <textarea placeholder="Address" className="tn-input h-16 w-full py-2 resize-none bg-slate-50 border-slate-200 text-xs text-slate-900" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">GSTIN (Optional)</label>
+                            <input placeholder="GSTIN" className="tn-input h-10 w-full uppercase bg-slate-50 border-slate-200 text-xs text-slate-900" value={customerGst} onChange={e => setCustomerGst(e.target.value)} />
+                        </div>
                     </div>
                 </div>
 

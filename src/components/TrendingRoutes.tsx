@@ -55,17 +55,6 @@ const TrendingRoutes: React.FC = () => {
         fetchTrends();
     }, []);
 
-    const handleRouteClick = (route: any) => {
-        const newUrl = `/calculator/cab?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}&dist=${route.dist}&veh=${route.veh}&type=${route.mode === 'roundtrip' ? 'roundtrip' : 'oneway'}`;
-        // We can just navigate using window.location.href or dispatch the nav event
-        // But since this is a new 'Tab' in App.tsx, we probably want to switch tab to 'calculator'
-        // and update the URL.
-
-        // This is tricky because App.tsx handles URL state.
-        // Best approach: Direct link change.
-        window.location.href = newUrl;
-    };
-
     return (
         <div className="space-y-6 pb-24 animate-fade-in">
             <SEOHead
@@ -93,10 +82,10 @@ const TrendingRoutes: React.FC = () => {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {trendingRoutes.map((route, idx) => (
-                            <div
+                            <a
                                 key={idx}
-                                onClick={() => handleRouteClick(route)}
-                                className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer active:scale-[0.99] group"
+                                href={`/calculator/cab?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}&dist=${route.dist}&veh=${route.veh?.toLowerCase()}&type=${route.mode === 'roundtrip' ? 'roundtrip' : 'oneway'}`}
+                                className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer active:scale-[0.99] group block"
                             >
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-2">
@@ -129,10 +118,16 @@ const TrendingRoutes: React.FC = () => {
                                         <span className="text-lg font-black text-slate-900 block leading-none">₹{route.fare.toLocaleString()}</span>
                                     </div>
                                 </div>
-                            </div>
+                            </a>
                         ))}
                     </div>
                 )}
+            </div>
+
+            <div className="mt-8 text-center pb-8">
+                <a href="/routes" className="inline-flex items-center gap-2 text-sm font-black text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-wider bg-blue-50 px-6 py-3 rounded-full hover:bg-blue-100">
+                    View Full Routes Directory <ArrowRight size={16} />
+                </a>
             </div>
         </div>
     );

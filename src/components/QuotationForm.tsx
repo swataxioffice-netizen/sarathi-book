@@ -5,12 +5,12 @@ import { TARIFFS, TRIP_LIMITS } from '../config/tariff_config';
 import { estimateParkingCharge } from '../utils/parking';
 import { estimatePermitCharge } from '../utils/permits';
 import PlacesAutocomplete from './PlacesAutocomplete';
+import MapPicker from './MapPicker';
 import {
     MoveRight, MapPin, Plus, Eye,
-    Phone, Building2,
-    User, Repeat, Clock, UserCheck,
+    Repeat, Clock, UserCheck,
     Car, ChevronLeft,
-    RotateCcw, Trash2, PenLine, Hash,
+    RotateCcw, Trash2, PenLine,
     StickyNote, Check
 } from 'lucide-react';
 import { shareQuotation, generateQuotationPDF, QuotationData, SavedQuotation } from '../utils/pdf';
@@ -131,6 +131,25 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
     // Previews
     const [showPreview, setShowPreview] = useState(false);
     const [previewPdfUrl, setPreviewPdfUrl] = useState('');
+    const [showMap, setShowMap] = useState(false);
+
+    const handleMapSelect = (pickup: string, drop: string, dist: number, tollAmt?: number, pLat?: number, pLng?: number, dLat?: number, dLng?: number) => {
+        setFromLoc(pickup);
+        setToLoc(drop);
+        setDistanceOverride(dist.toString());
+        if (pLat && pLng) setFromCoords({ lat: pLat, lng: pLng });
+        if (dLat && dLng) setToCoords({ lat: dLat, lng: dLng });
+
+        if (tollAmt && tollAmt > 0) {
+            let finalToll = tollAmt;
+            if (mode === 'outstation') {
+                // Multi-day round trip logic for toll
+                finalToll = days > 1 ? tollAmt * 2 : Math.round(tollAmt * 1.6);
+            }
+            setToll(finalToll.toString());
+        }
+        setShowMap(false);
+    };
 
     // --- Derived ---
     // Use TARIFFS directly based on type
@@ -583,11 +602,30 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><MapPin size={12} /> Journey Details</h3>
                 <div className="space-y-3">
-                    <PlacesAutocomplete label="Pickup Point" icon={<MapPin size={12} />} value={fromLoc} onChange={setFromLoc} onPlaceSelected={(p) => { setFromLoc(p.address); setFromCoords({ lat: p.lat, lng: p.lng }); }} />
+                    <PlacesAutocomplete
+                        label="Pickup"
+                        value={fromLoc}
+                        onChange={setFromLoc}
+                        onPlaceSelected={(p) => { setFromLoc(p.address); setFromCoords({ lat: p.lat, lng: p.lng }); }}
+                        onMapClick={() => setShowMap(true)}
+                    />
                     {mode !== 'local' && (
-                        <PlacesAutocomplete label="Drop Point" icon={<MapPin size={12} />} value={toLoc} onChange={setToLoc} onPlaceSelected={(p) => { setToLoc(p.address); setToCoords({ lat: p.lat, lng: p.lng }); }} />
+                        <PlacesAutocomplete
+                            label="Drop"
+                            value={toLoc}
+                            onChange={setToLoc}
+                            onPlaceSelected={(p) => { setToLoc(p.address); setToCoords({ lat: p.lat, lng: p.lng }); }}
+                            onMapClick={() => setShowMap(true)}
+                        />
                     )}
                 </div>
+
+                {showMap && (
+                    <MapPicker
+                        onLocationSelect={handleMapSelect}
+                        onClose={() => setShowMap(false)}
+                    />
+                )}
 
             </div>
 
@@ -595,10 +633,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
 
             <div className="pt-1 border-t border-slate-50 space-y-3">
                 {mode !== 'local' && (
-                    <div className="relative">
-                        <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
-                        <input type="number" value={isFetchingKM ? '' : distanceOverride} onChange={(e) => setDistanceOverride(e.target.value)} className="tn-input pl-12 h-10 w-full font-black text-sm bg-slate-50 border-transparent focus:bg-white" placeholder={isFetchingKM ? "Calculating..." : "0"} />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 uppercase tracking-widest">KM</span>
+                    <div>
+                        <input type="number" value={isFetchingKM ? '' : distanceOverride} onChange={(e) => setDistanceOverride(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder={isFetchingKM ? "Calculating..." : "0"} />
                     </div>
                 )}
                 {(mode === 'outstation' || (mode === 'drop' && parseFloat(distanceOverride) > 30)) && (
@@ -620,11 +656,11 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Car size={12} /> VEHICLE CLASS (ESTIMATE)</h3>
                 <div className="space-y-3">
                     <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Select Class</label>
+                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Select Class</label>
                         <select
                             value={selectedVehicleType}
                             onChange={(e) => { setSelectedVehicleType(e.target.value); setManualRate(false); }}
-                            className="tn-input h-10 w-full font-bold text-xs bg-slate-50 border-transparent pr-10"
+                            className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
                         >
                             <option value="" disabled>Select Vehicle Class</option>
                             {VEHICLE_CLASSES.map((v) => (
@@ -637,24 +673,21 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                         {mode !== 'local' && (
                             <div className="space-y-1">
                                 <div className="flex justify-between items-center px-1">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Rate / KM</label>
+                                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Rate / KM</label>
                                     {manualRate && <button onClick={() => setManualRate(false)} className="text-indigo-600"><RotateCcw size={10} /></button>}
                                 </div>
-                                <div className="relative">
-                                    <PenLine className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
-                                    <input type="number" value={customRate || ''} onChange={e => { setCustomRate(parseFloat(e.target.value) || 0); setManualRate(true); }} className={`tn-input pl-10 h-10 w-full font-black text-sm ${manualRate ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-900 border-transparent'}`} placeholder="Rate" />
-                                </div>
+                                <input type="number" value={customRate || ''} onChange={e => { setCustomRate(parseFloat(e.target.value) || 0); setManualRate(true); }} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900`} placeholder="Rate" />
                             </div>
                         )}
                         {mode === 'outstation' ? (
                             <div className="space-y-1">
-                                <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Trip Days {minDays > 1 && <span className='text-red-500'>(Min {minDays})</span>}</label>
-                                <input type="number" min={minDays} value={days} onChange={e => setDays(parseFloat(e.target.value) || minDays)} className="tn-input h-10 w-full font-black bg-slate-50 text-sm" placeholder="1" />
+                                <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Trip Days {minDays > 1 && <span className='text-red-500'>(Min {minDays})</span>}</label>
+                                <input type="number" min={minDays} value={days} onChange={e => setDays(parseFloat(e.target.value) || minDays)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="1" />
                             </div>
                         ) : mode === 'local' ? (
                             <div className="space-y-3">
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Local Package</label>
+                                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Local Package</label>
                                     <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none snap-x">
                                         {[
                                             { id: '2hr_20km', hr: '2 Hr', km: '20 Km' },
@@ -754,51 +787,51 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                 <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                         <div className="flex justify-between items-center px-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Batta</label>
+                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Batta</label>
                             {manualDriverBatta && <button onClick={() => setManualDriverBatta(false)} className="text-indigo-600"><RotateCcw size={10} /></button>}
                         </div>
-                        <input type="number" value={driverBatta} onChange={e => { setDriverBatta(e.target.value); setManualDriverBatta(true); }} className={`tn-input h-10 w-full font-black text-sm ${manualDriverBatta ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 border-transparent'}`} placeholder="0" />
+                        <input type="number" value={driverBatta} onChange={e => { setDriverBatta(e.target.value); setManualDriverBatta(true); }} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 ${manualDriverBatta ? 'bg-indigo-50 text-indigo-700' : ''}`} placeholder="0" />
                     </div>
                     <div className="space-y-1">
                         <div className="flex justify-between items-center px-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tolls</label>
+                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Tolls</label>
                             {manualToll && <button onClick={() => setManualToll(false)} className="text-indigo-600"><RotateCcw size={10} /></button>}
                         </div>
-                        <input type="number" value={toll} onChange={e => { setToll(e.target.value); setManualToll(true); }} className={`tn-input h-10 w-full font-black text-sm ${manualToll ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 border-transparent'}`} placeholder="0" />
+                        <input type="number" value={toll} onChange={e => { setToll(e.target.value); setManualToll(true); }} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 ${manualToll ? 'bg-indigo-50 text-indigo-700' : ''}`} placeholder="0" />
                     </div>
                 </div>
                 {/* Simplified Grid for others */}
                 <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Parking</label>
-                        <input type="number" value={parking} onChange={e => { setParking(e.target.value); setManualParking(true); }} className="tn-input h-10 w-full font-black text-sm bg-slate-50 border-transparent" placeholder="0" />
+                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Parking</label>
+                        <input type="number" value={parking} onChange={e => { setParking(e.target.value); setManualParking(true); }} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 ${manualParking ? 'bg-indigo-50 text-indigo-700' : ''}`} placeholder="0" />
                     </div>
                     <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Permit</label>
-                        <input type="number" value={permit} onChange={e => { setPermit(e.target.value); setManualPermit(true); }} className="tn-input h-10 w-full font-black text-sm bg-slate-50 border-transparent" placeholder="0" />
+                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Permit</label>
+                        <input type="number" value={permit} onChange={e => { setPermit(e.target.value); setManualPermit(true); }} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 ${manualPermit ? 'bg-indigo-50 text-indigo-700' : ''}`} placeholder="0" />
                     </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 border-t border-slate-50 pt-2">
                     <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Hill Station</label>
-                        <input type="number" value={hillStationCharge} onChange={e => { setHillStationCharge(e.target.value); setManualHillStation(true); }} className="tn-input h-10 w-full font-black text-sm bg-slate-50 border-transparent" placeholder="0" />
+                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Hill Station</label>
+                        <input type="number" value={hillStationCharge} onChange={e => { setHillStationCharge(e.target.value); setManualHillStation(true); }} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
                     </div>
                     <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Pet Charge</label>
-                        <input type="number" value={petCharge} onChange={e => setPetCharge(e.target.value)} className="tn-input h-10 w-full font-black text-sm bg-slate-50 border-transparent" placeholder="0" />
+                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Pet Charge</label>
+                        <input type="number" value={petCharge} onChange={e => setPetCharge(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
                     </div>
                 </div>
 
                 <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Night Drive</label>
-                    <input type="number" value={nightCharge} onChange={e => setNightCharge(e.target.value)} className="tn-input h-10 w-full font-black text-sm bg-slate-50 border-transparent" placeholder="0" />
+                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Night Drive</label>
+                    <input type="number" value={nightCharge} onChange={e => setNightCharge(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
                 </div>
 
                 {/* More Charges */}
                 <div className="pt-2 border-t border-slate-50 space-y-3">
                     <div className="flex gap-2">
-                        <select className="tn-input h-10 flex-1 font-bold text-xs bg-slate-50 border-transparent" value={selectedChargeType} onChange={(e) => { setSelectedChargeType(e.target.value); if (e.target.value !== 'Custom') setCustomChargeName(''); }}>
+                        <select className="tn-input h-10 flex-1 bg-slate-50 border-slate-200 text-xs text-slate-900" value={selectedChargeType} onChange={(e) => { setSelectedChargeType(e.target.value); if (e.target.value !== 'Custom') setCustomChargeName(''); }}>
                             <option value="">+ Add Other Charge</option>
                             <option value="Custom">Custom Charge</option>
                             <option value="Airport Entry">Airport Entry</option>
@@ -849,20 +882,20 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                 </div>
                 <div className="space-y-3">
                     <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1 flex items-center gap-1.5"><User size={10} /> Client Name</label>
-                        <input placeholder="Client Name" className="tn-input h-10 w-full" value={customerName} onChange={e => setCustomerName(e.target.value)} />
+                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Client Name</label>
+                        <input placeholder="Client Name" className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" value={customerName} onChange={e => setCustomerName(e.target.value)} />
                     </div>
                     <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1 flex items-center gap-1.5"><Phone size={10} /> Phone</label>
-                        <input placeholder="Phone" className="tn-input h-10 w-full" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
+                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Phone</label>
+                        <input placeholder="Phone" className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
                     </div>
                     <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1 flex items-center gap-1.5"><Building2 size={10} /> Address</label>
-                        <textarea placeholder="Address" className="tn-input h-16 w-full py-2 resize-none" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} />
+                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Address</label>
+                        <textarea placeholder="Address" className="tn-input h-16 w-full py-2 resize-none bg-slate-50 border-slate-200 text-xs text-slate-900" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} />
                     </div>
                     <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1 flex items-center gap-1.5"><Hash size={10} /> GSTIN (Optional)</label>
-                        <input placeholder="GSTIN" className="tn-input h-10 w-full uppercase" value={customerGst} onChange={e => setCustomerGst(e.target.value)} />
+                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">GSTIN (Optional)</label>
+                        <input placeholder="GSTIN" className="tn-input h-10 w-full uppercase bg-slate-50 border-slate-200 text-xs text-slate-900" value={customerGst} onChange={e => setCustomerGst(e.target.value)} />
                     </div>
                 </div>
 

@@ -182,8 +182,12 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     y += 5;
 
     doc.setFont('helvetica', 'normal');
-    doc.text(toTitleCase(String(trip.customerName || 'Customer')), leftColX, y);
-    y += 5;
+    doc.setFont('helvetica', 'normal');
+    // doc.text(toTitleCase(String(trip.customerName || 'Customer')), leftColX, y);
+    const billToName = toTitleCase(String(trip.customerName || 'Customer'));
+    const billToLines = doc.splitTextToSize(billToName, 90);
+    doc.text(billToLines, leftColX, y);
+    y += (billToLines.length * 5); // Dynamic gap
 
     if (trip.billingAddress) {
         doc.setFontSize(9);
@@ -215,27 +219,37 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
 
     // Journey Details Content
     // 2. Pickup
+    // Journey Details Content
+    // 2. Pickup
     const fromAddr = String(trip.from || 'N/A').replace(/, India$/, '').replace(/, Tamil Nadu$/, '');
-    // Only show N/A if it's NOT a quotation, OR if it IS a quotation but we have a value.
-    // Actually, user wants it printed. "N/A" is fine if missing, or we can hide if empty.
-    // Let's stick to standard behavior: show it.
-    doc.text(`Pickup: ${fromAddr}`, leftColX, y, { maxWidth: 100 });
-    y += 5;
+    const pickupText = `Pickup: ${fromAddr}`;
+    const pickupLines = doc.splitTextToSize(pickupText, 95); // safe width
+    doc.text(pickupLines, leftColX, y);
+    y += (pickupLines.length * 5); // Dynamic gap based on lines
 
     // 3. Drop / Time logic
     // Check if start/end time exists to decide rendering (Local Package Logic)
     if ((trip as any).startTime || (trip as any).endTime) {
         const sTime = (trip as any).startTime || 'N/A';
         const eTime = (trip as any).endTime || 'N/A';
-        doc.text(`Start Time: ${sTime}`, leftColX, y);
-        y += 5;
-        doc.text(`End Time:   ${eTime}`, leftColX, y);
+
+        // Ensure Start Time doesn't overlap if it somehow wraps (unlikely but safe)
+        const sLines = doc.splitTextToSize(`Start Time: ${sTime}`, 95);
+        doc.text(sLines, leftColX, y);
+        y += (sLines.length * 5);
+
+        const eLines = doc.splitTextToSize(`End Time:   ${eTime}`, 95);
+        doc.text(eLines, leftColX, y);
+        y += (eLines.length * 5);
     } else {
         const toAddr = String(trip.to || 'N/A').replace(/, India$/, '').replace(/, Tamil Nadu$/, '');
-        doc.text(`Drop:   ${toAddr}`, leftColX, y, { maxWidth: 100 });
+        const dropText = `Drop:   ${toAddr}`;
+        const dropLines = doc.splitTextToSize(dropText, 95);
+        doc.text(dropLines, leftColX, y);
+        y += (dropLines.length * 5);
     }
 
-    const leftEndY = y + 5;
+    const leftEndY = y + 2; // Reduced buffer since we added full height
 
 
     // RIGHT COLUMN: INVOICE DATA (Kept on Right, parallel to Left Col)
@@ -317,10 +331,14 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     if ((trip as any).subject) {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
-        doc.text(`Subject: ${(trip as any).subject}`, 105, y, { align: 'center', maxWidth: 180 });
+        // doc.text(`Subject: ${(trip as any).subject}`, 105, y, { align: 'center', maxWidth: 180 });
+        const subjectText = `Subject: ${(trip as any).subject}`;
+        const subjectLines = doc.splitTextToSize(subjectText, 180);
+        doc.text(subjectLines, 105, y, { align: 'center' });
+
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
-        y += 8;
+        y += (subjectLines.length * 5) + 3; // Dynamic height + padding
     }
 
     // --- ZONE 4: TABLE (Clean Lines) ---

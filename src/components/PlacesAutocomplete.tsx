@@ -209,7 +209,7 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
         <div className="space-y-1 w-full relative" ref={wrapperRef}>
             {/* ... label ... */}
             {label && (
-                <label htmlFor={id} className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+                <label htmlFor={id} className="text-[9px] font-black text-slate-500 uppercase ml-1 flex items-center gap-1.5">
                     {icon} {label}
                 </label>
             )}

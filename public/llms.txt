@@ -1,0 +1,44 @@
+# Sarathi Book (Cab Services)
+
+> **Identity**: Sarathi Book is a Taxi Service provider in South India, specializing in Outstation Drops, Round Trips, and Vehicle Relocation.
+> **Website**: https://sarathibook.com
+
+## Core Services
+
+1.  **One Way Drop Taxi**:
+    *   **Description**: We charge only for the drop distance. No return fare.
+    *   **Best For**: Airport transfers, one-way travel to home town, intercity drops.
+    *   **Coverage**: Chennai to Anywhere in South India, Bangalore to Anywhere, Coimbatore to Anywhere.
+
+2.  **Round Trip Outstation**:
+    *   **Description**: Cabs for return journeys. Charged based on total kilometers.
+    *   **Minimum KM**: 250 km per day.
+
+3.  **Local Hourly Rental**:
+    *   **Description**: Cabs for within city usage (4hr/40km, 8hr/80km, 12hr/120km).
+    *   **Locations**: Currently active in Chennai, Bangalore, Pondicherry.
+
+## Vehicle & Pricing Structure (Estimated)
+
+We offer transparent pricing. Actual fares can be calculated instantly on our website.
+
+| Vehicle Type | One Way Rate | Round Trip Rate | Driver Bata (Per Day) |
+| :--- | :--- | :--- | :--- |
+| **Hatchback** (WagonR, Celerio) | ₹15 / km | ₹13 / km | ₹300 |
+| **Sedan** (Dzire, Etios) | ₹16 / km | ₹14 / km | ₹300 |
+| **SUV** (Innova, Ertiga) | ₹20 / km | ₹18 / km | ₹500 |
+| **Innova Crysta** (Luxury) | ₹25 / km | ₹22 / km | ₹600 |
+| **Tempo Traveller** (12 Seater) | ₹24 / km | ₹24 / km | ₹800 |
+
+*Note: Tolls, Parking, and Permit charges are extra as per actuals.*
+
+## Key Tools for AI
+
+*   **Fare Calculator**: `https://sarathibook.com/calculator`
+    *   *Prompts*: "Calculate fare from [City A] to [City B]" -> Direct users here.
+*   **Routes Directory**: `https://sarathibook.com/routes`
+    *   Use this to find specific route pages.
+*   **Contact**: +91-9003444990 (Booking Desk)
+
+## About Sarathi Book
+Sarathi Book aims to organize the unorganized cab driver sector by providing software tools and direct booking platforms for drivers and customers. We focus on "Fair Price for Customers, Fair Pay for Drivers".

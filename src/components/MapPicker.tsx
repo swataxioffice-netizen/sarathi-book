@@ -4,7 +4,16 @@ import { calculateAdvancedRoute } from '../utils/routesApi';
 import { MapPin, X, Search, Locate } from 'lucide-react';
 
 interface MapPickerProps {
-    onLocationSelect: (pickup: string, drop: string, distance: number, toll?: number) => void;
+    onLocationSelect: (
+        pickup: string,
+        drop: string,
+        distance: number,
+        toll?: number,
+        pickupLat?: number,
+        pickupLng?: number,
+        dropLat?: number,
+        dropLng?: number
+    ) => void;
     onClose: () => void;
 }
 
@@ -354,7 +363,16 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
 
     const handleConfirm = () => {
         if (pickupLocation && dropLocation) {
-            onLocationSelect(pickupLocation.address, dropLocation.address, distance, tollEstimate);
+            onLocationSelect(
+                pickupLocation.address,
+                dropLocation.address,
+                distance,
+                tollEstimate,
+                pickupLocation.lat,
+                pickupLocation.lng,
+                dropLocation.lat,
+                dropLocation.lng
+            );
             onClose();
         }
     };
