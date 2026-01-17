@@ -7,10 +7,9 @@ interface TripSchemaParams {
     vehicle: string; // id or name
     amount: number;
     tripType: string;
-    details?: string[] | string;
 }
 
-export const generateTripSchema = ({ pickup, drop, distance, vehicle, amount, tripType, details }: TripSchemaParams) => {
+export const generateTripSchema = ({ pickup, drop, distance, vehicle, amount, tripType }: TripSchemaParams) => {
     const pCity = (pickup || 'Location').split(',')[0];
     const dCity = (drop || 'Location').split(',')[0];
 

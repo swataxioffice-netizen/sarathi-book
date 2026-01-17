@@ -7,7 +7,6 @@ import {
     AlertCircle,
     CheckCircle2,
     Plus,
-    Hash,
     ChevronUp,
     ChevronDown,
     Share2,
@@ -58,8 +57,7 @@ const SeoFareDisplay = ({ result, tripData, onEdit }: { result: any, tripData: a
         distance: tripData.distance,
         vehicle: tripData.vehicle,
         amount: fare,
-        tripType: tripData.type,
-        details: details
+        tripType: tripData.type
     });
 
     const pCity = (tripData.pickup || 'Location').split(',')[0];
@@ -576,7 +574,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
     const vehicleSelector = (
         <div className={`grid grid-cols-1 ${tripType !== 'local' ? 'sm:grid-cols-2' : ''} gap-3`}>
             <div className="space-y-1">
-                <Label text="Vehicle" htmlFor="cab-vehicle" />
+                <Label icon={<Car size={10} />} text="Vehicle" htmlFor="cab-vehicle" />
                 <select
                     id="cab-vehicle"
                     value={selectedVehicle}
@@ -596,6 +594,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
             {tripType !== 'local' && (
                 <Input
                     label="Rate/Km"
+                    icon={<TrendingUp size={10} />}
                     value={customRate}
                     onChange={(val) => setCustomRate(Number(val))}
                     type="number"
@@ -750,6 +749,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                         <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 pt-1">
                                             <Input
                                                 label="Duration (Hrs)"
+                                                icon={<Clock size={10} />}
                                                 value={durationHours}
                                                 onChange={(v) => {
                                                     const val = Number(v);
@@ -758,7 +758,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                                 type="number"
                                             />
                                             <div className="space-y-1">
-                                                <Label text="Distance (Km)" htmlFor="local-dist" />
+                                                <Label icon={<TrendingUp size={10} />} text="Distance (Km)" htmlFor="local-dist" />
                                                 <input
                                                     id="local-dist"
                                                     type="number"
@@ -773,7 +773,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                 </div>
                             ) : (
                                 <div className="space-y-1">
-                                    <Label text="Distance (Km)" htmlFor="cab-distance" />
+                                    <Label icon={<TrendingUp size={10} />} text="Distance (Km)" htmlFor="cab-distance" />
                                     <div className="flex items-center gap-3">
                                         <div className="relative w-1/2">
                                             <input
@@ -803,7 +803,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
 
                             {tripType === 'roundtrip' && (
                                 <div className="space-y-1">
-                                    <Label text="Trip Duration" htmlFor="cab-days" />
+                                    <Label icon={<Clock size={10} />} text="Trip Duration" htmlFor="cab-days" />
                                     <select id="cab-days" value={days} onChange={e => setDays(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs">
                                         {[1, 2, 3, 4, 5, 6, 7, 10, 15].map(n => (
                                             <option key={n} value={n} disabled={n < minDays}>
@@ -1529,8 +1529,7 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
             distance: tripData.distance,
             vehicle: tripData.vehicle,
             amount: amount,
-            tripType: tripData.type,
-            details: details
+            tripType: tripData.type
         });
 
         return {

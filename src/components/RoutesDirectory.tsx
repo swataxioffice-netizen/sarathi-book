@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
 import SEOHead from './SEOHead';
-import { Search, MapPin, ArrowRight, ExternalLink } from 'lucide-react';
+import { Search, MapPin, ExternalLink } from 'lucide-react';
 
 interface RouteData {
     pickup_location: string;
