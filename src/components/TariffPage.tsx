@@ -105,10 +105,10 @@ const TariffPage = () => {
                                         </td>
                                         <td className="p-4 text-center">
                                             <a
-                                                href={`/calculator?vehicle=${v.id}`}
+                                                href={`/calculator/cab`}
                                                 className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-blue-700 transition-colors"
                                             >
-                                                Book
+                                                Calculate
                                                 <ArrowRight size={12} />
                                             </a>
                                         </td>
