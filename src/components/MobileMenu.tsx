@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { X, User, Crown, Users, BadgeIndianRupee, LogOut, ChevronRight, LogIn } from 'lucide-react';
+import { X, User, Crown, BadgeIndianRupee, LogOut, ChevronRight, LogIn } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 
@@ -129,13 +129,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, activeTab, set
                             <span className="text-sm font-bold">My Profile</span>
                         </button>
 
-                        <button
-                            onClick={() => handleNav('staff')}
-                            className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors border-b border-slate-50 ${activeTab === 'staff' ? 'bg-blue-50 text-[#0047AB]' : 'text-slate-600'}`}
-                        >
-                            <Users size={18} />
-                            <span className="text-sm font-bold">Staff Management</span>
-                        </button>
+
 
                         <button
                             onClick={() => handleNav('tariff')}

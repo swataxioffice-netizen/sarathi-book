@@ -246,18 +246,7 @@ const Profile: React.FC = () => {
                             </div>
                         </button>
 
-                        <button
-                            onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'staff' }))}
-                            className="bg-white text-slate-900 border border-slate-200 p-4 rounded-xl flex flex-col justify-between shadow-sm hover:border-blue-500 transition-all group min-h-[100px]"
-                        >
-                            <div className="p-2 bg-blue-50 rounded-lg text-blue-600 w-fit mb-3">
-                                <Users size={18} />
-                            </div>
-                            <div className="text-left">
-                                <p className="text-[10px] font-black uppercase tracking-wider">Staff Manager</p>
-                                <p className="text-[8px] text-slate-400 font-medium leading-tight mt-1">Salary & Attendance</p>
-                            </div>
-                        </button>
+
                     </div>
                 ) : (
                     <button
@@ -299,7 +288,7 @@ const Profile: React.FC = () => {
 
             {/* 2. Tabs Navigation */}
             <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-200 mb-6 sticky top-2 z-20 gap-1">
-                {(['business', 'payments', 'vehicles', 'docs', 'staff'] as const).map(tab => {
+                {(['business', 'payments', 'vehicles', 'docs'] as const).map(tab => {
                     const isActive = activeTab === tab;
                     const icons = { business: <Contact size={14} />, payments: <Landmark size={14} />, vehicles: <Car size={14} />, staff: <Users size={14} />, docs: <FileText size={14} /> };
                     return (
@@ -419,20 +408,7 @@ const Profile: React.FC = () => {
                     </div>
                 )}
 
-                {activeTab === 'staff' && (
-                    <div className="animate-scale-in bg-white p-8 rounded-[32px] border border-slate-200 text-center space-y-4">
-                        <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mx-auto">
-                            <Users size={32} />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-black text-slate-900 uppercase">Staff Manager</h3>
-                            <p className="text-xs text-slate-500 font-bold mt-1">Manage Drivers, Salaries & Attendance</p>
-                        </div>
-                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Coming Soon in Next Update</p>
-                        </div>
-                    </div>
-                )}
+
 
                 {activeTab === 'docs' && (
                     <div className="animate-scale-in">
