@@ -131,6 +131,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
     // Terms
     const [terms, setTerms] = useState<string[]>([]);
     const [newTerm, setNewTerm] = useState('');
+    const [quotationDate, setQuotationDate] = useState(new Date().toISOString().split('T')[0]);
 
     // Previews
     const [showPreview, setShowPreview] = useState(false);
@@ -388,7 +389,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             drop: toLoc,
 
             subject: `${mode === 'drop' ? 'One Way Drop' : mode === 'outstation' ? 'Outstation Trip' : 'Cab Service'} Quote`,
-            date: new Date().toISOString(),
+            date: quotationDate,
             quotationNo: nextQuotationNo,
             gstEnabled: includeGst,
             rcmEnabled,
@@ -561,7 +562,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             pickup: fromLoc,
             drop: toLoc,
             subject: `${mode === 'drop' ? 'One Way Drop' : mode === 'outstation' ? 'Outstation Trip' : 'Cab Service'} Quote`,
-            date: new Date().toISOString(),
+            date: quotationDate,
             quotationNo: nextQuotationNo,
             gstEnabled: includeGst,
             rcmEnabled,
@@ -636,7 +637,15 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             {mode === 'custom' ? (
                 // Custom Invoice Table Mode
                 <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
-                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><PenLine size={12} /> QUOTATION ITEMS</h3>
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><PenLine size={12} /> QUOTATION ITEMS</h3>
+                        <input
+                            type="date"
+                            value={quotationDate}
+                            onChange={(e) => setQuotationDate(e.target.value)}
+                            className="tn-input h-8 bg-white border-slate-200 text-xs font-bold w-32"
+                        />
+                    </div>
 
                     <div className="space-y-3">
                         {customLineItems.map((item, idx) => (

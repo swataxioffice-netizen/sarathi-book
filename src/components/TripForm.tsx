@@ -148,6 +148,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     const [rcmEnabled, setRcmEnabled] = useState(false);
     const [terms, setTerms] = useState<string[]>([]);
     const [newTerm, setNewTerm] = useState('');
+    const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
     // 5% fixed as per requirement
     const gstRate: GSTRate = 5;
 
@@ -253,6 +254,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             if (invoiceTemplate.customerGstin) setCustomerGst(invoiceTemplate.customerGstin);
             if (invoiceTemplate.vehicleType) setSelectedVehicleId(invoiceTemplate.vehicleType);
             if (invoiceTemplate.gstEnabled) setIncludeGst(true);
+            // If template has date use it, otherwise default to today
+            if (invoiceTemplate.date) setInvoiceDate(invoiceTemplate.date.split('T')[0]);
             setStep(1);
         }
     }, [invoiceTemplate]);
@@ -569,7 +572,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
         const tripData: any = {
             id: previewId, invoiceNo: previewInvoiceNo, customerName: customerName || 'Valued Customer',
-            customerPhone, customerGst, billingAddress, from: fromLoc, to: toLoc, date: new Date().toISOString().split('T')[0],
+            customerPhone, customerGst, billingAddress, from: fromLoc, to: toLoc, date: invoiceDate,
             mode: 'custom',
             totalFare: res.total, fare: res.fare, gst: res.gst,
             extraItems: pdfItems,
@@ -668,7 +671,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
         const tripData: any = {
             id: sessionTripId.current, invoiceNo: sessionInvoiceNo.current, customerName: customerName || 'Valued Customer',
-            customerPhone, customerGst, billingAddress, from: fromLoc, to: toLoc, date: new Date().toISOString().split('T')[0],
+            customerPhone, customerGst, billingAddress, from: fromLoc, to: toLoc, date: invoiceDate,
             startTime: mode === 'local' ? startTimeLog : undefined,
             endTime: mode === 'local' ? endTimeLog : undefined,
             mode: 'custom',
@@ -879,7 +882,15 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
                     {mode === 'custom' && (
                         <div className="pt-2">
-                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Invoice Items</h3>
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Invoice Items</h3>
+                                <input
+                                    type="date"
+                                    value={invoiceDate}
+                                    onChange={(e) => setInvoiceDate(e.target.value)}
+                                    className="tn-input h-8 bg-white border-slate-200 text-xs font-bold w-32"
+                                />
+                            </div>
                             <div className="space-y-2">
                                 {customLineItems.map((item, idx) => (
                                     <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
@@ -947,7 +958,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                                         // FIX: Cast to any or change type to string | number in definition. For now, we will assume strict number but allow empty string handling via controlled input logic if we changed the type.
                                                         // Since we are using type="number", we can use e.target.valueAsNumber.
 
-                                                        // Simpler fix: Allow the input to be empty string in UI logic if we could, 
+                                                        // Simpler fix: Allow the input to be empty string in UI logic if we could,
                                                         // but state is typed number.
                                                         // Best approach for "unable to delete 0":
                                                         // If the user clears the input, it becomes "", parseFloat becomes NaN or 0.
@@ -1018,7 +1029,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
 
                 </div>
-            </div >
+            </div>
 
             {/* Vehicle Section */}
             < div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4" >
