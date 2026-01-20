@@ -267,12 +267,17 @@ function AppContent() {
           // 2. Identify and Upload Local-Only Trips to Cloud
           const localTipsToUpload: Trip[] = [];
 
-
-
-          // Let's use a trick: read from localStorage for source of truth of "Guest Work" to sync up
-          const localStored = safeJSONParse<Trip[]>('namma-cab-trips', []);
+          // Use IndexedDB as the source of truth for local data
+          let localStored: Trip[] = [];
+          try {
+            localStored = await dbRequest.getAll<Trip>('trips');
+          } catch (e) {
+            console.warn('Failed to read IDB for sync, falling back to localStorage', e);
+            localStored = safeJSONParse<Trip[]>('namma-cab-trips', []);
+          }
 
           for (const localTrip of localStored) {
+            // If the trip is not in the cloud map, it's a local-only trip (created offline)
             if (!cloudTripsMap.has(localTrip.id)) {
               localTipsToUpload.push(localTrip);
             }
@@ -297,6 +302,54 @@ function AppContent() {
             // Let's rely on merge logic, but now cloudTripsMap effectively should include these if we wanted perfect sync,
             // but the merge logic below handles visual consistency.
           }
+
+          // --- 3. Sync Quotations ---
+          // Fetch Cloud Quotations
+          const { data: qData, error: qError } = await supabase.from('quotations').select('*').order('created_at', { ascending: false });
+          if (!qError) {
+            const cloudQuotesMap = new Map<string, SavedQuotation>();
+            if (qData) {
+              qData.forEach(row => {
+                cloudQuotesMap.set(row.id, { ...row.data, id: row.id });
+              });
+            }
+
+            // Upload Local-Only Quotations
+            const localQuotesToUpload: SavedQuotation[] = [];
+            let localStoredQuotes: SavedQuotation[] = [];
+            try {
+              localStoredQuotes = await dbRequest.getAll<SavedQuotation>('quotations');
+            } catch (e) {
+              localStoredQuotes = safeJSONParse<SavedQuotation[]>('saved-quotations', []);
+            }
+
+            for (const localQ of localStoredQuotes) {
+              if (!cloudQuotesMap.has(localQ.id)) {
+                localQuotesToUpload.push(localQ);
+              }
+            }
+
+            if (localQuotesToUpload.length > 0) {
+              console.log(`Syncing ${localQuotesToUpload.length} local quotations to cloud...`);
+              await Promise.all(localQuotesToUpload.map(q =>
+                supabase.from('quotations').upsert({
+                  id: q.id,
+                  user_id: user.id,
+                  customer_name: q.customerName,
+                  date: new Date(q.date).toISOString(),
+                  data: q
+                })
+              ));
+            }
+
+            setQuotations(prev => {
+              const merged = new Map<string, SavedQuotation>();
+              prev.forEach(q => merged.set(q.id, q));
+              cloudQuotesMap.forEach((q, id) => merged.set(id, q));
+              return Array.from(merged.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            });
+          }
+
 
           setTrips(prev => {
             const merged = new Map<string, Trip>();
@@ -390,12 +443,30 @@ function AppContent() {
   const handleSaveQuotation = async (q: SavedQuotation) => {
     setQuotations(prev => [q, ...prev]);
     await dbRequest.put('quotations', q);
+
+    if (user) {
+      try {
+        await supabase.from('quotations').upsert({
+          id: q.id,
+          user_id: user.id,
+          customer_name: q.customerName,
+          date: new Date(q.date).toISOString(),
+          data: q
+        });
+      } catch (err) { console.error('Cloud quote save failed', err); }
+    }
   };
 
   const handleDeleteQuotation = async (id: string) => {
     if (!window.confirm("Delete this quotation?")) return;
     setQuotations(prev => prev.filter(q => q.id !== id));
     await dbRequest.delete('quotations', id);
+
+    if (user) {
+      try {
+        await supabase.from('quotations').delete().eq('id', id);
+      } catch (err) { console.error('Cloud quote delete failed', err); }
+    }
   };
 
   const handleConvertQuotation = (q: SavedQuotation) => {

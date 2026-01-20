@@ -21,21 +21,64 @@ const ExpenseTracker: React.FC = () => {
     useEffect(() => {
         const fetchExpenses = async () => {
             if (user) {
+                // 1. Fetch Cloud Expenses
                 const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false });
-                if (!error && data) {
-                    // Merge cloud expenses with local (prefer cloud)
-                    const cloudExpenses: Expense[] = data.map(row => ({
-                        id: row.id,
-                        category: row.category as any,
-                        amount: Number(row.amount),
-                        description: row.description || '',
-                        date: row.date
-                    }));
+
+                if (!error) {
+                    const cloudExpensesMap = new Map();
+                    if (data) {
+                        data.forEach(row => {
+                            cloudExpensesMap.set(row.id, {
+                                id: row.id,
+                                category: row.category as any,
+                                amount: Number(row.amount),
+                                description: row.description || '',
+                                date: row.date
+                            });
+                        });
+                    }
+
+                    // 2. Identify Local-Only Expenses (created offline)
+                    const localStored = safeJSONParse<Expense[]>('cab-expenses', []);
+                    const localToUpload: Expense[] = [];
+
+                    for (const localE of localStored) {
+                        if (!cloudExpensesMap.has(localE.id)) {
+                            localToUpload.push(localE);
+                        }
+                    }
+
+                    // 3. Upload Offline Expenses
+                    if (localToUpload.length > 0) {
+                        console.log(`Syncing ${localToUpload.length} local expenses to cloud...`);
+                        await Promise.all(localToUpload.map(e =>
+                            supabase.from('expenses').upsert({
+                                id: e.id,
+                                user_id: user.id,
+                                category: e.category,
+                                amount: e.amount,
+                                description: e.description,
+                                date: e.date
+                            })
+                        ));
+                    }
+
+                    // 4. Merge State (Cloud Wins + Local which is now Cloud)
                     setExpenses(prev => {
                         const merged = new Map<string, Expense>();
-                        prev.forEach((e: any) => merged.set(e.id, e));
-                        cloudExpenses.forEach(e => merged.set(e.id, e));
-                        return Array.from(merged.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) as Expense[];
+                        // Keep current state
+                        prev.forEach((e) => merged.set(e.id, e));
+                        // Add Cloud (which now includes uploaded ones effectively)
+                        cloudExpensesMap.forEach((e, id) => merged.set(id, e));
+                        // Add uploaded ones explicitly to be safe for immediate UI update? 
+                        // Actually, if we just uploaded them, they are effectively consistent. 
+                        // But let's add localToUpload back to map to ensure they don't disappear if cloud fetch was slightly stale (race condition).
+                        localToUpload.forEach(e => merged.set(e.id, e));
+
+                        const mergedArray = Array.from(merged.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) as Expense[];
+                        // Update LocalStorage to match synced state
+                        localStorage.setItem('cab-expenses', JSON.stringify(mergedArray));
+                        return mergedArray;
                     });
                 }
             }

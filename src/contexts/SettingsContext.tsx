@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { safeJSONParse } from '../utils/storage';
 import { supabase } from '../utils/supabase';
 
@@ -145,6 +145,7 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [docStats, setDocStats] = useState(() => safeJSONParse('doc-stats', { hasFullVehicle: false, hasFullDriver: false }));
     const [driverCode, setDriverCode] = useState<number | null>(null);
+    const isInitialized = useRef(false);
 
     const [settings, setSettings] = useState<Settings>(() => {
         const parsed = safeJSONParse<Settings | null>('namma-cab-settings', null);
@@ -251,6 +252,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 }
             } catch (err) {
                 console.error('Settings sync failed:', err);
+            } finally {
+                isInitialized.current = true;
             }
         };
 
@@ -346,6 +349,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
 
         // Debounced Cloud Save
+        // Prevent saving to cloud until we have verified/synced with cloud at least once to avoid overwriting with empty defaults
+        if (!isInitialized.current) return;
+
         const saveToCloud = setTimeout(async () => {
             await saveSettings();
         }, 2000);
