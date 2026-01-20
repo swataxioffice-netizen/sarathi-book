@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'; // Force Change
+import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { calculateFareAsync } from '../utils/fareWorkerWrapper';
 import { TARIFFS, TRIP_LIMITS } from '../config/tariff_config';
