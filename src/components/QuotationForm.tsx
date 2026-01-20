@@ -84,6 +84,10 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
     const [days, setDays] = useState(1);
 
     const [customRate, setCustomRate] = useState(0);
+    // Custom Table State for Quotation
+    const [customLineItems, setCustomLineItems] = useState<{ description: string; sac: string; qty: number; rate: number; amount: number }[]>([
+        { description: 'Service Charge', sac: '9966', qty: 1, rate: 0, amount: 0 }
+    ]);
 
     // Local Package State
     const [hourlyPackage, setHourlyPackage] = useState<string>('8hr_80km');
@@ -98,7 +102,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
     const [nightCharge, setNightCharge] = useState('0');
     const [hillStationCharge, setHillStationCharge] = useState('0');
     const [petCharge, setPetCharge] = useState('0');
-    const [extraItems, setExtraItems] = useState<{ description: string; amount: number }[]>([]);
+    const [extraItems, setExtraItems] = useState<{ description: string; amount: number; qty?: number; rate?: number; sac?: string }[]>([]);
 
     // Manual Overrides
     const [manualDriverBatta, setManualDriverBatta] = useState(false);
@@ -313,7 +317,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
 
 
     const performCalculation = async (): Promise<CalculationResult | null> => {
-        if (!selectedVehicleType) return null;
+        if (mode !== 'custom' && !selectedVehicleType) return null;
         try {
             let serviceType = mode === 'outstation' ? 'round_trip' : (mode === 'local' ? 'local_hourly' : 'one_way');
             const dist = mode === 'local' ? localPackageKm : (parseFloat(distanceOverride) || 0);
@@ -327,17 +331,22 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                 calcExtraHours = Math.max(0, localPackageHours - base);
             }
 
+            let customBaseTotal = 0;
+            if (mode === 'custom') {
+                customBaseTotal = customLineItems.reduce((acc, item) => acc + item.amount, 0);
+            }
+
             const overrideRate = (customRate && customRate > 0) ? customRate : undefined;
             const finalDist = dist + (garageBuffer ? 20 : 0);
 
             const res = await calculateFareAsync(
                 serviceType,
-                selectedVehicleType,
+                selectedVehicleType || 'sedan',
                 finalDist,
                 mode === 'outstation' ? days : 1,
                 calcExtraHours,
                 manualHillStation && parseFloat(hillStationCharge) > 0,
-                overrideRate,
+                mode === 'custom' ? undefined : overrideRate,
                 manualDriverBatta ? parseFloat(driverBatta) : undefined,
                 manualHillStation ? parseFloat(hillStationCharge) : undefined,
                 parseFloat(petCharge) || 0,
@@ -346,7 +355,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             );
 
             const otherExtras = (parseFloat(permit) || 0) + (parseFloat(parking) || 0) + (parseFloat(toll) || 0) + extraItems.reduce((a, b) => a + b.amount, 0);
-            const subtotal = res.totalFare + otherExtras;
+            const subtotal = (mode === 'custom' ? customBaseTotal : res.totalFare) + otherExtras;
 
             // Integrated GST Logic
             const gstRes = calculateGST(subtotal, gstRate, settings.gstin, customerGst);
@@ -410,6 +419,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
 
         // Add calculation breakdown
         if (mode === 'local') {
+            // ... existing local logic ...
             if (hourlyPackage === '8hr_80km') {
                 baseDesc += ` [8 Hrs / 80 KM Package]`;
             } else if (hourlyPackage === '12hr_120km') {
@@ -429,14 +439,26 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             baseDesc += ` [${baseDist} KM * ${baseRate}/KM]`;
         }
 
-        items.push({
-            description: baseDesc,
-            package: 'Base Fare',
-            vehicleType: VEHICLE_CLASSES.find(v => v.id === selectedVehicleType)?.label || selectedVehicleType,
-            rate: baseRate > 0 ? `${baseRate}/KM` : `${res.distanceCharge}`,
-            amount: res.distanceCharge.toString(),
-            quantity: 1
-        });
+        if (mode === 'custom') {
+            customLineItems.forEach(i => items.push({
+                description: i.description,
+                package: '',
+                vehicleType: 'Custom',
+                rate: i.rate.toString(),
+                amount: i.amount.toString(),
+                quantity: i.qty,
+                sac: i.sac
+            }));
+        } else {
+            items.push({
+                description: baseDesc,
+                package: 'Base Fare',
+                vehicleType: VEHICLE_CLASSES.find(v => v.id === selectedVehicleType)?.label || selectedVehicleType,
+                rate: baseRate > 0 ? `${baseRate}/KM` : `${res.distanceCharge}`,
+                amount: res.distanceCharge.toString(),
+                quantity: 1
+            });
+        }
 
         // Add Charges
         if (res.driverBatta > 0) {
@@ -459,7 +481,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             items.push({ description: 'Night Charges', package: '', vehicleType: '', rate: nightCharge, amount: nightCharge, quantity: 1 });
         }
 
-        extraItems.forEach(i => items.push({ description: i.description, package: '', vehicleType: '', rate: '', amount: i.amount.toString() }));
+        extraItems.forEach(i => items.push({ description: i.description, package: '', vehicleType: '', rate: '', amount: i.amount.toString(), sac: i.sac }));
 
         qData.items = items;
 
@@ -495,14 +517,26 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             baseDesc += ` [${baseDist} KM * ${baseRate}/KM]`;
         }
 
-        items.push({
-            description: baseDesc,
-            package: 'Base Fare',
-            vehicleType: VEHICLE_CLASSES.find(v => v.id === selectedVehicleType)?.label || selectedVehicleType,
-            rate: baseRate > 0 ? `${baseRate}/KM` : `${res.distanceCharge}`,
-            amount: res.distanceCharge.toString(),
-            quantity: 1
-        });
+        if (mode === 'custom') {
+            customLineItems.forEach(i => items.push({
+                description: i.description,
+                package: '',
+                vehicleType: 'Custom',
+                rate: i.rate.toString(),
+                amount: i.amount.toString(),
+                quantity: i.qty,
+                sac: i.sac
+            }));
+        } else {
+            items.push({
+                description: baseDesc,
+                package: 'Base Fare',
+                vehicleType: VEHICLE_CLASSES.find(v => v.id === selectedVehicleType)?.label || selectedVehicleType,
+                rate: baseRate > 0 ? `${baseRate}/KM` : `${res.distanceCharge}`,
+                amount: res.distanceCharge.toString(),
+                quantity: 1
+            });
+        }
 
         if (res.driverBatta > 0) {
             let daysUsed = mode === 'outstation' ? days : 1;
@@ -518,7 +552,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
         if (parseFloat(permit) > 0) items.push({ description: 'Permit Charges', package: '', vehicleType: '', rate: permit, amount: permit, quantity: 1 });
         if (res.hillStationCharges > 0) items.push({ description: 'Hill Station Charges', package: '', vehicleType: '', rate: res.hillStationCharges.toString(), amount: res.hillStationCharges.toString(), quantity: 1 });
         if (parseFloat(nightCharge) > 0) items.push({ description: 'Night Charges', package: '', vehicleType: '', rate: nightCharge, amount: nightCharge, quantity: 1 });
-        extraItems.forEach(i => items.push({ description: i.description, package: '', vehicleType: '', rate: i.amount.toString(), amount: i.amount.toString(), quantity: 1 }));
+        extraItems.forEach(i => items.push({ description: i.description, package: '', vehicleType: '', rate: i.amount.toString(), amount: i.amount.toString(), quantity: 1, sac: i.sac }));
 
         const qData: QuotationData = {
             customerName: customerName || 'Valued Customer',
@@ -578,6 +612,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                             setDays(1); setLocalPackageHours(8);
                             setExtraItems([]);
                             setToll('0'); setParking('0'); setPermit('0'); setDriverBatta('0');
+                            setCustomLineItems([{ description: 'Service Charge', sac: '9966', qty: 1, rate: 0, amount: 0 }]);
                         }
                         handleNext();
                     }} className={`p-3 rounded-2xl border-2 transition-all flex items-center gap-3 ${mode === m ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white border-slate-100 text-slate-500 hover:border-indigo-200'}`}>
@@ -598,180 +633,303 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
 
     const renderStep2 = () => (
         <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
-            {/* Journey Section */}
-            <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><MapPin size={12} /> Journey Details</h3>
-                <div className="space-y-3">
-                    <PlacesAutocomplete
-                        label="Pickup"
-                        value={fromLoc}
-                        onChange={setFromLoc}
-                        onPlaceSelected={(p) => { setFromLoc(p.address); setFromCoords({ lat: p.lat, lng: p.lng }); }}
-                        onMapClick={() => setShowMap(true)}
-                    />
-                    {mode !== 'local' && (
-                        <PlacesAutocomplete
-                            label="Drop"
-                            value={toLoc}
-                            onChange={setToLoc}
-                            onPlaceSelected={(p) => { setToLoc(p.address); setToCoords({ lat: p.lat, lng: p.lng }); }}
-                            onMapClick={() => setShowMap(true)}
-                        />
-                    )}
-                </div>
+            {mode === 'custom' ? (
+                // Custom Invoice Table Mode
+                <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><PenLine size={12} /> QUOTATION ITEMS</h3>
 
-                {showMap && (
-                    <MapPicker
-                        onLocationSelect={handleMapSelect}
-                        onClose={() => setShowMap(false)}
-                    />
-                )}
-
-            </div>
-
-
-
-            <div className="pt-1 border-t border-slate-50 space-y-3">
-                {mode !== 'local' && (
-                    <div>
-                        <input type="number" value={isFetchingKM ? '' : distanceOverride} onChange={(e) => setDistanceOverride(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder={isFetchingKM ? "Calculating..." : "0"} />
+                    <div className="space-y-3">
+                        {customLineItems.map((item, idx) => (
+                            <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                                <div className="flex gap-2">
+                                    <div className="flex-[3]">
+                                        <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">Description</div>
+                                        <input
+                                            type="text"
+                                            placeholder="Description"
+                                            value={item.description}
+                                            onChange={(e) => {
+                                                const newItems = [...customLineItems];
+                                                newItems[idx].description = e.target.value;
+                                                setCustomLineItems(newItems);
+                                            }}
+                                            className="w-full h-8 bg-white border-slate-200 rounded-lg px-2 text-xs font-bold"
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">SAC Code</div>
+                                        <input
+                                            type="text"
+                                            placeholder="SAC"
+                                            value={item.sac}
+                                            onChange={(e) => {
+                                                const newItems = [...customLineItems];
+                                                newItems[idx].sac = e.target.value;
+                                                setCustomLineItems(newItems);
+                                            }}
+                                            className="w-full h-8 bg-white border-slate-200 rounded-lg px-2 text-xs text-center"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 items-center">
+                                    <div className="flex-1">
+                                        <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">Qty</div>
+                                        <input
+                                            type="number"
+                                            placeholder="Qty"
+                                            value={item.qty}
+                                            onChange={(e) => {
+                                                const rawVal = e.target.value;
+                                                const val = parseFloat(rawVal) || 0;
+                                                const newItems = [...customLineItems];
+                                                newItems[idx].qty = rawVal === '' ? 0 : val;
+                                                newItems[idx].amount = (rawVal === '' ? 0 : val) * newItems[idx].rate;
+                                                setCustomLineItems(newItems);
+                                            }}
+                                            className="w-full h-8 bg-white border-slate-200 rounded-lg px-2 text-xs font-bold text-center"
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">Rate</div>
+                                        <input
+                                            type="number"
+                                            placeholder="Rate"
+                                            value={item.rate}
+                                            onChange={(e) => {
+                                                const rawVal = e.target.value;
+                                                const val = parseFloat(rawVal) || 0;
+                                                const newItems = [...customLineItems];
+                                                newItems[idx].rate = rawVal === '' ? 0 : val;
+                                                newItems[idx].amount = newItems[idx].qty * (rawVal === '' ? 0 : val);
+                                                setCustomLineItems(newItems);
+                                            }}
+                                            className="w-full h-8 bg-white border-slate-200 rounded-lg px-2 text-xs font-bold text-center"
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">Amount</div>
+                                        <div className="w-full h-8 flex items-center justify-end px-2 text-xs font-black text-slate-700 bg-slate-100 rounded-lg">
+                                            {item.amount.toLocaleString()}
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            const newItems = customLineItems.filter((_, i) => i !== idx);
+                                            setCustomLineItems(newItems);
+                                        }}
+                                        className="h-8 w-8 flex items-center justify-center text-red-500 bg-white border border-red-100 text-xs font-bold rounded-lg hover:bg-red-50 mt-4"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                        <button
+                            onClick={() => setCustomLineItems([...customLineItems, { description: '', sac: '9966', qty: 1, rate: 0, amount: 0 }])}
+                            className="w-full py-2 flex items-center justify-center gap-2 text-xs font-black text-indigo-600 bg-indigo-50 rounded-xl border border-indigo-100 hover:bg-indigo-100 uppercase tracking-wider"
+                        >
+                            <Plus size={14} /> Add Line Item
+                        </button>
                     </div>
-                )}
-                {(mode === 'outstation' || (mode === 'drop' && parseFloat(distanceOverride) > 30)) && (
-                    <label className="flex items-center gap-1.5 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-100 w-fit mt-2">
-                        <input
-                            type="checkbox"
-                            checked={garageBuffer}
-                            onChange={(e) => setGarageBuffer(e.target.checked)}
-                            className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Add Garage Buffer (20km)</span>
-                    </label>
-                )}
-            </div>
 
-
-            {/* Vehicle Section */}
-            <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Car size={12} /> VEHICLE CLASS (ESTIMATE)</h3>
-                <div className="space-y-3">
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Select Class</label>
+                    {/* Vehicle Select for Custom Mode (Optional but good for ref) */}
+                    <div className="space-y-1 pt-3 border-t border-slate-100">
+                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Vehicle Type (For Record)</label>
                         <select
                             value={selectedVehicleType}
-                            onChange={(e) => { setSelectedVehicleType(e.target.value); setManualRate(false); }}
+                            onChange={(e) => setSelectedVehicleType(e.target.value)}
                             className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
                         >
-                            <option value="" disabled>Select Vehicle Class</option>
+                            <option value="">Select Vehicle Class (Optional)</option>
                             {VEHICLE_CLASSES.map((v) => (
                                 <option key={v.id} value={v.id}>{v.label}</option>
                             ))}
                         </select>
                     </div>
+                </div>
+            ) : (
+                <>
+                    {/* Journey Section */}
+                    <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><MapPin size={12} /> Journey Details</h3>
+                        <div className="space-y-3">
+                            <PlacesAutocomplete
+                                label="Pickup"
+                                value={fromLoc}
+                                onChange={setFromLoc}
+                                onPlaceSelected={(p) => { setFromLoc(p.address); setFromCoords({ lat: p.lat, lng: p.lng }); }}
+                                onMapClick={() => setShowMap(true)}
+                            />
+                            {mode !== 'local' && (
+                                <PlacesAutocomplete
+                                    label="Drop"
+                                    value={toLoc}
+                                    onChange={setToLoc}
+                                    onPlaceSelected={(p) => { setToLoc(p.address); setToCoords({ lat: p.lat, lng: p.lng }); }}
+                                    onMapClick={() => setShowMap(true)}
+                                />
+                            )}
+                        </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-50">
+                        {showMap && (
+                            <MapPicker
+                                onLocationSelect={handleMapSelect}
+                                onClose={() => setShowMap(false)}
+                            />
+                        )}
+
+                    </div>
+
+
+
+                    <div className="pt-1 border-t border-slate-50 space-y-3">
                         {mode !== 'local' && (
-                            <div className="space-y-1">
-                                <div className="flex justify-between items-center px-1">
-                                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Rate / KM</label>
-                                    {manualRate && <button onClick={() => setManualRate(false)} className="text-indigo-600"><RotateCcw size={10} /></button>}
-                                </div>
-                                <input type="number" value={customRate || ''} onChange={e => { setCustomRate(parseFloat(e.target.value) || 0); setManualRate(true); }} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900`} placeholder="Rate" />
+                            <div>
+                                <input type="number" value={isFetchingKM ? '' : distanceOverride} onChange={(e) => setDistanceOverride(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder={isFetchingKM ? "Calculating..." : "0"} />
                             </div>
                         )}
-                        {mode === 'outstation' ? (
+                        {(mode === 'outstation' || (mode === 'drop' && parseFloat(distanceOverride) > 30)) && (
+                            <label className="flex items-center gap-1.5 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-100 w-fit mt-2">
+                                <input
+                                    type="checkbox"
+                                    checked={garageBuffer}
+                                    onChange={(e) => setGarageBuffer(e.target.checked)}
+                                    className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Add Garage Buffer (20km)</span>
+                            </label>
+                        )}
+                    </div>
+
+
+                    {/* Vehicle Section */}
+                    <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Car size={12} /> VEHICLE CLASS (ESTIMATE)</h3>
+                        <div className="space-y-3">
                             <div className="space-y-1">
-                                <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Trip Days {minDays > 1 && <span className='text-red-500'>(Min {minDays})</span>}</label>
-                                <input type="number" min={minDays} value={days} onChange={e => setDays(parseFloat(e.target.value) || minDays)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="1" />
+                                <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Select Class</label>
+                                <select
+                                    value={selectedVehicleType}
+                                    onChange={(e) => { setSelectedVehicleType(e.target.value); setManualRate(false); }}
+                                    className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
+                                >
+                                    <option value="" disabled>Select Vehicle Class</option>
+                                    {VEHICLE_CLASSES.map((v) => (
+                                        <option key={v.id} value={v.id}>{v.label}</option>
+                                    ))}
+                                </select>
                             </div>
-                        ) : mode === 'local' ? (
-                            <div className="space-y-3">
-                                <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Local Package</label>
-                                    <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none snap-x">
-                                        {[
-                                            { id: '2hr_20km', hr: '2 Hr', km: '20 Km' },
-                                            { id: '4hr_40km', hr: '4 Hr', km: '40 Km' },
-                                            { id: '8hr_80km', hr: '8 Hr', km: '80 Km', label: 'Std' },
-                                            { id: '12hr_120km', hr: '12 Hr', km: '120 Km' },
-                                            { id: 'custom', hr: 'Custom', km: 'Trip' }
-                                        ].map(pkg => (
-                                            <button
-                                                key={pkg.id}
-                                                onClick={() => {
-                                                    setHourlyPackage(pkg.id);
-                                                    if (pkg.id === '8hr_80km') {
-                                                        setLocalPackageHours(8); setLocalPackageKm(80); setDistanceOverride('80');
-                                                    } else if (pkg.id === '12hr_120km') {
-                                                        setLocalPackageHours(12); setLocalPackageKm(120); setDistanceOverride('120');
-                                                    } else if (pkg.id === '4hr_40km') {
-                                                        setLocalPackageHours(4); setLocalPackageKm(40); setDistanceOverride('40');
-                                                    } else if (pkg.id === '2hr_20km') {
-                                                        setLocalPackageHours(2); setLocalPackageKm(20); setDistanceOverride('20');
-                                                    }
-                                                }}
-                                                className={`min-w-[70px] flex-shrink-0 flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all snap-start
-                                                        ${hourlyPackage === pkg.id
-                                                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200 ring-1 ring-indigo-600 ring-offset-1'
-                                                        : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600'}
-                                                        ${!selectedVehicleType ? 'opacity-50 cursor-not-allowed' : ''}
-                                                    `}
-                                                disabled={!selectedVehicleType}
-                                            >
-                                                {pkg.label && (
-                                                    <span className={`text-[8px] font-black uppercase tracking-wider mb-0.5 ${hourlyPackage === pkg.id ? 'text-indigo-200' : 'text-indigo-600'}`}>
-                                                        {pkg.label}
-                                                    </span>
-                                                )}
-                                                <span className="text-xs font-black uppercase tracking-wider leading-none">{pkg.hr}</span>
-                                                <span className={`text-[9px] font-bold uppercase tracking-wider leading-none mt-1 ${hourlyPackage === pkg.id ? 'text-indigo-100' : 'text-slate-400'}`}>
-                                                    {pkg.km}
-                                                </span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                                {hourlyPackage !== 'custom' ? (
-                                    <div className="flex items-center gap-4 p-3 bg-white rounded-xl border border-slate-200 shadow-sm mt-3">
-                                        <div className="flex-1 text-center border-r border-slate-100">
-                                            <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mb-0.5">Includes</p>
-                                            <p className="text-base font-black text-slate-700">{localPackageKm} KM</p>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-50">
+                                {mode !== 'local' && (
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between items-center px-1">
+                                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Rate / KM</label>
+                                            {manualRate && <button onClick={() => setManualRate(false)} className="text-indigo-600"><RotateCcw size={10} /></button>}
                                         </div>
-                                        <div className="flex-1 text-center">
-                                            <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mb-0.5">Duration</p>
-                                            <p className="text-base font-black text-slate-700">{localPackageHours} HRS</p>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-2 gap-2 mt-3">
-                                        <div className="space-y-1">
-                                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Hours</label>
-                                            <input type="number"
-                                                value={localPackageHours}
-                                                max={24}
-                                                onChange={e => {
-                                                    const val = parseFloat(e.target.value) || 0;
-                                                    const clamped = val > 24 ? 24 : val;
-                                                    setLocalPackageHours(clamped);
-                                                }}
-                                                className="tn-input h-10 w-full font-black bg-slate-50 text-sm" placeholder="8" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">KM</label>
-                                            <input type="number" value={localPackageKm} onChange={e => { setLocalPackageKm(parseFloat(e.target.value) || 0); setDistanceOverride(e.target.value); }} className="tn-input h-10 w-full font-black bg-slate-50 text-sm" placeholder="80" />
-                                        </div>
+                                        <input type="number" value={customRate || ''} onChange={e => { setCustomRate(parseFloat(e.target.value) || 0); setManualRate(true); }} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900`} placeholder="Rate" />
                                     </div>
                                 )}
+                                {mode === 'outstation' ? (
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Trip Days {minDays > 1 && <span className='text-red-500'>(Min {minDays})</span>}</label>
+                                        <input type="number" min={minDays} value={days} onChange={e => setDays(parseFloat(e.target.value) || minDays)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="1" />
+                                    </div>
+                                ) : mode === 'local' ? (
+                                    <div className="space-y-3">
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Local Package</label>
+                                            <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none snap-x">
+                                                {[
+                                                    { id: '2hr_20km', hr: '2 Hr', km: '20 Km' },
+                                                    { id: '4hr_40km', hr: '4 Hr', km: '40 Km' },
+                                                    { id: '8hr_80km', hr: '8 Hr', km: '80 Km', label: 'Std' },
+                                                    { id: '12hr_120km', hr: '12 Hr', km: '120 Km' },
+                                                    { id: 'custom', hr: 'Custom', km: 'Trip' }
+                                                ].map(pkg => (
+                                                    <button
+                                                        key={pkg.id}
+                                                        onClick={() => {
+                                                            setHourlyPackage(pkg.id);
+                                                            if (pkg.id === '8hr_80km') {
+                                                                setLocalPackageHours(8); setLocalPackageKm(80); setDistanceOverride('80');
+                                                            } else if (pkg.id === '12hr_120km') {
+                                                                setLocalPackageHours(12); setLocalPackageKm(120); setDistanceOverride('120');
+                                                            } else if (pkg.id === '4hr_40km') {
+                                                                setLocalPackageHours(4); setLocalPackageKm(40); setDistanceOverride('40');
+                                                            } else if (pkg.id === '2hr_20km') {
+                                                                setLocalPackageHours(2); setLocalPackageKm(20); setDistanceOverride('20');
+                                                            }
+                                                        }}
+                                                        className={`min-w-[70px] flex-shrink-0 flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all snap-start
+                                                        ${hourlyPackage === pkg.id
+                                                                ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200 ring-1 ring-indigo-600 ring-offset-1'
+                                                                : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600'}
+                                                        ${!selectedVehicleType ? 'opacity-50 cursor-not-allowed' : ''}
+                                                    `}
+                                                        disabled={!selectedVehicleType}
+                                                    >
+                                                        {pkg.label && (
+                                                            <span className={`text-[8px] font-black uppercase tracking-wider mb-0.5 ${hourlyPackage === pkg.id ? 'text-indigo-200' : 'text-indigo-600'}`}>
+                                                                {pkg.label}
+                                                            </span>
+                                                        )}
+                                                        <span className="text-xs font-black uppercase tracking-wider leading-none">{pkg.hr}</span>
+                                                        <span className={`text-[9px] font-bold uppercase tracking-wider leading-none mt-1 ${hourlyPackage === pkg.id ? 'text-indigo-100' : 'text-slate-400'}`}>
+                                                            {pkg.km}
+                                                        </span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        {hourlyPackage !== 'custom' ? (
+                                            <div className="flex items-center gap-4 p-3 bg-white rounded-xl border border-slate-200 shadow-sm mt-3">
+                                                <div className="flex-1 text-center border-r border-slate-100">
+                                                    <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mb-0.5">Includes</p>
+                                                    <p className="text-base font-black text-slate-700">{localPackageKm} KM</p>
+                                                </div>
+                                                <div className="flex-1 text-center">
+                                                    <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mb-0.5">Duration</p>
+                                                    <p className="text-base font-black text-slate-700">{localPackageHours} HRS</p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-2 gap-2 mt-3">
+                                                <div className="space-y-1">
+                                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Hours</label>
+                                                    <input type="number"
+                                                        value={localPackageHours}
+                                                        max={24}
+                                                        onChange={e => {
+                                                            const val = parseFloat(e.target.value) || 0;
+                                                            const clamped = val > 24 ? 24 : val;
+                                                            setLocalPackageHours(clamped);
+                                                        }}
+                                                        className="tn-input h-10 w-full font-black bg-slate-50 text-sm" placeholder="8" />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">KM</label>
+                                                    <input type="number" value={localPackageKm} onChange={e => { setLocalPackageKm(parseFloat(e.target.value) || 0); setDistanceOverride(e.target.value); }} className="tn-input h-10 w-full font-black bg-slate-50 text-sm" placeholder="80" />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : null}
                             </div>
-                        ) : null}
+                        </div>
                     </div>
-                </div>
-            </div>
+                </>
+            )}
 
             <div className="flex gap-2.5">
                 <button onClick={handleBack} className="flex-1 h-12 border-2 border-slate-100 text-slate-400 font-black rounded-2xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-2"><ChevronLeft size={14} /> Back</button>
                 <div className="flex-[3] flex gap-2">
-                    <button onClick={handleNext} disabled={(!distanceOverride && mode !== 'local') || !selectedVehicleType} className="flex-1 bg-indigo-600 text-white h-12 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-200 hover:bg-indigo-700">CONTINUE</button>
+                    {mode === 'custom' && (
+                        <button onClick={handlePreview} disabled={customLineItems.length === 0} className="flex-1 h-12 border-2 border-indigo-600 text-indigo-600 font-black rounded-2xl uppercase text-[10px] tracking-[0.2em] flex items-center justify-center hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                            PREVIEW
+                        </button>
+                    )}
+                    <button onClick={handleNext} disabled={(mode !== 'custom' && ((!distanceOverride && mode !== 'local') || !selectedVehicleType)) || (mode === 'custom' && customLineItems.length === 0)} className="flex-1 bg-indigo-600 text-white h-12 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-200 hover:bg-indigo-700">CONTINUE</button>
                 </div>
             </div>
         </div >

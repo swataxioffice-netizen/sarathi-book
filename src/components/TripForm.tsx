@@ -107,6 +107,10 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     const [days, setDays] = useState(1);
 
     const [customRate, setCustomRate] = useState(0);
+    // Custom Table State for Invoice
+    const [customLineItems, setCustomLineItems] = useState<{ description: string; sac: string; qty: number; rate: number; amount: number }[]>([
+        { description: 'Service Charge', sac: '9966', qty: 1, rate: 0, amount: 0 }
+    ]);
 
     // Local Package State
     const [hourlyPackage, setHourlyPackage] = useState<string>('');
@@ -121,7 +125,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     const [nightCharge, setNightCharge] = useState('0');
     const [hillStationCharge, setHillStationCharge] = useState('0');
     const [petCharge, setPetCharge] = useState('0');
-    const [extraItems, setExtraItems] = useState<{ description: string; amount: number }[]>([]);
+    const [extraItems, setExtraItems] = useState<{ description: string; amount: number; qty?: number; rate?: number; sac?: string }[]>([]);
 
     // Manual Overrides Flags
     const [manualDriverBatta, setManualDriverBatta] = useState(false);
@@ -151,7 +155,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     const [showPreview, setShowPreview] = useState(false);
     const [previewPdfUrl, setPreviewPdfUrl] = useState('');
 
-    const [garageBuffer, setGarageBuffer] = useState(false);
+
 
     // Local Trip Log
     const [startTimeLog, setStartTimeLog] = useState('');
@@ -416,7 +420,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     }, [startTimeLog, endTimeLog, mode]);
 
     const performCalculation = async (): Promise<CalculationResult | null> => {
-        if (!selectedVehicleId || !vehicleCategory) return null;
+        if (mode !== 'custom' && (!selectedVehicleId || !vehicleCategory)) return null;
         if (mode === 'local' && !hourlyPackage) return null;
         try {
             let serviceType = mode === 'outstation' ? 'round_trip' : (mode === 'local' ? 'local_hourly' : 'one_way');
@@ -427,21 +431,25 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 if (hourlyPackage === '2hr_20km') base = 2;
                 if (hourlyPackage === '4hr_40km') base = 4;
                 if (hourlyPackage === '12hr_120km') base = 12;
-
                 calcExtraHours = Math.max(0, localPackageHours - base);
             }
 
+            let customBaseTotal = 0;
+            if (mode === 'custom') {
+                customBaseTotal = customLineItems.reduce((acc, item) => acc + item.amount, 0);
+            }
+
             const overrideRate = (customRate && customRate > 0) ? customRate : undefined;
-            const finalDist = dist + (garageBuffer ? 20 : 0);
+            const finalDist = dist;
 
             const res = await calculateFareAsync(
                 serviceType,
-                vehicleCategory,
+                vehicleCategory || 'sedan',
                 finalDist,
                 mode === 'outstation' ? days : 1,
                 calcExtraHours,
                 manualHillStation && parseFloat(hillStationCharge) > 0,
-                overrideRate,
+                mode === 'custom' ? undefined : overrideRate,
                 manualDriverBatta ? parseFloat(driverBatta) : undefined,
                 manualHillStation ? parseFloat(hillStationCharge) : undefined,
                 parseFloat(petCharge) || 0,
@@ -450,7 +458,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             );
 
             const otherExtras = (parseFloat(permit) || 0) + (parseFloat(parking) || 0) + (parseFloat(toll) || 0) + extraItems.reduce((a, b) => a + b.amount, 0);
-            const subtotal = res.totalFare + otherExtras;
+            const subtotal = (mode === 'custom' ? customBaseTotal : res.totalFare) + otherExtras;
 
             const gstRes = calculateGST(subtotal, gstRate, settings.gstin, customerGst);
             const gstCalculated = includeGst ? gstRes.totalTax : 0;
@@ -472,7 +480,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     useEffect(() => {
         const timer = setTimeout(performCalculation, 300);
         return () => clearTimeout(timer);
-    }, [mode, selectedVehicleId, distanceOverride, days, localPackageHours, hourlyPackage, customRate, toll, parking, permit, driverBatta, nightCharge, hillStationCharge, petCharge, extraItems, includeGst, manualDriverBatta, manualHillStation]);
+    }, [mode, selectedVehicleId, distanceOverride, days, localPackageHours, hourlyPackage, customRate, toll, parking, permit, driverBatta, nightCharge, hillStationCharge, petCharge, extraItems, includeGst, manualDriverBatta, manualHillStation, customLineItems]);
 
     const handleNext = () => setStep(s => Math.min(4, s + 1));
     const handleBack = () => setStep(s => Math.max(1, s - 1));
@@ -494,32 +502,34 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         const pdfItems = [];
 
         // 1. Base Fare
-        const baseRate = res.rateUsed;
-        const baseDist = res.effectiveDistance || res.distance;
-        let baseDesc = mode === 'local' ? `Local Rental` : (mode === 'outstation' ? `Round Trip` : `One Way Drop`);
+        if (mode !== 'custom') {
+            const baseRate = res.rateUsed;
+            const baseDist = res.effectiveDistance || res.distance;
+            let baseDesc = mode === 'local' ? `Local Rental` : (mode === 'outstation' ? `Round Trip` : `One Way Drop`);
 
-        if (mode === 'local') {
-            if (hourlyPackage === '8hr_80km') {
-                baseDesc += ` [8 Hrs / 80 KM Package]`;
-            } else if (hourlyPackage === '12hr_120km') {
-                baseDesc += ` [12 Hrs / 120 KM Package]`;
-            } else if (hourlyPackage === '4hr_40km') {
-                baseDesc += ` [4 Hrs / 40 KM Package]`;
-            } else if (hourlyPackage === '2hr_20km') {
-                baseDesc += ` [2 Hrs / 20 KM Package]`;
-            } else {
-                baseDesc += ` [${localPackageHours} Hrs / ${localPackageKm} KM Package]`;
+            if (mode === 'local') {
+                if (hourlyPackage === '8hr_80km') {
+                    baseDesc += ` [8 Hrs / 80 KM Package]`;
+                } else if (hourlyPackage === '12hr_120km') {
+                    baseDesc += ` [12 Hrs / 120 KM Package]`;
+                } else if (hourlyPackage === '4hr_40km') {
+                    baseDesc += ` [4 Hrs / 40 KM Package]`;
+                } else if (hourlyPackage === '2hr_20km') {
+                    baseDesc += ` [2 Hrs / 20 KM Package]`;
+                } else {
+                    baseDesc += ` [${localPackageHours} Hrs / ${localPackageKm} KM Package]`;
+                }
+            } else if (baseRate > 0) {
+                baseDesc += ` [${baseDist} KM * ${baseRate}/KM]`;
             }
-        } else if (baseRate > 0) {
-            baseDesc += ` [${baseDist} KM * ${baseRate}/KM]`;
-        }
 
-        pdfItems.push({
-            description: baseDesc,
-            amount: res.distanceCharge,
-            rate: baseRate > 0 ? `${baseRate}/KM` : `${res.distanceCharge}`,
-            quantity: 1
-        });
+            pdfItems.push({
+                description: baseDesc,
+                amount: res.distanceCharge,
+                rate: baseRate > 0 ? `${baseRate}/KM` : `${res.distanceCharge}`,
+                quantity: 1
+            });
+        }
 
         // 2. Add Charges
         if (res.driverBatta > 0) {
@@ -543,6 +553,18 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         if (parseFloat(nightCharge) > 0) pdfItems.push({ description: 'Night Charges', amount: parseFloat(nightCharge), rate: nightCharge, quantity: 1 });
 
         // 3. User Added Extra Items
+        if (mode === 'custom') {
+            customLineItems.forEach(i => pdfItems.push({
+                description: i.description,
+                amount: i.amount,
+                rate: i.rate.toString(),
+                quantity: i.qty,
+                sac: i.sac
+            }));
+        } else {
+            // Standard Base Calculation added above
+        }
+
         extraItems.forEach(i => pdfItems.push({ description: i.description, amount: i.amount, rate: i.amount.toString(), quantity: 1 }));
 
         const tripData: any = {
@@ -558,7 +580,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             gstType: includeGst ? (res.gstBreakdown?.type || 'CGST_SGST') : undefined,
             rcmEnabled: rcmEnabled,
             terms: terms,
-            waitingHours: res.waitingHours, days, vehicleType: vehicleCategory
+            waitingHours: res.waitingHours, days, vehicleType: vehicleCategory,
+            startKm, endKm, distance: res.effectiveDistance || res.distance
         };
         const doc = await generateReceiptPDF(tripData, { ...settings, gstEnabled: includeGst, rcmEnabled, userId: user?.id, vehicleNumber: currentV?.number || settings.vehicles?.[0]?.number || 'N/A' });
         setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
@@ -578,36 +601,38 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         // Construct items for Consistent PDF Format (Same as Quotation)
         const pdfItems = [];
 
-        const baseRate = res.rateUsed;
-        const baseDist = res.effectiveDistance || res.distance;
-        let baseDesc = mode === 'local' ? `Local Rental` : (mode === 'outstation' ? `Round Trip` : `One Way Drop`);
+        if (mode !== 'custom') {
+            const baseRate = res.rateUsed;
+            const baseDist = res.effectiveDistance || res.distance;
+            let baseDesc = mode === 'local' ? `Local Rental` : (mode === 'outstation' ? `Round Trip` : `One Way Drop`);
 
-        if (mode === 'local') {
-            if (hourlyPackage === '8hr_80km') {
-                baseDesc += ` [8 Hrs / 80 KM Package]`;
-            } else if (hourlyPackage === '12hr_120km') {
-                baseDesc += ` [12 Hrs / 120 KM Package]`;
-            } else if (hourlyPackage === '4hr_40km') {
-                baseDesc += ` [4 Hrs / 40 KM Package]`;
-            } else if (hourlyPackage === '2hr_20km') {
-                baseDesc += ` [2 Hrs / 20 KM Package]`;
-            } else {
-                baseDesc += ` [${localPackageHours} Hrs / ${localPackageKm} KM Package]`;
+            if (mode === 'local') {
+                if (hourlyPackage === '8hr_80km') {
+                    baseDesc += ` [8 Hrs / 80 KM Package]`;
+                } else if (hourlyPackage === '12hr_120km') {
+                    baseDesc += ` [12 Hrs / 120 KM Package]`;
+                } else if (hourlyPackage === '4hr_40km') {
+                    baseDesc += ` [4 Hrs / 40 KM Package]`;
+                } else if (hourlyPackage === '2hr_20km') {
+                    baseDesc += ` [2 Hrs / 20 KM Package]`;
+                } else {
+                    baseDesc += ` [${localPackageHours} Hrs / ${localPackageKm} KM Package]`;
+                }
+                // Append actual usage
+                if (localPackageHours > 0 || localPackageKm > 0) {
+                    baseDesc += ` (Journey: ${localPackageHours}hrs/${localPackageKm}km)`;
+                }
+            } else if (baseRate > 0) {
+                baseDesc += ` [${baseDist} KM * ${baseRate}/KM]`;
             }
-            // Append actual usage
-            if (localPackageHours > 0 || localPackageKm > 0) {
-                baseDesc += ` (Journey: ${localPackageHours}hrs/${localPackageKm}km)`;
-            }
-        } else if (baseRate > 0) {
-            baseDesc += ` [${baseDist} KM * ${baseRate}/KM]`;
+
+            pdfItems.push({
+                description: baseDesc,
+                amount: res.distanceCharge,
+                rate: baseRate > 0 ? `${baseRate}/KM` : `${res.distanceCharge}`,
+                quantity: 1
+            });
         }
-
-        pdfItems.push({
-            description: baseDesc,
-            amount: res.distanceCharge,
-            rate: baseRate > 0 ? `${baseRate}/KM` : `${res.distanceCharge}`,
-            quantity: 1
-        });
 
         if (res.driverBatta > 0) {
             const dist = res.effectiveDistance || res.distance;
@@ -629,6 +654,16 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         if (res.hillStationCharges > 0) pdfItems.push({ description: 'Hill Station Charges', amount: res.hillStationCharges, rate: res.hillStationCharges.toString(), quantity: 1 });
         if (parseFloat(nightCharge) > 0) pdfItems.push({ description: 'Night Charges', amount: parseFloat(nightCharge), rate: nightCharge, quantity: 1 });
 
+        if (mode === 'custom') {
+            customLineItems.forEach(i => pdfItems.push({
+                description: i.description,
+                amount: i.amount,
+                rate: i.rate.toString(),
+                quantity: i.qty,
+                sac: i.sac
+            }));
+        }
+
         extraItems.forEach(i => pdfItems.push({ description: i.description, amount: i.amount, rate: i.amount.toString(), quantity: 1 }));
 
         const tripData: any = {
@@ -645,7 +680,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             gstType: includeGst ? (res.gstBreakdown?.type || 'CGST_SGST') : undefined,
             rcmEnabled: rcmEnabled,
             terms: terms,
-            waitingHours: res.waitingHours, days, vehicleType: vehicleCategory
+            waitingHours: res.waitingHours, days, vehicleType: vehicleCategory,
+            startKm, endKm, distance: res.effectiveDistance || res.distance
         };
 
         try {
@@ -727,6 +763,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                             setExtraItems([]);
                             setToll('0'); setParking('0'); setPermit('0'); setDriverBatta('0');
                             setNightCharge('0'); setHillStationCharge('0'); setPetCharge('0');
+                            setCustomLineItems([{ description: 'Service Charge', sac: '9966', qty: 1, rate: 0, amount: 0 }]);
                             setIsOdometerMode(false);
                             setManualDriverBatta(false); setManualToll(false); setManualParking(false);
                             setManualPermit(false); setManualHillStation(false);
@@ -778,6 +815,57 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                     )}
                 </div>
 
+                {/* Odometer Toggle Moved Here */}
+                {mode !== 'local' && (
+                    <div className="flex justify-end pt-1">
+                        <button onClick={() => setIsOdometerMode(!isOdometerMode)} className="px-2 py-1 bg-blue-50 text-blue-600 text-[8px] font-black rounded-lg uppercase">
+                            Use {isOdometerMode ? 'Direct KM' : 'Odometer'}
+                        </button>
+                    </div>
+                )}
+
+                <div className="pt-1 border-t border-slate-50 space-y-3">
+                    {!isOdometerMode && mode !== 'local' && (
+                        <input type="number"
+                            value={isFetchingKM ? '' : distanceOverride}
+                            onChange={(e) => {
+                                setDistanceOverride(e.target.value);
+                            }}
+                            className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
+                            placeholder={isFetchingKM ? "Calculating..." : "0"}
+                        />
+                    )}
+                    {isOdometerMode && mode !== 'local' && (
+                        <div className="mt-2"></div>
+                    )}
+                    {(isOdometerMode || (mode === 'outstation' || (mode === 'drop' && parseFloat(distanceOverride) > 30))) && mode !== 'local' && (
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                                <p className="text-[9px] font-black text-slate-500 uppercase ml-1 flex justify-between items-center">Start KM <button onClick={() => { setIsScanning('start'); fileInputRef.current?.click(); }} className="text-blue-600"><Camera size={10} /></button></p>
+                                <input
+                                    type="number"
+                                    value={startKm || ''}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value) || 0;
+                                        setStartKm(val);
+                                        // Auto-calculate End KM if distance exists and End KM is not yet set
+                                        if (val > 0 && distanceOverride && (!endKm || endKm <= val)) {
+                                            const d = parseFloat(distanceOverride) || 0;
+                                            setEndKm(val + d);
+                                        }
+                                    }}
+                                    className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
+                                    placeholder="0"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[9px] font-black text-slate-500 uppercase ml-1 flex justify-between items-center">End KM <button onClick={() => { setIsScanning('end'); fileInputRef.current?.click(); }} className="text-blue-600"><Camera size={10} /></button></p>
+                                <input type="number" value={endKm || ''} onChange={(e) => setEndKm(parseFloat(e.target.value) || 0)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 {showMap && (
                     <MapPicker
                         onLocationSelect={handleMapSelect}
@@ -786,14 +874,124 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 )}
 
                 <div className="pt-1 border-t border-slate-50 space-y-3">
-                    <div className="flex items-center justify-between">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Journey Details</label>
-                        {mode !== 'local' && (
-                            <button onClick={() => setIsOdometerMode(!isOdometerMode)} className="px-2 py-1 bg-blue-50 text-blue-600 text-[8px] font-black rounded-lg uppercase">
-                                Use {isOdometerMode ? 'Direct KM' : 'Odometer'}
-                            </button>
-                        )}
-                    </div>
+                    {/* Redundant Journey Details Header Removed */}
+
+
+                    {mode === 'custom' && (
+                        <div className="pt-2">
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Invoice Items</h3>
+                            <div className="space-y-2">
+                                {customLineItems.map((item, idx) => (
+                                    <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                                        <div className="flex gap-2">
+                                            <div className="flex-[3]">
+                                                <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">Description</div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Description"
+                                                    value={item.description}
+                                                    onChange={(e) => {
+                                                        const newItems = [...customLineItems];
+                                                        newItems[idx].description = e.target.value;
+                                                        setCustomLineItems(newItems);
+                                                    }}
+                                                    className="w-full h-8 bg-white border-slate-200 rounded-lg px-2 text-xs font-bold"
+                                                />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">SAC Code</div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="SAC"
+                                                    value={item.sac}
+                                                    onChange={(e) => {
+                                                        const newItems = [...customLineItems];
+                                                        newItems[idx].sac = e.target.value;
+                                                        setCustomLineItems(newItems);
+                                                    }}
+                                                    className="w-full h-8 bg-white border-slate-200 rounded-lg px-2 text-xs text-center"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2 items-center">
+                                            <div className="flex-1">
+                                                <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">Qty</div>
+                                                <input
+                                                    type="number"
+                                                    placeholder="Qty"
+                                                    value={item.qty}
+                                                    onChange={(e) => {
+                                                        const rawVal = e.target.value;
+                                                        const val = parseFloat(rawVal) || 0;
+                                                        const newItems = [...customLineItems];
+                                                        newItems[idx].qty = rawVal === '' ? 0 : val;
+                                                        newItems[idx].amount = (rawVal === '' ? 0 : val) * newItems[idx].rate;
+                                                        setCustomLineItems(newItems);
+                                                    }}
+                                                    className="w-full h-8 bg-white border-slate-200 rounded-lg px-2 text-xs font-bold text-center"
+                                                />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">Rate</div>
+                                                <input
+                                                    type="number"
+                                                    placeholder="Rate"
+                                                    value={item.rate}
+                                                    onChange={(e) => {
+                                                        const rawVal = e.target.value;
+                                                        const val = parseFloat(rawVal) || 0;
+                                                        const newItems = [...customLineItems];
+                                                        // Update rate with raw value to allow clearing to empty string if needed, or handle 0
+                                                        // Ideally, we persist the number, but React number inputs can be tricky with 0.
+                                                        // Let's store direct value for inputs if we changed the type, but here we can just use valueAsNumber or handle string.
+                                                        // FIX: Cast to any or change type to string | number in definition. For now, we will assume strict number but allow empty string handling via controlled input logic if we changed the type.
+                                                        // Since we are using type="number", we can use e.target.valueAsNumber.
+
+                                                        // Simpler fix: Allow the input to be empty string in UI logic if we could, 
+                                                        // but state is typed number.
+                                                        // Best approach for "unable to delete 0":
+                                                        // If the user clears the input, it becomes "", parseFloat becomes NaN or 0.
+                                                        // If we set state to 0, it shows "0".
+                                                        // To fix, we should likely allow the string value in the input, OR handle the "0" case better.
+                                                        // But the user says "unable to delete the 0". This implies they backspace and it stays 0.
+                                                        // This happens because `value={item.rate}` where rate is 0.
+                                                        // We can change value to `{item.rate === 0 ? '' : item.rate}` but that hides actual 0 rates.
+                                                        // Better: check if the string is empty.
+
+                                                        newItems[idx].rate = rawVal === '' ? 0 : val;
+                                                        newItems[idx].amount = newItems[idx].qty * (rawVal === '' ? 0 : val);
+                                                        setCustomLineItems(newItems);
+                                                    }}
+                                                    className="w-full h-8 bg-white border-slate-200 rounded-lg px-2 text-xs font-bold text-center"
+                                                />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">Amount</div>
+                                                <div className="w-full h-8 flex items-center justify-end px-2 text-xs font-black text-slate-700 bg-slate-100 rounded-lg">
+                                                    {item.amount.toLocaleString()}
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    const newItems = customLineItems.filter((_, i) => i !== idx);
+                                                    setCustomLineItems(newItems);
+                                                }}
+                                                className="h-8 w-8 flex items-center justify-center text-red-500 bg-white border border-red-100 text-xs font-bold rounded-lg hover:bg-red-50 mt-4"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                <button
+                                    onClick={() => setCustomLineItems([...customLineItems, { description: '', sac: '9966', qty: 1, rate: 0, amount: 0 }])}
+                                    className="w-full py-2 flex items-center justify-center gap-2 text-xs font-black text-indigo-600 bg-indigo-50 rounded-xl border border-indigo-100 hover:bg-indigo-100 uppercase tracking-wider"
+                                >
+                                    <Plus size={14} /> Add Line Item
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     {mode === 'local' && (
                         <div className="pt-3 border-t border-slate-50 space-y-3">
@@ -818,55 +1016,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                         </div>
                     )}
 
-                    <div className="pt-1 border-t border-slate-50 space-y-3">
-                        {!isOdometerMode && mode !== 'local' && (
-                            <input type="number"
-                                value={isFetchingKM ? '' : distanceOverride}
-                                onChange={(e) => {
-                                    setDistanceOverride(e.target.value);
-                                }}
-                                className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
-                                placeholder={isFetchingKM ? "Calculating..." : "0"}
-                            />
-                        )}
-                        {isOdometerMode && mode !== 'local' && (
-                            <label className="flex items-center gap-1.5 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-100 w-fit mt-2">
-                                <input
-                                    type="checkbox"
-                                    checked={garageBuffer}
-                                    onChange={(e) => setGarageBuffer(e.target.checked)}
-                                    className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                                />
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Add Garage Buffer (20km)</span>
-                            </label>
-                        )}
-                        {(isOdometerMode || (mode === 'outstation' || (mode === 'drop' && parseFloat(distanceOverride) > 30))) && mode !== 'local' && (
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1">
-                                    <p className="text-[9px] font-black text-slate-500 uppercase ml-1 flex justify-between items-center">Start KM <button onClick={() => { setIsScanning('start'); fileInputRef.current?.click(); }} className="text-blue-600"><Camera size={10} /></button></p>
-                                    <input
-                                        type="number"
-                                        value={startKm || ''}
-                                        onChange={(e) => {
-                                            const val = parseFloat(e.target.value) || 0;
-                                            setStartKm(val);
-                                            // Auto-calculate End KM if distance exists and End KM is not yet set
-                                            if (val > 0 && distanceOverride && (!endKm || endKm <= val)) {
-                                                const d = parseFloat(distanceOverride) || 0;
-                                                setEndKm(val + d);
-                                            }
-                                        }}
-                                        className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
-                                        placeholder="0"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-[9px] font-black text-slate-500 uppercase ml-1 flex justify-between items-center">End KM <button onClick={() => { setIsScanning('end'); fileInputRef.current?.click(); }} className="text-blue-600"><Camera size={10} /></button></p>
-                                    <input type="number" value={endKm || ''} onChange={(e) => setEndKm(parseFloat(e.target.value) || 0)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
-                                </div>
-                            </div>
-                        )}
-                    </div>
+
                 </div>
             </div >
 
@@ -973,7 +1123,12 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             <div className="flex gap-2.5">
                 <button onClick={handleBack} className="flex-1 h-12 border-2 border-slate-100 text-slate-400 font-black rounded-2xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-2"><ChevronLeft size={14} /> Back</button>
                 <div className="flex-[3] flex gap-2">
-                    <button onClick={handleNext} disabled={!selectedVehicleId || (!distanceOverride && (mode !== 'local'))} className="flex-1 tn-button-primary h-12 text-[10px] tracking-[0.2em]">CONTINUE</button>
+                    {mode === 'custom' && (
+                        <button onClick={handlePreview} disabled={customLineItems.length === 0} className="flex-1 h-12 border-2 border-indigo-600 text-indigo-600 font-black rounded-2xl uppercase text-[10px] tracking-[0.2em] flex items-center justify-center hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                            PREVIEW
+                        </button>
+                    )}
+                    <button onClick={handleNext} disabled={(mode !== 'custom' && (!selectedVehicleId || (!distanceOverride && mode !== 'local'))) || (mode === 'custom' && customLineItems.length === 0)} className="flex-1 tn-button-primary h-12 text-[10px] tracking-[0.2em]">CONTINUE</button>
                 </div>
             </div>
         </div >

@@ -33,6 +33,7 @@ export interface QuotationItem {
     quantity?: number; // Added for auto-calculation
     amount: string;
     taxable?: boolean;
+    sac?: string;
 }
 
 export interface QuotationData {
@@ -249,6 +250,21 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
         y += (dropLines.length * 5);
     }
 
+    // 4. Distance (New)
+    let distStr = '';
+    // If start/end KM exists, show usage
+    if ((trip as any).startKm && (trip as any).endKm) {
+        distStr = `Distance: ${((trip as any).endKm - (trip as any).startKm).toFixed(1)} km`;
+    } else if ((trip as any).distance || (trip as any).effectiveDistance) {
+        distStr = `Distance: ${(trip as any).distance || (trip as any).effectiveDistance} km`;
+    }
+
+    if (distStr) {
+        doc.text(distStr, leftColX, y);
+        y += 5;
+    }
+
+
     const leftEndY = y + 2; // Reduced buffer since we added full height
 
 
@@ -366,14 +382,14 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     doc.setFont('helvetica', 'normal');
 
     let runningSubtotal = 0;
-    const addTableRow = (label: string, qty: string, rate: string, amount: number) => {
+    const addTableRow = (label: string, qty: string, rate: string, amount: number, sac: string = '9966') => {
         const safeAmount = isNaN(amount) ? 0 : amount;
 
         // Description wrapping
         const descLines = doc.splitTextToSize(label, 75); // Reduced width for Desc to fit SAC
         doc.text(descLines, margin + 2, y);
 
-        doc.text('9966', 95, y); // SAC Code Fixed
+        doc.text(sac, 95, y); // SAC Code Fixed
         doc.text(qty, 115, y);
         doc.text(rate, 145, y);
         doc.text(`${safeAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, y, { align: 'right' });
@@ -401,7 +417,8 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
                 trip.extraItems.forEach(item => {
                     const iQty = (item as any).quantity || '1';
                     const iRate = (item as any).rate ? `${(item as any).rate}` : `${item.amount}`;
-                    addTableRow(item.description || 'Service Charge', String(iQty), iRate, item.amount || 0);
+                    const iSac = (item as any).sac || '9966';
+                    addTableRow(item.description || 'Service Charge', String(iQty), iRate, item.amount || 0, iSac);
                 });
             } else if (hasExplicitDistanceCharge || (trip as any).fare) {
                 addTableRow('Custom Service', '1', `${mainAmount}`, mainAmount);
@@ -478,7 +495,8 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
         // Custom extra items from step 3
         if (trip.extraItems && trip.mode !== 'custom') {
             trip.extraItems.forEach(item => {
-                if (item.amount > 0) addTableRow(item.description || 'Extra Item', '1', '-', item.amount);
+                const iSac = (item as any).sac || '9966';
+                if (item.amount > 0) addTableRow(item.description || 'Extra Item', '1', '-', item.amount, iSac);
             });
         }
     }
@@ -740,7 +758,8 @@ export const generateQuotationPDF = async (data: QuotationData, settings: PDFSet
             description: `${item.description} ${item.package ? `(${item.package})` : ''}`,
             amount: parseFloat(item.amount) || 0,
             rate: item.rate,
-            quantity: item.quantity || 1
+            quantity: item.quantity || 1,
+            sac: item.sac || '9966'
         })),
 
         // Sum up total fare

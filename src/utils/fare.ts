@@ -36,7 +36,7 @@ export interface Trip {
     waitingHours?: number;
     hillStationCharges?: number;
     petCharges?: number;
-    extraItems?: { description: string, amount: number }[];
+    extraItems?: { description: string, amount: number, qty?: number, rate?: number, sac?: string }[];
     driverBatta?: number;
     nightStay?: number;
     from?: string;
