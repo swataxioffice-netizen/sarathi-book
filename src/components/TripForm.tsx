@@ -9,11 +9,12 @@ import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
 import { useAdProtection } from '../hooks/useAdProtection';
 import {
-    MoveRight, MapPin, Plus, Eye,
-    CheckCircle2,
+    MoveRight, MapPin, Plus, CheckCircle2,
     Repeat, Clock, UserCheck,
-    Camera, Car, ChevronLeft,
-    RotateCcw, Trash2, Share2, StickyNote, Check, PenLine
+    Car, ChevronLeft,
+    RotateCcw, Trash2, PenLine,
+    StickyNote, Check, Share2,
+    Camera
 } from 'lucide-react';
 import { generateReceiptPDF, SavedQuotation, shareReceipt } from '../utils/pdf';
 import { saveToHistory } from '../utils/history';
@@ -1250,7 +1251,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             <div className="flex gap-2.5">
                 <button onClick={handleBack} className="flex-1 h-12 border-2 border-slate-100 text-slate-400 font-black rounded-2xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-2"><ChevronLeft size={14} /> Back</button>
                 <div className="flex-[3] flex gap-2">
-                    <button onClick={handlePreview} className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center hover:bg-slate-800 transition-colors"><Eye size={20} /></button>
+                    <button onClick={handlePreview} className="flex-1 border-2 border-[#0047AB] text-[#0047AB] h-12 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] hover:bg-blue-50 transition-colors">PREVIEW</button>
                     <button onClick={handleNext} className="flex-1 tn-button-primary h-12 text-[10px] tracking-[0.2em]">CONTINUE</button>
                 </div>
             </div>
@@ -1412,7 +1413,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             <div className="flex gap-2.5">
                 <button onClick={handleBack} className="flex-1 h-12 border-2 border-slate-100 text-slate-400 font-black rounded-2xl uppercase text-[9px] tracking-widest">Back</button>
                 <div className="flex-[3] flex gap-2">
-                    <button onClick={handlePreview} className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center hover:bg-slate-800 transition-colors"><Eye size={20} /></button>
+                    <button onClick={handlePreview} className="flex-1 border-2 border-[#0047AB] text-[#0047AB] h-12 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] hover:bg-blue-50 transition-colors">PREVIEW</button>
                     <button onClick={() => triggerAction(handleSaveAndShare)} className="flex-1 bg-blue-600 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-blue-600/20 flex items-center justify-center gap-3"><Share2 size={16} /> SAVE & SHARE</button>
                 </div>
             </div>

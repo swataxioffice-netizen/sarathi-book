@@ -7,7 +7,7 @@ import { estimatePermitCharge } from '../utils/permits';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
 import {
-    MoveRight, MapPin, Plus, Eye,
+    MoveRight, MapPin, Plus,
     Repeat, Clock, UserCheck,
     Car, ChevronLeft,
     RotateCcw, Trash2, PenLine,
@@ -1188,7 +1188,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             <div className="flex gap-2.5">
                 <button onClick={handleBack} className="flex-1 h-12 border-2 border-slate-100 text-slate-400 font-black rounded-2xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-2"><ChevronLeft size={14} /> Back</button>
                 <div className="flex-[3] flex gap-2">
-                    <button onClick={handlePreview} className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center"><Eye size={20} /></button>
+                    <button onClick={handlePreview} className="flex-1 border-2 border-indigo-600 text-indigo-600 h-12 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] hover:bg-indigo-50 transition-colors">PREVIEW</button>
                     <button onClick={handleShare} className="flex-1 bg-indigo-600 text-white h-12 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] shadow-lg shadow-indigo-200 hover:bg-indigo-700">{onSaveQuotation ? 'SAVE & SHARE' : 'SHARE QUOTE'}</button>
                 </div>
             </div>

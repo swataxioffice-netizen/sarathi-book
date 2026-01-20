@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Share2, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Share2, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Document, Page, pdfjs } from 'react-pdf';
 
 // Configure PDF Worker for Vite
@@ -62,7 +62,7 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({ isOpen, onClose, pdfU
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
-                            <Eye size={20} />
+                            <FileText size={20} />
                         </div>
                         <div>
                             <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none">{title}</h3>
@@ -94,7 +94,7 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({ isOpen, onClose, pdfU
                             loading={null}
                             error={
                                 <div className="flex flex-col items-center justify-center p-8 text-center text-slate-500">
-                                    <Eye size={32} className="mb-4 text-slate-300" />
+                                    <FileText size={32} className="mb-4 text-slate-300" />
                                     <p className="mb-4 font-bold text-sm">Preview rendering failed</p>
                                     <a
                                         href={pdfUrl}
