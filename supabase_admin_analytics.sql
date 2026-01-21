@@ -10,6 +10,13 @@ CREATE TABLE IF NOT EXISTS public.admin_analytics (
 -- Enable Row Level Security
 ALTER TABLE public.admin_analytics ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies to avoid conflicts/errors
+DROP POLICY IF EXISTS "Allow authenticated users to insert logs" ON public.admin_analytics;
+DROP POLICY IF EXISTS "Allow anonymous users to insert logs" ON public.admin_analytics;
+DROP POLICY IF EXISTS "Allow service_role to do everything" ON public.admin_analytics;
+DROP POLICY IF EXISTS "Allow users to view own logs" ON public.admin_analytics;
+DROP POLICY IF EXISTS "Allow Admin to view all logs" ON public.admin_analytics;
+
 -- Policy: Allow authenticated users to insert logs
 CREATE POLICY "Allow authenticated users to insert logs"
 ON public.admin_analytics
@@ -32,12 +39,17 @@ TO service_role
 USING (true)
 WITH CHECK (true);
 
--- Policy: Allow users to view their own logs (Optional, good for debugging)
-CREATE POLICY "Allow users to view own logs"
+-- Policy: Allow Admin user to view ALL logs, and users to view their own
+CREATE POLICY "Allow Admin to view all logs"
 ON public.admin_analytics
 FOR SELECT
 TO authenticated
-USING (auth.uid() = user_id);
+USING (
+  auth.email() = 'swa.taxioffice@gmail.com' 
+  OR 
+  auth.uid() = user_id
+);
+
 
 -- Create an index on created_at for faster sorting/filtering
 CREATE INDEX IF NOT EXISTS idx_admin_analytics_created_at ON public.admin_analytics(created_at DESC);
