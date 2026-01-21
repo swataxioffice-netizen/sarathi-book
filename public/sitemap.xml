@@ -79,9 +79,33 @@
     <!-- Tariff Page -->
     <url>
         <loc>https://sarathibook.com/tariff</loc>
-        <lastmod>2026-01-18</lastmod>
+        <lastmod>2026-01-21</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
+    </url>
+
+    <!-- Finance Page -->
+    <url>
+        <loc>https://sarathibook.com/finance</loc>
+        <lastmod>2026-01-21</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <!-- Staff/Salary Page -->
+    <url>
+        <loc>https://sarathibook.com/staff</loc>
+        <lastmod>2026-01-21</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <!-- Notes Page -->
+    <url>
+        <loc>https://sarathibook.com/notes</loc>
+        <lastmod>2026-01-21</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
     </url>
 
 </urlset>
