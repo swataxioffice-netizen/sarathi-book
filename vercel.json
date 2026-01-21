@@ -72,6 +72,10 @@
     ],
     "rewrites": [
         {
+            "source": "/sitemap.xml",
+            "destination": "/api/sitemap"
+        },
+        {
             "source": "/(calculator|taxi-fare-calculator|profile|trips|expenses|admin|dashboard|public)/(.*)",
             "destination": "/index.html"
         },
