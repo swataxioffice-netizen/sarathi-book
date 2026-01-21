@@ -1,7 +1,7 @@
 import { useUpdate } from '../contexts/UpdateContext';
 import { RefreshCw, Menu } from 'lucide-react';
 import Notifications from './Notifications';
-import { useAuth } from '../contexts/AuthContext';
+
 
 interface HeaderProps {
     activeTab?: string;
