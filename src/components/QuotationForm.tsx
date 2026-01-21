@@ -235,7 +235,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                         if (advanced.tollPrice > 0 && !manualToll) {
                             let baseToll = advanced.tollPrice;
                             if (selectedVehicleType.includes('tempo')) baseToll *= 1.6;
-                            let finalToll = mode === 'drop' ? baseToll : (days > 1 ? baseToll * 2 : Math.round(baseToll * 1.6));
+                            const finalToll = mode === 'drop' ? baseToll : (days > 1 ? baseToll * 2 : Math.round(baseToll * 1.6));
                             setToll(Math.round(finalToll).toString());
                         }
                     } else {
@@ -320,7 +320,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
     const performCalculation = async (): Promise<CalculationResult | null> => {
         if (mode !== 'custom' && !selectedVehicleType) return null;
         try {
-            let serviceType = mode === 'outstation' ? 'round_trip' : (mode === 'local' ? 'local_hourly' : 'one_way');
+            const serviceType = mode === 'outstation' ? 'round_trip' : (mode === 'local' ? 'local_hourly' : 'one_way');
             const dist = mode === 'local' ? localPackageKm : (parseFloat(distanceOverride) || 0);
 
             let calcExtraHours = 0;

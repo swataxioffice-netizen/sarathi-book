@@ -105,7 +105,7 @@ export const calculateFare = (
     }
 
     let totalFare = 0;
-    let breakdown: string[] = [];
+    const breakdown: string[] = [];
     let effectiveKm = distance;
     let rateUsed = 0;
     let distanceCharge = 0;

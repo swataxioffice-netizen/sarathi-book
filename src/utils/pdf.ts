@@ -696,7 +696,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
             doc.setFontSize(7);
             setThemeColor();
             doc.setFont('helvetica', 'bold');
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             doc.text('SARATHIBOOK.COM', 105, y + 2, {
                 align: 'center',
                 url: 'https://sarathibook.com'
@@ -996,7 +996,7 @@ export const generateFinancialReportPDF = async (trips: Trip[], expenses: Expens
     doc.setFontSize(7);
     setThemeColor();
     doc.setFont('helvetica', 'bold');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     doc.text('SARATHIBOOK.COM', 105, y + 2, {
         align: 'center',
         url: 'https://sarathibook.com'

@@ -35,7 +35,7 @@ export const formatAddress = (addr: string): string => {
     if (!addr) return addr;
 
     // First apply title case to everything if it's all caps/lower
-    let formatted = toTitleCase(addr);
+    const formatted = toTitleCase(addr);
 
     // Ensure words after commas are also capitalized if they aren't
     return formatted.split(',').map(part => {
