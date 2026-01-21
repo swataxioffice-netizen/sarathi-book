@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
+import { Analytics } from '../utils/monitoring';
 import { calculateFareAsync } from '../utils/fareWorkerWrapper';
 import { TARIFFS, TRIP_LIMITS } from '../config/tariff_config';
 import { Trip } from '../utils/fare';
@@ -696,6 +697,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         }
     };
 
+
+    // ... (existing helper imports) ...
+
     const handleSave = async () => {
         const res = await performCalculation();
         if (!res) return;
@@ -708,6 +712,16 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         // LOCK IN the ID and Invoice Number for this session
         if (!sessionTripId.current) sessionTripId.current = crypto.randomUUID();
         if (!sessionInvoiceNo.current) sessionInvoiceNo.current = nextInvoiceNo;
+
+        // Log to Admin Analytics
+        Analytics.logActivity('invoice_created', {
+            invoiceNo: sessionInvoiceNo.current,
+            customer: customerName,
+            amount: res.total,
+            mode: mode
+        }, user?.id);
+
+        Analytics.generateInvoice('invoice', res.total);
 
         onSaveTrip({
             id: sessionTripId.current, invoiceNo: sessionInvoiceNo.current, customerName: customerName || 'Cash Guest', customerPhone, customerGst,

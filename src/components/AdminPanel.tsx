@@ -6,13 +6,13 @@ import {
     FileCheck,
     TrendingUp,
     Search,
-    ShieldAlert,
     Activity,
     Bell,
     Send,
-    HardDrive,
     Bug,
-    RefreshCw
+    RefreshCw,
+    StickyNote,
+    UserCheck,
 } from 'lucide-react';
 import { useUpdate } from '../contexts/UpdateContext';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -26,6 +26,7 @@ const AdminPanel: React.FC = () => {
     const [isSending, setIsSending] = useState(false);
     const [users, setUsers] = useState<any[]>([]);
     const [documents, setDocuments] = useState<any[]>([]);
+    const [activities, setActivities] = useState<any[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
 
     useEffect(() => {
@@ -38,74 +39,159 @@ const AdminPanel: React.FC = () => {
             const { data: docsData } = await supabase.from('user_documents').select('*');
             if (docsData) setDocuments(docsData);
 
+            const { data: activityData } = await supabase
+                .from('admin_analytics')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(100);
+
+            if (activityData) setActivities(activityData);
+
             setLoadingUsers(false);
         };
         fetchData();
+
+        // Realtime Subscription
+        const channel = supabase
+            .channel('admin_feed')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'admin_analytics' }, (payload) => {
+                setActivities(prev => [payload.new, ...prev]);
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
     }, []);
 
     // Calculated Stats
     const docsCount = documents.length;
-    const pendingDocs = documents.length; // Treating all as pending review for now
-    const storageUsed = (docsCount * 0.5).toFixed(1) + ' MB'; // Estimate
+    const storageUsed = (docsCount * 0.5).toFixed(1) + ' MB';
+
+    // Activity Stats
+    const invoiceCount = activities.filter(a => a.event_type === 'invoice_created').length;
+    const quoteCount = activities.filter(a => a.event_type === 'quotation_created').length;
+    const fareCount = activities.filter(a => a.event_type === 'fare_calculated').length;
 
     // Stats Section
     const StatsView = () => (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                    { label: 'Total Users', value: loadingUsers ? '--' : users.length.toString(), icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-                    { label: 'Docs Uploaded', value: loadingUsers ? '--' : docsCount.toString(), icon: FileCheck, color: 'text-green-600', bg: 'bg-green-50' },
-                    { label: 'Pending Review', value: loadingUsers ? '--' : pendingDocs.toString(), icon: ShieldAlert, color: 'text-amber-600', bg: 'bg-amber-50' },
-                    { label: 'Storage Est.', value: loadingUsers ? '--' : storageUsed, icon: HardDrive, color: 'text-purple-600', bg: 'bg-purple-50' },
+                    { label: 'Users', value: users.length.toString(), icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+                    { label: 'Invoices', value: invoiceCount.toString(), icon: FileCheck, color: 'text-green-600', bg: 'bg-green-50' },
+                    { label: 'Quotations', value: quoteCount.toString(), icon: StickyNote, color: 'text-amber-600', bg: 'bg-amber-50' },
+                    { label: 'Calculations', value: fareCount.toString(), icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50' },
                 ].map((stat, i) => (
-                    <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className={`${stat.bg} ${stat.color} p-3 rounded-xl`}>
-                                <stat.icon size={24} />
+                    <div key={i} className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <div className="flex items-center justify-between mb-3 md:mb-4">
+                            <div className={`${stat.bg} ${stat.color} p-2 md:p-3 rounded-xl`}>
+                                <stat.icon size={20} />
                             </div>
-                            <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-full">--</span>
                         </div>
-                        <h4 className="text-2xl font-black text-slate-900">{stat.value}</h4>
-                        <div className="flex items-center justify-between">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
-                            {stat.label === 'Total Users' && (
-                                <button
-                                    onClick={() => {
-                                        setNotifyingUser({ name: 'All Drivers', id: null });
-                                        setNotificationText('');
-                                    }}
-                                    className="text-[9px] font-black text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100 transition-colors"
-                                >
-                                    Broadcast All
-                                </button>
-                            )}
-                        </div>
+                        <h4 className="text-2xl font-black text-slate-900">{loadingUsers ? '--' : stat.value}</h4>
+                        <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
                     </div>
                 ))}
             </div>
 
-            {/* Recent Activity */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-                    <h3 className="font-black text-slate-900 uppercase tracking-tight">System Health</h3>
-                    <TrendingUp className="text-blue-600" size={20} />
-                </div>
-                <div className="p-5">
-                    <div className="h-48 flex items-end gap-2 px-2">
-                        {[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0].map((h, i) => (
-                            <div key={i} className="flex-1 bg-slate-100 rounded-t-lg relative group transition-all hover:bg-blue-600">
-                                <div style={{ height: `${h}%` }} className="w-full bg-blue-600 rounded-t-lg transition-all group-hover:bg-blue-700"></div>
-                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap">
-                                    {h}% Capacity
-                                </div>
-                            </div>
-                        ))}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Recent Activity Feed */}
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-96 flex flex-col">
+                    <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <h3 className="font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                            <Activity size={16} className="text-blue-600" /> Live Activity Feed
+                        </h3>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">Real-time</span>
                     </div>
-                    <div className="flex justify-between mt-4 text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
-                        <span>Jan</span>
-                        <span>Jun</span>
-                        <span>Dec</span>
+                    <div className="flex-1 overflow-y-auto p-0 md:p-2 space-y-0">
+                        {loadingUsers ? (
+                            <div className="p-8 text-center text-slate-400 italic text-xs">Loading feed...</div>
+                        ) : activities.length === 0 ? (
+                            <div className="p-8 text-center text-slate-400 italic text-xs">No activity recorded yet.</div>
+                        ) : (
+                            activities.map((activity, i) => {
+                                let Icon = Activity;
+                                let color = 'text-slate-500';
+                                let bg = 'bg-slate-100';
+                                let title = 'System Event';
+                                let desc = '';
+
+                                switch (activity.event_type) {
+                                    case 'invoice_created':
+                                        Icon = FileCheck; color = 'text-green-600'; bg = 'bg-green-50';
+                                        title = `Invoice Generated`;
+                                        desc = `${activity.details.customer || 'Unknown'} - ₹${activity.details.amount}`;
+                                        break;
+                                    case 'quotation_created':
+                                        Icon = StickyNote; color = 'text-amber-600'; bg = 'bg-amber-50';
+                                        title = `Quotation Created`;
+                                        desc = `${activity.details.customer || 'Guest'} - ₹${activity.details.amount}`;
+                                        break;
+                                    case 'fare_calculated':
+                                        Icon = TrendingUp; color = 'text-blue-600'; bg = 'bg-blue-50';
+                                        title = `Fare Check`;
+                                        desc = `${activity.details.mode} - ₹${activity.details.fare}`;
+                                        break;
+                                    case 'login':
+                                        Icon = UserCheck; color = 'text-purple-600'; bg = 'bg-purple-50';
+                                        title = 'User Login';
+                                        break;
+                                }
+
+                                return (
+                                    <div key={activity.id || i} className="flex items-center gap-4 p-3 md:p-4 hover:bg-slate-50 border-b border-slate-50 last:border-0 transition-colors">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${bg} ${color}`}>
+                                            <Icon size={18} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex justify-between items-start mb-0.5">
+                                                <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wide truncate pr-2">{title}</h5>
+                                                <span className="text-[9px] font-bold text-slate-400 shrink-0 whitespace-nowrap">
+                                                    {new Date(activity.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-slate-500 truncate">{desc || JSON.stringify(activity.details).slice(0, 50)}</p>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+
+                {/* Quick Stats / Capacity */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                    <div className="p-5 border-b border-slate-100">
+                        <h3 className="font-black text-slate-900 uppercase tracking-tight">System Health</h3>
+                    </div>
+                    <div className="p-5 flex-1 flex flex-col justify-center gap-6">
+                        <div>
+                            <div className="flex justify-between text-xs font-bold text-slate-600 mb-2">
+                                <span>Storage Usage</span>
+                                <span>{storageUsed} / 1GB</span>
+                            </div>
+                            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                <div className="bg-blue-600 h-full rounded-full" style={{ width: '5%' }}></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div className="flex justify-between text-xs font-bold text-slate-600 mb-2">
+                                <span>API Quota</span>
+                                <span>Good</span>
+                            </div>
+                            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                <div className="bg-green-500 h-full rounded-full" style={{ width: '25%' }}></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div className="flex justify-between text-xs font-bold text-slate-600 mb-2">
+                                <span>Database Capacity</span>
+                                <span>Healthy</span>
+                            </div>
+                            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                <div className="bg-purple-500 h-full rounded-full" style={{ width: '12%' }}></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

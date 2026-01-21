@@ -69,6 +69,11 @@ export const Analytics = {
         } catch (e) {
             console.error('Error logging search:', e);
         }
+
+        // 3. Log to Admin Analytics for Activity Feed
+        Analytics.logActivity('fare_calculated', {
+            mode, vehicle, distance, pickup, drop, fare
+        });
     },
 
 
@@ -94,5 +99,25 @@ export const Analytics = {
         trackEvent('screen_view', {
             screen_name: pageName
         });
+    },
+
+    // 4. Admin Analytics (Supabase)
+    logActivity: async (
+        type: 'invoice_created' | 'quotation_created' | 'fare_calculated' | 'login' | 'share',
+        details: any,
+        userId?: string
+    ) => {
+        try {
+            const { error } = await supabase.from('admin_analytics').insert({
+                event_type: type,
+                details: details,
+                user_id: userId || null,
+                created_at: new Date().toISOString()
+            });
+            if (error) console.warn('Analytics Log Error:', error.message);
+        } catch (e) {
+            console.error('Analytics Log Exception:', e);
+        }
     }
 };
+

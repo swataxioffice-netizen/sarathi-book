@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
+import { useAuth } from '../contexts/AuthContext';
+import { Analytics } from '../utils/monitoring';
 import { calculateFareAsync } from '../utils/fareWorkerWrapper';
 import { TARIFFS, TRIP_LIMITS } from '../config/tariff_config';
 import { estimateParkingCharge } from '../utils/parking';
@@ -63,6 +65,7 @@ const DEFAULT_TERMS = [
 
 const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepChange, quotations }) => {
     const { settings } = useSettings();
+    const { user } = useAuth();
     // Mock user/ad protection if removed imports
 
     // --- State ---
@@ -581,6 +584,17 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                 vehicleType: items[0].vehicleType
             });
         }
+
+        // Log to Admin Analytics
+        Analytics.logActivity('quotation_created', {
+            quotationNo: qData.quotationNo,
+            customer: customerName,
+            amount: res.total,
+            mode: mode
+        }, user?.id);
+
+        Analytics.generateInvoice('quotation', res.total);
+
         setStep(1);
         if (onStepChange) onStepChange(1);
     };
