@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { safeJSONParse } from '../utils/storage';
 import type { Trip, Expense } from '../utils/fare';
-import { IndianRupee, TrendingUp, Crown, CheckCircle2, ArrowRight } from 'lucide-react';
-import { useSettings } from '../contexts/SettingsContext';
+import { IndianRupee, TrendingUp, CheckCircle2 } from 'lucide-react';
+
 
 
 
@@ -16,7 +16,7 @@ interface DashboardProps {
 type TimeRange = 'today' | 'week' | 'month' | 'year';
 
 const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
-    const { settings } = useSettings();
+
     const [range, setRange] = useState<TimeRange>('today');
 
 
@@ -171,50 +171,9 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                 </div>
             </div>
 
-            {/* Premium Upgrade Nudge */}
-            {!settings.isPremium && (
-                <div
-                    onClick={() => window.dispatchEvent(new CustomEvent('open-pricing-modal'))}
-                    className="group bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-4 text-white shadow-lg relative overflow-hidden cursor-pointer hover:shadow-blue-500/20 transition-all border border-blue-400/20"
-                >
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl transition-transform group-hover:scale-110" />
-                    <div className="relative z-10 flex items-center justify-between">
-                        <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                                <Crown size={14} className="text-amber-400 fill-amber-400" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-100">Pro Feature</span>
-                            </div>
-                            <h4 className="text-sm font-black mb-1">Professional Branding Package</h4>
-                            <p className="text-[10px] font-bold text-blue-100/70 leading-relaxed max-w-[200px]">Remove watermarks and add custom business logos to all your invoices.</p>
-                        </div>
-                        <div className="bg-white/20 backdrop-blur-md px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/20 hover:bg-white/30 transition-colors">
-                            Upgrade
-                        </div>
-                    </div>
-                </div>
-            )}
 
-            {/* Active Widgets Grid */}
-            <div className={`grid grid-cols-1 gap-3`}>
-                <div
-                    onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'tariff' }))}
-                    className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-all active:scale-[0.98]"
-                >
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 flex items-center justify-center bg-blue-50 border border-blue-100 rounded-2xl text-[#0047AB]">
-                            <IndianRupee size={24} strokeWidth={2.5} />
-                        </div>
-                        <div>
-                            <p className="text-xs font-black uppercase tracking-widest text-slate-900 leading-tight">Rate Card</p>
-                            <p className="text-[10px] font-bold text-slate-400 mt-1 tracking-wider">Check current tariff & charges</p>
-                        </div>
-                    </div>
-                    <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
-                        <ArrowRight size={16} />
-                    </div>
-                </div>
 
-            </div>
+
 
             {/* Recent Activity Feed */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
