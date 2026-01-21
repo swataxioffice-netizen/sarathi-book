@@ -91,7 +91,7 @@ const SarathiAI: React.FC<SarathiAIProps> = ({ onNavigate }) => {
         // Voice Assistant: Talk back!
         speakResponse(responseText);
 
-        Analytics.logActivity('ai_query', {
+        await Analytics.logActivity('ai_query', {
             query: textToSend,
             responseLength: responseText.length,
             hasCommand: !!navMatch

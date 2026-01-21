@@ -56,7 +56,7 @@ const SalaryManager: React.FC = () => {
         settings.staff.find(s => s.id === selectedStaffId),
         [settings.staff, selectedStaffId]);
 
-    const handleAddStaff = () => {
+    const handleAddStaff = async () => {
         if (!newName || !newPhone) return;
 
         const newStaff: Staff = {
@@ -78,7 +78,7 @@ const SalaryManager: React.FC = () => {
         setNewName('');
         setNewPhone('');
 
-        Analytics.logActivity('staff_added', {
+        await Analytics.logActivity('staff_added', {
             name: newStaff.name,
             role: newStaff.role,
             dutyPay: newStaff.salaryConfig.dutyPay
@@ -128,10 +128,10 @@ const SalaryManager: React.FC = () => {
 
     const payroll = calculatePayroll();
 
-    const handleGenerateSlip = () => {
+    const handleGenerateSlip = async () => {
         alert(`Payslip generated for ${selectedStaff?.name}`);
         // In real app, generate PDF here.
-        Analytics.logActivity('payslip_generated', {
+        await Analytics.logActivity('payslip_generated', {
             staffId: selectedStaff?.id,
             staffName: selectedStaff?.name,
             amount: payroll.net,

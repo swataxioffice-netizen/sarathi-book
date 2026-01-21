@@ -68,7 +68,7 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
     };
 
     // Save changes from Modal
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!selectedNote) return;
 
         // If it's empty, maybe warn or delete? For now, we save even if empty like Keep, or delete if totally empty.
@@ -82,18 +82,21 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
             }
         }
 
+        const isNew = !notes.find(n => n.id === selectedNote.id);
+
         setNotes(prev => {
             const exists = prev.find(n => n.id === selectedNote.id);
             if (exists) {
                 return prev.map(n => n.id === selectedNote.id ? selectedNote : n);
             } else {
-                Analytics.logActivity('note_created', { length: selectedNote.content.length });
                 return [selectedNote, ...prev];
             }
         });
 
-        if (notes.find(n => n.id === selectedNote.id)) {
-            Analytics.logActivity('note_updated', { id: selectedNote.id });
+        if (isNew) {
+            await Analytics.logActivity('note_created', { length: selectedNote.content.length });
+        } else {
+            await Analytics.logActivity('note_updated', { id: selectedNote.id });
         }
 
         handleClose();

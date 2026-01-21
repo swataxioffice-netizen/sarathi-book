@@ -112,7 +112,7 @@ const ExpenseTracker: React.FC = () => {
                 description: newExpense.description,
                 date: newExpense.date
             });
-            Analytics.logActivity('expense_logged', {
+            await Analytics.logActivity('expense_logged', {
                 amount: newExpense.amount,
                 category: newExpense.category,
                 description: newExpense.description
@@ -139,7 +139,7 @@ const ExpenseTracker: React.FC = () => {
         if (user) {
             await supabase.from('expenses').delete().eq('id', id);
             if (deletedExpense) {
-                Analytics.logActivity('expense_deleted', {
+                await Analytics.logActivity('expense_deleted', {
                     id,
                     amount: deletedExpense.amount,
                     category: deletedExpense.category

@@ -714,7 +714,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         if (!sessionInvoiceNo.current) sessionInvoiceNo.current = nextInvoiceNo;
 
         // Log to Admin Analytics
-        Analytics.logActivity('invoice_created', {
+        await Analytics.logActivity('invoice_created', {
             invoiceNo: sessionInvoiceNo.current,
             customer: customerName,
             amount: res.total,

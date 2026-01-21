@@ -586,7 +586,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
         }
 
         // Log to Admin Analytics
-        Analytics.logActivity('quotation_created', {
+        await Analytics.logActivity('quotation_created', {
             quotationNo: qData.quotationNo,
             customer: customerName,
             amount: res.total,

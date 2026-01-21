@@ -206,7 +206,7 @@ const DocumentVault: React.FC<{ onStatsUpdate?: (stats: any) => void }> = ({ onS
                 try {
                     const { error } = await supabase.from('user_documents').delete().eq('id', doc.id);
                     if (error) throw error;
-                    Analytics.logActivity('document_deleted', {
+                    await Analytics.logActivity('document_deleted', {
                         id: doc.id,
                         type: doc.type,
                         name: doc.name
