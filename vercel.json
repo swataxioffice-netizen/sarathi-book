@@ -72,11 +72,11 @@
     ],
     "rewrites": [
         {
-            "source": "/(calculator|profile|trips|expenses|admin|dashboard|public)/(.*)",
+            "source": "/(calculator|taxi-fare-calculator|profile|trips|expenses|admin|dashboard|public)/(.*)",
             "destination": "/index.html"
         },
         {
-            "source": "/(calculator|profile|trips|expenses|admin|dashboard|public)",
+            "source": "/(calculator|taxi-fare-calculator|profile|trips|expenses|admin|dashboard|public)",
             "destination": "/index.html"
         }
     ]

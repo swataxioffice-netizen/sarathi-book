@@ -159,7 +159,7 @@ const TariffPage = () => {
                                     Driver Bata: <span className="text-slate-700 font-bold">₹{v.batta}</span>
                                 </div>
                                 <a
-                                    href={`/calculator/cab`}
+                                    href={`/taxi-fare-calculator`}
                                     className="inline-flex items-center gap-1 bg-[#0047AB] text-white px-3 py-2 rounded-lg shadow-md text-[10px] font-bold uppercase tracking-widest hover:bg-blue-800 transition-all active:scale-[0.98]"
                                 >
                                     Calculate

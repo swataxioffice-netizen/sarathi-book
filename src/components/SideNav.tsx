@@ -15,7 +15,7 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
         { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
         { id: 'trips', icon: <FileText size={20} />, label: 'Invoices' },
         { id: 'expenses', icon: <Wallet size={20} />, label: 'Expenses' },
-        { id: 'calculator', icon: <Calculator size={20} />, label: 'Calculator' },
+        { id: 'taxi-fare-calculator', icon: <Calculator size={20} />, label: 'Calculator' },
         { id: 'trending', icon: <TrendingUp size={20} />, label: 'Trending Routes' },
         { id: 'tariff', icon: <BadgeIndianRupee size={20} />, label: 'Tariff Card' },
         { id: 'finance', icon: <Landmark size={20} />, label: 'Easy Loans' },

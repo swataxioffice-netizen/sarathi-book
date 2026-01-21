@@ -102,7 +102,7 @@ export const generateTripSchema = ({ pickup, drop, distance, vehicle, amount, tr
                         "@type": "ListItem",
                         "position": 2,
                         "name": "Cab Calculator",
-                        "item": "https://sarathibook.com/calculator"
+                        "item": "https://sarathibook.com/taxi-fare-calculator"
                     },
                     {
                         "@type": "ListItem",

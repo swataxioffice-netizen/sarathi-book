@@ -58,25 +58,25 @@ function AppContent() {
     // Priority: 1. URL Path, 2. URL Hash (Legacy/Auth), 3. Local Storage, 4. Default 'calculator'
     const pathname = window.location.pathname.slice(1).split('/')[0];
     const hash = window.location.hash.slice(1).split('/')[0];
-    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin', 'notes', 'staff', 'trending', 'routes', 'tariff', 'finance'];
+    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'profile', 'admin', 'notes', 'staff', 'trending', 'routes', 'tariff', 'finance'];
 
     // Migration: specific check to force old defaults (dashboard) to new default (calculator) one time
     const storedTab = localStorage.getItem('nav-active-tab');
     if (storedTab === 'dashboard' && !pathname && !hash) {
       // If user was on dashboard and just opened app (no specific path), force calculator
-      return 'calculator';
+      return 'taxi-fare-calculator';
     }
 
     if (pathname && validTabs.includes(pathname)) return pathname;
     if (hash && validTabs.includes(hash)) return hash;
-    return storedTab || 'calculator';
+    return storedTab || 'taxi-fare-calculator';
   });
 
   // Support for Browser Back/Forward buttons
   useEffect(() => {
     const handlePopState = () => {
       const pathname = window.location.pathname.slice(1).split('/')[0];
-      const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'profile', 'admin', 'notes', 'trending'];
+      const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'profile', 'admin', 'notes', 'trending'];
       if (pathname && validTabs.includes(pathname)) {
         setActiveTab(pathname);
       }
@@ -616,6 +616,7 @@ function AppContent() {
           </Suspense>
         );
       case 'calculator':
+      case 'taxi-fare-calculator':
         return (
           <Calculator />
         );

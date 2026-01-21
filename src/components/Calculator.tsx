@@ -1895,7 +1895,7 @@ const Calculator: React.FC = () => {
         const currentSearch = window.location.search.slice(1);
 
         if (newSearch !== currentSearch) {
-            const cleanPath = mode ? `/calculator/${mode}` : '/calculator';
+            const cleanPath = mode ? `/taxi-fare-calculator/${mode}` : '/taxi-fare-calculator';
             window.history.replaceState(null, '', `${cleanPath}${newSearch ? '?' + newSearch : ''}`);
         }
     }, [dynamicRoute, mode]);
@@ -1904,7 +1904,7 @@ const Calculator: React.FC = () => {
     useEffect(() => {
         const currentPath = window.location.pathname;
         const currentSearch = window.location.search;
-        const cleanPath = mode ? `/calculator/${mode}` : '/calculator';
+        const cleanPath = mode ? `/taxi-fare-calculator/${mode}` : '/taxi-fare-calculator';
         const newUrl = cleanPath + currentSearch;
 
         if (currentPath !== cleanPath) {
@@ -2041,7 +2041,7 @@ const Calculator: React.FC = () => {
                                             setDynamicResult(null);
                                             setMode('cab');
 
-                                            const newUrl = `/calculator/cab?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}&dist=${route.dist}&veh=${route.veh}&type=${route.mode === 'roundtrip' ? 'roundtrip' : 'oneway'}`;
+                                            const newUrl = `/taxi-fare-calculator?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}&dist=${route.dist}&veh=${route.veh}&type=${route.mode === 'roundtrip' ? 'roundtrip' : 'oneway'}`;
                                             window.history.pushState({}, '', newUrl);
                                         }}
                                         className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer active:scale-[0.99]"
@@ -2110,7 +2110,7 @@ const Calculator: React.FC = () => {
                         setDynamicParams(null);
                         setDynamicTripType(null);
                         setDynamicResult(null);
-                        window.history.pushState({}, '', '/calculator');
+                        window.history.pushState({}, '', '/taxi-fare-calculator');
                     }}
 
                     className="flex items-center gap-1.5 py-2 px-3 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 uppercase tracking-wider hover:bg-slate-50 transition-all shadow-sm"

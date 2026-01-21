@@ -84,7 +84,7 @@ const TrendingRoutes: React.FC = () => {
                         {trendingRoutes.map((route, idx) => (
                             <a
                                 key={idx}
-                                href={`/calculator/cab?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}&dist=${route.dist}&veh=${route.veh?.toLowerCase()}&type=${route.mode === 'roundtrip' ? 'roundtrip' : 'oneway'}`}
+                                href={`/taxi-fare-calculator?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}&dist=${route.dist}&veh=${route.veh?.toLowerCase()}&type=${route.mode === 'roundtrip' ? 'roundtrip' : 'oneway'}`}
                                 className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer active:scale-[0.99] group block"
                             >
                                 <div className="space-y-3">
