@@ -1715,8 +1715,13 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
     );
 };
 
+interface CalculatorProps {
+    initialPickup?: string;
+    initialDrop?: string;
+}
+
 // --- Main Container ---
-const Calculator: React.FC = () => {
+const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) => {
     const SERVICES = [
         {
             id: 'cab',
@@ -1747,7 +1752,10 @@ const Calculator: React.FC = () => {
         },
     ] as const;
 
+    // Top-Level State for managing "Service Modes" (Cab vs Driver vs Relocation)
+    // We default to 'cab' if initial props are present
     const [mode, setMode] = useState<'cab' | 'driver' | 'relocation' | null>(() => {
+        if (initialPickup || initialDrop) return 'cab';
         const path = window.location.pathname.split('/')[2];
         return (path as any) || null;
     });
@@ -2158,8 +2166,8 @@ const Calculator: React.FC = () => {
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm mx-2">
                 {mode === 'cab' && (
                     <CabCalculator
-                        initialPickup={dynamicRoute?.pickup}
-                        initialDrop={dynamicRoute?.drop}
+                        initialPickup={dynamicRoute?.pickup || initialPickup}
+                        initialDrop={dynamicRoute?.drop || initialDrop}
                         initialTripType={dynamicTripType || undefined}
                         initialResult={dynamicResult}
                         initialDistance={dynamicParams?.dist || new URLSearchParams(window.location.search).get('dist') || undefined}

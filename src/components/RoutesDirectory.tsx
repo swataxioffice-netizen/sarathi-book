@@ -85,7 +85,9 @@ const RoutesDirectory = () => {
         return groups;
     }, [routes, searchTerm]);
 
-    const normalize = (str: string) => encodeURIComponent(str || '');
+    const slugify = (str: string) => {
+        return str.split(',')[0].trim().toLowerCase().replace(/\s+/g, '-');
+    };
 
     return (
         <div className="space-y-8 animate-fade-in pb-12">
@@ -147,7 +149,7 @@ const RoutesDirectory = () => {
                                 {groupedRoutes[city].map((route, idx) => (
                                     <a
                                         key={idx}
-                                        href={`/taxi-fare-calculator?from=${normalize(route.pickup_location)}&to=${normalize(route.drop_location)}&distance=${route.distance_km}&vehicle=${route.vehicle_type?.toLowerCase() || 'sedan'}&type=${route.trip_type || 'oneway'}`}
+                                        href={`/${slugify(route.pickup_location)}-to-${slugify(route.drop_location)}-taxi`}
                                         className="group block p-4 rounded-xl border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all bg-slate-50/50 hover:bg-white"
                                     >
                                         <div className="flex items-start justify-between gap-2 mb-2">

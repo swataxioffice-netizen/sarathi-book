@@ -40,6 +40,7 @@ const RoutesDirectory = lazy(() => import('./components/RoutesDirectory'));
 const TariffPage = lazy(() => import('./components/TariffPage'));
 const MobileMenu = lazy(() => import('./components/MobileMenu'));
 const Finance = lazy(() => import('./components/Finance'));
+const RouteLandingPage = lazy(() => import('./components/RouteLandingPage'));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -68,6 +69,12 @@ function AppContent() {
     }
 
     if (pathname && validTabs.includes(pathname)) return pathname;
+
+    // SEO Route Detection (e.g. chennai-to-bangalore-taxi)
+    if (pathname && (pathname.includes('-to-') || pathname.endsWith('-taxi'))) {
+      return pathname;
+    }
+
     if (hash && validTabs.includes(hash)) return hash;
     return storedTab || 'taxi-fare-calculator';
   });
@@ -76,8 +83,10 @@ function AppContent() {
   useEffect(() => {
     const handlePopState = () => {
       const pathname = window.location.pathname.slice(1).split('/')[0];
-      const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'profile', 'admin', 'notes', 'trending'];
+      const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'profile', 'admin', 'notes', 'trending', 'routes', 'tariff', 'finance', 'staff'];
       if (pathname && validTabs.includes(pathname)) {
+        setActiveTab(pathname);
+      } else if (pathname && (pathname.includes('-to-') || pathname.endsWith('-taxi'))) {
         setActiveTab(pathname);
       }
     };
@@ -669,6 +678,14 @@ function AppContent() {
           </Suspense>
         ) : <Dashboard trips={trips} />;
       default:
+        // Check if it's an SEO route
+        if (activeTab.includes('-to-') || activeTab.endsWith('-taxi') || activeTab.endsWith('-rental')) {
+          return (
+            <Suspense fallback={<LoadingFallback />}>
+              <RouteLandingPage slug={activeTab} />
+            </Suspense>
+          );
+        }
         return <Dashboard trips={trips} />;
     }
   };

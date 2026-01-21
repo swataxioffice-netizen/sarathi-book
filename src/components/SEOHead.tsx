@@ -4,9 +4,10 @@ interface SEOHeadProps {
     title: string;
     description?: string;
     schema?: any;
+    canonical?: string;
 }
 
-const SEOHead: React.FC<SEOHeadProps> = ({ title, description, schema }) => {
+const SEOHead: React.FC<SEOHeadProps> = ({ title, description, schema, canonical }) => {
     useEffect(() => {
         // Update Title
         const prevTitle = document.title;
@@ -42,7 +43,7 @@ const SEOHead: React.FC<SEOHeadProps> = ({ title, description, schema }) => {
             linkCanonical.setAttribute('rel', 'canonical');
             document.head.appendChild(linkCanonical);
         }
-        const currentUrl = window.location.origin + window.location.pathname + window.location.search;
+        const currentUrl = canonical || (window.location.origin + window.location.pathname + window.location.search);
         linkCanonical.setAttribute('href', currentUrl);
 
         // Handle Dynamic Schema (JSON-LD)
