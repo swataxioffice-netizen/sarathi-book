@@ -13,6 +13,10 @@ import {
     RefreshCw,
     StickyNote,
     UserCheck,
+    Wallet,
+    FileText,
+    Trash2,
+    Bot
 } from 'lucide-react';
 import { useUpdate } from '../contexts/UpdateContext';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -70,17 +74,23 @@ const AdminPanel: React.FC = () => {
     const invoiceCount = activities.filter(a => a.event_type === 'invoice_created').length;
     const quoteCount = activities.filter(a => a.event_type === 'quotation_created').length;
     const fareCount = activities.filter(a => a.event_type === 'fare_calculated').length;
+    const expenseCount = activities.filter(a => a.event_type === 'expense_logged').length;
+    const docUploadCount = activities.filter(a => a.event_type === 'document_uploaded').length;
+    const aiCount = activities.filter(a => a.event_type === 'ai_query').length;
 
     // Stats Section
     const StatsView = () => (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                     { label: 'Users', value: users.length.toString(), icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
                     { label: 'Invoices', value: invoiceCount.toString(), icon: FileCheck, color: 'text-green-600', bg: 'bg-green-50' },
                     { label: 'Quotations', value: quoteCount.toString(), icon: StickyNote, color: 'text-amber-600', bg: 'bg-amber-50' },
                     { label: 'Calculations', value: fareCount.toString(), icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50' },
+                    { label: 'Expenses', value: expenseCount.toString(), icon: Wallet, color: 'text-orange-600', bg: 'bg-orange-50' },
+                    { label: 'Docs Uploaded', value: docUploadCount.toString(), icon: FileText, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+                    { label: 'AI Queries', value: aiCount.toString(), icon: Bot, color: 'text-pink-600', bg: 'bg-pink-50' },
                 ].map((stat, i) => (
                     <div key={i} className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm">
                         <div className="flex items-center justify-between mb-3 md:mb-4">
@@ -135,6 +145,51 @@ const AdminPanel: React.FC = () => {
                                     case 'login':
                                         Icon = UserCheck; color = 'text-purple-600'; bg = 'bg-purple-50';
                                         title = 'User Login';
+                                        break;
+                                    case 'expense_logged':
+                                        Icon = Wallet; color = 'text-orange-600'; bg = 'bg-orange-50';
+                                        title = 'Expense Logged';
+                                        desc = `${activity.details.category} - ₹${activity.details.amount}`;
+                                        break;
+                                    case 'expense_deleted':
+                                        Icon = Trash2; color = 'text-red-600'; bg = 'bg-red-50';
+                                        title = 'Expense Deleted';
+                                        desc = `${activity.details.category} - ₹${activity.details.amount}`;
+                                        break;
+                                    case 'document_uploaded':
+                                        Icon = FileCheck; color = 'text-cyan-600'; bg = 'bg-cyan-50';
+                                        title = 'Document Uploaded';
+                                        desc = `${activity.details.type} - ${activity.details.name}`;
+                                        break;
+                                    case 'document_deleted':
+                                        Icon = Trash2; color = 'text-red-600'; bg = 'bg-red-50';
+                                        title = 'Document Deleted';
+                                        desc = `${activity.details.type} - ${activity.details.name}`;
+                                        break;
+                                    case 'staff_added':
+                                        Icon = Users; color = 'text-indigo-600'; bg = 'bg-indigo-50';
+                                        title = 'Staff Added';
+                                        desc = `${activity.details.name} (${activity.details.role})`;
+                                        break;
+                                    case 'payslip_generated':
+                                        Icon = FileCheck; color = 'text-emerald-600'; bg = 'bg-emerald-50';
+                                        title = 'Payslip Generated';
+                                        desc = `${activity.details.staffName} - ₹${activity.details.amount}`;
+                                        break;
+                                    case 'ai_query':
+                                        Icon = Bot; color = 'text-pink-600'; bg = 'bg-pink-50';
+                                        title = 'AI Query';
+                                        desc = `"${activity.details.query}"`;
+                                        break;
+                                    case 'note_created':
+                                        Icon = StickyNote; color = 'text-yellow-600'; bg = 'bg-yellow-50';
+                                        title = 'Note Created';
+                                        desc = `Length: ${activity.details.length} chars`;
+                                        break;
+                                    case 'note_updated':
+                                        Icon = StickyNote; color = 'text-yellow-600'; bg = 'bg-yellow-50';
+                                        title = 'Note Updated';
+                                        desc = `ID: ${activity.details.id}`;
                                         break;
                                 }
 

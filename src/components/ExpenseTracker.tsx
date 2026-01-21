@@ -7,6 +7,7 @@ import DocumentScanner from './DocumentScanner';
 
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../utils/supabase';
+import { Analytics } from '../utils/monitoring';
 
 const ExpenseTracker: React.FC = () => {
     const { t } = useSettings();
@@ -111,6 +112,11 @@ const ExpenseTracker: React.FC = () => {
                 description: newExpense.description,
                 date: newExpense.date
             });
+            Analytics.logActivity('expense_logged', {
+                amount: newExpense.amount,
+                category: newExpense.category,
+                description: newExpense.description
+            }, user.id);
         }
     };
 
@@ -124,6 +130,7 @@ const ExpenseTracker: React.FC = () => {
     };
 
     const deleteExpense = async (id: string) => {
+        const deletedExpense = expenses.find(e => e.id === id);
         const up = expenses.filter(e => e.id !== id);
         setExpenses(up);
         localStorage.setItem('cab-expenses', JSON.stringify(up));
@@ -131,6 +138,13 @@ const ExpenseTracker: React.FC = () => {
         // Sync to Cloud
         if (user) {
             await supabase.from('expenses').delete().eq('id', id);
+            if (deletedExpense) {
+                Analytics.logActivity('expense_deleted', {
+                    id,
+                    amount: deletedExpense.amount,
+                    category: deletedExpense.category
+                }, user.id);
+            }
         }
     };
 

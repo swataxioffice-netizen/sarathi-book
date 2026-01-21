@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../utils/supabase';
 import { useSettings } from '../contexts/SettingsContext';
+import { Analytics } from '../utils/monitoring';
 import DocumentScanner from './DocumentScanner';
 
 interface VaultDoc {
@@ -173,6 +174,11 @@ const DocumentVault: React.FC<{ onStatsUpdate?: (stats: any) => void }> = ({ onS
                         setAllDocs(current => current.map(d =>
                             (d.type === docType && d.name === docName) ? { ...d, id: result.data.id } : d
                         ));
+                        Analytics.logActivity('document_uploaded', {
+                            type: docType,
+                            name: docName,
+                            expiry: formDate
+                        }, user.id);
                     }
                 } catch (err: any) {
                     console.error('Background Save Failed:', err);
@@ -200,6 +206,11 @@ const DocumentVault: React.FC<{ onStatsUpdate?: (stats: any) => void }> = ({ onS
                 try {
                     const { error } = await supabase.from('user_documents').delete().eq('id', doc.id);
                     if (error) throw error;
+                    Analytics.logActivity('document_deleted', {
+                        id: doc.id,
+                        type: doc.type,
+                        name: doc.name
+                    }, user.id);
                 } catch (err) {
                     console.error('Delete Failed:', err);
                     setAllDocs(previousDocs); // Revert

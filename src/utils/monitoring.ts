@@ -103,7 +103,9 @@ export const Analytics = {
 
     // 4. Admin Analytics (Supabase)
     logActivity: async (
-        type: 'invoice_created' | 'quotation_created' | 'fare_calculated' | 'login' | 'share',
+        type: 'invoice_created' | 'quotation_created' | 'fare_calculated' | 'login' | 'share' |
+            'expense_logged' | 'expense_deleted' | 'document_uploaded' | 'document_deleted' |
+            'staff_added' | 'payslip_generated' | 'ai_query' | 'note_created' | 'note_updated',
         details: any,
         userId?: string
     ) => {

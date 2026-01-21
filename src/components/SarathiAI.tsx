@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, X, Bot, User, Loader2, Sparkles, MoveHorizontal, Mic } from 'lucide-react';
 import { chatWithSarathi } from '../utils/geminiApi';
+import { Analytics } from '../utils/monitoring';
 
 interface SarathiAIProps {
     onNavigate?: (page: string) => void;
@@ -89,6 +90,12 @@ const SarathiAI: React.FC<SarathiAIProps> = ({ onNavigate }) => {
 
         // Voice Assistant: Talk back!
         speakResponse(responseText);
+
+        Analytics.logActivity('ai_query', {
+            query: textToSend,
+            responseLength: responseText.length,
+            hasCommand: !!navMatch
+        });
     };
 
     const toggleVoiceInput = () => {

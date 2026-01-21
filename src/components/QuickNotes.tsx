@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { safeJSONParse } from '../utils/storage';
+import { Analytics } from '../utils/monitoring';
 import { StickyNote, Plus, Trash2, X, Save, Mic } from 'lucide-react';
 
 interface Note {
@@ -86,9 +87,15 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
             if (exists) {
                 return prev.map(n => n.id === selectedNote.id ? selectedNote : n);
             } else {
+                Analytics.logActivity('note_created', { length: selectedNote.content.length });
                 return [selectedNote, ...prev];
             }
         });
+
+        if (notes.find(n => n.id === selectedNote.id)) {
+            Analytics.logActivity('note_updated', { id: selectedNote.id });
+        }
+
         handleClose();
     };
 

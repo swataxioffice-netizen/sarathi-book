@@ -4,6 +4,7 @@ import {
     Users, Plus, ChevronRight, User, Wallet, Calendar,
     Save, ArrowLeft, AlertCircle
 } from 'lucide-react';
+import { Analytics } from '../utils/monitoring';
 
 const SalaryManager: React.FC = () => {
     const { settings, updateSettings } = useSettings();
@@ -76,6 +77,12 @@ const SalaryManager: React.FC = () => {
         setShowAddModal(false);
         setNewName('');
         setNewPhone('');
+
+        Analytics.logActivity('staff_added', {
+            name: newStaff.name,
+            role: newStaff.role,
+            dutyPay: newStaff.salaryConfig.dutyPay
+        });
     };
 
     // Indian Salary Logic: 
@@ -120,6 +127,17 @@ const SalaryManager: React.FC = () => {
     };
 
     const payroll = calculatePayroll();
+
+    const handleGenerateSlip = () => {
+        alert(`Payslip generated for ${selectedStaff?.name}`);
+        // In real app, generate PDF here.
+        Analytics.logActivity('payslip_generated', {
+            staffId: selectedStaff?.id,
+            staffName: selectedStaff?.name,
+            amount: payroll.net,
+            month: new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+        });
+    };
 
     if (selectedStaff) {
         return (
@@ -245,7 +263,7 @@ const SalaryManager: React.FC = () => {
                 </div>
 
                 <div className="px-4">
-                    <button className="w-full h-14 bg-green-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-green-200 flex items-center justify-center gap-2 hover:bg-green-700 active:scale-95 transition-all">
+                    <button onClick={handleGenerateSlip} className="w-full h-14 bg-green-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-green-200 flex items-center justify-center gap-2 hover:bg-green-700 active:scale-95 transition-all">
                         <Save size={18} /> Generate Slip
                     </button>
                     <p className="text-center text-[10px] text-slate-400 mt-4 font-bold uppercase tracking-widest px-8 leading-relaxed">
