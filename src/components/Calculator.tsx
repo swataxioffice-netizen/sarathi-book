@@ -606,6 +606,14 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
 
     return (
         <div className="space-y-4">
+            {/* Default SEO for Calculator Page */}
+            {!isLandingView && (
+                <SEOHead
+                    title="Taxi Fare Calculator India - Estimate Cab Rates Online"
+                    description="Calculate accurate taxi fares in India for Drop Trips, Round Trips, and Local Hourly Rentals. Get price estimates with driver batta, tolls, and permit charges included."
+                />
+            )}
+
             {/* Landing View (SEO Page) */}
             {isLandingView && result && (
                 <SeoFareDisplay

@@ -55,6 +55,19 @@
                     "value": "public, max-age=0, must-revalidate"
                 }
             ]
+        },
+        {
+            "source": "/(.*).xml",
+            "headers": [
+                {
+                    "key": "Content-Type",
+                    "value": "text/xml"
+                },
+                {
+                    "key": "Cache-Control",
+                    "value": "public, max-age=0, must-revalidate"
+                }
+            ]
         }
     ],
     "rewrites": [
