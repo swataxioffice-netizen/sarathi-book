@@ -3,11 +3,11 @@ import { GSTService } from '../services/gst'; // Import Service
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import {
-    User as UserIcon, LogOut,
+    User as UserIcon,
     Contact, Landmark, Car, FileText, ChevronRight,
     RefreshCw, X, Trash2, Sparkles, Crown, Cloud, Users
 } from 'lucide-react';
-import GoogleSignInButton from './GoogleSignInButton';
+
 import { supabase } from '../utils/supabase';
 import { VEHICLES } from '../config/vehicleRates';
 import { validateVehicleNumber } from '../utils/validation';
@@ -23,7 +23,7 @@ import { subscribeToPush } from '../utils/push';
 
 const Profile: React.FC = () => {
     // Contexts
-    const { user, signOut, loading: authLoading } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const { settings, updateSettings, saveSettings, docStats } = useSettings();
 
     // Local State
@@ -209,13 +209,7 @@ const Profile: React.FC = () => {
                             <span className={settings.isPremium ? "text-amber-600" : "text-slate-500"}>{settings.isPremium ? "PRO MEMBER" : "FREE PLAN"}</span>
                         </p>
 
-                        {!user ? (
-                            <GoogleSignInButton text="Sign In" className="!w-fit !py-1.5 !px-3 !text-[10px] !rounded-lg !shadow-sm !border-slate-200 !gap-2" />
-                        ) : (
-                            <button onClick={signOut} className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 hover:text-red-600 transition-colors uppercase tracking-wider bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 w-fit">
-                                <LogOut size={12} /> Sign Out
-                            </button>
-                        )}
+
                     </div>
 
                     {/* Completion Circle */}

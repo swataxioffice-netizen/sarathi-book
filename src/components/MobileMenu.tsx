@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { X, User, Crown, Users, BadgeIndianRupee, LogOut, ChevronRight, Landmark } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
+import GoogleSignInButton from './GoogleSignInButton';
 
 interface MobileMenuProps {
     isOpen: boolean;
@@ -87,7 +88,11 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, activeTab, set
                         ) : (
                             <div className="w-full">
                                 <h3 className="font-bold text-lg mb-1">Welcome Guest</h3>
-                                <p className="text-xs text-blue-200 mt-1 font-medium">Sign in to sync data</p>
+                                <p className="text-xs text-blue-200 mt-1 font-medium mb-3">Sign in to sync data</p>
+                                <GoogleSignInButton
+                                    text="Sign In"
+                                    className="!w-full !py-2 !px-4 !text-xs !bg-white/10 !text-white !border-white/20 hover:!bg-white/20 !shadow-none"
+                                />
                             </div>
                         )}
                     </div>

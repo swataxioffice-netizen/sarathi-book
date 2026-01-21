@@ -9,7 +9,7 @@ interface SideNavProps {
 }
 
 const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
-    const { user, signOut, signInWithGoogle, isAdmin } = useAuth();
+    const { user, signOut, isAdmin } = useAuth();
 
     const navItems = [
         { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
@@ -87,21 +87,13 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
             </nav>
 
             <div className="p-4 border-t border-slate-100">
-                {user ? (
+                {user && (
                     <button
                         onClick={() => signOut()}
                         className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all font-bold text-sm"
                     >
                         <LogOut size={20} />
                         <span>Sign Out</span>
-                    </button>
-                ) : (
-                    <button
-                        onClick={() => signInWithGoogle()}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[#0047AB] bg-blue-50 hover:bg-blue-100 transition-all font-bold text-sm"
-                    >
-                        <User size={20} />
-                        <span>Sign In</span>
                     </button>
                 )}
                 <div className="mt-4 text-center">

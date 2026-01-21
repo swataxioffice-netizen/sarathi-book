@@ -1,5 +1,5 @@
 import { useUpdate } from '../contexts/UpdateContext';
-import { RefreshCw, User } from 'lucide-react';
+import { RefreshCw, Menu } from 'lucide-react';
 import Notifications from './Notifications';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -9,25 +9,20 @@ interface HeaderProps {
     onMenuClick?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ activeTab, onMenuClick }) => {
+const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     const { needRefresh, updateServiceWorker } = useUpdate();
-    const { user } = useAuth();
 
     return (
         <header className="bg-white border-b-2 border-slate-100 px-3 py-1.5 flex-none sticky top-0 z-40 shadow-sm">
             <div className="flex justify-between items-center max-w-md mx-auto relative">
                 {/* Left: Profile/Menu Button */}
-                <div className="flex-1 flex justify-start">
+                <div className="flex-1 flex justify-start items-center gap-2">
                     <button
                         onClick={onMenuClick}
                         aria-label="Open Menu"
-                        className={`w-9 h-9 flex items-center justify-center rounded-full border transition-colors ${activeTab === 'profile' ? 'bg-[#0047AB] text-white border-[#0047AB]' : 'bg-slate-50 text-slate-400 border-slate-100 hover:bg-blue-50 hover:text-blue-600'}`}
+                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 shadow-sm active:scale-95 transition-all hover:bg-slate-50"
                     >
-                        {user?.user_metadata?.avatar_url ? (
-                            <img src={user.user_metadata.avatar_url || user.user_metadata.picture} referrerPolicy="no-referrer" alt="Profile" width="36" height="36" className="w-full h-full rounded-full object-cover" />
-                        ) : (
-                            <User size={18} />
-                        )}
+                        <Menu size={20} strokeWidth={2.5} />
                     </button>
                 </div>
 

@@ -729,21 +729,28 @@ function AppContent() {
                 <p className="text-sm font-bold text-slate-900">{user?.user_metadata?.full_name || 'Guest User'}</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Driver Account</p>
               </div>
-              <button
-                onClick={() => setActiveTab('profile')}
-                className="w-10 h-10 rounded-full bg-blue-100 text-[#0047AB] flex items-center justify-center font-black border border-blue-200 hover:bg-blue-200 transition-colors"
-                title={loading ? "Syncing data..." : "View Profile"}
-              >
-                {authLoading ? (
-                  <RefreshCw size={16} className="animate-spin text-blue-400" />
-                ) : (
-                  user?.user_metadata?.avatar_url ? (
-                    <img src={user.user_metadata.avatar_url || user.user_metadata.picture} referrerPolicy="no-referrer" alt="Profile" width="40" height="40" className="w-full h-full rounded-full object-cover" />
+              {!user ? (
+                <GoogleSignInButton
+                  text="Sign In"
+                  className="!w-fit !py-2 !px-4 !text-xs !rounded-xl !shadow-sm !border-slate-200 !gap-2"
+                />
+              ) : (
+                <button
+                  onClick={() => setActiveTab('profile')}
+                  className="w-10 h-10 rounded-full bg-blue-100 text-[#0047AB] flex items-center justify-center font-black border border-blue-200 hover:bg-blue-200 transition-colors"
+                  title={loading ? "Syncing data..." : "View Profile"}
+                >
+                  {authLoading ? (
+                    <RefreshCw size={16} className="animate-spin text-blue-400" />
                   ) : (
-                    user?.user_metadata?.full_name?.[0]?.toUpperCase() || 'U'
-                  )
-                )}
-              </button>
+                    user?.user_metadata?.avatar_url ? (
+                      <img src={user.user_metadata.avatar_url || user.user_metadata.picture} referrerPolicy="no-referrer" alt="Profile" width="40" height="40" className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      user?.user_metadata?.full_name?.[0]?.toUpperCase() || 'U'
+                    )
+                  )}
+                </button>
+              )}
             </div>
           </header>
 
