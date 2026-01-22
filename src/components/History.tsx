@@ -7,7 +7,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAdProtection } from '../hooks/useAdProtection';
 import PDFPreviewModal from './PDFPreviewModal';
 
-const InterstitialAd = React.lazy(() => import('./InterstitialAd'));
 
 interface HistoryProps {
     trips?: Trip[];
@@ -114,15 +113,15 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
         });
     };
 
-    // Ad Logic
-    const { showAd, setShowAd, triggerAction, onAdComplete } = useAdProtection();
+    // Ad Removal
+    const { triggerAction } = useAdProtection();
+
 
     return (
         <div className="space-y-4 pt-2 pb-24">
-            {/* Ad Overlay */}
             <React.Suspense fallback={null}>
-                {showAd && <InterstitialAd isOpen={showAd} onClose={() => setShowAd(false)} onComplete={onAdComplete} />}
             </React.Suspense>
+
 
             <PDFPreviewModal
                 isOpen={showPreview}

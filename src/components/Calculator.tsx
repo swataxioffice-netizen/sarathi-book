@@ -40,7 +40,6 @@ import SEOHead from './SEOHead';
 type FareResult = ReturnType<typeof calculateFare>;
 
 import { useAdProtection } from '../hooks/useAdProtection';
-const InterstitialAd = React.lazy(() => import('./InterstitialAd'));
 
 import { generateTripSchema } from '../utils/seoSchema';
 
@@ -932,7 +931,8 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
 // --- 2. Acting Driver Calculator ---
 const ActingDriverCalculator: React.FC = () => {
     useSettings();
-    const { showAd, setShowAd, triggerAction, onAdComplete } = useAdProtection();
+    const { triggerAction } = useAdProtection();
+
     const [serviceType, setServiceType] = useState<'local8' | 'local12' | 'outstation'>('local8');
     const [days, setDays] = useState('1');
     const [stayProvided, setStayProvided] = useState(false);
@@ -1056,8 +1056,8 @@ const ActingDriverCalculator: React.FC = () => {
 
             <Button onClick={handleCalculate} disabled={!days} text="Calculate Driver Cost" ariaLabel="Calculate Acting Driver Cost" />
             <React.Suspense fallback={null}>
-                {showAd && <InterstitialAd isOpen={showAd} onClose={() => setShowAd(false)} onComplete={onAdComplete} />}
             </React.Suspense>
+
             {result && (
                 <ResultCard
                     title="Estimated Fare"
@@ -1096,7 +1096,8 @@ const RelocationCalculator: React.FC = () => {
 
     const [result, setResult] = useState<{ fare: number; details: string[] } | null>(null);
 
-    const { showAd, setShowAd, triggerAction, onAdComplete } = useAdProtection();
+    const { triggerAction } = useAdProtection();
+
 
     // Auto-calculate distance
     useEffect(() => {
@@ -1335,8 +1336,8 @@ const RelocationCalculator: React.FC = () => {
 
             <Button onClick={handleCalculate} disabled={!distance} text="Calculate Relocation Cost" ariaLabel="Calculate Vehicle Relocation Cost" />
             <React.Suspense fallback={null}>
-                {showAd && <InterstitialAd isOpen={showAd} onClose={() => setShowAd(false)} onComplete={onAdComplete} />}
             </React.Suspense>
+
             {result && <ResultCard title="Vehicle Relocation" amount={result.fare} details={result.details} sub="Safe & Professional Driver" />}
 
             {showMap && (
@@ -1424,7 +1425,8 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
     const [includeGst, setIncludeGst] = useState(false);
 
     // Ad Logic
-    const { showAd, setShowAd, triggerAction, onAdComplete } = useAdProtection();
+    const { triggerAction } = useAdProtection();
+
 
     const gstAmount = Math.round(amount * 0.05);
     const finalAmount = includeGst ? amount + gstAmount : amount;
@@ -1558,8 +1560,8 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
             )}
             {/* Ad Overlay */}
             <React.Suspense fallback={null}>
-                {showAd && <InterstitialAd isOpen={showAd} onClose={() => setShowAd(false)} onComplete={onAdComplete} />}
             </React.Suspense>
+
 
             {/* Overlay for Expanded State */}
             {expanded && (
@@ -1699,12 +1701,13 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                                         Quotation
                                     </button>
                                     <button
-                                        onClick={() => triggerAction(shareToWhatsApp)}
+                                        onClick={() => shareToWhatsApp()}
                                         className="bg-[#25D366] text-white font-black py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-[9px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                                     >
                                         <Share2 size={16} />
                                         Share
                                     </button>
+
                                 </div>
                             </div>
                         </div>

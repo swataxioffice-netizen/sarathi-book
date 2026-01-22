@@ -22,8 +22,8 @@ import { calculateAdvancedRoute } from '../utils/routesApi';
 import { isHillStationLocation } from '../utils/locationUtils';
 import { calculateGST, determineGSTType, GSTRate, GSTBreakdown } from '../utils/gstUtils';
 import { useAdProtection } from '../hooks/useAdProtection';
-const InterstitialAd = React.lazy(() => import('./InterstitialAd'));
 import { Suspense } from 'react';
+
 
 
 // Reusing types from TripForm but adapted for Quotation context if needed, or just using local interfaces
@@ -70,7 +70,9 @@ const DEFAULT_TERMS = [
 const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepChange, quotations }) => {
     const { settings } = useSettings();
     const { user } = useAuth();
-    const { showAd, setShowAd, triggerAction, onAdComplete } = useAdProtection();
+    const { triggerAction } = useAdProtection();
+
+
 
     // Mock user/ad protection if removed imports
 
@@ -512,8 +514,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                 return;
             }
 
-            // Lock ID/No if needed (though randomUUID used below)
-            const prefetch = import('jspdf');
+            // Pre-warm PDF dependencies
+            import('jspdf');
 
             triggerAction(async () => {
                 try {
@@ -1265,8 +1267,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             {step === 4 && renderStep4()}
             <Suspense fallback={null}>
                 {showPreview && <PDFPreviewModal isOpen={showPreview} onClose={() => setShowPreview(false)} pdfUrl={previewPdfUrl} title="Invoice Preview" onShare={() => triggerAction(handleShare)} />}
-                {showAd && <InterstitialAd isOpen={showAd} onClose={() => { setShowAd(false); setIsSubmitting(false); }} onComplete={onAdComplete} />}
             </Suspense>
+
         </div>
 
     );

@@ -26,7 +26,8 @@ import { calculateAdvancedRoute } from '../utils/routesApi';
 import { performOcr, parseOdometer } from '../utils/visionApi';
 import { calculateGST, determineGSTType, GSTRate, GSTBreakdown } from '../utils/gstUtils';
 
-const InterstitialAd = React.lazy(() => import('./InterstitialAd'));
+// --- Types ---
+
 
 // --- Types ---
 type TripMode = 'drop' | 'outstation' | 'local' | 'custom' | null;
@@ -68,7 +69,7 @@ const DEFAULT_TERMS = [
 const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTemplate, trips }) => {
     const { settings } = useSettings();
     const { user } = useAuth();
-    const { triggerAction, onAdComplete, showAd, setShowAd } = useAdProtection();
+    const { triggerAction } = useAdProtection();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Track if this session has already saved a trip to prevent duplicates
@@ -1503,9 +1504,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
             <Suspense fallback={null}>
                 {showPreview && <PDFPreviewModal isOpen={showPreview} onClose={() => setShowPreview(false)} pdfUrl={previewPdfUrl} title="Invoice Preview" onShare={() => triggerAction(handleShare)} />}
-                {showAd && <InterstitialAd isOpen={showAd} onClose={() => { setShowAd(false); setIsSubmitting(false); }} onComplete={onAdComplete} />}
-
             </Suspense>
+
+
         </div>
     );
 };
