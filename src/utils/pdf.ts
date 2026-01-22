@@ -318,8 +318,22 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
         const vType = (trip as any).vehicleType || 'Any'; // Cast for Quotation field
         doc.text(`Vehicle Class: ${vType}`, rightAlignX, y, { align: 'right' });
     } else {
-        doc.text(`Vehicle No: ${vehicleNumber}`, rightAlignX, y, { align: 'right' });
+        const vehText = trip.vehicleModel ? `${vehicleNumber} (${trip.vehicleModel})` : vehicleNumber;
+        doc.text(`Vehicle No: ${vehText}`, rightAlignX, y, { align: 'right' });
     }
+
+    // Add Service Type below Vehicle info
+    const serviceTypeMap: Record<string, string> = {
+        'drop': 'One Way Drop',
+        'outstation': 'Round Trip',
+        'local': 'Local Package',
+        'custom': 'Custom Service',
+        'package': 'Tour Package',
+        'hourly': 'Local Rental'
+    };
+    const serviceName = serviceTypeMap[trip.mode] || trip.mode || 'N/A';
+    y += 5;
+    doc.text(`Service Type: ${serviceName.toUpperCase()}`, rightAlignX, y, { align: 'right' });
     y += 5;
     // RCM Check
     let isRcm = false;
