@@ -744,26 +744,44 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     const handleSaveAndShare = async () => {
         if (isSubmitting) return;
         setIsSubmitting(true);
+
         try {
             const res = await performCalculation();
             if (!res) {
                 setIsSubmitting(false);
                 return;
             }
-            // Proceed with fresh res but share logic will reuse the session IDs from handleSave
-            const savedTrip = await handleSave(res);
-            if (savedTrip) {
-                await handleShare(res);
-                setStep(1);
-                if (onStepChange) onStepChange(1);
-            }
+
+            // Lock IDs now so they are ready for background save/share
+            if (!sessionTripId.current) sessionTripId.current = crypto.randomUUID();
+            if (!sessionInvoiceNo.current) sessionInvoiceNo.current = nextInvoiceNo;
+
+            // Pre-warm PDF dependencies
+            import('jspdf');
+
+            triggerAction(async () => {
+                try {
+                    // Start saving in background (optimistic)
+                    handleSave(res).catch(e => console.error('Background save failed:', e));
+
+                    // Immediately trigger share (more likely to succeed on gesture)
+                    await handleShare(res);
+
+                    setStep(1);
+                    if (onStepChange) onStepChange(1);
+                } catch (error) {
+                    console.error('Error in post-ad action:', error);
+                    alert('Sharing failed. Please try again.');
+                } finally {
+                    setIsSubmitting(false);
+                }
+            });
         } catch (error) {
-            console.error('Error in Save & Share:', error);
-            alert('Something went wrong while saving. Please try again.');
-        } finally {
+            console.error('Save & Share setup failed:', error);
             setIsSubmitting(false);
         }
     };
+
 
 
     // --- Helper Functions ---
@@ -1485,7 +1503,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
             <Suspense fallback={null}>
                 {showPreview && <PDFPreviewModal isOpen={showPreview} onClose={() => setShowPreview(false)} pdfUrl={previewPdfUrl} title="Invoice Preview" onShare={() => triggerAction(handleShare)} />}
-                {showAd && <InterstitialAd isOpen={showAd} onClose={() => setShowAd(false)} onComplete={onAdComplete} />}
+                {showAd && <InterstitialAd isOpen={showAd} onClose={() => { setShowAd(false); setIsSubmitting(false); }} onComplete={onAdComplete} />}
+
             </Suspense>
         </div>
     );
