@@ -157,6 +157,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     // Results
     const [showPreview, setShowPreview] = useState(false);
     const [previewPdfUrl, setPreviewPdfUrl] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
 
 
 
@@ -593,8 +595,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         setShowPreview(true);
     };
 
-    const handleShare = async () => {
-        const res = await performCalculation();
+    const handleShare = async (calcRes?: CalculationResult) => {
+        const res = calcRes || await performCalculation();
         if (!res) return;
 
         // Ensure we have a session ID/Invoice if not already saved
@@ -700,9 +702,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
     // ... (existing helper imports) ...
 
-    const handleSave = async () => {
-        const res = await performCalculation();
-        if (!res) return;
+    const handleSave = async (calcRes?: CalculationResult) => {
+        const res = calcRes || await performCalculation();
+        if (!res) return null;
         if (customerName) saveToHistory('customer_name', customerName);
         if (customerPhone) saveToHistory('customer_phone', customerPhone);
         if (fromLoc) saveToHistory('location', fromLoc);
@@ -723,7 +725,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
         Analytics.generateInvoice('invoice', res.total);
 
-        onSaveTrip({
+        const tripData: Trip = {
             id: sessionTripId.current, invoiceNo: sessionInvoiceNo.current, customerName: customerName || 'Cash Guest', customerPhone, customerGst,
             from: fromLoc, to: toLoc, billingAddress, startKm: isOdometerMode ? startKm : 0, endKm: isOdometerMode ? endKm : (parseFloat(distanceOverride) || 0),
             startTime: '', endTime: '', toll: parseFloat(toll) || 0, parking: parseFloat(parking) || 0, nightBata: parseFloat(nightCharge) || 0,
@@ -738,19 +740,36 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             vehicleId: selectedVehicleId,
             vehicleNumber: currentV?.number,
             vehicleModel: currentV?.model
-        });
+        };
+
+        onSaveTrip(tripData);
+        return tripData;
     };
 
     const handleSaveAndShare = async () => {
-        const res = await performCalculation();
-        if (!res) return;
-        // Proceed with fresh res but share logic will reuse the session IDs from handleSave
-        await handleSave();
-        await handleShare();
-
-        setStep(1);
-        if (onStepChange) onStepChange(1);
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+        try {
+            const res = await performCalculation();
+            if (!res) {
+                setIsSubmitting(false);
+                return;
+            }
+            // Proceed with fresh res but share logic will reuse the session IDs from handleSave
+            const savedTrip = await handleSave(res);
+            if (savedTrip) {
+                await handleShare(res);
+                setStep(1);
+                if (onStepChange) onStepChange(1);
+            }
+        } catch (error) {
+            console.error('Error in Save & Share:', error);
+            alert('Something went wrong while saving. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
+
 
     // --- Helper Functions ---
     const handleAddCharge = () => {
@@ -1427,8 +1446,19 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             <div className="flex gap-2.5">
                 <button onClick={handleBack} className="flex-1 h-12 border-2 border-slate-100 text-slate-400 font-black rounded-2xl uppercase text-[9px] tracking-widest">Back</button>
                 <div className="flex-[3] flex gap-2">
-                    <button onClick={handlePreview} className="flex-1 border-2 border-[#0047AB] text-[#0047AB] h-12 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] hover:bg-blue-50 transition-colors">PREVIEW</button>
-                    <button onClick={() => triggerAction(handleSaveAndShare)} className="flex-1 bg-blue-600 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-blue-600/20 flex items-center justify-center gap-3"><Share2 size={16} /> SAVE & SHARE</button>
+                    <button onClick={handlePreview} disabled={isSubmitting} className="flex-1 border-2 border-[#0047AB] text-[#0047AB] h-12 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] hover:bg-blue-50 transition-colors disabled:opacity-50">PREVIEW</button>
+                    <button
+                        onClick={() => triggerAction(handleSaveAndShare)}
+                        disabled={isSubmitting}
+                        className="flex-1 bg-blue-600 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-blue-600/20 flex items-center justify-center gap-3 disabled:opacity-50"
+                    >
+                        {isSubmitting ? (
+                            <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                        ) : (
+                            <Share2 size={16} />
+                        )}
+                        SAVE & SHARE
+                    </button>
                 </div>
             </div>
         </div>

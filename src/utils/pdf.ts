@@ -696,7 +696,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
             doc.setFontSize(7);
             setThemeColor();
             doc.setFont('helvetica', 'bold');
-             
+
             doc.text('SARATHIBOOK.COM', 105, y + 2, {
                 align: 'center',
                 url: 'https://sarathibook.com'
@@ -805,14 +805,17 @@ export const shareReceipt = async (trip: Trip, settings: PDFSettings) => {
     const file = new File([pdfBlob], fullFileName, { type: 'application/pdf' });
 
     if (navigator.share) {
-        navigator.share({
-            files: [file],
-            title: 'Trip Invoice',
-            text: `Invoice for trip by ${trip.customerName}`
-        }).catch(err => {
+        try {
+            await navigator.share({
+                files: [file],
+                title: 'Trip Invoice',
+                text: `Invoice for trip by ${trip.customerName}`
+            });
+        } catch (err) {
             console.error('Error sharing invoice:', err);
+            // Fallback to save if user cancels or share fails
             doc.save(fullFileName);
-        });
+        }
     } else {
         doc.save(fullFileName);
     }
@@ -996,7 +999,7 @@ export const generateFinancialReportPDF = async (trips: Trip[], expenses: Expens
     doc.setFontSize(7);
     setThemeColor();
     doc.setFont('helvetica', 'bold');
-     
+
     doc.text('SARATHIBOOK.COM', 105, y + 2, {
         align: 'center',
         url: 'https://sarathibook.com'
