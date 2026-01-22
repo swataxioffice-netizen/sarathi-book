@@ -165,7 +165,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
         doc.text('QUOTATION / PROFORMA', 105, y, { align: 'center' });
     } else {
         const isRegistered = !!gstin;
-        const title = (isRegistered && gstEnabled) ? 'TAX INVOICE' : 'TRIP RECEIPT';
+        const title = (isRegistered && gstEnabled) ? 'TAX INVOICE' : (trip.mode === 'custom' ? 'INVOICE' : 'TRIP RECEIPT');
         doc.text(title, 105, y, { align: 'center' });
     }
 
