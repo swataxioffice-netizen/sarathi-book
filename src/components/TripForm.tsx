@@ -508,8 +508,16 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         // Construct items for Consistent PDF Format
         const pdfItems = [];
 
-        // 1. Base Fare
-        if (mode !== 'custom') {
+        // 1. Base Fare or Custom Service Items
+        if (mode === 'custom') {
+            customLineItems.forEach(i => pdfItems.push({
+                description: i.description,
+                amount: i.amount,
+                rate: i.rate.toString(),
+                quantity: i.qty,
+                sac: i.sac
+            }));
+        } else {
             const baseRate = res.rateUsed;
             const baseDist = res.effectiveDistance || res.distance;
             let baseDesc = mode === 'local' ? `Local Rental` : (mode === 'outstation' ? `Round Trip` : `One Way Drop`);
@@ -538,7 +546,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             });
         }
 
-        // 2. Add Charges
+        // 2. Add Additional Charges (Batta, Tolls, etc.)
         if (res.driverBatta > 0) {
             const dist = res.effectiveDistance || res.distance;
             let daysUsed = mode === 'outstation' ? Math.max(days, Math.ceil(dist / TRIP_LIMITS.max_km_per_day)) : 1;
@@ -558,19 +566,6 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         if (parseFloat(permit) > 0) pdfItems.push({ description: 'Permit Charges', amount: parseFloat(permit), rate: permit, quantity: 1 });
         if (res.hillStationCharges > 0) pdfItems.push({ description: 'Hill Station Charges', amount: res.hillStationCharges, rate: res.hillStationCharges.toString(), quantity: 1 });
         if (parseFloat(nightCharge) > 0) pdfItems.push({ description: 'Night Charges', amount: parseFloat(nightCharge), rate: nightCharge, quantity: 1 });
-
-        // 3. User Added Extra Items
-        if (mode === 'custom') {
-            customLineItems.forEach(i => pdfItems.push({
-                description: i.description,
-                amount: i.amount,
-                rate: i.rate.toString(),
-                quantity: i.qty,
-                sac: i.sac
-            }));
-        } else {
-            // Standard Base Calculation added above
-        }
 
         extraItems.forEach(i => pdfItems.push({ description: i.description, amount: i.amount, rate: i.amount.toString(), quantity: 1 }));
 
@@ -608,7 +603,16 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         // Construct items for Consistent PDF Format (Same as Quotation)
         const pdfItems = [];
 
-        if (mode !== 'custom') {
+        // 1. Base Fare or Custom Service Items
+        if (mode === 'custom') {
+            customLineItems.forEach(i => pdfItems.push({
+                description: i.description,
+                amount: i.amount,
+                rate: i.rate.toString(),
+                quantity: i.qty,
+                sac: i.sac
+            }));
+        } else {
             const baseRate = res.rateUsed;
             const baseDist = res.effectiveDistance || res.distance;
             let baseDesc = mode === 'local' ? `Local Rental` : (mode === 'outstation' ? `Round Trip` : `One Way Drop`);
@@ -641,6 +645,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             });
         }
 
+        // 2. Add Additional Charges (Batta, Tolls, etc.)
         if (res.driverBatta > 0) {
             const dist = res.effectiveDistance || res.distance;
             let daysUsed = mode === 'outstation' ? Math.max(days, Math.ceil(dist / TRIP_LIMITS.max_km_per_day)) : 1;
@@ -660,16 +665,6 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         if (parseFloat(permit) > 0) pdfItems.push({ description: 'Permit Charges', amount: parseFloat(permit), rate: permit, quantity: 1 });
         if (res.hillStationCharges > 0) pdfItems.push({ description: 'Hill Station Charges', amount: res.hillStationCharges, rate: res.hillStationCharges.toString(), quantity: 1 });
         if (parseFloat(nightCharge) > 0) pdfItems.push({ description: 'Night Charges', amount: parseFloat(nightCharge), rate: nightCharge, quantity: 1 });
-
-        if (mode === 'custom') {
-            customLineItems.forEach(i => pdfItems.push({
-                description: i.description,
-                amount: i.amount,
-                rate: i.rate.toString(),
-                quantity: i.qty,
-                sac: i.sac
-            }));
-        }
 
         extraItems.forEach(i => pdfItems.push({ description: i.description, amount: i.amount, rate: i.amount.toString(), quantity: 1 }));
 
