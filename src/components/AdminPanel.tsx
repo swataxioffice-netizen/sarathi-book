@@ -35,23 +35,31 @@ const AdminPanel: React.FC = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            setLoadingUsers(true);
+            try {
+                setLoadingUsers(true);
+                console.log('Fetching admin data...');
 
-            const { data: usersData } = await supabase.from('profiles').select('*');
-            if (usersData) setUsers(usersData);
+                const { data: usersData, error: usersError } = await supabase.from('profiles').select('*');
+                if (usersError) console.error('Error fetching profiles:', usersError);
+                if (usersData) setUsers(usersData);
 
-            const { data: docsData } = await supabase.from('user_documents').select('*');
-            if (docsData) setDocuments(docsData);
+                const { data: docsData, error: docsError } = await supabase.from('user_documents').select('*');
+                if (docsError) console.error('Error fetching documents:', docsError);
+                if (docsData) setDocuments(docsData);
 
-            const { data: activityData } = await supabase
-                .from('admin_analytics')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(100);
+                const { data: activityData, error: activityError } = await supabase
+                    .from('admin_analytics')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(100);
 
-            if (activityData) setActivities(activityData);
-
-            setLoadingUsers(false);
+                if (activityError) console.error('Error fetching activity:', activityError);
+                if (activityData) setActivities(activityData);
+            } catch (err) {
+                console.error('Unexpected error in AdminPanel fetchData:', err);
+            } finally {
+                setLoadingUsers(false);
+            }
         };
         fetchData();
 

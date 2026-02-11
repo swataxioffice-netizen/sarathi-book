@@ -36,12 +36,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Initial session check
         const initAuth = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                console.log('Auth: Initializing session check...');
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error) {
+                    console.error('Auth: Session fetch error:', error);
+                    return;
+                }
                 const current = session?.user ?? null;
+                console.log('Auth: Initial user state:', current ? current.email : 'Guest');
                 setUser(current);
-                if (current) ensureProfile(current);
+                if (current) await ensureProfile(current);
             } catch (err) {
-                console.error('Auth init failed:', err);
+                console.error('Auth: Critical init failure:', err);
             } finally {
                 setLoading(false);
             }
@@ -51,30 +57,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Auth state listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('Auth State Change:', event);
+            console.log('Auth: State Change Event ->', event);
             const current = session?.user ?? null;
-            setUser(current);
-            setLoading(false);
-            if (current) await ensureProfile(current);
 
-            // Handle cross-tab/external sign out
-            if (event === 'SIGNED_OUT') {
+            if (event === 'SIGNED_IN') {
+                console.log('Auth: User signed in:', current?.email);
+                setUser(current);
+                if (current) await ensureProfile(current);
+            } else if (event === 'SIGNED_OUT') {
+                console.log('Auth: User signed out');
                 setUser(null);
+            } else if (event === 'USER_UPDATED') {
+                setUser(current);
             }
+
+            setLoading(false);
         });
 
         return () => subscription.unsubscribe();
     }, []);
 
     const signInWithGoogle = async () => {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: window.location.origin,
-                queryParams: { prompt: 'select_account' }
+        try {
+            console.log('Auth: Starting Google OAuth flow with origin:', window.location.origin);
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin,
+                    queryParams: { prompt: 'select_account' }
+                }
+            });
+            if (error) {
+                console.error('Auth: Google OAuth Error:', error.message);
+                throw error;
             }
-        });
-        if (error) throw error;
+        } catch (err: any) {
+            console.error('Auth: Google Sign-In failed:', err);
+            // Check for common redirect errors
+            if (err.message?.includes('redirect_uri')) {
+                alert(`Auth Error: This URL (${window.location.origin}) might not be whitelisted in your Supabase Auth settings.`);
+            } else {
+                alert('Google Sign-In failed: ' + (err.message || 'Unknown error'));
+            }
+            throw err;
+        }
     };
 
     const signInWithIdToken = async (token: string) => {
