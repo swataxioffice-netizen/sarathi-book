@@ -34,6 +34,7 @@ import { Analytics } from '../utils/monitoring';
 import { isHillStationLocation } from '../utils/locationUtils';
 import AdditionalChargesDrawer from './AdditionalChargesDrawer';
 import SEOHead from './SEOHead';
+import CalculatorFAQ from './CalculatorFAQ';
 
 
 // Define result type based on calculation output
@@ -2102,6 +2103,30 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
                                 </button>
                             </div>
                         )}
+
+                        {/* Informational SEO Content Section */}
+                        <div className="pt-12 space-y-8">
+                            <section>
+                                <h3 className="text-xl font-black text-slate-800 uppercase tracking-tighter mb-4 leading-none border-l-4 border-blue-600 pl-4">Why use Sarathi Book Calculator?</h3>
+                                <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                                    Our platform provides the most accurate taxi fare estimates in India by integrating real-time Google Maps data with localized union tariff rates. Whether you are planning a local city trip, an outstation drop trip, or a multi-day round trip, we provide a complete breakdown of costs including base fare, driver bata, tolls, and state permit charges.
+                                </p>
+                            </section>
+
+                            <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                                    <h4 className="font-black text-slate-800 text-xs uppercase tracking-widest mb-3">Professional Estimates</h4>
+                                    <p className="text-xs text-slate-500 leading-relaxed font-medium">Generate professional-grade fare estimates that you can share directly with customers via WhatsApp or PDF.</p>
+                                </div>
+                                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                                    <h4 className="font-black text-slate-800 text-xs uppercase tracking-widest mb-3">Route Transparency</h4>
+                                    <p className="text-xs text-slate-500 leading-relaxed font-medium">View detailed route information, distance, and estimated travel time before you start your journey.</p>
+                                </div>
+                            </section>
+
+                            {/* FAQ Section */}
+                            <CalculatorFAQ />
+                        </div>
                     </div>
                 </div>
             </div >

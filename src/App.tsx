@@ -14,6 +14,7 @@ import BottomNav from './components/BottomNav';
 import Dashboard from './components/Dashboard';
 import GoogleSignInButton from './components/GoogleSignInButton';
 import SideNav from './components/SideNav';
+import Footer from './components/Footer';
 
 import { NotificationProvider, useNotifications } from './contexts/NotificationContext';
 import Notifications from './components/Notifications';
@@ -42,6 +43,11 @@ const MobileMenu = lazy(() => import('./components/MobileMenu'));
 const Finance = lazy(() => import('./components/Finance'));
 const RouteLandingPage = lazy(() => import('./components/RouteLandingPage'));
 
+const AboutUs = lazy(() => import('./components/AboutUs'));
+const ContactUs = lazy(() => import('./components/ContactUs'));
+const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./components/TermsOfService'));
+
 // Loading fallback component
 const LoadingFallback = () => (
   <div className="flex items-center justify-center h-64">
@@ -59,7 +65,7 @@ function AppContent() {
     // Priority: 1. URL Path, 2. URL Hash (Legacy/Auth), 3. Local Storage, 4. Default 'calculator'
     const pathname = window.location.pathname.slice(1).split('/')[0];
     const hash = window.location.hash.slice(1).split('/')[0];
-    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'profile', 'admin', 'notes', 'staff', 'trending', 'routes', 'tariff', 'finance'];
+    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'profile', 'admin', 'notes', 'staff', 'trending', 'routes', 'tariff', 'finance', 'about', 'contact', 'privacy', 'terms'];
 
     // Migration: specific check to force old defaults (dashboard) to new default (calculator) one time
     const storedTab = localStorage.getItem('nav-active-tab');
@@ -83,10 +89,10 @@ function AppContent() {
   useEffect(() => {
     const handlePopState = () => {
       const pathname = window.location.pathname.slice(1).split('/')[0];
-      const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'profile', 'admin', 'notes', 'trending', 'routes', 'tariff', 'finance', 'staff'];
+      const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'profile', 'admin', 'notes', 'trending', 'routes', 'tariff', 'finance', 'staff', 'about', 'contact', 'privacy', 'terms'];
       if (pathname && validTabs.includes(pathname)) {
         setActiveTab(pathname);
-      } else if (pathname && (pathname.includes('-to-') || pathname.endsWith('-taxi'))) {
+      } else if (pathname && (pathname.includes('-to-') || pathname.endsWith('-taxi') || pathname.endsWith('-rental'))) {
         setActiveTab(pathname);
       }
     };
@@ -677,6 +683,30 @@ function AppContent() {
             <AdminPanel />
           </Suspense>
         ) : <Dashboard trips={trips} />;
+      case 'about':
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <AboutUs />
+          </Suspense>
+        );
+      case 'contact':
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <ContactUs />
+          </Suspense>
+        );
+      case 'privacy':
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <PrivacyPolicy />
+          </Suspense>
+        );
+      case 'terms':
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <TermsOfService />
+          </Suspense>
+        );
       default:
         // Check if it's an SEO route
         if (activeTab.includes('-to-') || activeTab.endsWith('-taxi') || activeTab.endsWith('-rental')) {
@@ -758,6 +788,10 @@ function AppContent() {
             <div className="max-w-5xl mx-auto w-full">
               {renderContent()}
             </div>
+            {/* Show Footer on Public Pages */}
+            {!['dashboard', 'admin', 'profile', 'staff', 'finance'].includes(activeTab) && (
+              <Footer setActiveTab={setActiveTab} />
+            )}
           </div>
         </main>
       </div>
@@ -771,6 +805,10 @@ function AppContent() {
         />
         <main className="flex-1 overflow-y-auto scrollbar-hide px-3 py-4 pb-24 bg-[#F5F7FA] relative">
           {renderContent()}
+          {/* Show Footer on Public Pages for Mobile */}
+          {!['dashboard', 'admin', 'profile', 'staff', 'finance', 'notes'].includes(activeTab) && (
+            <Footer setActiveTab={setActiveTab} />
+          )}
         </main>
 
         <BottomNav
