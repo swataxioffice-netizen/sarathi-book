@@ -24,7 +24,7 @@ import PDFPreviewModal from './PDFPreviewModal';
 import { calculateDistance } from '../utils/googleMaps';
 import { calculateAdvancedRoute } from '../utils/routesApi';
 import { performOcr, parseOdometer } from '../utils/visionApi';
-import { calculateGST, determineGSTType, GSTRate, GSTBreakdown } from '../utils/gstUtils';
+import { calculateGST, determineGSTType, GSTRate, GSTBreakdown, getFinancialYear } from '../utils/gstUtils';
 
 // --- Types ---
 
@@ -218,18 +218,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     }, [vehicleCategory]);
 
     const nextInvoiceNo = useMemo(() => {
-        const vehicle = userVehicles.find(v => v.id === selectedVehicleId);
-        let prefix = 'INV-';
-
-        if (vehicle && vehicle.number) {
-            // Use last 4 digits of vehicle number for the series
-            const vNum = vehicle.number.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-            const shortNum = vNum.length > 4 ? vNum.slice(-4) : vNum;
-            prefix = `INV-${shortNum}-`;
-        } else {
-            // General series fallback
-            prefix = 'INV-GEN-';
-        }
+        // GST India Compliance: Unique for Financial Year, Max 16 chars
+        // Simple Professional Format: INV/FY/SEQ (e.g., INV/25-26/001)
+        const date = new Date(invoiceDate);
+        const fy = getFinancialYear(date);
+        const prefix = `INV/${fy}/`;
 
         if (!trips || trips.length === 0) return `${prefix}001`;
 
@@ -237,14 +230,14 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             .map(t => t.invoiceNo)
             .filter((n): n is string => !!n && n.startsWith(prefix))
             .map(n => {
-                const parts = n.split('-');
+                const parts = n.split('/');
                 return parseInt(parts[parts.length - 1]);
             })
             .filter(n => !isNaN(n));
 
         const max = sequences.length > 0 ? Math.max(...sequences) : 0;
         return `${prefix}${(max + 1).toString().padStart(3, '0')}`;
-    }, [selectedVehicleId, trips, userVehicles]);
+    }, [invoiceDate, trips]);
 
     // --- Side Effects ---
 

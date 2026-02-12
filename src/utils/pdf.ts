@@ -1,6 +1,8 @@
 import { type Trip } from './fare';
 import { numberToWords } from './numberToWords';
 import { toTitleCase, formatAddress } from './stringUtils';
+import { getFinancialYear } from './gstUtils';
+
 
 export interface PDFSettings {
     companyName: string;
@@ -277,29 +279,19 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
 
     // GST Compliant Invoice numbering (Simplified for Filing)
     const date = new Date(trip.date || Date.now());
-    const yearPart = date.getFullYear().toString().substring(2); // e.g. 25
-    const monthPart = (date.getMonth() + 1).toString().padStart(2, '0'); // e.g. 12
-    // Use sequential number if available, else fallback to ID hash
-    const serialPart = trip.invoiceNo || (trip.id || '0000').substring(0, 4).toUpperCase();
+    // GST India Compliance: Financial Year based numbering
+    const fy = getFinancialYear(date);
+    const prefix = `INV/${fy}/`;
 
-    let vehSuffix = 'TX';
-    if (vehicleNumber && vehicleNumber !== 'N/A') {
-        const digits = vehicleNumber.replace(/[^0-9]/g, '');
-        if (digits.length >= 4) {
-            vehSuffix = digits.substring(digits.length - 4);
-        } else {
-            vehSuffix = vehicleNumber.replace(/[^A-Za-z0-9]/g, '').substring(0, 4).toUpperCase();
-        }
-    }
-
-    // Format: 1234/2512/001 (Vehicle/YYMM/SEQ)
+    // Format: [INV]/[FY]/[SEQ]
     let invoiceNo = '';
-    if (trip.invoiceNo && trip.invoiceNo.startsWith('INV-')) {
+    if (trip.invoiceNo && (trip.invoiceNo.includes('/') || trip.invoiceNo.startsWith('INV-'))) {
         invoiceNo = trip.invoiceNo; // Use valid pre-existing sequence directly
     } else {
+        const serialPart = (trip.id || '000').substring(0, 3).toUpperCase();
         invoiceNo = isQuotation
-            ? (trip.invoiceNo || `QTN/${yearPart}${monthPart}/${serialPart}`) // Use passed QTN no or generate
-            : `${vehSuffix}/${yearPart}${monthPart}/${serialPart}`;
+            ? (trip.invoiceNo || `QTN/${fy}/${serialPart}`)
+            : `${prefix}${serialPart}`;
     }
 
     doc.text(`${isQuotation ? 'Quotation' : 'Invoice'} No: ${invoiceNo}`, rightAlignX, y, { align: 'right' });

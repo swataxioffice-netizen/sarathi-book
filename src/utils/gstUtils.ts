@@ -152,3 +152,16 @@ export const calculateGST = (
         type: isInterState ? 'IGST' : 'CGST_SGST'
     };
 };
+
+/**
+ * Calculates the Indian Financial Year (FY) for a given date.
+ * FY starts in April. 
+ * Example: Feb 2026 -> "25-26", April 2026 -> "26-27"
+ */
+export const getFinancialYear = (date: Date): string => {
+    const month = date.getMonth(); // 0-11
+    const year = date.getFullYear();
+    const startYear = month >= 3 ? year : year - 1;
+    const endYear = startYear + 1;
+    return `${startYear.toString().slice(-2)}-${endYear.toString().slice(-2)}`;
+};
