@@ -51,7 +51,7 @@ interface CalculationResult {
 }
 
 interface TripFormProps {
-    onSaveTrip: (trip: Trip) => void;
+    onSaveTrip: (trip: Trip) => Promise<void> | void;
     onStepChange?: (step: number) => void;
     invoiceTemplate?: SavedQuotation | null;
     trips?: Trip[];
@@ -726,7 +726,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             from: fromLoc, to: toLoc, billingAddress, startKm: isOdometerMode ? startKm : 0, endKm: isOdometerMode ? endKm : (parseFloat(distanceOverride) || 0),
             startTime: '', endTime: '', toll: parseFloat(toll) || 0, parking: parseFloat(parking) || 0, nightBata: parseFloat(nightCharge) || 0,
             baseFare: settings.baseFare, ratePerKm: res.rateUsed, totalFare: res.total, fare: res.fare, distanceCharge: res.distanceCharge,
-            distance: res.distance, effectiveDistance: res.effectiveDistance, gst: res.gst, date: new Date().toISOString(),
+            distance: res.distance, effectiveDistance: res.effectiveDistance, gst: res.gst, date: invoiceDate ? (invoiceDate.includes('T') ? invoiceDate : `${invoiceDate}T12:00:00Z`) : new Date().toISOString(),
             mode: mode as any, notes: '', waitingHours: res.waitingHours, waitingCharges: 0, hillStationCharges: res.hillStationCharges,
             petCharges: res.petCharges, permit: parseFloat(permit) || 0, days, driverBatta: res.driverBatta, extraItems,
             rcmEnabled, // Save RCM status
@@ -738,7 +738,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             vehicleModel: currentV?.model
         };
 
-        onSaveTrip(tripData);
+        await onSaveTrip(tripData);
         return tripData;
     };
 
@@ -762,13 +762,18 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
             triggerAction(async () => {
                 try {
-                    // Start saving in background (optimistic)
-                    handleSave(res).catch(e => console.error('Background save failed:', e));
+                    // Start saving and wait for it
+                    await handleSave(res);
 
                     // Immediately trigger share (more likely to succeed on gesture)
                     await handleShare(res);
 
+                    // RESET SESSION REFS so next trip gets new ID
+                    sessionTripId.current = null;
+                    sessionInvoiceNo.current = null;
+
                     setStep(1);
+                    setMode(null);
                     if (onStepChange) onStepChange(1);
                 } catch (error) {
                     console.error('Error in post-ad action:', error);
