@@ -355,11 +355,44 @@ const Profile: React.FC = () => {
                     <div className="space-y-6 animate-scale-in">
                         <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm space-y-4">
                             <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Payment Info</h3>
+
+                            <div className="flex gap-2 p-1 bg-slate-50 rounded-xl mb-4">
+                                <button
+                                    onClick={() => updateSettings({ preferredPaymentMethod: 'upi' })}
+                                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${settings.preferredPaymentMethod === 'upi' ? 'bg-white shadow text-slate-900 border border-slate-100' : 'text-slate-400'}`}
+                                >
+                                    UPI ID
+                                </button>
+                                <button
+                                    onClick={() => updateSettings({ preferredPaymentMethod: 'bank' })}
+                                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${settings.preferredPaymentMethod === 'bank' ? 'bg-white shadow text-slate-900 border border-slate-100' : 'text-slate-400'}`}
+                                >
+                                    Bank Account
+                                </button>
+                            </div>
+
                             <div className="space-y-4">
-                                <div>
-                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">UPI ID (GPay / PhonePe)</label>
-                                    <input value={settings.upiId || ''} onChange={e => updateSettings({ upiId: e.target.value })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-green-500 outline-none transition-colors" placeholder="mobile@upi" />
-                                </div>
+                                {settings.preferredPaymentMethod === 'upi' ? (
+                                    <div>
+                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">UPI ID (GPay / PhonePe)</label>
+                                        <input value={settings.upiId || ''} onChange={e => updateSettings({ upiId: e.target.value })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-green-500 outline-none transition-colors" placeholder="mobile@upi" />
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div>
+                                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Bank Name</label>
+                                            <input value={settings.bankName || ''} onChange={e => updateSettings({ bankName: e.target.value })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-green-500 outline-none transition-colors" placeholder="e.g. State Bank of India" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Account Number</label>
+                                            <input value={settings.accountNumber || ''} onChange={e => updateSettings({ accountNumber: e.target.value })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-green-500 outline-none transition-colors" placeholder="000000000000" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">IFSC Code</label>
+                                            <input value={settings.ifscCode || ''} onChange={e => updateSettings({ ifscCode: e.target.value.toUpperCase() })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-green-500 outline-none transition-colors" placeholder="SBIN0001234" maxLength={11} />
+                                        </div>
+                                    </>
+                                )}
                                 <div>
                                     <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Account Holder</label>
                                     <input value={settings.holderName || ''} onChange={e => updateSettings({ holderName: e.target.value })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-green-500 outline-none transition-colors" placeholder="Full Name" />

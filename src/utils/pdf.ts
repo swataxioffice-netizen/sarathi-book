@@ -21,6 +21,7 @@ export interface PDFSettings {
     holderName?: string;
     branchName?: string;
     upiId?: string;
+    preferredPaymentMethod?: 'upi' | 'bank';
     appColor?: string;
     logoUrl?: string;
     showWatermark?: boolean;
@@ -510,7 +511,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
 
     // 1. Render Payment Details (Left Side)
     let paymentY = sectionsStartY;
-    if (settings.holderName || settings.upiId) {
+    if (settings.holderName || settings.upiId || settings.accountNumber) {
         doc.setFontSize(9);
         setThemeColor();
         doc.setFont('helvetica', 'bold');
@@ -520,12 +521,27 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         paymentY += 5;
-        if (settings.holderName) {
-            doc.text(`Account Name : ${settings.holderName}`, margin, paymentY);
+
+        const isBank = settings.preferredPaymentMethod === 'bank';
+
+        if (isBank && settings.bankName) {
+            doc.text(`Bank Name    : ${settings.bankName}`, margin, paymentY);
             paymentY += 4;
         }
-        if (settings.upiId) {
+        if (isBank && settings.accountNumber) {
+            doc.text(`Account No   : ${settings.accountNumber}`, margin, paymentY);
+            paymentY += 4;
+        }
+        if (isBank && settings.ifscCode) {
+            doc.text(`IFSC Code    : ${settings.ifscCode}`, margin, paymentY);
+            paymentY += 4;
+        }
+        if (!isBank && settings.upiId) {
             doc.text(`UPI ID       : ${settings.upiId}`, margin, paymentY);
+            paymentY += 4;
+        }
+        if (settings.holderName) {
+            doc.text(`A/C Holder   : ${settings.holderName}`, margin, paymentY);
             paymentY += 4;
         }
     }

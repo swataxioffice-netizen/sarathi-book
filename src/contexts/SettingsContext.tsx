@@ -46,6 +46,7 @@ interface Settings {
     // --- Staff & Salary Management (Pro) ---
     staff: Staff[];
     defaultSalaryConfig: SalaryConfig;
+    preferredPaymentMethod?: 'upi' | 'bank';
 }
 
 export interface SalaryConfig {
@@ -177,6 +178,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     advanceLimit: 5000
                 };
             }
+            if (!parsed.preferredPaymentMethod) parsed.preferredPaymentMethod = 'upi';
 
             return parsed;
         }
@@ -212,7 +214,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 standbyPay: 400,
                 pfDeduction: 0,
                 advanceLimit: 5000
-            }
+            },
+            preferredPaymentMethod: 'upi'
         };
     });
 
