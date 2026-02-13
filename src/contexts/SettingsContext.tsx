@@ -40,6 +40,7 @@ interface Settings {
     logoUrl?: string;
     showWatermark: boolean;
     isPremium?: boolean;
+    plan?: 'free' | 'pro' | 'super';
     services?: string[];
     signatureUrl?: string;
 
@@ -207,6 +208,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             secondaryColor: '#6366F1',
             showWatermark: true,
             isPremium: false,
+            plan: 'free',
             services: ['Local', 'Outstation', 'Tours'], // Default Services
             staff: [],
             defaultSalaryConfig: {

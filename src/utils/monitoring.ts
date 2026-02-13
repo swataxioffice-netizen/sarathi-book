@@ -102,24 +102,27 @@ export const Analytics = {
     },
 
     // 4. Admin Analytics (Supabase)
-    logActivity: async (
+    logActivity: (
         type: 'invoice_created' | 'quotation_created' | 'fare_calculated' | 'login' | 'share' |
             'expense_logged' | 'expense_deleted' | 'document_uploaded' | 'document_deleted' |
             'staff_added' | 'payslip_generated' | 'ai_query' | 'note_created' | 'note_updated',
         details: any,
         userId?: string
     ) => {
-        try {
-            const { error } = await supabase.from('admin_analytics').insert({
-                event_type: type,
-                details: details,
-                user_id: userId || null,
-                created_at: new Date().toISOString()
-            });
-            if (error) console.warn('Analytics Log Error:', error.message);
-        } catch (e) {
-            console.error('Analytics Log Exception:', e);
-        }
+        // Fire and forget in a truly async block
+        (async () => {
+            try {
+                const { error } = await supabase.from('admin_analytics').insert({
+                    event_type: type,
+                    details: details,
+                    user_id: userId || null,
+                    created_at: new Date().toISOString()
+                });
+                if (error) console.warn('Analytics Log Error:', error.message);
+            } catch (err) {
+                console.error('Analytics Log Exception:', err);
+            }
+        })();
     }
 };
 

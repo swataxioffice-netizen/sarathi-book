@@ -106,12 +106,14 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, activeTab, set
                         className="w-full bg-white p-4 rounded-xl shadow-md border border-slate-100 flex items-center justify-between group hover:shadow-lg transition-all"
                     >
                         <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${settings.isPremium ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>
-                                <Crown size={20} className={settings.isPremium ? 'fill-amber-600' : ''} />
+                            <div className={`p-2 rounded-lg ${settings.plan === 'super' ? 'bg-amber-100 text-amber-600' : settings.plan === 'pro' || settings.isPremium ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
+                                <Crown size={20} className={settings.plan === 'super' || settings.plan === 'pro' || settings.isPremium ? 'fill-current' : ''} />
                             </div>
                             <div className="text-left">
                                 <p className="text-xs font-black uppercase tracking-wider text-slate-900">Subscription</p>
-                                <p className="text-[10px] text-slate-400 font-bold">{settings.isPremium ? 'Pro Active' : 'Upgrade to Pro'}</p>
+                                <p className="text-[10px] text-slate-400 font-bold">
+                                    {settings.plan === 'super' ? 'Super Pro Active' : settings.plan === 'pro' || settings.isPremium ? 'Pro Active' : 'Upgrade to Pro'}
+                                </p>
                             </div>
                         </div>
                         <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-500" />

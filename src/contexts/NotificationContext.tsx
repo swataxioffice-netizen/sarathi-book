@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { generateId } from '../utils/uuid';
+
 import { supabase } from '../utils/supabase';
 import { useAuth } from './AuthContext';
 
@@ -36,7 +38,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const { user } = useAuth();
 
     const addNotification = useCallback((title: string, message: string, type: Notification['type'] = 'info') => {
-        const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 9);
+        const id = generateId();
+
         const newNotification: Notification = {
             id,
             title,

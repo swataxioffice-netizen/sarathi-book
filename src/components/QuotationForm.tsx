@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { generateId } from '../utils/uuid';
+
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Analytics } from '../utils/monitoring';
@@ -21,7 +23,7 @@ import { calculateDistance, geocodeAddress } from '../utils/googleMaps';
 import { calculateAdvancedRoute } from '../utils/routesApi';
 import { isHillStationLocation } from '../utils/locationUtils';
 import { calculateGST, determineGSTType, GSTRate, GSTBreakdown } from '../utils/gstUtils';
-import { useAdProtection } from '../hooks/useAdProtection';
+// import { useAdProtection } from '../hooks/useAdProtection';
 import { Suspense } from 'react';
 
 
@@ -70,7 +72,7 @@ const DEFAULT_TERMS = [
 const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepChange, quotations }) => {
     const { settings } = useSettings();
     const { user } = useAuth();
-    const { triggerAction } = useAdProtection();
+    // const { triggerAction } = useAdProtection();
 
 
 
@@ -517,113 +519,113 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             // Pre-warm PDF dependencies
             import('jspdf');
 
-            triggerAction(async () => {
-                try {
-                    // Similar Items construction
-                    const items = [];
-                    // Base Fare
-                    const baseRate = res.rateUsed;
-                    const baseDist = res.effectiveDistance || res.distance;
-                    let baseDesc = mode === 'local' ? `Local Rental` : (mode === 'outstation' ? `Round Trip` : `One Way Drop`);
+            // Direct execution instead of nested triggerAction for reliability
+            try {
+                // Similar Items construction
+                const items = [];
+                // Base Fare
+                const baseRate = res.rateUsed;
+                const baseDist = res.effectiveDistance || res.distance;
+                let baseDesc = mode === 'local' ? `Local Rental` : (mode === 'outstation' ? `Round Trip` : `One Way Drop`);
 
-                    if (mode === 'local') {
-                        if (hourlyPackage === '8hr_80km') {
-                            baseDesc += ` [8 Hrs / 80 KM Package]`;
-                        } else if (hourlyPackage === '12hr_120km') {
-                            baseDesc += ` [12 Hrs / 120 KM Package]`;
-                        } else if (hourlyPackage === '4hr_40km') {
-                            baseDesc += ` [4 Hrs / 40 KM Package]`;
-                        } else if (hourlyPackage === '2hr_20km') {
-                            baseDesc += ` [2 Hrs / 20 KM Package]`;
-                        } else {
-                            baseDesc += ` [${localPackageHours} Hrs / ${localPackageKm} KM Package]`;
-                        }
-                    } else if (baseRate > 0) {
-                        baseDesc += ` [${baseDist} KM * ${baseRate}/KM]`;
-                    }
-
-                    if (mode === 'custom') {
-                        customLineItems.forEach(i => items.push({
-                            description: i.description,
-                            package: '',
-                            vehicleType: 'Custom',
-                            rate: i.rate.toString(),
-                            amount: i.amount.toString(),
-                            quantity: i.qty,
-                            sac: i.sac
-                        }));
+                if (mode === 'local') {
+                    if (hourlyPackage === '8hr_80km') {
+                        baseDesc += ` [8 Hrs / 80 KM Package]`;
+                    } else if (hourlyPackage === '12hr_120km') {
+                        baseDesc += ` [12 Hrs / 120 KM Package]`;
+                    } else if (hourlyPackage === '4hr_40km') {
+                        baseDesc += ` [4 Hrs / 40 KM Package]`;
+                    } else if (hourlyPackage === '2hr_20km') {
+                        baseDesc += ` [2 Hrs / 20 KM Package]`;
                     } else {
-                        items.push({
-                            description: baseDesc,
-                            package: 'Base Fare',
-                            vehicleType: VEHICLE_CLASSES.find(v => v.id === selectedVehicleType)?.label || selectedVehicleType,
-                            rate: baseRate > 0 ? `${baseRate}/KM` : `${res.distanceCharge}`,
-                            amount: res.distanceCharge.toString(),
-                            quantity: 1
-                        });
+                        baseDesc += ` [${localPackageHours} Hrs / ${localPackageKm} KM Package]`;
                     }
-
-                    if (res.driverBatta > 0) {
-                        let daysUsed = mode === 'outstation' ? days : 1;
-                        if (mode === 'drop') {
-                            const dist = res.effectiveDistance || res.distance;
-                            daysUsed = Math.max(1, Math.ceil(dist / TRIP_LIMITS.max_km_per_day));
-                        }
-                        const battaRate = res.driverBatta / daysUsed;
-                        items.push({ description: `Driver Batta [${daysUsed} Day${daysUsed > 1 ? 's' : ''} * ${battaRate}/Day]`, package: '', vehicleType: '', rate: `${battaRate}/Day`, amount: res.driverBatta.toString(), quantity: daysUsed });
-                    }
-                    if (parseFloat(toll) > 0) items.push({ description: 'Toll Charges', package: '', vehicleType: '', rate: toll, amount: toll, quantity: 1 });
-                    if (parseFloat(parking) > 0) items.push({ description: 'Parking Charges', package: '', vehicleType: '', rate: parking, amount: parking, quantity: 1 });
-                    if (parseFloat(permit) > 0) items.push({ description: 'Permit Charges', package: '', vehicleType: '', rate: permit, amount: permit, quantity: 1 });
-                    if (res.hillStationCharges > 0) items.push({ description: 'Hill Station Charges', package: '', vehicleType: '', rate: res.hillStationCharges.toString(), amount: res.hillStationCharges.toString(), quantity: 1 });
-                    if (parseFloat(nightCharge) > 0) items.push({ description: 'Night Charges', package: '', vehicleType: '', rate: nightCharge, amount: nightCharge, quantity: 1 });
-                    extraItems.forEach(i => items.push({ description: i.description, package: '', vehicleType: '', rate: i.amount.toString(), amount: i.amount.toString(), quantity: 1, sac: i.sac }));
-
-                    const qData: QuotationData = {
-                        customerName: customerName || 'Valued Customer',
-                        customerGstin: customerGst,
-                        customerAddress: billingAddress,
-                        pickup: fromLoc,
-                        drop: toLoc,
-                        subject: `${mode === 'drop' ? 'One Way Drop' : mode === 'outstation' ? 'Outstation Trip' : 'Cab Service'} Quote`,
-                        date: quotationDate,
-                        quotationNo: nextQuotationNo,
-                        gstEnabled: includeGst,
-                        rcmEnabled,
-                        gstRate: includeGst ? gstRate : undefined,
-                        gstType: includeGst ? (res.gstBreakdown?.type || 'CGST_SGST') : undefined,
-                        terms,
-                        items
-                    };
-                    await shareQuotation(qData, { ...settings, vehicleNumber: 'N/A' });
-
-                    if (onSaveQuotation) {
-                        onSaveQuotation({
-                            id: crypto.randomUUID(),
-                            ...qData,
-                            quotationNo: qData.quotationNo!,
-                            vehicleType: items[0].vehicleType
-                        });
-                    }
-
-                    // Log to Admin Analytics
-                    await Analytics.logActivity('quotation_created', {
-                        quotationNo: qData.quotationNo,
-                        customer: customerName,
-                        amount: res.total,
-                        mode: mode
-                    }, user?.id);
-
-                    Analytics.generateInvoice('quotation', res.total);
-
-                    setStep(1);
-                    if (onStepChange) onStepChange(1);
-                } catch (err) {
-                    console.error('Post-ad quotation action failed:', err);
-                } finally {
-                    setIsSubmitting(false);
+                } else if (baseRate > 0) {
+                    baseDesc += ` [${baseDist} KM * ${baseRate}/KM]`;
                 }
-            });
+
+                if (mode === 'custom') {
+                    customLineItems.forEach(i => items.push({
+                        description: i.description,
+                        package: '',
+                        vehicleType: 'Custom',
+                        rate: i.rate.toString(),
+                        amount: i.amount.toString(),
+                        quantity: i.qty,
+                        sac: i.sac
+                    }));
+                } else {
+                    items.push({
+                        description: baseDesc,
+                        package: 'Base Fare',
+                        vehicleType: VEHICLE_CLASSES.find(v => v.id === selectedVehicleType)?.label || selectedVehicleType,
+                        rate: baseRate > 0 ? `${baseRate}/KM` : `${res.distanceCharge}`,
+                        amount: res.distanceCharge.toString(),
+                        quantity: 1
+                    });
+                }
+
+                if (res.driverBatta > 0) {
+                    let daysUsed = mode === 'outstation' ? days : 1;
+                    if (mode === 'drop') {
+                        const dist = res.effectiveDistance || res.distance;
+                        daysUsed = Math.max(1, Math.ceil(dist / TRIP_LIMITS.max_km_per_day));
+                    }
+                    const battaRate = res.driverBatta / daysUsed;
+                    items.push({ description: `Driver Batta [${daysUsed} Day${daysUsed > 1 ? 's' : ''} * ${battaRate}/Day]`, package: '', vehicleType: '', rate: `${battaRate}/Day`, amount: res.driverBatta.toString(), quantity: daysUsed });
+                }
+                if (parseFloat(toll) > 0) items.push({ description: 'Toll Charges', package: '', vehicleType: '', rate: toll, amount: toll, quantity: 1 });
+                if (parseFloat(parking) > 0) items.push({ description: 'Parking Charges', package: '', vehicleType: '', rate: parking, amount: parking, quantity: 1 });
+                if (parseFloat(permit) > 0) items.push({ description: 'Permit Charges', package: '', vehicleType: '', rate: permit, amount: permit, quantity: 1 });
+                if (res.hillStationCharges > 0) items.push({ description: 'Hill Station Charges', package: '', vehicleType: '', rate: res.hillStationCharges.toString(), amount: res.hillStationCharges.toString(), quantity: 1 });
+                if (parseFloat(nightCharge) > 0) items.push({ description: 'Night Charges', package: '', vehicleType: '', rate: nightCharge, amount: nightCharge, quantity: 1 });
+                extraItems.forEach(i => items.push({ description: i.description, package: '', vehicleType: '', rate: i.amount.toString(), amount: i.amount.toString(), quantity: 1, sac: i.sac }));
+
+                const qData: QuotationData = {
+                    customerName: customerName || 'Valued Customer',
+                    customerGstin: customerGst,
+                    customerAddress: billingAddress,
+                    pickup: fromLoc,
+                    drop: toLoc,
+                    subject: `${mode === 'drop' ? 'One Way Drop' : mode === 'outstation' ? 'Outstation Trip' : 'Cab Service'} Quote`,
+                    date: quotationDate,
+                    quotationNo: nextQuotationNo,
+                    gstEnabled: includeGst,
+                    rcmEnabled,
+                    gstRate: includeGst ? gstRate : undefined,
+                    gstType: includeGst ? (res.gstBreakdown?.type || 'CGST_SGST') : undefined,
+                    terms,
+                    items
+                };
+                await shareQuotation(qData, { ...settings, vehicleNumber: 'N/A' });
+
+                if (onSaveQuotation) {
+                    onSaveQuotation({
+                        id: generateId(),
+                        ...qData,
+                        quotationNo: qData.quotationNo!,
+                        vehicleType: items[0].vehicleType
+                    });
+                }
+
+                // Log to Admin Analytics (Non-blocking)
+                Analytics.logActivity('quotation_created', {
+                    quotationNo: qData.quotationNo,
+                    customer: customerName,
+                    amount: res.total,
+                    mode: mode
+                }, user?.id);
+
+                Analytics.generateInvoice('quotation', res.total);
+
+                setStep(1);
+                if (onStepChange) onStepChange(1);
+            } catch (err) {
+                console.error('Quotation share operation failed:', err);
+                alert('An error occurred while sharing the quotation.');
+            } finally {
+                setIsSubmitting(false);
+            }
         } catch (error) {
             console.error('Error sharing quotation setup:', error);
             setIsSubmitting(false);
@@ -1266,7 +1268,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             {step === 3 && renderStep3()}
             {step === 4 && renderStep4()}
             <Suspense fallback={null}>
-                {showPreview && <PDFPreviewModal isOpen={showPreview} onClose={() => setShowPreview(false)} pdfUrl={previewPdfUrl} title="Invoice Preview" onShare={() => triggerAction(handleShare)} />}
+                {showPreview && <PDFPreviewModal isOpen={showPreview} onClose={() => setShowPreview(false)} pdfUrl={previewPdfUrl} title="Invoice Preview" />}
             </Suspense>
 
         </div>

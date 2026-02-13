@@ -8,7 +8,7 @@ import { estimateParkingCharge } from '../utils/parking';
 import { estimatePermitCharge } from '../utils/permits';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
-import { useAdProtection } from '../hooks/useAdProtection';
+// import { useAdProtection } from '../hooks/useAdProtection';
 import {
     MoveRight, MapPin, Plus, CheckCircle2,
     Repeat, Clock, UserCheck,
@@ -17,6 +17,7 @@ import {
     StickyNote, Check, Share2,
     Camera
 } from 'lucide-react';
+import { generateId } from '../utils/uuid';
 import { generateReceiptPDF, SavedQuotation, shareReceipt } from '../utils/pdf';
 import { saveToHistory } from '../utils/history';
 import { useAuth } from '../contexts/AuthContext';
@@ -69,7 +70,7 @@ const DEFAULT_TERMS = [
 const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTemplate, trips }) => {
     const { settings } = useSettings();
     const { user } = useAuth();
-    const { triggerAction } = useAdProtection();
+    // const { triggerAction } = useAdProtection();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Track if this session has already saved a trip to prevent duplicates
@@ -218,8 +219,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     }, [vehicleCategory]);
 
     const nextInvoiceNo = useMemo(() => {
-        // GST India Compliance: Unique for Financial Year, Max 16 chars
-        // Simple Professional Format: INV/FY/SEQ (e.g., INV/25-26/001)
+        // Standard GST Format: INV/FY/SEQ (e.g., INV/25-26/001)
         const date = new Date(invoiceDate);
         const fy = getFinancialYear(date);
         const prefix = `INV/${fy}/`;
@@ -494,7 +494,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         // Use existing session ID/Invoice if available, or generate purely for preview (don't set session yet? or should we?)
         // For preview, we don't necessarily want to "lock in" the invoice number unless saved.
         // But to be consistent with what WILL be saved:
-        const previewId = sessionTripId.current || crypto.randomUUID();
+        const previewId = sessionTripId.current || generateId();
         const previewInvoiceNo = sessionInvoiceNo.current || nextInvoiceNo;
 
 
@@ -589,7 +589,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         if (!res) return;
 
         // Ensure we have a session ID/Invoice if not already saved
-        if (!sessionTripId.current) sessionTripId.current = crypto.randomUUID();
+        if (!sessionTripId.current) sessionTripId.current = generateId();
         if (!sessionInvoiceNo.current) sessionInvoiceNo.current = nextInvoiceNo;
 
         const currentV = userVehicles.find(v => v.id === selectedVehicleId);
@@ -701,11 +701,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         const currentV = userVehicles.find(v => v.id === selectedVehicleId);
 
         // LOCK IN the ID and Invoice Number for this session
-        if (!sessionTripId.current) sessionTripId.current = crypto.randomUUID();
+        if (!sessionTripId.current) sessionTripId.current = generateId();
         if (!sessionInvoiceNo.current) sessionInvoiceNo.current = nextInvoiceNo;
 
-        // Log to Admin Analytics
-        await Analytics.logActivity('invoice_created', {
+        // Log to Admin Analytics (Non-blocking)
+        Analytics.logActivity('invoice_created', {
             invoiceNo: sessionInvoiceNo.current,
             customer: customerName,
             amount: res.total,
@@ -747,34 +747,33 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             }
 
             // Lock IDs now so they are ready for background save/share
-            if (!sessionTripId.current) sessionTripId.current = crypto.randomUUID();
+            if (!sessionTripId.current) sessionTripId.current = generateId();
             if (!sessionInvoiceNo.current) sessionInvoiceNo.current = nextInvoiceNo;
 
             // Pre-warm PDF dependencies
             import('jspdf');
 
-            triggerAction(async () => {
-                try {
-                    // Start saving and wait for it
-                    await handleSave(res);
+            // Direct execution instead of nested triggerAction for reliability
+            try {
+                // Start saving and wait for it
+                await handleSave(res);
 
-                    // Immediately trigger share (more likely to succeed on gesture)
-                    await handleShare(res);
+                // Immediately trigger share (more likely to succeed on gesture)
+                await handleShare(res);
 
-                    // RESET SESSION REFS so next trip gets new ID
-                    sessionTripId.current = null;
-                    sessionInvoiceNo.current = null;
+                // RESET SESSION REFS so next trip gets new ID
+                sessionTripId.current = null;
+                sessionInvoiceNo.current = null;
 
-                    setStep(1);
-                    setMode(null);
-                    if (onStepChange) onStepChange(1);
-                } catch (error) {
-                    console.error('Error in post-ad action:', error);
-                    alert('Sharing failed. Please try again.');
-                } finally {
-                    setIsSubmitting(false);
-                }
-            });
+                setStep(1);
+                setMode(null);
+                if (onStepChange) onStepChange(1);
+            } catch (error) {
+                console.error('Save & Share operation failed:', error);
+                alert('An error occurred while saving or sharing. Please check your connection.');
+            } finally {
+                setIsSubmitting(false);
+            }
         } catch (error) {
             console.error('Save & Share setup failed:', error);
             setIsSubmitting(false);
@@ -1460,7 +1459,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 <div className="flex-[3] flex gap-2">
                     <button onClick={handlePreview} disabled={isSubmitting} className="flex-1 border-2 border-[#0047AB] text-[#0047AB] h-12 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] hover:bg-blue-50 transition-colors disabled:opacity-50">PREVIEW</button>
                     <button
-                        onClick={() => triggerAction(handleSaveAndShare)}
+                        onClick={handleSaveAndShare}
                         disabled={isSubmitting}
                         className="flex-1 bg-blue-600 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-blue-600/20 flex items-center justify-center gap-3 disabled:opacity-50"
                     >
@@ -1501,7 +1500,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
 
             <Suspense fallback={null}>
-                {showPreview && <PDFPreviewModal isOpen={showPreview} onClose={() => setShowPreview(false)} pdfUrl={previewPdfUrl} title="Invoice Preview" onShare={() => triggerAction(handleShare)} />}
+                {showPreview && <PDFPreviewModal isOpen={showPreview} onClose={() => setShowPreview(false)} pdfUrl={previewPdfUrl} title="Invoice Preview" />}
             </Suspense>
 
 

@@ -418,25 +418,26 @@ function AppContent() {
       console.error('Failed to save to IDB', err);
     }
 
-    // 3. Persistent Save (Cloud)
+    // 3. Persistent Save (Cloud) - Non-blocking
     if (user) {
-      try {
-        const { error } = await supabase.from('trips').upsert({
-          id: trip.id,
-          user_id: user.id,
-          customer_name: trip.customerName,
-          date: new Date(trip.date).toISOString(),
-          amount: trip.totalFare,
-          details: trip,
-          pickup_location: (trip as any).from,
-          drop_location: (trip as any).to,
-          distance: (trip as any).distance
-        });
-        if (error) throw error;
-      } catch (err) {
-        console.error('Failed to sync trip to cloud:', err);
-        // We could notify user here that cloud sync failed
-      }
+      (async () => {
+        try {
+          const { error } = await supabase.from('trips').upsert({
+            id: trip.id,
+            user_id: user.id,
+            customer_name: trip.customerName,
+            date: new Date(trip.date).toISOString(),
+            amount: trip.totalFare,
+            details: trip,
+            pickup_location: (trip as any).from,
+            drop_location: (trip as any).to,
+            distance: (trip as any).distance
+          });
+          if (error) console.error('Failed to sync trip to cloud:', error.message);
+        } catch (err) {
+          console.error('Cloud trip sync exception:', err);
+        }
+      })();
     }
   };
 
@@ -461,15 +462,20 @@ function AppContent() {
     await dbRequest.put('quotations', q);
 
     if (user) {
-      try {
-        await supabase.from('quotations').upsert({
-          id: q.id,
-          user_id: user.id,
-          customer_name: q.customerName,
-          date: new Date(q.date).toISOString(),
-          data: q
-        });
-      } catch (err) { console.error('Cloud quote save failed', err); }
+      (async () => {
+        try {
+          const { error } = await supabase.from('quotations').upsert({
+            id: q.id,
+            user_id: user.id,
+            customer_name: q.customerName,
+            date: new Date(q.date).toISOString(),
+            data: q
+          });
+          if (error) console.error('Cloud quote save failed:', error.message);
+        } catch (err) {
+          console.error('Cloud quote sync exception:', err);
+        }
+      })();
     }
   };
 

@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { generateId } from '../utils/uuid';
+
 import { GSTService } from '../services/gst'; // Import Service
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
@@ -131,7 +133,7 @@ const Profile: React.FC = () => {
 
         updateSettings({
             vehicles: [...settings.vehicles, {
-                id: crypto.randomUUID(),
+                id: generateId(),
                 number: newVehicleNumber.toUpperCase().replace(/[^A-Z0-9]/g, ''),
                 model: cat.name,
                 categoryId: cat.id,
@@ -187,8 +189,12 @@ const Profile: React.FC = () => {
                                 <UserIcon size={20} className="text-slate-300" />
                             )}
                         </div>
-                        {settings.isPremium ? (
-                            <div className="absolute -bottom-1 -right-1 bg-amber-100 text-amber-600 text-[8px] font-black px-1.5 py-0.5 rounded-full border border-amber-200 shadow-sm">
+                        {settings.plan === 'super' ? (
+                            <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border border-amber-600 shadow-sm flex items-center gap-0.5">
+                                <Crown size={8} className="fill-current" /> SUPER
+                            </div>
+                        ) : settings.plan === 'pro' || settings.isPremium ? (
+                            <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border border-blue-700 shadow-sm">
                                 PRO
                             </div>
                         ) : (
@@ -206,7 +212,9 @@ const Profile: React.FC = () => {
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                             ID: <span className="text-blue-600">{user?.id?.slice(0, 6).toUpperCase() || 'GUEST'}</span>
                             <span className="mx-1.5 opacity-30">|</span>
-                            <span className={settings.isPremium ? "text-amber-600" : "text-slate-500"}>{settings.isPremium ? "PRO MEMBER" : "FREE PLAN"}</span>
+                            <span className={settings.plan === 'super' ? "text-amber-500 font-extrabold" : settings.plan === 'pro' || settings.isPremium ? "text-blue-600 font-extrabold" : "text-slate-500 font-bold"}>
+                                {settings.plan === 'super' ? "SUPER PRO" : settings.plan === 'pro' || settings.isPremium ? "PRO MEMBER" : "FREE PLAN"}
+                            </span>
                         </p>
 
 

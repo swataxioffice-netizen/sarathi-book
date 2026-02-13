@@ -1,6 +1,7 @@
 import { type Trip } from './fare';
 import { numberToWords } from './numberToWords';
 import { toTitleCase, formatAddress } from './stringUtils';
+
 import { getFinancialYear } from './gstUtils';
 
 
@@ -278,13 +279,11 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
 
-    // GST Compliant Invoice numbering (Simplified for Filing)
+    // Standard GST Format: INV/FY/SEQ (e.g., INV/25-26/001)
     const date = new Date(trip.date || Date.now());
-    // GST India Compliance: Financial Year based numbering
     const fy = getFinancialYear(date);
     const prefix = `INV/${fy}/`;
 
-    // Format: [INV]/[FY]/[SEQ]
     let invoiceNo = '';
     if (trip.invoiceNo && (trip.invoiceNo.includes('/') || trip.invoiceNo.startsWith('INV-'))) {
         invoiceNo = trip.invoiceNo; // Use valid pre-existing sequence directly
@@ -718,10 +717,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
             doc.link(90, y, 30, 5, { url: 'https://sarathibook.com' });
         }
     } else {
-        // Just show a small subtle note or nothing
-        doc.setFontSize(6);
-        doc.setTextColor(200, 200, 200);
-        doc.text('Professional Business Invoice', margin, y + 5);
+        // Just show nothing or a very small spacer if needed, but the request is to remove it.
     }
 
     return doc;

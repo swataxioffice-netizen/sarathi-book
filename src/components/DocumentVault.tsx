@@ -12,6 +12,8 @@ import {
     ChevronDown,
     Plus
 } from 'lucide-react';
+import { generateId } from '../utils/uuid';
+
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../utils/supabase';
 import { useSettings } from '../contexts/SettingsContext';
@@ -115,7 +117,7 @@ const DocumentVault: React.FC<{ onStatsUpdate?: (stats: any) => void }> = ({ onS
         if (!docName) { alert('Missing vehicle or driver information.'); return; }
 
         const newDocData: VaultDoc = {
-            id: crypto.randomUUID(), name: docName, type: docType, expiryDate: formDate
+            id: generateId(), name: docName, type: docType, expiryDate: formDate
         };
 
         const previousDocs = [...allDocs];

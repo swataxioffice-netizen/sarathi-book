@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Share2, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Document, Page, pdfjs } from 'react-pdf';
 
 // Configure PDF Worker for Vite
@@ -15,11 +15,10 @@ interface PDFPreviewModalProps {
     isOpen: boolean;
     onClose: () => void;
     pdfUrl: string;
-    onShare: () => void;
     title: string;
 }
 
-const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({ isOpen, onClose, pdfUrl, onShare, title }) => {
+const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({ isOpen, onClose, pdfUrl, title }) => {
     const [numPages, setNumPages] = useState<number>(0);
     const [pageNumber, setPageNumber] = useState<number>(1);
     const [containerWidth, setContainerWidth] = useState<number>(0);
@@ -146,13 +145,6 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({ isOpen, onClose, pdfU
                         className="flex-1 h-12 rounded-2xl border-2 border-slate-100 text-slate-500 font-black text-xs uppercase tracking-[0.15em] hover:bg-slate-50 active:scale-95 transition-all"
                     >
                         Close
-                    </button>
-                    <button
-                        onClick={onShare}
-                        className="flex-[2] h-12 bg-[#0047AB] text-white rounded-2xl font-black text-xs uppercase tracking-[0.15em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
-                    >
-                        <Share2 size={18} />
-                        Share PDF
                     </button>
                 </div>
             </div>

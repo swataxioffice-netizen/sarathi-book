@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Fuel, Settings, Trash2, PieChart, ShoppingBag, Coffee, Calculator, Wallet, MapPin, Shield, CreditCard, Scan } from 'lucide-react';
+import {
+    Plus, Fuel, Settings, Trash2, PieChart, ShoppingBag, Coffee, Calculator, Wallet, MapPin, Shield, CreditCard, Scan
+} from 'lucide-react';
+import { generateId } from '../utils/uuid';
+
 import { useSettings } from '../contexts/SettingsContext';
 import type { Expense } from '../utils/fare';
 import { safeJSONParse } from '../utils/storage';
@@ -90,7 +94,7 @@ const ExpenseTracker: React.FC = () => {
     const addExpense = async () => {
         if (!amount) return;
         const newExpense: Expense = {
-            id: crypto.randomUUID(),
+            id: generateId(),
             category,
             amount: Number(amount),
             description: desc,

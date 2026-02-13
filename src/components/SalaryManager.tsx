@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { generateId } from '../utils/uuid';
+
 import { useSettings, type Staff } from '../contexts/SettingsContext';
 import {
     Users, Plus, ChevronRight, User, Wallet, Calendar,
@@ -60,7 +62,7 @@ const SalaryManager: React.FC = () => {
         if (!newName || !newPhone) return;
 
         const newStaff: Staff = {
-            id: crypto.randomUUID(),
+            id: generateId(),
             name: newName,
             phone: newPhone,
             role: 'driver',
