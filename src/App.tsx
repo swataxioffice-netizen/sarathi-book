@@ -269,31 +269,46 @@ function AppContent() {
         hasSyncedRef.current = true; // Lock sync for this user session
         setLoading(true);
         try {
-          // 1. Fetch Cloud Trips
-          const { data, error } = await supabase.from('trips').select('*').order('created_at', { ascending: false });
+          console.log('Syncing account data for:', user.email);
+
+          // 1. Fetch Cloud Trips (Explicitly filter by user_id)
+          const { data, error } = await supabase
+            .from('trips')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
           if (error) throw error;
+          console.log(`Cloud sync: Found ${data?.length || 0} trips`);
 
           const cloudTripsMap = new Map<string, Trip>();
           if (data) {
             data.forEach(row => {
-              cloudTripsMap.set(row.id, { ...row.details, id: row.id });
+              // Fallback: If 'details' column is missing/null, reconstruct from flat columns
+              const tripDetails: Trip = row.details || {
+                id: row.id,
+                customerName: row.customer_name || 'Generic Customer',
+                date: row.date || row.created_at,
+                totalFare: Number(row.amount) || 0,
+                from: row.pickup_location,
+                to: row.drop_location,
+                distance: Number(row.distance) || 0,
+                mode: 'distance'
+              };
+              cloudTripsMap.set(row.id, { ...tripDetails, id: row.id });
             });
           }
 
           // 2. Identify and Upload Local-Only Trips to Cloud
           const localTipsToUpload: Trip[] = [];
-
-          // Use IndexedDB as the source of truth for local data
           let localStored: Trip[] = [];
           try {
             localStored = await dbRequest.getAll<Trip>('trips');
           } catch (e) {
-            console.warn('Failed to read IDB for sync, falling back to localStorage', e);
             localStored = safeJSONParse<Trip[]>('namma-cab-trips', []);
           }
 
           for (const localTrip of localStored) {
-            // If the trip is not in the cloud map, it's a local-only trip (created offline)
             if (!cloudTripsMap.has(localTrip.id)) {
               localTipsToUpload.push(localTrip);
             }
@@ -314,23 +329,32 @@ function AppContent() {
                 distance: (t as any).distance
               })
             ));
-            // Re-fetch to get cleaner state? Or just trust our merge logic below.
-            // Let's rely on merge logic, but now cloudTripsMap effectively should include these if we wanted perfect sync,
-            // but the merge logic below handles visual consistency.
           }
 
           // --- 3. Sync Quotations ---
-          // Fetch Cloud Quotations
-          const { data: qData, error: qError } = await supabase.from('quotations').select('*').order('created_at', { ascending: false });
+          const { data: qData, error: qError } = await supabase
+            .from('quotations')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
           if (!qError) {
+            console.log(`Cloud sync: Found ${qData?.length || 0} quotations`);
             const cloudQuotesMap = new Map<string, SavedQuotation>();
             if (qData) {
               qData.forEach(row => {
-                cloudQuotesMap.set(row.id, { ...row.data, id: row.id });
+                const quoteData: SavedQuotation = row.data || {
+                  id: row.id,
+                  customerName: row.customer_name || 'Generic Customer',
+                  date: row.date || row.created_at,
+                  items: [],
+                  gstEnabled: false
+                };
+                cloudQuotesMap.set(row.id, { ...quoteData, id: row.id });
               });
             }
 
-            // Upload Local-Only Quotations
+            // Sync Quotations Logic
             const localQuotesToUpload: SavedQuotation[] = [];
             let localStoredQuotes: SavedQuotation[] = [];
             try {
@@ -362,26 +386,22 @@ function AppContent() {
               const merged = new Map<string, SavedQuotation>();
               prev.forEach(q => merged.set(q.id, q));
               cloudQuotesMap.forEach((q, id) => merged.set(id, q));
-              return Array.from(merged.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+              const mergedArray = Array.from(merged.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+              // Persist to IDB
+              mergedArray.forEach(q => dbRequest.put('quotations', q).catch(console.error));
+              return mergedArray;
             });
           }
 
-
+          // Final Merge for Trips
           setTrips(prev => {
             const merged = new Map<string, Trip>();
-            // Keep local changes
             prev.forEach(t => merged.set(t.id, t));
-
-            // Add Cloud Data (Win conflicts? Or Local wins? Standard sync usually Cloud Wins)
             cloudTripsMap.forEach((t, id) => merged.set(id, t));
-
-            // Add the just-uploaded local trips back? 
-            // They are already in 'prev' (from local), and we just pushed them to cloud.
-            // If we fetched cloud trips BEFORE pushing, cloudTripsMap lacks them.
-            // 'prev' has them. 'merged' has them. We are good.
-
-            return Array.from(merged.values())
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            const mergedArray = Array.from(merged.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            // Persist to IDB
+            mergedArray.forEach(t => dbRequest.put('trips', t).catch(console.error));
+            return mergedArray;
           });
 
         } catch (err) {
@@ -416,11 +436,19 @@ function AppContent() {
         (payload) => {
           console.log('Real-time trip change:', payload);
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const newTrip: Trip = { ...payload.new.details, id: payload.new.id };
+            const row = payload.new;
+            const newTrip: Trip = row.details || {
+              id: row.id,
+              customerName: row.customer_name,
+              date: row.date || row.created_at,
+              totalFare: Number(row.amount) || 0,
+              mode: 'distance'
+            };
+            newTrip.id = row.id;
+
             setTrips(prev => {
               const idx = prev.findIndex(t => t.id === newTrip.id);
               if (idx !== -1) {
-                // Only update if data is different? Prevents recursive loops
                 if (JSON.stringify(prev[idx]) === JSON.stringify(newTrip)) return prev;
                 const next = [...prev];
                 next[idx] = newTrip;
@@ -451,7 +479,16 @@ function AppContent() {
         (payload) => {
           console.log('Real-time quotation change:', payload);
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const newQuote: SavedQuotation = { ...payload.new.data, id: payload.new.id };
+            const row = payload.new;
+            const newQuote: SavedQuotation = row.data || {
+              id: row.id,
+              customerName: row.customer_name,
+              date: row.date || row.created_at,
+              items: [],
+              gstEnabled: false
+            };
+            newQuote.id = row.id;
+
             setQuotations(prev => {
               const idx = prev.findIndex(q => q.id === newQuote.id);
               if (idx !== -1) {
