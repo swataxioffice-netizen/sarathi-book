@@ -171,6 +171,15 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
         setShowMap(false);
     };
 
+    const handleSwapRoute = () => {
+        const tempLoc = fromLoc;
+        const tempCoords = fromCoords;
+        setFromLoc(toLoc);
+        setFromCoords(toCoords);
+        setToLoc(tempLoc);
+        setToCoords(tempCoords);
+    };
+
     // --- Derived ---
     // Use TARIFFS directly based on type
     const currentVehicleData = useMemo(() => {
@@ -651,13 +660,12 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight px-2">
                 CREATE QUOTATION
             </h2>
-            <div className="grid grid-cols-1 gap-2.5 px-2">
-                {(['drop', 'outstation', 'local', 'custom'] as const).map((m) => (
+            <div className="grid grid-cols-2 gap-2 px-1">
+                {(['custom', 'local', 'drop', 'outstation'] as const).map((m) => (
                     <button key={m} onClick={() => {
                         if (mode !== m) {
                             setMode(m);
                             setFromLoc(''); setToLoc(''); setFromCoords(null); setToCoords(null);
-                            setDistanceOverride('');
                             setDistanceOverride('');
                             setDays(1); setLocalPackageHours(8);
                             setExtraItems([]);
@@ -665,15 +673,23 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                             setCustomLineItems([{ description: 'Service Charge', sac: '9966', qty: 1, rate: 0, amount: 0 }]);
                         }
                         handleNext();
-                    }} className={`p-3 rounded-2xl border-2 transition-all flex items-center gap-3 ${mode === m ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white border-slate-100 text-slate-500 hover:border-indigo-200'}`}>
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${mode === m ? 'bg-white/20' : 'bg-slate-50'}`}>
-                            {m === 'drop' && <MoveRight size={18} />}
-                            {m === 'outstation' && <Repeat size={18} />}
-                            {m === 'local' && <Clock size={18} />}
-                            {m === 'custom' && <PenLine size={18} />}
+                    }} className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all text-center ${mode === m ? 'bg-indigo-600 border-indigo-600 shadow-md ring-2 ring-indigo-100' : 'bg-white border-slate-100 hover:border-indigo-200 shadow-sm'}`}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${mode === m ? 'bg-white text-indigo-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                            {m === 'drop' && <MoveRight size={16} />}
+                            {m === 'outstation' && <Repeat size={16} />}
+                            {m === 'local' && <Clock size={16} />}
+                            {m === 'custom' && <PenLine size={16} />}
                         </div>
-                        <div className="text-left">
-                            <span className="text-[10px] font-black uppercase tracking-widest block">{m === 'drop' ? 'One Way Drop' : m === 'outstation' ? 'Round Trip' : m === 'local' ? 'Local Package' : 'Custom Manual'}</span>
+                        <div className="flex flex-col items-center gap-0.5 min-w-0">
+                            <span className={`text-[10px] font-bold uppercase tracking-wide leading-tight ${mode === m ? 'text-white' : 'text-slate-800'}`}>
+                                {m === 'drop' ? 'One Way' : m === 'outstation' ? 'Outstation' : m === 'local' ? 'Local' : 'Manual'}
+                            </span>
+                            <span className={`text-[8px] font-bold uppercase tracking-wide ${mode === m ? 'text-white/70' : 'text-slate-400'}`}>
+                                {m === 'drop' && 'Estimation'}
+                                {m === 'outstation' && 'Multi-day'}
+                                {m === 'local' && 'Package'}
+                                {m === 'custom' && 'Editor'}
+                            </span>
                         </div>
                     </button>
                 ))}
@@ -684,133 +700,176 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
     const renderStep2 = () => (
         <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
             {mode === 'custom' ? (
-                // Custom Invoice Table Mode
-                <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
-                    <div className="flex justify-between items-center">
-                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><PenLine size={12} /> QUOTATION ITEMS</h3>
-                        <input
-                            type="date"
-                            value={quotationDate}
-                            onChange={(e) => setQuotationDate(e.target.value)}
-                            className="tn-input h-8 bg-white border-slate-200 text-xs font-bold w-32"
-                        />
-                    </div>
+                <>
+                    {/* Primary: Quotation Items (The "Document" feel) */}
+                    <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-3">
+                        <div className="flex justify-between items-center mb-1">
+                            <div className="flex flex-col">
+                                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-2">
+                                    <PenLine size={12} className="text-indigo-600" /> Quotation Items
+                                </h3>
+                                <p className="text-[8px] text-slate-400 font-bold uppercase mt-0.5">Add your charges as they should appear</p>
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <label className="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Date</label>
+                                <input
+                                    type="date"
+                                    value={quotationDate}
+                                    onChange={(e) => setQuotationDate(e.target.value)}
+                                    className="tn-input h-8 bg-white border-slate-200 text-xs font-bold w-28 shadow-none"
+                                />
+                            </div>
+                        </div>
 
-                    <div className="space-y-3">
-                        {customLineItems.map((item, idx) => (
-                            <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                                <div className="flex gap-2">
-                                    <div className="flex-[3]">
-                                        <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">Description</div>
-                                        <input
-                                            type="text"
-                                            placeholder="Description"
-                                            value={item.description}
-                                            onChange={(e) => {
-                                                const newItems = [...customLineItems];
-                                                newItems[idx].description = e.target.value;
-                                                setCustomLineItems(newItems);
-                                            }}
-                                            className="w-full h-8 bg-white border-slate-200 rounded-lg px-2 text-xs font-bold"
-                                        />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">SAC Code</div>
-                                        <input
-                                            type="text"
-                                            placeholder="SAC"
-                                            value={item.sac}
-                                            onChange={(e) => {
-                                                const newItems = [...customLineItems];
-                                                newItems[idx].sac = e.target.value;
-                                                setCustomLineItems(newItems);
-                                            }}
-                                            className="w-full h-8 bg-white border-slate-200 rounded-lg px-2 text-xs text-center"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="flex gap-2 items-center">
-                                    <div className="flex-1">
-                                        <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">Qty</div>
-                                        <input
-                                            type="number"
-                                            placeholder="Qty"
-                                            value={item.qty}
-                                            onChange={(e) => {
-                                                const rawVal = e.target.value;
-                                                const val = parseFloat(rawVal) || 0;
-                                                const newItems = [...customLineItems];
-                                                newItems[idx].qty = rawVal === '' ? 0 : val;
-                                                newItems[idx].amount = (rawVal === '' ? 0 : val) * newItems[idx].rate;
-                                                setCustomLineItems(newItems);
-                                            }}
-                                            className="w-full h-8 bg-white border-slate-200 rounded-lg px-2 text-xs font-bold text-center"
-                                        />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">Rate</div>
-                                        <input
-                                            type="number"
-                                            placeholder="Rate"
-                                            value={item.rate}
-                                            onChange={(e) => {
-                                                const rawVal = e.target.value;
-                                                const val = parseFloat(rawVal) || 0;
-                                                const newItems = [...customLineItems];
-                                                newItems[idx].rate = rawVal === '' ? 0 : val;
-                                                newItems[idx].amount = newItems[idx].qty * (rawVal === '' ? 0 : val);
-                                                setCustomLineItems(newItems);
-                                            }}
-                                            className="w-full h-8 bg-white border-slate-200 rounded-lg px-2 text-xs font-bold text-center"
-                                        />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">Amount</div>
-                                        <div className="w-full h-8 flex items-center justify-end px-2 text-xs font-black text-slate-700 bg-slate-100 rounded-lg">
-                                            {item.amount.toLocaleString()}
+                        <div className="space-y-3">
+                            {customLineItems.map((item, idx) => (
+                                <div key={idx} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 relative group">
+                                    <div className="flex gap-2">
+                                        <div className="flex-[3]">
+                                            <div className="text-[8px] text-slate-400 uppercase font-bold mb-0.5 ml-1 leading-none">Description</div>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g., Round Trip Service"
+                                                value={item.description}
+                                                onChange={(e) => {
+                                                    const newItems = [...customLineItems];
+                                                    newItems[idx].description = e.target.value;
+                                                    setCustomLineItems(newItems);
+                                                }}
+                                                className="w-full h-9 bg-white border-slate-200 rounded-xl px-3 text-xs font-bold focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="text-[8px] text-slate-400 uppercase font-bold mb-0.5 ml-1 leading-none text-center">SAC</div>
+                                            <input
+                                                type="text"
+                                                placeholder="9966"
+                                                value={item.sac}
+                                                onChange={(e) => {
+                                                    const newItems = [...customLineItems];
+                                                    newItems[idx].sac = e.target.value;
+                                                    setCustomLineItems(newItems);
+                                                }}
+                                                className="w-full h-9 bg-white border-slate-200 rounded-xl px-2 text-[10px] text-center font-bold"
+                                            />
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => {
-                                            const newItems = customLineItems.filter((_, i) => i !== idx);
-                                            setCustomLineItems(newItems);
-                                        }}
-                                        className="h-8 w-8 flex items-center justify-center text-red-500 bg-white border border-red-100 text-xs font-bold rounded-lg hover:bg-red-50 mt-4"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
+                                    <div className="flex gap-2 items-end">
+                                        <div className="flex border border-slate-200 rounded-xl overflow-hidden h-9 bg-white">
+                                            <div className="w-16 border-r border-slate-100">
+                                                <input
+                                                    type="number"
+                                                    placeholder="Qty"
+                                                    value={item.qty === 0 ? '' : item.qty}
+                                                    onChange={(e) => {
+                                                        const rawVal = e.target.value;
+                                                        const val = parseFloat(rawVal) || 0;
+                                                        const newItems = [...customLineItems];
+                                                        newItems[idx].qty = rawVal === '' ? 0 : val;
+                                                        newItems[idx].amount = (rawVal === '' ? 0 : val) * newItems[idx].rate;
+                                                        setCustomLineItems(newItems);
+                                                    }}
+                                                    className="w-full h-full px-2 text-xs font-bold text-center outline-none"
+                                                />
+                                            </div>
+                                            <div className="flex items-center justify-center w-6 text-slate-300 font-bold text-xs bg-slate-50 border-r border-slate-100">x</div>
+                                            <div className="flex-1">
+                                                <input
+                                                    type="number"
+                                                    placeholder="Rate"
+                                                    value={item.rate === 0 ? '' : item.rate}
+                                                    onChange={(e) => {
+                                                        const rawVal = e.target.value;
+                                                        const val = parseFloat(rawVal) || 0;
+                                                        const newItems = [...customLineItems];
+                                                        newItems[idx].rate = rawVal === '' ? 0 : val;
+                                                        newItems[idx].amount = newItems[idx].qty * (rawVal === '' ? 0 : val);
+                                                        setCustomLineItems(newItems);
+                                                    }}
+                                                    className="w-full h-full px-2 text-xs font-bold text-center outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="w-full h-9 flex items-center justify-end px-3 text-xs font-bold text-indigo-700 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
+                                                ₹{item.amount.toLocaleString()}
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                const newItems = customLineItems.filter((_, i) => i !== idx);
+                                                setCustomLineItems(newItems);
+                                            }}
+                                            className="h-9 w-9 flex items-center justify-center text-slate-300 hover:text-red-500 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-red-50"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                        <button
-                            onClick={() => setCustomLineItems([...customLineItems, { description: '', sac: '9966', qty: 1, rate: 0, amount: 0 }])}
-                            className="w-full py-2 flex items-center justify-center gap-2 text-xs font-black text-indigo-600 bg-indigo-50 rounded-xl border border-indigo-100 hover:bg-indigo-100 uppercase tracking-wider"
-                        >
-                            <Plus size={14} /> Add Line Item
-                        </button>
+                            ))}
+                            <button
+                                onClick={() => setCustomLineItems([...customLineItems, { description: '', sac: '9966', qty: 1, rate: 0, amount: 0 }])}
+                                className="w-full py-3 flex items-center justify-center gap-2 text-[10px] font-black text-indigo-600 bg-indigo-50/50 rounded-2xl border-2 border-dashed border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 transition-all uppercase tracking-widest"
+                            >
+                                <Plus size={14} /> Add Another Line Item
+                            </button>
+                        </div>
+
+                        {/* Vehicle Select for Custom Mode (Moved Here) */}
+                        <div className="space-y-1 pt-3 border-t border-slate-50">
+                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Vehicle Type (For Record)</label>
+                            <select
+                                value={selectedVehicleType}
+                                onChange={(e) => setSelectedVehicleType(e.target.value)}
+                                className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
+                            >
+                                <option value="">Select Vehicle Class (Optional)</option>
+                                {VEHICLE_CLASSES.map((v) => (
+                                    <option key={v.id} value={v.id}>{v.label}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
-                    {/* Vehicle Select for Custom Mode (Optional but good for ref) */}
-                    <div className="space-y-1 pt-3 border-t border-slate-100">
-                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Vehicle Type (For Record)</label>
-                        <select
-                            value={selectedVehicleType}
-                            onChange={(e) => setSelectedVehicleType(e.target.value)}
-                            className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
-                        >
-                            <option value="">Select Vehicle Class (Optional)</option>
-                            {VEHICLE_CLASSES.map((v) => (
-                                <option key={v.id} value={v.id}>{v.label}</option>
-                            ))}
-                        </select>
+                    {/* Optional: Journey Details for Custom Quote */}
+                    <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><MapPin size={12} /> Route Information (Optional)</h3>
+                        <div className="space-y-3 relative">
+                            <PlacesAutocomplete
+                                label="From"
+                                value={fromLoc}
+                                onChange={setFromLoc}
+                                onPlaceSelected={(p) => { setFromLoc(p.address); setFromCoords({ lat: p.lat, lng: p.lng }); }}
+                                onMapClick={() => setShowMap(true)}
+                            />
+
+                            {/* Swap Button */}
+                            <div className="absolute right-12 top-11 z-10">
+                                <button
+                                    onClick={handleSwapRoute}
+                                    className="w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                    title="Swap Route"
+                                >
+                                    <Repeat size={14} className="rotate-90" />
+                                </button>
+                            </div>
+
+                            <PlacesAutocomplete
+                                label="To"
+                                value={toLoc}
+                                onChange={setToLoc}
+                                onPlaceSelected={(p) => { setToLoc(p.address); setToCoords({ lat: p.lat, lng: p.lng }); }}
+                                onMapClick={() => setShowMap(true)}
+                            />
+                        </div>
                     </div>
-                </div>
+                </>
             ) : (
                 <>
                     {/* Journey Section */}
                     <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><MapPin size={12} /> Journey Details</h3>
-                        <div className="space-y-3">
+                        <div className="space-y-3 relative">
                             <PlacesAutocomplete
                                 label="Pickup"
                                 value={fromLoc}
@@ -818,14 +877,28 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                                 onPlaceSelected={(p) => { setFromLoc(p.address); setFromCoords({ lat: p.lat, lng: p.lng }); }}
                                 onMapClick={() => setShowMap(true)}
                             />
+
                             {mode !== 'local' && (
-                                <PlacesAutocomplete
-                                    label="Drop"
-                                    value={toLoc}
-                                    onChange={setToLoc}
-                                    onPlaceSelected={(p) => { setToLoc(p.address); setToCoords({ lat: p.lat, lng: p.lng }); }}
-                                    onMapClick={() => setShowMap(true)}
-                                />
+                                <>
+                                    {/* Swap Button */}
+                                    <div className="absolute right-12 top-11 z-10">
+                                        <button
+                                            onClick={handleSwapRoute}
+                                            className="w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                            title="Swap Route"
+                                        >
+                                            <Repeat size={14} className="rotate-90" />
+                                        </button>
+                                    </div>
+
+                                    <PlacesAutocomplete
+                                        label="Drop"
+                                        value={toLoc}
+                                        onChange={setToLoc}
+                                        onPlaceSelected={(p) => { setToLoc(p.address); setToCoords({ lat: p.lat, lng: p.lng }); }}
+                                        onMapClick={() => setShowMap(true)}
+                                    />
+                                </>
                             )}
                         </div>
 
@@ -836,29 +909,25 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                             />
                         )}
 
+                        <div className="pt-1 border-t border-slate-50 space-y-3">
+                            {mode !== 'local' && (
+                                <div>
+                                    <input type="number" value={isFetchingKM ? '' : distanceOverride} onChange={(e) => setDistanceOverride(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder={isFetchingKM ? "Calculating..." : "0"} />
+                                </div>
+                            )}
+                            {(mode === 'outstation' || (mode === 'drop' && parseFloat(distanceOverride) > 30)) && (
+                                <label className="flex items-center gap-1.5 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-100 w-fit mt-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={garageBuffer}
+                                        onChange={(e) => setGarageBuffer(e.target.checked)}
+                                        className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Add Garage Buffer (20km)</span>
+                                </label>
+                            )}
+                        </div>
                     </div>
-
-
-
-                    <div className="pt-1 border-t border-slate-50 space-y-3">
-                        {mode !== 'local' && (
-                            <div>
-                                <input type="number" value={isFetchingKM ? '' : distanceOverride} onChange={(e) => setDistanceOverride(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder={isFetchingKM ? "Calculating..." : "0"} />
-                            </div>
-                        )}
-                        {(mode === 'outstation' || (mode === 'drop' && parseFloat(distanceOverride) > 30)) && (
-                            <label className="flex items-center gap-1.5 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-100 w-fit mt-2">
-                                <input
-                                    type="checkbox"
-                                    checked={garageBuffer}
-                                    onChange={(e) => setGarageBuffer(e.target.checked)}
-                                    className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                />
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Add Garage Buffer (20km)</span>
-                            </label>
-                        )}
-                    </div>
-
 
                     {/* Vehicle Section */}
                     <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
@@ -977,7 +1046,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                         </div>
                     </div>
                 </>
-            )}
+            )
+            }
 
             <div className="flex gap-2.5">
                 <button onClick={handleBack} className="flex-1 h-12 border-2 border-slate-100 text-slate-400 font-black rounded-2xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-2"><ChevronLeft size={14} /> Back</button>
@@ -1089,7 +1159,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
     const renderStep4 = () => (
         <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
             {/* Customer Section */}
-            <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
+            {/* Customer Section */}
+            <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-3">
                 <div className="flex justify-between items-center">
                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><UserCheck size={12} /> Client Details</h3>
                     <div className="bg-slate-100 px-2 py-1 rounded-lg">
@@ -1118,7 +1189,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                 <div className="grid grid-cols-2 gap-3">
                     <div className={`p-3 rounded-2xl border flex flex-col gap-2 ${includeGst ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-slate-100'}`}>
                         <div className="flex justify-between items-center w-full">
-                            <div><p className="text-[10px] font-black uppercase">GST Tax (Forward Charge)</p></div>
+                            <div><p className="text-[10px] font-bold uppercase">GST Tax (Forward Charge)</p></div>
                             <button onClick={() => {
                                 if (!settings.gstin) {
                                     alert('Please add your GSTIN in Settings to enable Forward Charge GST.');
@@ -1139,7 +1210,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                         )}
                     </div>
                     <div className={`p-3 rounded-2xl border flex justify-between items-center ${rcmEnabled ? 'bg-orange-50 border-orange-200' : 'bg-slate-50 border-slate-100'}`}>
-                        <div><p className="text-[10px] font-black uppercase">RCM (Reverse Charge)</p></div>
+                        <div><p className="text-[10px] font-bold uppercase">RCM (Reverse Charge)</p></div>
                         <button onClick={() => {
                             if (!settings.gstin) {
                                 alert('Please add your GSTIN in Settings to enable RCM.');
@@ -1154,7 +1225,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             </div>
 
             {/* Terms Section */}
-            <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
+            <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-3">
                 <div className="flex justify-between items-center">
                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><StickyNote size={12} /> QUOTATION TERMS</h3>
                     <span className="text-[9px] font-black text-slate-400 uppercase">{terms.length} Selected</span>
@@ -1235,10 +1306,10 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             </div>
 
             <div className="flex gap-2.5">
-                <button onClick={handleBack} className="flex-1 h-12 border-2 border-slate-100 text-slate-400 font-black rounded-2xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-2"><ChevronLeft size={14} /> Back</button>
+                <button onClick={handleBack} className="flex-1 h-10 border border-slate-200 text-slate-400 font-bold rounded-xl uppercase text-[9px] tracking-wide flex items-center justify-center gap-2 hover:bg-slate-50"><ChevronLeft size={14} /> Back</button>
                 <div className="flex-[3] flex gap-2">
-                    <button onClick={handlePreview} disabled={isSubmitting} className="flex-1 border-2 border-indigo-600 text-indigo-600 h-12 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] hover:bg-indigo-50 transition-colors disabled:opacity-50">PREVIEW</button>
-                    <button onClick={handleShare} disabled={isSubmitting} className="flex-1 bg-indigo-600 text-white h-12 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] shadow-lg shadow-indigo-200 hover:bg-indigo-700 disabled:opacity-50">
+                    <button onClick={handlePreview} disabled={isSubmitting} className="flex-1 border border-indigo-600 text-indigo-600 h-10 rounded-xl text-[10px] uppercase font-bold tracking-wide hover:bg-indigo-50 transition-colors disabled:opacity-50">PREVIEW</button>
+                    <button onClick={handleShare} disabled={isSubmitting} className="flex-1 bg-indigo-600 text-white h-10 rounded-xl text-[10px] uppercase font-bold tracking-wide shadow-md shadow-indigo-200 hover:bg-indigo-700 disabled:opacity-50">
                         {isSubmitting ? (
                             <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin mx-auto" />
                         ) : (
@@ -1253,16 +1324,18 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
     return (
         <div className="max-w-xl mx-auto pb-24 relative touch-pan-y">
             {/* Progress Header */}
-            <div className="flex items-center justify-between mb-4 px-4 pt-2">
-                {[1, 2, 3, 4].map((s) => (
-                    <div key={s} className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${step === s ? 'bg-indigo-600 text-white shadow-lg ring-4 ring-indigo-100' : (step > s ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-400')}`}>
-                            {step > s ? <Check size={14} /> : s}
+            {mode && (
+                <div className="flex items-center justify-between mb-4 px-4 pt-2">
+                    {[1, 2, 3].map((s) => (
+                        <div key={s} className="flex items-center gap-2">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${step - 1 === s ? 'bg-indigo-600 text-white shadow-lg ring-4 ring-indigo-100' : (step - 1 > s ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-400')}`}>
+                                {step - 1 > s ? <Check size={14} /> : s}
+                            </div>
+                            {s < 3 && <div className={`h-1 w-6 sm:w-12 rounded-full ${step - 1 > s ? 'bg-green-500' : 'bg-slate-200'}`} />}
                         </div>
-                        {s < 4 && <div className={`h-1 w-6 sm:w-12 rounded-full ${step > s ? 'bg-green-500' : 'bg-slate-200'}`} />}
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}

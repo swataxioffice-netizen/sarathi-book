@@ -222,10 +222,10 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                     <button
                         type="button"
                         onClick={onMapClick}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors z-10"
+                        className="absolute left-2 top-1/2 -translate-y-1/2 p-1 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors z-10"
                         title="Select on map"
                     >
-                        <Map size={16} />
+                        <Map size={14} />
                     </button>
                 )}
 
@@ -237,7 +237,7 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                     onChange={handleInputChange}
                     onFocus={handleFocus}
                     onBlur={onBlur}
-                    className={className || `tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs ${onMapClick ? 'pl-10' : 'pl-3'} pr-10`}
+                    className={className || `tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs font-bold ${onMapClick ? 'pl-9' : 'pl-3'} pr-8`}
                     placeholder={placeholder || "Start typing..."}
                     autoComplete="off"
                 />
@@ -272,14 +272,14 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                                 key={prediction.place_id}
                                 type="button"
                                 onClick={() => handlePlaceSelect(prediction.place_id, prediction.description)}
-                                className="w-full text-left px-3 py-2.5 hover:bg-blue-50 flex items-start gap-3 transition-colors border-b border-slate-50 last:border-0"
+                                className="w-full text-left px-3 py-2 hover:bg-blue-50 flex items-start gap-2.5 transition-colors border-b border-slate-50 last:border-0"
                             >
                                 <MapPin size={14} className="mt-0.5 text-slate-400 shrink-0" />
                                 <div>
-                                    <p className="text-xs font-bold text-slate-700 leading-tight">
+                                    <p className="text-[11px] font-bold text-slate-700 leading-tight">
                                         {prediction.structured_formatting.main_text}
                                     </p>
-                                    <p className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">
+                                    <p className="text-[9px] text-slate-400 font-bold leading-tight mt-0.5">
                                         {prediction.structured_formatting.secondary_text}
                                     </p>
                                 </div>

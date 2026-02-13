@@ -39,17 +39,6 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
 
-    useEffect(() => {
-        // External trigger to create new note
-        if (onCreateNew) {
-            handleAddNote();
-        }
-    }, [onCreateNew]);
-
-    useEffect(() => {
-        localStorage.setItem('driver-quick-notes', JSON.stringify(notes));
-    }, [notes]);
-
     // Handle "Add Note" - Opens Modal immediately
     const handleAddNote = () => {
         const newNote: Note = {
@@ -60,6 +49,17 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
         setSelectedNote(newNote);
         setIsEditing(true);
     };
+
+    useEffect(() => {
+        // External trigger to create new note
+        if (onCreateNew) {
+            handleAddNote();
+        }
+    }, [onCreateNew]);
+
+    useEffect(() => {
+        localStorage.setItem('driver-quick-notes', JSON.stringify(notes));
+    }, [notes]);
 
     // Handle "Edit Note" - Opens Modal with existing content
     const handleNoteClick = (note: Note) => {
@@ -152,22 +152,22 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
 
     return (
         <div className="space-y-4 pb-24 relative">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3 px-1">
                 <div className="flex items-center gap-2">
-                    <div className="p-2 bg-yellow-200 text-yellow-700 rounded-lg">
-                        <StickyNote size={20} />
+                    <div className="p-1.5 bg-yellow-100 text-yellow-700 rounded-lg">
+                        <StickyNote size={18} />
                     </div>
                     <div>
-                        <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Quick Notes</h2>
-                        <p className="text-xs text-slate-500 font-bold">Trip logs & reminders</p>
+                        <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Quick Notes</h2>
+                        <p className="text-[10px] text-slate-500 font-bold">Trip logs & reminders</p>
                     </div>
                 </div>
                 <button
                     onClick={handleAddNote}
-                    className="flex items-center gap-2 bg-[#0047AB] text-white px-4 py-2.5 rounded-xl hover:bg-[#003a8c] transition-all active:scale-95 shadow-md shadow-blue-500/20"
+                    className="flex items-center gap-1.5 bg-[#0047AB] text-white px-3 py-2 rounded-xl hover:bg-[#003a8c] transition-all active:scale-95 shadow-md shadow-blue-500/20"
                 >
-                    <Plus size={18} strokeWidth={3} />
-                    <span className="text-[11px] font-black uppercase tracking-wider">New Note</span>
+                    <Plus size={16} strokeWidth={3} />
+                    <span className="text-[10px] font-black uppercase tracking-wider">New Note</span>
                 </button>
             </div>
 
@@ -178,31 +178,31 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
                     <p className="text-sm text-slate-400 mt-2 max-w-xs mx-auto">Tap here to create your first note.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {notes.map((note) => (
                         <div
                             key={note.id}
                             onClick={() => handleNoteClick(note)}
-                            className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-all cursor-pointer group relative flex flex-col h-[140px]"
+                            className="bg-yellow-50 border border-yellow-200 rounded-xl p-2.5 shadow-sm hover:shadow-md transition-all cursor-pointer group relative flex flex-col h-[120px]"
                         >
                             {/* Note Content Preview */}
                             <div className="flex-1 overflow-hidden relative">
-                                <p className="text-[11px] text-slate-800 font-medium whitespace-pre-wrap leading-relaxed font-sans" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+                                <p className="text-[10px] text-slate-800 font-medium whitespace-pre-wrap leading-relaxed font-sans" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
                                     {note.content || <span className="text-slate-400 italic">Empty note...</span>}
                                 </p>
                                 {/* Fade out effect at bottom */}
-                                <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-yellow-50 to-transparent pointer-events-none"></div>
+                                <div className="absolute bottom-0 left-0 w-full h-6 bg-gradient-to-t from-yellow-50 to-transparent pointer-events-none"></div>
                             </div>
 
-                            <div className="flex justify-between items-center mt-2 pt-2 border-t border-yellow-200/50">
-                                <span className="text-[9px] font-bold text-slate-400">
+                            <div className="flex justify-between items-center mt-1.5 pt-1.5 border-t border-yellow-200/50">
+                                <span className="text-[8px] font-bold text-slate-400">
                                     {new Date(note.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
                                 </span>
                                 <button
                                     onClick={(e) => handleDelete(note.id, e)}
-                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                    className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                 >
-                                    <Trash2 size={12} />
+                                    <Trash2 size={10} />
                                 </button>
                             </div>
                         </div>
@@ -218,32 +218,32 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Modal Header */}
-                        <div className="flex items-center justify-between p-4 border-b border-yellow-200/50">
-                            <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                        <div className="flex items-center justify-between p-3 border-b border-yellow-200/50">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                 {notes.find(n => n.id === selectedNote.id) ? 'Edit Note' : 'New Note'}
                             </span>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
                                 {/* Voice Button */}
                                 <button
                                     onClick={toggleRecording}
-                                    className={`p-2 rounded-full transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30' : 'text-slate-400 hover:text-red-500 hover:bg-red-50'}`}
+                                    className={`p-1.5 rounded-full transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30' : 'text-slate-400 hover:text-red-500 hover:bg-red-50'}`}
                                     title="Voice Note"
                                 >
-                                    <Mic size={18} />
+                                    <Mic size={16} />
                                 </button>
 
                                 <button
                                     onClick={() => handleDelete(selectedNote.id)}
-                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
                                     title="Delete"
                                 >
-                                    <Trash2 size={18} />
+                                    <Trash2 size={16} />
                                 </button>
                                 <button
                                     onClick={handleClose}
-                                    className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
+                                    className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
                                 >
-                                    <X size={20} />
+                                    <X size={18} />
                                 </button>
                             </div>
                         </div>
@@ -259,25 +259,25 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
                                 value={selectedNote.content}
                                 onChange={(e) => setSelectedNote(prev => prev ? { ...prev, content: e.target.value } : null)}
                                 placeholder="Type or Tap Mic to Speak...&#10;Ex: Trip via Vellore started."
-                                className="w-full h-full min-h-[300px] p-6 bg-transparent text-slate-800 text-base leading-relaxed resize-none focus:outline-none placeholder:text-slate-300"
+                                className="w-full h-full min-h-[300px] p-5 bg-transparent text-slate-800 text-sm leading-relaxed resize-none focus:outline-none placeholder:text-slate-300"
                                 style={{ fontFamily: 'Noto Sans, sans-serif' }}
                                 autoFocus
                             />
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="p-4 border-t border-yellow-200/50 flex justify-end gap-3 bg-yellow-50/50 rounded-b-2xl">
+                        <div className="p-3 border-t border-yellow-200/50 flex justify-end gap-2 bg-yellow-50/50 rounded-b-2xl">
                             <button
                                 onClick={handleClose}
-                                className="px-5 py-2.5 rounded-xl text-slate-500 font-bold text-xs uppercase tracking-wider hover:bg-slate-100 transition-colors"
+                                className="px-4 py-2 rounded-xl text-slate-500 font-bold text-[10px] uppercase tracking-wider hover:bg-slate-100 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleSave}
-                                className="flex items-center gap-2 px-6 py-2.5 bg-[#0047AB] text-white rounded-xl font-black text-xs uppercase tracking-wider shadow-lg shadow-blue-500/20 active:scale-95 transition-all hover:bg-blue-700"
+                                className="flex items-center gap-1.5 px-5 py-2 bg-[#0047AB] text-white rounded-xl font-black text-[10px] uppercase tracking-wider shadow-lg shadow-blue-500/20 active:scale-95 transition-all hover:bg-blue-700"
                             >
-                                <Save size={16} />
+                                <Save size={14} />
                                 Save Note
                             </button>
                         </div>

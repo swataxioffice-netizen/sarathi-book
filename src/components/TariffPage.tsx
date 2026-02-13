@@ -35,23 +35,23 @@ const TariffPage = () => {
             />
 
             {/* Hero Section */}
-            <div className="bg-[#0047AB] text-white pt-24 pb-12 px-6">
+            <div className="bg-[#0047AB] text-white pt-20 pb-8 px-4">
                 <div className="max-w-4xl mx-auto text-center">
-                    <h1 className="text-3xl md:text-4xl font-black uppercase tracking-wider mb-4">
+                    <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider mb-2">
                         Tamil Nadu Tariff
                     </h1>
-                    <p className="text-blue-100 text-lg md:text-xl font-medium max-w-2xl mx-auto leading-relaxed mb-6">
+                    <p className="text-blue-100 text-sm md:text-lg font-medium max-w-2xl mx-auto leading-relaxed mb-4">
                         Official Union Rates. Zero Commission. 100% Direct to Drivers.
                     </p>
-                    <div className="inline-flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full border border-white/20">
-                        <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div>
-                        <span className="text-xs font-bold text-blue-50 tracking-wide">Rates for other states coming soon</span>
+                    <div className="inline-flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full border border-white/20">
+                        <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></div>
+                        <span className="text-[10px] font-bold text-blue-50 tracking-wide">Rates for other states coming soon</span>
                     </div>
                 </div>
             </div>
 
             {/* Main Content */}
-            <main className="max-w-5xl mx-auto px-4 -mt-8">
+            <main className="max-w-5xl mx-auto px-2 -mt-6">
 
                 {/* Trust Indicators */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -129,41 +129,41 @@ const TariffPage = () => {
 
 
                 {/* Mobile Rate Cards */}
-                <div className="md:hidden space-y-4 mb-8">
+                <div className="md:hidden space-y-2.5 mb-6">
                     {VEHICLES.map((v) => (
-                        <div key={v.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                            <div className="flex justify-between items-start mb-4">
+                        <div key={v.id} className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
+                            <div className="flex justify-between items-start mb-2.5">
                                 <div>
-                                    <h3 className="font-bold text-lg text-slate-700">{v.name}</h3>
-                                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{v.popularModels}</p>
+                                    <h3 className="font-bold text-sm text-slate-700">{v.name}</h3>
+                                    <p className="text-[9px] font-medium text-slate-400 uppercase tracking-wider">{v.popularModels}</p>
                                 </div>
-                                <div className="bg-blue-50 px-2 py-1 rounded text-right">
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase">Min Km/Day</p>
-                                    <p className="font-bold text-slate-700 text-sm">{v.minKm} KM</p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3 mb-4">
-                                <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">One Way</p>
-                                    <p className="text-lg font-bold text-slate-700">₹{v.dropRate}<span className="text-[9px] text-slate-400 font-medium ml-1">/km</span></p>
-                                </div>
-                                <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Round Trip</p>
-                                    <p className="text-lg font-bold text-slate-700">₹{v.roundRate}<span className="text-[9px] text-slate-400 font-medium ml-1">/km</span></p>
+                                <div className="bg-blue-50 px-2 py-0.5 rounded text-right">
+                                    <p className="text-[8px] font-bold text-slate-400 uppercase">Min Km/Day</p>
+                                    <p className="font-bold text-slate-700 text-xs">{v.minKm} KM</p>
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                                <div className="text-[10px] font-bold text-slate-500">
+                            <div className="grid grid-cols-2 gap-2 mb-2.5">
+                                <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">One Way</p>
+                                    <p className="text-sm font-bold text-slate-700">₹{v.dropRate}<span className="text-[8px] text-slate-400 font-medium ml-0.5">/km</span></p>
+                                </div>
+                                <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Round Trip</p>
+                                    <p className="text-sm font-bold text-slate-700">₹{v.roundRate}<span className="text-[8px] text-slate-400 font-medium ml-0.5">/km</span></p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                                <div className="text-[9px] font-bold text-slate-500">
                                     Driver Bata: <span className="text-slate-700 font-bold">₹{v.batta}</span>
                                 </div>
                                 <a
                                     href={`/taxi-fare-calculator`}
-                                    className="inline-flex items-center gap-1 bg-[#0047AB] text-white px-3 py-2 rounded-lg shadow-md text-[10px] font-bold uppercase tracking-widest hover:bg-blue-800 transition-all active:scale-[0.98]"
+                                    className="inline-flex items-center gap-1 bg-[#0047AB] text-white px-3 py-1.5 rounded-lg shadow-sm text-[9px] font-bold uppercase tracking-widest hover:bg-blue-800 transition-all active:scale-[0.98]"
                                 >
                                     Calculate
-                                    <ArrowRight size={12} />
+                                    <ArrowRight size={10} />
                                 </a>
                             </div>
                         </div>
@@ -208,38 +208,38 @@ const TariffPage = () => {
                 </div>
 
                 {/* Mobile Hourly Cards */}
-                <div className="md:hidden space-y-4 mb-12">
+                <div className="md:hidden space-y-3 mb-8">
                     <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-                        <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
-                            <h2 className="text-xl font-black text-slate-800 uppercase tracking-wide flex items-center gap-2">
-                                <Clock size={20} className="text-blue-600" />
+                        <div className="bg-slate-50 px-4 py-3 border-b border-slate-200">
+                            <h2 className="text-sm font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                                <Clock size={16} className="text-blue-600" />
                                 Local Packages
                             </h2>
-                            <p className="text-xs text-slate-500 font-medium mt-1">Hourly rentals for city use</p>
+                            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Hourly rentals for city use</p>
                         </div>
 
                         <div className="divide-y divide-slate-100">
                             {Object.entries(TARIFFS.vehicles).map(([key, data]) => (
-                                <div key={key} className="p-5">
-                                    <div className="flex justify-between items-center mb-3">
-                                        <h3 className="font-bold text-slate-700 capitalize text-base">{data.name}</h3>
-                                        <span className="text-[9px] font-medium bg-slate-100 text-slate-500 px-2 py-1 rounded-lg">
+                                <div key={key} className="p-3">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h3 className="font-bold text-slate-700 capitalize text-sm">{data.name}</h3>
+                                        <span className="text-[8px] font-medium bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-lg">
                                             Extra: ₹{data.extra_hr_rate}/hr
                                         </span>
                                     </div>
 
                                     <div className="grid grid-cols-3 gap-2 text-center">
-                                        <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-100">
-                                            <p className="text-[9px] font-medium text-blue-500 uppercase mb-0.5">4 Hr</p>
-                                            <p className="font-bold text-slate-700 text-sm">₹{data.local_4hr_pkg}</p>
+                                        <div className="bg-blue-50/50 p-1.5 rounded-lg border border-blue-100">
+                                            <p className="text-[8px] font-medium text-blue-500 uppercase mb-0.5">4 Hr</p>
+                                            <p className="font-bold text-slate-700 text-xs">₹{data.local_4hr_pkg}</p>
                                         </div>
-                                        <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-100">
-                                            <p className="text-[9px] font-medium text-blue-500 uppercase mb-0.5">8 Hr</p>
-                                            <p className="font-bold text-slate-700 text-sm">₹{data.local_8hr_pkg}</p>
+                                        <div className="bg-blue-50/50 p-1.5 rounded-lg border border-blue-100">
+                                            <p className="text-[8px] font-medium text-blue-500 uppercase mb-0.5">8 Hr</p>
+                                            <p className="font-bold text-slate-700 text-xs">₹{data.local_8hr_pkg}</p>
                                         </div>
-                                        <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-100">
-                                            <p className="text-[9px] font-medium text-blue-500 uppercase mb-0.5">12 Hr</p>
-                                            <p className="font-bold text-slate-700 text-sm">₹{data.local_12hr_pkg}</p>
+                                        <div className="bg-blue-50/50 p-1.5 rounded-lg border border-blue-100">
+                                            <p className="text-[8px] font-medium text-blue-500 uppercase mb-0.5">12 Hr</p>
+                                            <p className="font-bold text-slate-700 text-xs">₹{data.local_12hr_pkg}</p>
                                         </div>
                                     </div>
                                 </div>

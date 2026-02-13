@@ -34,7 +34,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
             price: { monthly: 49, yearly: 499 },
             description: 'Powerful automated fleet management',
             icon: <Star size={24} className="text-blue-600" />,
-            features: ['Unlimited Vehicles', 'No Ads (Instant)', 'Custom Business Logo', 'Staff Management', 'Unlimited Invoices'],
+            features: ['Unlimited Vehicles', 'No Ads (Instant)', 'Remove App Watermark', 'Custom Business Logo', 'Staff Management'],
             buttonText: 'Upgrade to Pro',
             popular: true
         },
@@ -54,6 +54,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
         { name: 'Vehicle Management', free: '1 Vehicle', pro: 'Unlimited', super: 'Unlimited' },
         { name: 'Invoices / Month', free: '10', pro: 'Unlimited', super: 'Unlimited' },
         { name: 'Ad-free Experience', free: false, pro: true, super: true },
+        { name: 'Remove App Watermark', free: false, pro: true, super: true },
         { name: 'Custom Business Logo', free: false, pro: true, super: true },
         { name: 'Staff & Salary Management', free: false, pro: true, super: true },
         { name: 'Custom App Theme', free: false, pro: false, super: true },
@@ -101,52 +102,52 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 lg:p-12 animate-fade-in">
-            <div className="bg-white w-full max-w-6xl max-h-[90vh] rounded-[40px] shadow-2xl overflow-hidden flex flex-col animate-scale-in relative border border-white/20">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-2 md:p-12 animate-fade-in">
+            <div className="bg-white w-full max-w-6xl max-h-[95vh] md:max-h-[90vh] rounded-3xl md:rounded-[40px] shadow-2xl overflow-hidden flex flex-col animate-scale-in relative border border-white/20">
 
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-6 right-6 z-10 w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-500 rounded-full hover:bg-slate-200 transition-all shadow-sm"
+                    className="absolute top-3 right-3 md:top-6 md:right-6 z-20 w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-slate-100/80 backdrop-blur-sm text-slate-500 rounded-full hover:bg-slate-200 transition-all shadow-sm"
                 >
-                    <X size={20} />
+                    <X size={18} />
                 </button>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    <div className="p-8 md:p-12">
+                    <div className="p-5 md:p-12">
 
                         {/* Header */}
-                        <div className="text-center mb-12">
-                            <h2 className="text-3xl md:text-5xl font-black text-slate-900 leading-tight mb-4">
+                        <div className="text-center mb-8 md:mb-12">
+                            <h2 className="text-2xl md:text-5xl font-black text-slate-900 leading-tight mb-3 md:mb-4">
                                 Choose Your <span className="text-blue-600">Success Plan</span>
                             </h2>
-                            <p className="text-slate-500 font-bold mb-8 max-w-md mx-auto text-sm leading-relaxed">
+                            <p className="text-slate-500 font-bold mb-6 md:mb-8 max-w-md mx-auto text-[11px] md:text-sm leading-relaxed">
                                 Transparent pricing for businesses of all sizes. Professionalize your cab business today.
                             </p>
 
                             {/* Billing Switch */}
-                            <div className="inline-flex items-center p-1.5 bg-slate-100 rounded-2xl mb-8">
+                            <div className="inline-flex items-center p-1.5 bg-slate-100 rounded-2xl mb-6 md:mb-8">
                                 <button
                                     onClick={() => setBillingCycle('monthly')}
-                                    className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${billingCycle === 'monthly' ? 'bg-white shadow-md text-blue-600' : 'text-slate-500'}`}
+                                    className={`px-4 md:px-6 py-2 rounded-xl text-[10px] md:text-xs font-black transition-all ${billingCycle === 'monthly' ? 'bg-white shadow-md text-blue-600' : 'text-slate-500'}`}
                                 >
                                     Monthly
                                 </button>
                                 <button
                                     onClick={() => setBillingCycle('yearly')}
-                                    className={`px-6 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${billingCycle === 'yearly' ? 'bg-white shadow-md text-blue-600' : 'text-slate-500'}`}
+                                    className={`px-4 md:px-6 py-2 rounded-xl text-[10px] md:text-xs font-black transition-all flex items-center gap-2 ${billingCycle === 'yearly' ? 'bg-white shadow-md text-blue-600' : 'text-slate-500'}`}
                                 >
-                                    Yearly <span className="bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-lg text-[10px]">Save ~15%</span>
+                                    Yearly <span className="bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-lg text-[9px] md:text-[10px]">Save ~15%</span>
                                 </button>
                             </div>
                         </div>
 
                         {/* Plans Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-12 md:mb-16">
                             {tiers.map((tier) => (
                                 <div
                                     key={tier.id}
-                                    className={`relative bg-white rounded-[32px] p-8 border-2 transition-all duration-300 flex flex-col ${tier.popular
+                                    className={`relative bg-white rounded-[24px] md:rounded-[32px] p-6 md:p-8 border-2 transition-all duration-300 flex flex-col ${tier.popular
                                         ? 'border-blue-600 shadow-xl shadow-blue-500/10 z-10'
                                         : 'border-slate-100 hover:border-slate-200'
                                         }`}
@@ -157,17 +158,17 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                                         </div>
                                     )}
 
-                                    <div className="mb-8">
+                                    <div className="mb-6 md:mb-8">
                                         <div className="mb-4">{tier.icon}</div>
-                                        <h3 className="text-lg font-black text-slate-900 uppercase tracking-wider mb-2">{tier.name}</h3>
+                                        <h3 className="text-base md:text-lg font-black text-slate-900 uppercase tracking-wider mb-2">{tier.name}</h3>
                                         <div className="flex items-baseline gap-2">
-                                            <span className="text-4xl font-black text-slate-900">₹{billingCycle === 'monthly' ? tier.price.monthly : tier.price.yearly}</span>
-                                            <span className="text-slate-400 font-bold text-sm">/ {billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
+                                            <span className="text-3xl md:text-4xl font-black text-slate-900">₹{billingCycle === 'monthly' ? tier.price.monthly : tier.price.yearly}</span>
+                                            <span className="text-slate-400 font-bold text-xs md:text-sm">/ {billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
                                         </div>
-                                        <p className="mt-4 text-xs font-bold text-slate-400 leading-relaxed uppercase tracking-wider">{tier.description}</p>
+                                        <p className="mt-3 md:mt-4 text-[10px] md:text-xs font-bold text-slate-400 leading-relaxed uppercase tracking-wider">{tier.description}</p>
                                     </div>
 
-                                    <div className="space-y-3.5 mb-10 flex-1">
+                                    <div className="space-y-3 mb-8 md:mb-10 flex-1">
                                         {tier.features.map((feature, i) => (
                                             <div key={i} className="flex items-center gap-3">
                                                 <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${tier.id === 'super-pro' ? 'bg-amber-100 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
@@ -239,19 +240,19 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                 </div>
 
                 {/* Bottom Trust Note */}
-                <div className="bg-slate-50 p-6 border-t border-slate-100">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-6 max-w-4xl mx-auto">
+                <div className="bg-slate-50 p-4 md:p-6 border-t border-slate-100">
+                    <div className="flex flex-col md:flex-row items-center justify-center md:justify-between gap-4 md:gap-6 max-w-4xl mx-auto">
                         <div className="flex items-center gap-2">
-                            <ShieldCheck className="text-emerald-500" size={18} />
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">100% Secure via Razorpay</span>
+                            <ShieldCheck className="text-emerald-500" size={16} />
+                            <span className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">100% Secure via Razorpay</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Zap className="text-blue-500" size={18} />
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Instant Activation</span>
+                            <Zap className="text-blue-500" size={16} />
+                            <span className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">Instant Activation</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Star className="text-amber-500" size={18} />
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Cancel Anytime</span>
+                            <Star className="text-amber-500" size={16} />
+                            <span className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">Cancel Anytime</span>
                         </div>
                     </div>
                 </div>

@@ -67,7 +67,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
                             className={`flex flex-col items-center justify-center w-16 p-1 transition-all active:scale-95 ${activeTab === item.id ? 'text-[#0047AB]' : 'text-slate-400'}`}
                         >
                             <div className={`${activeTab === item.id ? 'scale-110' : ''}`}>{item.icon}</div>
-                            <span className="text-[9px] font-black uppercase mt-1.5 tracking-tight">{item.label}</span>
+                            <span className="text-[10px] font-medium uppercase mt-1 tracking-wide">{item.label}</span>
                         </button>
                     ))}
                 </div>
@@ -84,7 +84,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
                     >
                         <Calculator size={20} strokeWidth={2.5} />
                     </button>
-                    <span className={`text-[9px] font-black uppercase mt-1 tracking-wider transition-colors ${activeTab === 'taxi-fare-calculator' || activeTab === 'calculator' ? 'text-[#0047AB]' : 'text-slate-400'}`}>
+                    <span className={`text-[10px] font-bold uppercase mt-1 tracking-wide transition-colors ${activeTab === 'taxi-fare-calculator' || activeTab === 'calculator' ? 'text-[#0047AB]' : 'text-slate-400'}`}>
                         <span className="sm:hidden">CALC</span>
                         <span className="hidden sm:inline">CALCULATOR</span>
                     </span>
@@ -99,7 +99,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
                             className={`flex flex-col items-center justify-center w-16 p-1 transition-all active:scale-95 ${activeTab === item.id ? 'text-[#0047AB]' : 'text-slate-400'}`}
                         >
                             <div className={`${activeTab === item.id ? 'scale-110' : ''}`}>{item.icon}</div>
-                            <span className="text-[9px] font-black uppercase mt-1.5 tracking-tight">{item.label}</span>
+                            <span className="text-[10px] font-medium uppercase mt-1 tracking-wide">{item.label}</span>
                         </button>
                     ))}
                 </div>

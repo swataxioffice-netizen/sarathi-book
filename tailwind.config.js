@@ -13,9 +13,11 @@ export default {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
       fontSize: {
-        'display': ['clamp(2rem, 8vw, 3.5rem)', { lineHeight: '1.2' }],
-        'hero': ['clamp(1.5rem, 5vw, 2.5rem)', { lineHeight: '1.2' }],
-        'body-fluid': ['clamp(1rem, 2.5vw, 1.125rem)', { lineHeight: '1.5' }],
+        'display': ['clamp(1.75rem, 6vw, 3rem)', { lineHeight: '1.2' }], // Reduced from 2rem min
+        'hero': ['clamp(1.25rem, 4vw, 2rem)', { lineHeight: '1.3' }], // Reduced from 1.5rem min
+        'body-fluid': ['clamp(0.875rem, 2vw, 1rem)', { lineHeight: '1.5' }], // Reduced from 1rem min (14px base)
+        'caption': ['0.75rem', { lineHeight: '1.4' }], // 12px
+        'tiny': ['0.625rem', { lineHeight: '1.2' }], // 10px
       },
       colors: {
         'primary': 'var(--primary)',

@@ -48,6 +48,8 @@ interface Settings {
     staff: Staff[];
     defaultSalaryConfig: SalaryConfig;
     preferredPaymentMethod?: 'upi' | 'bank';
+    showUpiOnPdf?: boolean;
+    showBankOnPdf?: boolean;
 }
 
 export interface SalaryConfig {
@@ -180,6 +182,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 };
             }
             if (!parsed.preferredPaymentMethod) parsed.preferredPaymentMethod = 'upi';
+            if (parsed.showUpiOnPdf === undefined) parsed.showUpiOnPdf = true;
+            if (parsed.showBankOnPdf === undefined) parsed.showBankOnPdf = false;
 
             // Sync isPremium with plan (Legacy support)
             if (parsed.plan && parsed.plan !== 'free') {
@@ -224,7 +228,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 pfDeduction: 0,
                 advanceLimit: 5000
             },
-            preferredPaymentMethod: 'upi'
+            preferredPaymentMethod: 'upi',
+            showUpiOnPdf: true,
+            showBankOnPdf: false
         };
     });
 

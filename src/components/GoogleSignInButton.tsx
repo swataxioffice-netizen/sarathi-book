@@ -61,7 +61,7 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
                 </svg>
             )}
 
-            <span className="text-sm font-black text-inherit uppercase tracking-tight">
+            <span className="text-sm font-bold text-inherit uppercase tracking-wide">
                 {isLoading ? "Connecting..." : text}
             </span>
 

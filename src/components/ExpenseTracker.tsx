@@ -264,38 +264,38 @@ const ExpenseTracker: React.FC = () => {
         <div className="space-y-4 pb-24">
             {/* Cash Flow Summary - Dynamic Grid */}
             <div className="space-y-3">
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center justify-between">
+                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm flex items-center justify-between">
                     <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">TOTAL SPENT TODAY</p>
-                        <h2 className="text-3xl font-black tabular-nums tracking-tight text-slate-900">₹{totalSpentToday.toLocaleString()}</h2>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-0.5">TOTAL SPENT TODAY</p>
+                        <h2 className="text-2xl font-black tabular-nums tracking-tight text-slate-900">₹{totalSpentToday.toLocaleString()}</h2>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-600">
-                        <PieChart size={20} />
+                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-slate-600">
+                        <PieChart size={18} />
                     </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-                        <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">THIS WEEK</p>
-                        <p className="text-sm font-black text-slate-900">₹{totalSpentWeek.toLocaleString()}</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm">
+                        <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5">THIS WEEK</p>
+                        <p className="text-xs font-black text-slate-900">₹{totalSpentWeek.toLocaleString()}</p>
                     </div>
-                    <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-                        <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">THIS MONTH</p>
-                        <p className="text-sm font-black text-slate-900">₹{totalSpentMonth.toLocaleString()}</p>
+                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm">
+                        <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5">THIS MONTH</p>
+                        <p className="text-xs font-black text-slate-900">₹{totalSpentMonth.toLocaleString()}</p>
                     </div>
-                    <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-                        <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">THIS YEAR</p>
-                        <p className="text-sm font-black text-slate-900">₹{totalSpentYear.toLocaleString()}</p>
+                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm">
+                        <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5">THIS YEAR</p>
+                        <p className="text-xs font-black text-slate-900">₹{totalSpentYear.toLocaleString()}</p>
                     </div>
                 </div>
             </div>
 
             {/* Expense Entry Card - Compacter */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-50 pb-3">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-50 text-[#0047AB] rounded-lg">
-                            <Plus size={16} strokeWidth={3} />
+            <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-50 pb-2">
+                    <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 bg-blue-50 text-[#0047AB] rounded-lg">
+                            <Plus size={14} strokeWidth={3} />
                         </div>
                         <div>
                             <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight">New Expenditure</h3>
@@ -303,10 +303,10 @@ const ExpenseTracker: React.FC = () => {
                     </div>
                     <button
                         onClick={() => setShowScanner(true)}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-[#0047AB] rounded-xl border border-blue-100 hover:bg-blue-100 transition-all active:scale-95 group"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 text-[#0047AB] rounded-xl border border-blue-100 hover:bg-blue-100 transition-all active:scale-95 group"
                     >
-                        <Scan size={14} className="group-hover:rotate-12 transition-transform" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Scan Bill</span>
+                        <Scan size={12} className="group-hover:rotate-12 transition-transform" />
+                        <span className="text-[9px] font-black uppercase tracking-widest">Scan Bill</span>
                     </button>
                 </div>
 
@@ -318,7 +318,7 @@ const ExpenseTracker: React.FC = () => {
                     />
                 )}
 
-                <div className="grid grid-cols-[1fr,1.5fr] gap-3">
+                <div className="grid grid-cols-[1fr,1.5fr] gap-2.5">
                     <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-tight ml-1">AMOUNT</label>
                         <div className="relative">
@@ -327,7 +327,7 @@ const ExpenseTracker: React.FC = () => {
                                 type="number"
                                 value={amount}
                                 onChange={(_) => setAmount(_.target.value)}
-                                className="tn-input h-10 pl-7 bg-slate-50 border-slate-200 font-black text-base w-full"
+                                className="tn-input h-9 pl-7 bg-slate-50 border-slate-200 font-black text-sm w-full"
                                 placeholder="0"
                             />
                         </div>
@@ -337,7 +337,7 @@ const ExpenseTracker: React.FC = () => {
                         <select
                             value={category}
                             onChange={(_) => setCategory(_.target.value as any)}
-                            className="tn-input h-10 bg-slate-50 border-slate-200 font-bold text-[10px] uppercase w-full"
+                            className="tn-input h-9 bg-slate-50 border-slate-200 font-bold text-[10px] uppercase w-full"
                         >
                             {['fuel', 'maintenance', 'food', 'toll', 'permit', 'parking', 'other'].map(c => <option key={c} value={c}>{t(c)}</option>)}
                         </select>
@@ -346,7 +346,7 @@ const ExpenseTracker: React.FC = () => {
 
                 <button
                     onClick={addExpense}
-                    className="w-full bg-[#0047AB] text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                    className="w-full bg-[#0047AB] text-white h-10 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
                     <Wallet size={14} /> REGISTER EXPENSE
                 </button>

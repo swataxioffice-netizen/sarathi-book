@@ -38,7 +38,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                         />
                     </div>
                     <div className="flex flex-col justify-center">
-                        <h1 className="text-lg font-extrabold text-slate-900 leading-none tracking-tight" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+                        <h1 className="text-lg font-bold text-slate-900 leading-none tracking-tight" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
                             Sarathi<span className="text-[#0047AB]">Book</span>
                         </h1>
 
@@ -54,7 +54,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                             className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-1 rounded-full border border-red-100 animate-pulse shadow-sm"
                         >
                             <RefreshCw size={12} className="animate-spin-slow" aria-hidden="true" />
-                            <span className="text-[9px] font-black uppercase tracking-widest">Update</span>
+                            <span className="text-[9px] font-bold uppercase tracking-wide">Update</span>
                         </button>
                     )}
 

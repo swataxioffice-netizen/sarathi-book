@@ -17,8 +17,8 @@ const Login: React.FC = () => {
                         <Briefcase className="w-10 h-10 md:w-12 md:h-12" strokeWidth={2.5} />
                     </div>
                     <div>
-                        <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight uppercase leading-none">{t('title') || 'SWA TAXI'}</h1>
-                        <p className="text-[10px] text-[#0047AB] font-black tracking-[0.4em] uppercase mt-4 opacity-70">CABIN LOGISTICS SYSTEM</p>
+                        <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight uppercase leading-none">{t('title') || 'SWA TAXI'}</h1>
+                        <p className="text-[10px] text-[#0047AB] font-bold tracking-wide uppercase mt-4 opacity-70">CABIN LOGISTICS SYSTEM</p>
                     </div>
                 </div>
 
@@ -28,8 +28,8 @@ const Login: React.FC = () => {
                             <ShieldCheck size={20} />
                         </div>
                         <div>
-                            <span className="text-xs font-black text-slate-900 uppercase tracking-wide block">GST Compliance</span>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 md:mt-1 block">AUTOMATED TAX FILINGS</span>
+                            <span className="text-xs font-bold text-slate-900 uppercase tracking-wide block">GST Compliance</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-0.5 md:mt-1 block">AUTOMATED TAX FILINGS</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-4 md:gap-5">
@@ -37,8 +37,8 @@ const Login: React.FC = () => {
                             <FileText size={20} />
                         </div>
                         <div>
-                            <span className="text-xs font-black text-slate-900 uppercase tracking-wide block">Smart Trip Sheets</span>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 md:mt-1 block">DIGITAL LOG ARCHIVE</span>
+                            <span className="text-xs font-bold text-slate-900 uppercase tracking-wide block">Smart Trip Sheets</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-0.5 md:mt-1 block">DIGITAL LOG ARCHIVE</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-4 md:gap-5">
@@ -46,15 +46,15 @@ const Login: React.FC = () => {
                             <Smartphone size={20} />
                         </div>
                         <div>
-                            <span className="text-xs font-black text-slate-900 uppercase tracking-wide block">Mobile Control</span>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 md:mt-1 block">OFFICIAL OPERATOR PORTAL</span>
+                            <span className="text-xs font-bold text-slate-900 uppercase tracking-wide block">Mobile Control</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-0.5 md:mt-1 block">OFFICIAL OPERATOR PORTAL</span>
                         </div>
                     </div>
                 </div>
 
                 <div className="space-y-6 md:space-y-8 text-center pb-2 md:pb-4">
                     <GoogleSignInButton className="w-full shadow-lg" />
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide leading-relaxed">
                         OFFICIAL SOFTWARE FOR<br />THE TRANSPORT GUILD
                     </p>
                 </div>
@@ -63,7 +63,7 @@ const Login: React.FC = () => {
             {/* Version Badge */}
             <div className="mt-8 md:mt-12 px-5 py-2 bg-white border border-slate-200 rounded-full flex items-center gap-3 shadow-sm">
                 <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">v2.4.0 • STABLE RELEASE</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">v2.4.0 • STABLE RELEASE</span>
             </div>
         </div>
     );

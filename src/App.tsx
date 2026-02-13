@@ -6,7 +6,7 @@ import { supabase } from './utils/supabase';
 import UpdateWatcher from './components/UpdateWatcher';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 // Staging Environment Trigger
-import { X, RefreshCw } from 'lucide-react';
+import { X, RefreshCw, MoveRight } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useUpdate, UpdateProvider } from './contexts/UpdateContext';
 import Header from './components/Header';
@@ -105,10 +105,12 @@ function AppContent() {
     const handleQuoteNav = () => {
       setActiveTab('trips');
       setInvoiceQuotationToggle('quotation');
+      setTripsSubTab('create');
     };
     const handleInvoiceNav = () => {
       setActiveTab('trips');
       setInvoiceQuotationToggle('invoice');
+      setTripsSubTab('create');
     };
 
     window.addEventListener('nav-tab-change', handleNav);
@@ -168,7 +170,8 @@ function AppContent() {
   }, [activeTab, isAdmin]);
 
   const [invoiceQuotationToggle, setInvoiceQuotationToggle] = useState<'invoice' | 'quotation'>('invoice');
-  const [invoiceStep, setInvoiceStep] = useState(1);
+  const [tripsSubTab, setTripsSubTab] = useState<'create' | 'history'>('create');
+  const [invoiceStep, setInvoiceStep] = useState(0);
   const [quotationStep, setQuotationStep] = useState(1);
   const [loading, setLoading] = useState(false);
   // Initialize as empty, load from IDB in useEffect
@@ -176,6 +179,7 @@ function AppContent() {
   const [quotations, setQuotations] = useState<SavedQuotation[]>([]);
   const [selectedQuotation, setSelectedQuotation] = useState<SavedQuotation | null>(null);
   const [showLoginNudge, setShowLoginNudge] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Guest Login Nudge Logic
   // Guest Login Nudge Logic
@@ -212,7 +216,7 @@ function AppContent() {
   // Handle foreground notifications
   useEffect(() => {
     onMessageListener().then((payload: any) => {
-      console.log('Push received in foreground:', payload);
+      // console.log('Push received in foreground:', payload);
       if (payload.notification) {
         addNotification(payload.notification.title, payload.notification.body, 'info');
       }
@@ -229,7 +233,7 @@ function AppContent() {
           // Migration: Check LocalStorage
           const lsTrips = safeJSONParse<Trip[]>('namma-cab-trips', []);
           if (lsTrips.length > 0) {
-            console.log('Migrating Trips to IndexedDB...');
+            // console.log('Migrating Trips to IndexedDB...');
             await Promise.all(lsTrips.map(t => dbRequest.put('trips', t)));
             storedTrips = lsTrips;
             // Optional: localStorage.removeItem('namma-cab-trips');
@@ -243,7 +247,7 @@ function AppContent() {
           // Migration
           const lsQuotes = safeJSONParse<SavedQuotation[]>('saved-quotations', []);
           if (lsQuotes.length > 0) {
-            console.log('Migrating Quotations to IndexedDB...');
+            // console.log('Migrating Quotations to IndexedDB...');
             await Promise.all(lsQuotes.map(q => dbRequest.put('quotations', q)));
             storedQuotes = lsQuotes;
           }
@@ -269,7 +273,7 @@ function AppContent() {
         hasSyncedRef.current = true; // Lock sync for this user session
         setLoading(true);
         try {
-          console.log('Syncing account data for:', user.email);
+          // console.log('Syncing account data for:', user.email);
 
           // 1. Fetch Cloud Trips (Explicitly filter by user_id)
           const { data, error } = await supabase
@@ -279,7 +283,7 @@ function AppContent() {
             .order('created_at', { ascending: false });
 
           if (error) throw error;
-          console.log(`Cloud sync: Found ${data?.length || 0} trips`);
+          // console.log(`Cloud sync: Found ${data?.length || 0} trips`);
 
           const cloudTripsMap = new Map<string, Trip>();
           if (data) {
@@ -315,7 +319,7 @@ function AppContent() {
           }
 
           if (localTipsToUpload.length > 0) {
-            console.log(`Syncing ${localTipsToUpload.length} local trips to cloud...`);
+            // console.log(`Syncing ${localTipsToUpload.length} local trips to cloud...`);
             await Promise.all(localTipsToUpload.map(t =>
               supabase.from('trips').upsert({
                 id: t.id,
@@ -339,7 +343,7 @@ function AppContent() {
             .order('created_at', { ascending: false });
 
           if (!qError) {
-            console.log(`Cloud sync: Found ${qData?.length || 0} quotations`);
+            // console.log(`Cloud sync: Found ${qData?.length || 0} quotations`);
             const cloudQuotesMap = new Map<string, SavedQuotation>();
             if (qData) {
               qData.forEach(row => {
@@ -370,7 +374,7 @@ function AppContent() {
             }
 
             if (localQuotesToUpload.length > 0) {
-              console.log(`Syncing ${localQuotesToUpload.length} local quotations to cloud...`);
+              // console.log(`Syncing ${localQuotesToUpload.length} local quotations to cloud...`);
               await Promise.all(localQuotesToUpload.map(q =>
                 supabase.from('quotations').upsert({
                   id: q.id,
@@ -434,7 +438,7 @@ function AppContent() {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Real-time trip change:', payload);
+          // console.log('Real-time trip change:', payload);
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const row = payload.new;
             const newTrip: Trip = row.details || {
@@ -477,7 +481,7 @@ function AppContent() {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Real-time quotation change:', payload);
+          // console.log('Real-time quotation change:', payload);
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const row = payload.new;
             const newQuote: SavedQuotation = row.data || {
@@ -641,60 +645,78 @@ function AppContent() {
             {/* Content Container - Removed Blur/Lock */}
             <div className="space-y-4 transition-all duration-700">
 
-              {/* Non-blocking Profile Nudge */}
+              {/* Optimized Profile Nudge */}
               {completion < 100 && (
-                <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 flex items-start gap-4 animate-fade-in relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-20 h-20 bg-orange-100 rounded-full -mr-10 -mt-10 blur-xl"></div>
-                  <div className="relative z-10 w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                <div
+                  onClick={() => setActiveTab('profile')}
+                  className="bg-slate-900 text-white rounded-2xl p-3 flex items-center gap-3 animate-fade-in relative overflow-hidden cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-full bg-white/10 text-orange-400 flex items-center justify-center shrink-0">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                   </div>
-                  <div className="relative z-10 flex-1">
-                    <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight mb-1">Incomplete Profile</h4>
-                    <p className="text-[10px] text-slate-500 font-bold leading-relaxed mb-3">
-                      Your business details are needed for generating invoices.
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setActiveTab('profile')}
-                        className="px-4 py-2 bg-slate-900 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-slate-800 transition-colors"
-                      >
-                        Complete Now
-                      </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-1">
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-white/90">Setup Profile</h4>
+                      <span className="text-[10px] font-black text-white/50">{completion}%</span>
+                    </div>
+                    <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-orange-500" style={{ width: `${completion}%` }}></div>
                     </div>
                   </div>
-                  <div className="relative z-10 flex flex-col gap-1 items-end justify-center">
-                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{completion}% Done</div>
-                    <div className="w-16 h-1 bg-slate-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-green-500" style={{ width: `${completion}%` }}></div>
-                    </div>
+                  <div className="shrink-0 flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-orange-400">
+                    Fix <MoveRight size={12} />
                   </div>
                 </div>
               )}
 
               {!isLocked && (
-                <div className="flex items-center gap-2">
-                  {/* Toggle between Invoice and Quotation */}
-                  <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex gap-1 relative overflow-auto flex-1">
+                <div className="space-y-3">
+                  {/* Row 1: Document Type Toggle */}
+                  <div className="flex items-center gap-2">
+                    <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex gap-1 relative overflow-auto flex-1">
+                      <button
+                        onClick={() => {
+                          setInvoiceQuotationToggle('invoice');
+                          setSelectedQuotation(null);
+                        }}
+                        className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all ${invoiceQuotationToggle === 'invoice'
+                          ? 'bg-[#0047AB] text-white shadow-md'
+                          : 'text-slate-400 hover:bg-slate-50'
+                          }`}
+                      >
+                        New Invoice
+                      </button>
+                      <button
+                        onClick={() => setInvoiceQuotationToggle('quotation')}
+                        className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all ${invoiceQuotationToggle === 'quotation'
+                          ? 'bg-[#6366F1] text-white shadow-md'
+                          : 'text-slate-400 hover:bg-slate-50'
+                          }`}
+                      >
+                        Quotation
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Mobile View Mode Toggle (Create vs History) */}
+                  <div className="flex lg:hidden bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1">
                     <button
-                      onClick={() => {
-                        setInvoiceQuotationToggle('invoice');
-                        setSelectedQuotation(null);
-                      }}
-                      className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all ${invoiceQuotationToggle === 'invoice'
-                        ? 'bg-[#0047AB] text-white shadow-md'
-                        : 'text-slate-400 hover:bg-slate-50'
+                      onClick={() => setTripsSubTab('create')}
+                      className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${tripsSubTab === 'create'
+                        ? 'bg-white text-slate-800 shadow-sm'
+                        : 'text-slate-400 hover:text-slate-600'
                         }`}
                     >
-                      New Invoice
+                      Create
                     </button>
                     <button
-                      onClick={() => setInvoiceQuotationToggle('quotation')}
-                      className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all ${invoiceQuotationToggle === 'quotation'
-                        ? 'bg-[#6366F1] text-white shadow-md'
-                        : 'text-slate-400 hover:bg-slate-50'
+                      onClick={() => setTripsSubTab('history')}
+                      className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${tripsSubTab === 'history'
+                        ? 'bg-white text-slate-800 shadow-sm'
+                        : 'text-slate-400 hover:text-slate-600'
                         }`}
                     >
-                      Quotation
+                      History
                     </button>
                   </div>
                 </div>
@@ -702,15 +724,24 @@ function AppContent() {
 
               {/* Show Invoice or Quotation based on toggle */}
               {invoiceQuotationToggle === 'invoice' ? (
-                <div className={invoiceStep === 1 ? "grid grid-cols-1 lg:grid-cols-12 gap-8 items-start" : "max-w-4xl mx-auto space-y-4"}>
-                  <div className={invoiceStep === 1 ? "lg:col-span-7 w-full" : "w-full"}>
+                <div className={invoiceStep === 0 ? "flex flex-col lg:grid lg:grid-cols-12 gap-8 items-start" : "max-w-4xl mx-auto space-y-4"}>
+                  <div className={`${invoiceStep === 0 ? (tripsSubTab === 'create' ? 'block' : 'hidden lg:block') : 'block'} lg:col-span-7 w-full`}>
                     <Suspense fallback={<LoadingFallback />}>
                       <TripForm onSaveTrip={handleSaveTrip} onStepChange={setInvoiceStep} invoiceTemplate={selectedQuotation} trips={trips} />
                     </Suspense>
+                    {/* Inline Quick Jump to History for Mobile */}
+                    {invoiceStep === 0 && tripsSubTab === 'create' && (
+                      <button
+                        onClick={() => setTripsSubTab('history')}
+                        className="lg:hidden w-full mt-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 bg-blue-50/50 border-2 border-dashed border-blue-200 rounded-3xl"
+                      >
+                        View Recent Invoices
+                      </button>
+                    )}
                   </div>
 
-                  {invoiceStep === 1 && (
-                    <div className="lg:col-span-5 w-full mt-4 lg:mt-0">
+                  {invoiceStep === 0 && (
+                    <div className={`${tripsSubTab === 'history' ? 'block' : 'hidden lg:block'} lg:col-span-5 w-full mt-2 lg:mt-0`}>
                       <div className="sticky top-4">
                         <Suspense fallback={<LoadingFallback />}>
                           <History trips={trips} type="invoice" onDeleteTrip={handleDeleteTrip} />
@@ -720,15 +751,24 @@ function AppContent() {
                   )}
                 </div>
               ) : (
-                <div className={quotationStep === 1 ? "grid grid-cols-1 lg:grid-cols-12 gap-8 items-start" : "max-w-4xl mx-auto space-y-4"}>
-                  <div className={quotationStep === 1 ? "lg:col-span-7 w-full" : "w-full"}>
+                <div className={quotationStep === 1 ? "flex flex-col lg:grid lg:grid-cols-12 gap-8 items-start" : "max-w-4xl mx-auto space-y-4"}>
+                  <div className={`${quotationStep === 1 ? (tripsSubTab === 'create' ? 'block' : 'hidden lg:block') : 'block'} lg:col-span-7 w-full`}>
                     <Suspense fallback={<LoadingFallback />}>
                       <QuotationForm onSaveQuotation={handleSaveQuotation} quotations={quotations} onStepChange={setQuotationStep} />
                     </Suspense>
+                    {/* Inline Quick Jump to History for Mobile */}
+                    {quotationStep === 1 && tripsSubTab === 'create' && (
+                      <button
+                        onClick={() => setTripsSubTab('history')}
+                        className="lg:hidden w-full mt-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 bg-indigo-50/50 border-2 border-dashed border-indigo-200 rounded-3xl"
+                      >
+                        View Recent Quotations
+                      </button>
+                    )}
                   </div>
 
                   {quotationStep === 1 && (
-                    <div className="lg:col-span-5 w-full mt-4 lg:mt-0">
+                    <div className={`${tripsSubTab === 'history' ? 'block' : 'hidden lg:block'} lg:col-span-5 w-full mt-2 lg:mt-0`}>
                       <div className="sticky top-4">
                         <Suspense fallback={<LoadingFallback />}>
                           <History
@@ -854,8 +894,6 @@ function AppContent() {
       </Suspense>
     );
   }
-
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
     <>

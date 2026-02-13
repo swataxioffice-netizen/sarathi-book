@@ -27,6 +27,8 @@ export interface PDFSettings {
     logoUrl?: string;
     showWatermark?: boolean;
     rcmEnabled?: boolean;
+    showUpiOnPdf?: boolean;
+    showBankOnPdf?: boolean;
 }
 
 export interface QuotationItem {
@@ -213,63 +215,65 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     }
 
     // PICKUP & DROP Section (Stretched, One line each)
-    y += 4; // Gap between Bill To and Trip Details
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('JOURNEY DETAILS:', leftColX, y);
-    y += 5;
+    const hasFrom = trip.from && trip.from !== 'N/A';
+    const hasTo = trip.to && trip.to !== 'N/A';
+    const hasTime = (trip as any).startTime || (trip as any).endTime;
+    const hasDist = ((trip as any).startKm && (trip as any).endKm) || (trip as any).distance || (trip as any).effectiveDistance;
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-
-    // Journey Details Content
-    // 2. Pickup
-    // Journey Details Content
-    // 2. Pickup
-    const fromAddr = String(trip.from || 'N/A').replace(/, India$/, '').replace(/, Tamil Nadu$/, '');
-    const pickupText = `Pickup: ${fromAddr}`;
-    const pickupLines = doc.splitTextToSize(pickupText, 95); // safe width
-    doc.text(pickupLines, leftColX, y);
-    y += (pickupLines.length * 5); // Dynamic gap based on lines
-
-    // 3. Drop / Time logic
-    // Check if start/end time exists to decide rendering (Local Package Logic)
-    if ((trip as any).startTime || (trip as any).endTime) {
-        const sTime = (trip as any).startTime || 'N/A';
-        const eTime = (trip as any).endTime || 'N/A';
-
-        // Ensure Start Time doesn't overlap if it somehow wraps (unlikely but safe)
-        const sLines = doc.splitTextToSize(`Start Time: ${sTime}`, 95);
-        doc.text(sLines, leftColX, y);
-        y += (sLines.length * 5);
-
-        const eLines = doc.splitTextToSize(`End Time:   ${eTime}`, 95);
-        doc.text(eLines, leftColX, y);
-        y += (eLines.length * 5);
-    } else {
-        const toAddr = String(trip.to || 'N/A').replace(/, India$/, '').replace(/, Tamil Nadu$/, '');
-        const dropText = `Drop:   ${toAddr}`;
-        const dropLines = doc.splitTextToSize(dropText, 95);
-        doc.text(dropLines, leftColX, y);
-        y += (dropLines.length * 5);
-    }
-
-    // 4. Distance (New)
-    let distStr = '';
-    // If start/end KM exists, show usage
-    if ((trip as any).startKm && (trip as any).endKm) {
-        distStr = `Distance: ${((trip as any).endKm - (trip as any).startKm).toFixed(1)} km`;
-    } else if ((trip as any).distance || (trip as any).effectiveDistance) {
-        distStr = `Distance: ${(trip as any).distance || (trip as any).effectiveDistance} km`;
-    }
-
-    if (distStr) {
-        doc.text(distStr, leftColX, y);
+    if (hasFrom || hasTo || hasTime || hasDist) {
+        y += 4; // Gap between Bill To and Trip Details
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('JOURNEY DETAILS:', leftColX, y);
         y += 5;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+
+        // 2. Pickup
+        if (hasFrom) {
+            const fromAddr = String(trip.from).replace(/, India$/, '').replace(/, Tamil Nadu$/, '');
+            const pickupText = `Pickup: ${fromAddr}`;
+            const pickupLines = doc.splitTextToSize(pickupText, 95);
+            doc.text(pickupLines, leftColX, y);
+            y += (pickupLines.length * 5);
+        }
+
+        // 3. Drop / Time logic
+        if (hasTime) {
+            const sTime = (trip as any).startTime || 'N/A';
+            const eTime = (trip as any).endTime || 'N/A';
+
+            const sLines = doc.splitTextToSize(`Start Time: ${sTime}`, 95);
+            doc.text(sLines, leftColX, y);
+            y += (sLines.length * 5);
+
+            const eLines = doc.splitTextToSize(`End Time:   ${eTime}`, 95);
+            doc.text(eLines, leftColX, y);
+            y += (eLines.length * 5);
+        } else if (hasTo) {
+            const toAddr = String(trip.to).replace(/, India$/, '').replace(/, Tamil Nadu$/, '');
+            const dropText = `Drop:   ${toAddr}`;
+            const dropLines = doc.splitTextToSize(dropText, 95);
+            doc.text(dropLines, leftColX, y);
+            y += (dropLines.length * 5);
+        }
+
+        // 4. Distance
+        let distStr = '';
+        if ((trip as any).startKm && (trip as any).endKm) {
+            distStr = `Distance: ${((trip as any).endKm - (trip as any).startKm).toFixed(1)} km`;
+        } else if ((trip as any).distance || (trip as any).effectiveDistance) {
+            distStr = `Distance: ${(trip as any).distance || (trip as any).effectiveDistance} km`;
+        }
+
+        if (distStr) {
+            doc.text(distStr, leftColX, y);
+            y += 5;
+        }
     }
 
-
-    const leftEndY = y + 2; // Reduced buffer since we added full height
+    const leftEndY = y + 2;
 
 
     // RIGHT COLUMN: INVOICE DATA (Kept on Right, parallel to Left Col)
@@ -403,7 +407,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
         mainAmount = (trip as any).fare || 0;
     }
 
-    if (pStep >= 2) {
+    if (pStep >= 2 || (trip.mode === 'custom' && pStep >= 1)) {
         if (trip.mode === 'custom') {
             if (trip.extraItems && trip.extraItems.length > 0) {
                 trip.extraItems.forEach(item => {
@@ -413,7 +417,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
                     addTableRow(item.description || 'Service Charge', String(iQty), iRate, item.amount || 0, iSac);
                 });
             } else if (hasExplicitDistanceCharge || (trip as any).fare) {
-                addTableRow('Custom Service', '1', `${mainAmount}`, mainAmount);
+                addTableRow('Custom Invoice', '1', `${mainAmount}`, mainAmount);
             }
         } else if (trip.mode === 'hourly') {
             const hrs = trip.waitingHours || 8;
@@ -521,7 +525,8 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
         doc.setFont('helvetica', 'normal');
         paymentY += 5;
 
-        const isBank = settings.preferredPaymentMethod === 'bank';
+        const isBank = !!settings.showBankOnPdf;
+        const isUpi = !!settings.showUpiOnPdf;
 
         if (isBank && settings.bankName) {
             doc.text(`Bank Name    : ${settings.bankName}`, margin, paymentY);
@@ -535,11 +540,11 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
             doc.text(`IFSC Code    : ${settings.ifscCode}`, margin, paymentY);
             paymentY += 4;
         }
-        if (!isBank && settings.upiId) {
+        if (isUpi && settings.upiId) {
             doc.text(`UPI ID       : ${settings.upiId}`, margin, paymentY);
             paymentY += 4;
         }
-        if (settings.holderName) {
+        if ((isBank || isUpi) && settings.holderName) {
             doc.text(`A/C Holder   : ${settings.holderName}`, margin, paymentY);
             paymentY += 4;
         }

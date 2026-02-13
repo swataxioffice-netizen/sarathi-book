@@ -18,6 +18,7 @@ import { validateVehicleNumber } from '../utils/validation';
 const DocumentVault = React.lazy(() => import('./DocumentVault'));
 const BusinessCard = React.lazy(() => import('./BusinessCard'));
 import { subscribeToPush } from '../utils/push';
+import GoogleSignInButton from './GoogleSignInButton';
 
 // ----------------------------------------------------------------------
 // MAIN COMPONENT
@@ -177,21 +178,21 @@ const Profile: React.FC = () => {
         <div className="pb-40 animate-fade-in max-w-lg mx-auto px-4 pt-6">
 
             {/* 1. Header Section */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm relative overflow-hidden mb-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm relative overflow-hidden mb-3">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full -mr-16 -mt-16" />
-                <div className="relative z-10 flex items-center gap-4">
+                <div className="relative z-10 flex items-center gap-3">
                     {/* Avatar with Pro Badge */}
                     <div className="relative shrink-0">
-                        <div className="w-14 h-14 rounded-full border-2 border-white shadow-md bg-slate-50 flex items-center justify-center overflow-hidden">
+                        <div className="w-12 h-12 rounded-full border-2 border-white shadow-md bg-slate-50 flex items-center justify-center overflow-hidden">
                             {user?.user_metadata?.avatar_url ? (
-                                <img src={user.user_metadata.avatar_url || user.user_metadata.picture} referrerPolicy="no-referrer" alt="Profile" width="56" height="56" className="w-full h-full object-cover" />
+                                <img src={user.user_metadata.avatar_url || user.user_metadata.picture} referrerPolicy="no-referrer" alt="Profile" width="48" height="48" className="w-full h-full object-cover" />
                             ) : (
                                 <UserIcon size={20} className="text-slate-300" />
                             )}
                         </div>
                         {settings.plan === 'super' ? (
                             <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border border-amber-600 shadow-sm flex items-center gap-0.5">
-                                <Crown size={8} className="fill-current" /> SUPER
+                                <Crown size={8} className="fill-current" /> S
                             </div>
                         ) : settings.plan === 'pro' || settings.isPremium ? (
                             <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border border-blue-700 shadow-sm">
@@ -216,80 +217,82 @@ const Profile: React.FC = () => {
                                 {settings.plan === 'super' ? "SUPER PRO" : (settings.plan === 'pro' || settings.isPremium) ? "PRO MEMBER" : "FREE PLAN"}
                             </span>
                         </p>
-
-
                     </div>
 
                     {/* Completion Circle */}
-                    <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
+                    <div className="relative w-10 h-10 flex items-center justify-center shrink-0">
                         <svg className="w-full h-full transform -rotate-90">
-                            <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-slate-100" />
-                            <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="transparent" strokeDasharray={125.6} strokeDashoffset={125.6 * (1 - completion / 100)} className="text-green-500 transition-all duration-1000 ease-out" strokeLinecap="round" />
+                            <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="3" fill="transparent" className="text-slate-100" />
+                            <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="3" fill="transparent" strokeDasharray={100} strokeDashoffset={100 * (1 - completion / 100)} className="text-green-500 transition-all duration-1000 ease-out" strokeLinecap="round" />
                         </svg>
-                        <span className="absolute text-[10px] font-black text-slate-900">{completion}%</span>
+                        <span className="absolute text-[9px] font-black text-slate-900">{completion}%</span>
                     </div>
                 </div>
             </div>
 
-            {/* 2. Pro Feature / Upgrade Section */}
-            <div className="mb-6 animate-fade-in">
-                {settings.isPremium ? (
-                    <div className="grid grid-cols-2 gap-3">
-                        <button
-                            onClick={() => setShowStudio(true)}
-                            className="bg-slate-900 text-white p-4 rounded-xl flex flex-col justify-between shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all group min-h-[100px]"
-                        >
-                            <div className="p-2 bg-white/10 rounded-lg text-pink-400 w-fit mb-3">
-                                <Sparkles size={18} />
-                            </div>
-                            <div className="text-left">
-                                <p className="text-[10px] font-black uppercase tracking-wider">Business Suite</p>
-                                <p className="text-[8px] text-slate-400 font-medium leading-tight mt-1">Logo & Branding</p>
-                            </div>
-                        </button>
-
-
-                    </div>
-                ) : (
-                    <button
-                        onClick={() => window.dispatchEvent(new CustomEvent('open-pricing-modal'))}
-                        className="w-full bg-gradient-to-r from-pink-600 to-purple-600 text-white p-4 rounded-2xl flex items-center justify-between shadow-lg shadow-pink-200 hover:shadow-xl transition-all group relative overflow-hidden"
-                    >
-                        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="flex items-center gap-3 relative z-10">
-                            <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-                                <Crown size={18} />
-                            </div>
-                            <div className="text-left">
-                                <p className="text-xs font-black uppercase tracking-wider">Upgrade to Pro</p>
-                                <p className="text-[9px] text-white/80 font-medium">Unlock Unlimited Vehicles</p>
-                            </div>
-                        </div>
-                        <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm relative z-10">
-                            <ChevronRight size={16} />
-                        </div>
-                    </button>
-                )}
-            </div>
-
-            {/* Sync Banner (Guest Only) */}
+            {/* Sync Banner (Guest Only) - Compact Horizontal Layout */}
             {!user && (
-                <div className="mb-6 bg-indigo-50 border border-indigo-100 p-4 rounded-2xl flex items-center gap-4 animate-fade-in relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-100 rounded-full blur-2xl -mr-12 -mt-12"></div>
-                    <div className="relative z-10 w-10 h-10 bg-indigo-100/80 rounded-full flex items-center justify-center text-indigo-600 shrink-0">
-                        <Cloud size={20} />
+                <div className="mb-4 bg-indigo-50 border border-indigo-100 p-3 rounded-2xl flex items-center gap-3 animate-fade-in relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-100/50 rounded-full blur-xl -mr-10 -mt-10"></div>
+                    <div className="relative z-10 w-8 h-8 bg-white/80 rounded-full flex items-center justify-center text-indigo-600 shrink-0 shadow-sm">
+                        <Cloud size={16} />
                     </div>
-                    <div className="relative z-10 flex-1">
-                        <h3 className="text-xs font-black text-indigo-900 uppercase tracking-wide mb-0.5">Sync Your Data</h3>
-                        <p className="text-[10px] font-medium text-indigo-600/80 leading-relaxed">
-                            Sign in to sync your trips & invoices across devices.
-                        </p>
+                    <div className="relative z-10 flex-1 min-w-0">
+                        <h3 className="text-[10px] font-black text-indigo-900 uppercase tracking-wide">Sync Your Data</h3>
+                        <p className="text-[9px] font-bold text-indigo-500 truncate">Secure trips across devices</p>
+                    </div>
+                    <div className="relative z-10 shrink-0">
+                        <GoogleSignInButton text="Sign In" className="!py-2 !px-3 !rounded-lg !text-[9px] !w-auto shadow-sm border-indigo-100" />
                     </div>
                 </div>
             )}
 
-            {/* 2. Tabs Navigation */}
-            <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-200 mb-6 sticky top-2 z-20 gap-1">
+            {/* 2. Pro Feature / Upgrade Section - Only shown for signed-in users */}
+            {user && (
+                <div className="mb-6 animate-fade-in">
+                    {settings.isPremium ? (
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                onClick={() => setShowStudio(true)}
+                                className="bg-slate-900 text-white p-4 rounded-xl flex flex-col justify-between shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all group min-h-[100px]"
+                            >
+                                <div className="p-2 bg-white/10 rounded-lg text-pink-400 w-fit mb-3">
+                                    <Sparkles size={18} />
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-[10px] font-black uppercase tracking-wider">Business Suite</p>
+                                    <p className="text-[8px] text-slate-400 font-medium leading-tight mt-1">Logo & Branding</p>
+                                </div>
+                            </button>
+
+
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => window.dispatchEvent(new CustomEvent('open-pricing-modal'))}
+                            className="w-full bg-gradient-to-r from-pink-600 to-purple-600 text-white p-4 rounded-2xl flex items-center justify-between shadow-lg shadow-pink-200 hover:shadow-xl transition-all group relative overflow-hidden"
+                        >
+                            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="flex items-center gap-3 relative z-10">
+                                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+                                    <Crown size={18} />
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-xs font-black uppercase tracking-wider">Upgrade to Pro</p>
+                                    <p className="text-[9px] text-white/80 font-medium">Unlock Unlimited Vehicles</p>
+                                </div>
+                            </div>
+                            <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm relative z-10">
+                                <ChevronRight size={16} />
+                            </div>
+                        </button>
+                    )}
+                </div>
+            )}
+
+
+            {/* 2. Tabs Navigation - Sticky with no gap */}
+            <div className="flex bg-white p-2 border-b border-slate-200 mb-6 sticky top-[-17px] z-[30] gap-1 -mx-4 px-4 shadow-sm">
                 {(['business', 'payments', 'vehicles', 'docs'] as const).map(tab => {
                     const isActive = activeTab === tab;
                     const icons = { business: <Contact size={14} />, payments: <Landmark size={14} />, vehicles: <Car size={14} />, staff: <Users size={14} />, docs: <FileText size={14} /> };
@@ -309,49 +312,53 @@ const Profile: React.FC = () => {
             {/* 3. Main Content Area */}
             <div className="min-h-[400px]">
                 {activeTab === 'business' && (
-                    <div className="space-y-6 animate-scale-in">
-                        <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm space-y-4">
-                            <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Business Details</h3>
-                            <div className="space-y-4">
+                    <div className="space-y-4 animate-scale-in">
+                        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                <FileText size={12} className="text-blue-600" /> Business Details
+                            </h3>
+                            <div className="space-y-3">
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Business Name</label>
-                                    <input value={settings.companyName} onChange={e => updateSettings({ companyName: e.target.value })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-blue-500 outline-none transition-colors" placeholder="e.g. Travels Name" />
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 block">Business Name</label>
+                                    <input value={settings.companyName} onChange={e => updateSettings({ companyName: e.target.value })} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900" placeholder="e.g. Travels Name" />
                                 </div>
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">WhatsApp Number</label>
-                                    <input value={settings.driverPhone} onChange={e => updateSettings({ driverPhone: e.target.value })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-blue-500 outline-none transition-colors" placeholder="+91 00000 00000" />
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 block">WhatsApp Number</label>
+                                    <input value={settings.driverPhone} onChange={e => updateSettings({ driverPhone: e.target.value })} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900" placeholder="+91 00000 00000" />
                                 </div>
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Address</label>
-                                    <input value={settings.companyAddress} onChange={e => updateSettings({ companyAddress: e.target.value })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-blue-500 outline-none transition-colors" placeholder="City, State" />
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 block">Address</label>
+                                    <input value={settings.companyAddress} onChange={e => updateSettings({ companyAddress: e.target.value })} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900" placeholder="City, State" />
                                 </div>
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex justify-between">
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 flex justify-between">
                                         GST Number (Optional)
                                     </label>
                                     <input
                                         value={settings.gstin || ''}
                                         onChange={e => updateSettings({ gstin: e.target.value.toUpperCase() })}
-                                        className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-blue-500 outline-none transition-colors uppercase"
+                                        className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900 uppercase"
                                         placeholder="29ABCDE1234F1Z5"
                                         maxLength={15}
                                     />
-                                    <p className="text-[9px] text-slate-400 mt-1 font-medium">
+                                    <p className="text-[9px] text-slate-400 mt-1 font-medium ml-1">
                                         Must be a unique 15-digit GSTIN. We validate this on save.
                                     </p>
                                 </div>
-                                <button onClick={() => handleSave('business')} className="w-full h-14 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100">
-                                    {savingSection === 'business' ? 'Saving...' : 'Save Details'}
+                                <button onClick={() => handleSave('business')} className="w-full h-11 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 transition-colors">
+                                    {savingSection === 'business' ? 'Saving...' : 'Save Settings'}
                                 </button>
                             </div>
 
-                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 rounded-[32px] text-white shadow-xl relative overflow-hidden group cursor-pointer" onClick={() => setShowCard(true)}>
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform" />
-                                <div className="relative z-10">
-                                    <h3 className="font-black text-xl uppercase italic">Digital Card</h3>
-                                    <p className="text-xs opacity-90 mb-6">Your professional visiting card is ready</p>
-                                    <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-wider">
-                                        View Card <ChevronRight size={14} />
+                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-5 rounded-2xl text-white shadow-lg relative overflow-hidden group cursor-pointer mt-2" onClick={() => setShowCard(true)}>
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-12 -mt-12 group-hover:scale-110 transition-transform" />
+                                <div className="relative z-10 flex items-center justify-between">
+                                    <div>
+                                        <h3 className="font-black text-sm uppercase italic mb-0.5">Digital Card</h3>
+                                        <p className="text-[9px] opacity-80">Your professional visiting card</p>
+                                    </div>
+                                    <div className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider">
+                                        View <ChevronRight size={10} />
                                     </div>
                                 </div>
                             </div>
@@ -360,53 +367,67 @@ const Profile: React.FC = () => {
                 )}
 
                 {activeTab === 'payments' && (
-                    <div className="space-y-6 animate-scale-in">
-                        <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm space-y-4">
-                            <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Payment Info</h3>
+                    <div className="space-y-4 animate-scale-in">
+                        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                <Landmark size={12} className="text-green-600" /> Payment Info
+                            </h3>
 
-                            <div className="flex gap-2 p-1 bg-slate-50 rounded-xl mb-4">
+                            <div className="flex gap-2 p-1 bg-slate-50 rounded-xl mb-2">
                                 <button
                                     onClick={() => updateSettings({ preferredPaymentMethod: 'upi' })}
-                                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${settings.preferredPaymentMethod === 'upi' ? 'bg-white shadow text-slate-900 border border-slate-100' : 'text-slate-400'}`}
+                                    className={`flex-1 py-2 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${settings.preferredPaymentMethod === 'upi' ? 'bg-white shadow text-slate-900 border border-slate-100' : 'text-slate-400'}`}
                                 >
                                     UPI ID
                                 </button>
                                 <button
                                     onClick={() => updateSettings({ preferredPaymentMethod: 'bank' })}
-                                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${settings.preferredPaymentMethod === 'bank' ? 'bg-white shadow text-slate-900 border border-slate-100' : 'text-slate-400'}`}
+                                    className={`flex-1 py-2 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${settings.preferredPaymentMethod === 'bank' ? 'bg-white shadow text-slate-900 border border-slate-100' : 'text-slate-400'}`}
                                 >
                                     Bank Account
                                 </button>
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="space-y-3">
                                 {settings.preferredPaymentMethod === 'upi' ? (
                                     <div>
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">UPI ID (GPay / PhonePe)</label>
-                                        <input value={settings.upiId || ''} onChange={e => updateSettings({ upiId: e.target.value })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-green-500 outline-none transition-colors" placeholder="mobile@upi" />
+                                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 flex justify-between items-center">
+                                            UPI ID (GPay / PhonePe)
+                                            <div className="flex items-center gap-2 cursor-pointer bg-slate-50 px-2 py-1 rounded-lg border border-slate-200 hover:bg-white transition-colors" onClick={() => updateSettings({ showUpiOnPdf: !settings.showUpiOnPdf })}>
+                                                <input type="checkbox" checked={settings.showUpiOnPdf} readOnly className="w-3.5 h-3.5 accent-blue-600 rounded cursor-pointer" />
+                                                <span className="text-[8px] text-slate-600 font-black uppercase tracking-wide">On Invoice</span>
+                                            </div>
+                                        </label>
+                                        <input value={settings.upiId || ''} onChange={e => updateSettings({ upiId: e.target.value })} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900" placeholder="mobile@upi" />
                                     </div>
                                 ) : (
                                     <>
                                         <div>
-                                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Bank Name</label>
-                                            <input value={settings.bankName || ''} onChange={e => updateSettings({ bankName: e.target.value })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-green-500 outline-none transition-colors" placeholder="e.g. State Bank of India" />
+                                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 flex justify-between items-center">
+                                                Bank Name
+                                                <div className="flex items-center gap-2 cursor-pointer bg-slate-50 px-2 py-1 rounded-lg border border-slate-200 hover:bg-white transition-colors" onClick={() => updateSettings({ showBankOnPdf: !settings.showBankOnPdf })}>
+                                                    <input type="checkbox" checked={settings.showBankOnPdf} readOnly className="w-3.5 h-3.5 accent-blue-600 rounded cursor-pointer" />
+                                                    <span className="text-[8px] text-slate-600 font-black uppercase tracking-wide">On Invoice</span>
+                                                </div>
+                                            </label>
+                                            <input value={settings.bankName || ''} onChange={e => updateSettings({ bankName: e.target.value })} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900" placeholder="e.g. State Bank of India" />
                                         </div>
                                         <div>
-                                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Account Number</label>
-                                            <input value={settings.accountNumber || ''} onChange={e => updateSettings({ accountNumber: e.target.value })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-green-500 outline-none transition-colors" placeholder="000000000000" />
+                                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 block">Account Number</label>
+                                            <input value={settings.accountNumber || ''} onChange={e => updateSettings({ accountNumber: e.target.value })} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900" placeholder="000000000000" />
                                         </div>
                                         <div>
-                                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">IFSC Code</label>
-                                            <input value={settings.ifscCode || ''} onChange={e => updateSettings({ ifscCode: e.target.value.toUpperCase() })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-green-500 outline-none transition-colors" placeholder="SBIN0001234" maxLength={11} />
+                                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 block">IFSC Code</label>
+                                            <input value={settings.ifscCode || ''} onChange={e => updateSettings({ ifscCode: e.target.value.toUpperCase() })} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900 uppercase" placeholder="SBIN0001234" maxLength={11} />
                                         </div>
                                     </>
                                 )}
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Account Holder</label>
-                                    <input value={settings.holderName || ''} onChange={e => updateSettings({ holderName: e.target.value })} className="w-full h-12 border-b-2 border-slate-100 font-bold text-sm focus:border-green-500 outline-none transition-colors" placeholder="Full Name" />
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 block">Account Holder</label>
+                                    <input value={settings.holderName || ''} onChange={e => updateSettings({ holderName: e.target.value })} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900" placeholder="Full Name" />
                                 </div>
                             </div>
-                            <button onClick={() => handleSave('payments')} className="w-full h-14 bg-green-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-green-100">
+                            <button onClick={() => handleSave('payments')} className="w-full h-11 bg-green-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-green-100 hover:bg-green-700 transition-colors">
                                 {savingSection === 'payments' ? 'Saving...' : 'Save Payments'}
                             </button>
                         </div>
@@ -414,31 +435,31 @@ const Profile: React.FC = () => {
                 )}
 
                 {activeTab === 'vehicles' && (
-                    <div className="space-y-6 animate-scale-in">
-                        <div className="grid gap-4">
+                    <div className="space-y-4 animate-scale-in">
+                        <div className="grid gap-3">
                             {settings.vehicles.map(v => (
-                                <div key={v.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-blue-600 transition-colors"><Car size={24} /></div>
+                                <div key={v.id} className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-blue-600 transition-colors"><Car size={20} /></div>
                                         <div>
-                                            <h4 className="font-black text-slate-900">{v.number}</h4>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase">{v.model}</p>
+                                            <h4 className="font-black text-sm text-slate-900">{v.number}</h4>
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase">{v.model}</p>
                                         </div>
                                     </div>
-                                    <button onClick={() => updateSettings({ vehicles: settings.vehicles.filter(x => x.id !== v.id) })} className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16} /></button>
+                                    <button onClick={() => updateSettings({ vehicles: settings.vehicles.filter(x => x.id !== v.id) })} className="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16} /></button>
                                 </div>
                             ))}
                         </div>
-                        <div className="bg-slate-50 p-6 rounded-[32px] border-2 border-dashed border-slate-200 space-y-4">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Register New Vehicle</h4>
-                            <input value={newVehicleNumber} onChange={e => setNewVehicleNumber(e.target.value.toUpperCase())} placeholder="MH01AB1234" className="w-full h-12 px-4 rounded-xl border border-slate-200 font-bold text-sm transition-all focus:border-blue-500" />
+                        <div className="bg-slate-50 p-4 rounded-3xl border-2 border-dashed border-slate-200 space-y-3">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Car size={12} /> Register Vehicle</h4>
+                            <input value={newVehicleNumber} onChange={e => setNewVehicleNumber(e.target.value.toUpperCase())} placeholder="MH01AB1234" className="w-full h-10 px-4 rounded-xl border border-slate-200 font-bold text-sm transition-all focus:border-blue-500 uppercase" />
                             <div className="grid grid-cols-2 gap-3">
-                                <select value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className="h-12 px-3 rounded-xl border border-slate-200 font-bold text-xs bg-white">
+                                <select value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className="h-10 px-3 rounded-xl border border-slate-200 font-bold text-xs bg-white">
                                     {VEHICLES.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                                 </select>
-                                <button onClick={handleAddVehicle} className="h-12 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest">Add Vehicle</button>
+                                <button onClick={handleAddVehicle} className="h-10 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-800">Add</button>
                             </div>
-                            {!settings.isPremium && <p className="text-[10px] text-center font-bold text-slate-400">Unlimited vehicles in <span className="text-pink-600">PRO</span></p>}
+                            {!settings.isPremium && <p className="text-[9px] text-center font-bold text-slate-400">Unlimited vehicles in <span className="text-pink-600 font-black">PRO</span></p>}
                         </div>
                     </div>
                 )}

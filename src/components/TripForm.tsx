@@ -89,7 +89,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     // Actually, just init is fine for now as per user flow.
 
     // --- Wizard State ---
-    const [step, setStep] = useState(1);
+    const [step, setStep] = useState(0);
 
     // --- Form State ---
     const [mode, setMode] = useState<TripMode>(null);
@@ -153,6 +153,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     const [terms, setTerms] = useState<string[]>([]);
     const [newTerm, setNewTerm] = useState('');
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+    const [invoiceNo, setInvoiceNo] = useState('');
     // 5% fixed as per requirement
     const gstRate: GSTRate = 5;
 
@@ -185,6 +186,15 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             setToll(finalToll.toString());
         }
         setShowMap(false);
+    };
+
+    const handleSwapRoute = () => {
+        const tempLoc = fromLoc;
+        const tempCoords = pickupCoords;
+        setFromLoc(toLoc);
+        setPickupCoords(dropCoords);
+        setToLoc(tempLoc);
+        setDropCoords(tempCoords);
     };
 
     // --- Derived Values ---
@@ -239,6 +249,10 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         return `${prefix}${(max + 1).toString().padStart(3, '0')}`;
     }, [invoiceDate, trips]);
 
+    useEffect(() => {
+        setInvoiceNo(nextInvoiceNo);
+    }, [nextInvoiceNo]);
+
     // --- Side Effects ---
 
     useEffect(() => {
@@ -250,10 +264,12 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             setCustomerName(invoiceTemplate.customerName);
             if (invoiceTemplate.customerAddress) setBillingAddress(invoiceTemplate.customerAddress);
             if (invoiceTemplate.customerGstin) setCustomerGst(invoiceTemplate.customerGstin);
+            // Re-map category correctly if template has specific vehicleType
             if (invoiceTemplate.vehicleType) setSelectedVehicleId(invoiceTemplate.vehicleType);
             if (invoiceTemplate.gstEnabled) setIncludeGst(true);
             // If template has date use it, otherwise default to today
             if (invoiceTemplate.date) setInvoiceDate(invoiceTemplate.date.split('T')[0]);
+            setMode('drop'); // Default from template if unknown
             setStep(1);
         }
     }, [invoiceTemplate]);
@@ -483,8 +499,15 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         return () => clearTimeout(timer);
     }, [mode, selectedVehicleId, distanceOverride, days, localPackageHours, hourlyPackage, customRate, toll, parking, permit, driverBatta, nightCharge, hillStationCharge, petCharge, extraItems, includeGst, manualDriverBatta, manualHillStation, customLineItems]);
 
-    const handleNext = () => setStep(s => Math.min(4, s + 1));
-    const handleBack = () => setStep(s => Math.max(1, s - 1));
+    const handleNext = () => setStep(s => Math.min(3, s + 1));
+    const handleBack = () => {
+        if (step === 1) {
+            setMode(null);
+            setStep(0);
+        } else {
+            setStep(s => Math.max(0, s - 1));
+        }
+    };
 
     const handlePreview = async () => {
         const res = await performCalculation();
@@ -495,14 +518,14 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         // For preview, we don't necessarily want to "lock in" the invoice number unless saved.
         // But to be consistent with what WILL be saved:
         const previewId = sessionTripId.current || generateId();
-        const previewInvoiceNo = sessionInvoiceNo.current || nextInvoiceNo;
+        const previewInvoiceNo = invoiceNo || nextInvoiceNo;
 
 
 
         // Construct items for Consistent PDF Format
         const pdfItems = [];
 
-        // 1. Base Fare or Custom Service Items
+        // 1. Base Fare or Custom Invoice Items
         if (mode === 'custom') {
             customLineItems.forEach(i => pdfItems.push({
                 description: i.description,
@@ -590,14 +613,14 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
         // Ensure we have a session ID/Invoice if not already saved
         if (!sessionTripId.current) sessionTripId.current = generateId();
-        if (!sessionInvoiceNo.current) sessionInvoiceNo.current = nextInvoiceNo;
+        // if (!sessionInvoiceNo.current) sessionInvoiceNo.current = nextInvoiceNo; // Use state now
 
         const currentV = userVehicles.find(v => v.id === selectedVehicleId);
 
         // Construct items for Consistent PDF Format (Same as Quotation)
         const pdfItems = [];
 
-        // 1. Base Fare or Custom Service Items
+        // 1. Base Fare or Custom Invoice Items
         if (mode === 'custom') {
             customLineItems.forEach(i => pdfItems.push({
                 description: i.description,
@@ -663,7 +686,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         extraItems.forEach(i => pdfItems.push({ description: i.description, amount: i.amount, rate: i.amount.toString(), quantity: 1 }));
 
         const tripData: any = {
-            id: sessionTripId.current, invoiceNo: sessionInvoiceNo.current, customerName: customerName || 'Valued Customer',
+            id: sessionTripId.current, invoiceNo: invoiceNo, customerName: customerName || 'Valued Customer',
             customerPhone, customerGst, billingAddress, from: fromLoc, to: toLoc, date: invoiceDate,
             startTime: mode === 'local' ? startTimeLog : undefined,
             endTime: mode === 'local' ? endTimeLog : undefined,
@@ -702,11 +725,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
         // LOCK IN the ID and Invoice Number for this session
         if (!sessionTripId.current) sessionTripId.current = generateId();
-        if (!sessionInvoiceNo.current) sessionInvoiceNo.current = nextInvoiceNo;
+        // if (!sessionInvoiceNo.current) sessionInvoiceNo.current = nextInvoiceNo; // Use state now
 
         // Log to Admin Analytics (Non-blocking)
         Analytics.logActivity('invoice_created', {
-            invoiceNo: sessionInvoiceNo.current,
+            invoiceNo: invoiceNo,
             customer: customerName,
             amount: res.total,
             mode: mode
@@ -715,7 +738,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         Analytics.generateInvoice('invoice', res.total);
 
         const tripData: Trip = {
-            id: sessionTripId.current, invoiceNo: sessionInvoiceNo.current, customerName: customerName || 'Cash Guest', customerPhone, customerGst,
+            id: sessionTripId.current, invoiceNo: invoiceNo, customerName: customerName || 'Cash Guest', customerPhone, customerGst,
             from: fromLoc, to: toLoc, billingAddress, startKm: isOdometerMode ? startKm : 0, endKm: isOdometerMode ? endKm : (parseFloat(distanceOverride) || 0),
             startTime: '', endTime: '', toll: parseFloat(toll) || 0, parking: parseFloat(parking) || 0, nightBata: parseFloat(nightCharge) || 0,
             baseFare: settings.baseFare, ratePerKm: res.rateUsed, totalFare: res.total, fare: res.fare, distanceCharge: res.distanceCharge,
@@ -748,7 +771,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
             // Lock IDs now so they are ready for background save/share
             if (!sessionTripId.current) sessionTripId.current = generateId();
-            if (!sessionInvoiceNo.current) sessionInvoiceNo.current = nextInvoiceNo;
+            // if (!sessionInvoiceNo.current) sessionInvoiceNo.current = nextInvoiceNo; // Use state now
 
             // Pre-warm PDF dependencies
             import('jspdf');
@@ -765,9 +788,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 sessionTripId.current = null;
                 sessionInvoiceNo.current = null;
 
-                setStep(1);
+                setStep(0);
                 setMode(null);
-                if (onStepChange) onStepChange(1);
+                if (onStepChange) onStepChange(0);
             } catch (error) {
                 console.error('Save & Share operation failed:', error);
                 alert('An error occurred while saving or sharing. Please check your connection.');
@@ -795,12 +818,12 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     };
 
     const renderStep1 = () => (
-        <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
-            <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight px-2">
-                Select Trip Type
+        <div className="space-y-2 animate-in fade-in slide-in-from-right-4 duration-500">
+            <h2 className="text-xs font-black text-slate-800 uppercase tracking-tight px-1">
+                Create Invoice
             </h2>
-            <div className="grid grid-cols-1 gap-2.5 px-2">
-                {(['drop', 'outstation', 'local', 'custom'] as const).map((m) => (
+            <div className="grid grid-cols-2 gap-2 px-0.5">
+                {(['custom', 'local', 'drop', 'outstation'] as const).map((m) => (
                     <button key={m} onClick={() => {
                         if (mode !== m) {
                             setMode(m);
@@ -816,277 +839,380 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                             setManualDriverBatta(false); setManualToll(false); setManualParking(false);
                             setManualPermit(false); setManualHillStation(false);
                         }
-                        handleNext();
-                    }} className={`p-3 rounded-2xl border-2 transition-all flex items-center gap-3 ${mode === m ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-white border-slate-100 text-slate-500 hover:border-blue-200'}`}>
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${mode === m ? 'bg-white/20' : 'bg-slate-50'}`}>
-                            {m === 'drop' && <MoveRight size={18} />}
-                            {m === 'outstation' && <Repeat size={18} />}
-                            {m === 'local' && <Clock size={18} />}
-                            {m === 'custom' && <PenLine size={18} />}
+                        setStep(1);
+                    }} className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all text-center ${mode === m ? 'bg-blue-600 border-blue-600 shadow-md ring-2 ring-blue-100' : 'bg-white border-slate-100 hover:border-blue-200 shadow-sm'}`}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${mode === m ? 'bg-white text-blue-600' : 'bg-blue-50 text-blue-600'}`}>
+                            {m === 'drop' && <MoveRight size={16} />}
+                            {m === 'outstation' && <Repeat size={16} />}
+                            {m === 'local' && <Clock size={16} />}
+                            {m === 'custom' && <PenLine size={16} />}
                         </div>
-                        <div className="text-left">
-                            <span className="text-[10px] font-black uppercase tracking-widest block">{m === 'drop' ? 'One Way Drop' : m === 'outstation' ? 'Round Trip' : m === 'local' ? 'Local Package' : 'Custom Service'}</span>
-                            <span className={`text-[8px] font-bold uppercase opacity-60 tracking-tight ${mode === m ? 'text-white' : 'text-slate-400'}`}>
-                                {m === 'drop' && 'Point to point drop'}
-                                {m === 'outstation' && 'Multi-day outstation'}
-                                {m === 'local' && 'Local hourly packages'}
-                                {m === 'custom' && 'Manual price entry'}
+                        <div className="flex flex-col items-center gap-0.5 min-w-0">
+                            <span className={`text-[10px] font-black uppercase tracking-wider leading-tight ${mode === m ? 'text-white' : 'text-slate-800'}`}>
+                                {m === 'drop' ? 'One Way' : m === 'outstation' ? 'Outstation' : m === 'local' ? 'Local' : 'Manual'}
+                            </span>
+                            <span className={`text-[8px] font-bold uppercase tracking-wide ${mode === m ? 'text-white/70' : 'text-slate-400'}`}>
+                                {m === 'drop' && 'Drop'}
+                                {m === 'outstation' && 'Round Trip'}
+                                {m === 'local' && 'Rental'}
+                                {m === 'custom' && 'Editor'}
                             </span>
                         </div>
                     </button>
                 ))}
             </div>
-        </div>
+        </div >
     );
 
     const renderStep2 = () => (
         <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
-            {/* Journey Section */}
-            <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><MapPin size={12} /> Journey Details</h3>
-                <div className="space-y-3">
-                    <PlacesAutocomplete
-                        label="Pickup"
-                        value={fromLoc}
-                        onChange={setFromLoc}
-                        onPlaceSelected={(p) => { setFromLoc(p.address); setPickupCoords({ lat: p.lat, lng: p.lng }); }}
-                        onMapClick={() => setShowMap(true)}
-                    />
-                    {mode !== 'local' && (
-                        <PlacesAutocomplete
-                            label="Drop"
-                            value={toLoc}
-                            onChange={setToLoc}
-                            onPlaceSelected={(p) => { setToLoc(p.address); setDropCoords({ lat: p.lat, lng: p.lng }); }}
-                            onMapClick={() => setShowMap(true)}
-                        />
-                    )}
-                </div>
-
-                {/* Odometer Toggle Moved Here */}
-                {mode !== 'local' && (
-                    <div className="flex justify-end pt-1">
-                        <button onClick={() => setIsOdometerMode(!isOdometerMode)} className="px-2 py-1 bg-blue-50 text-blue-600 text-[8px] font-black rounded-lg uppercase">
-                            Use {isOdometerMode ? 'Direct KM' : 'Odometer'}
-                        </button>
-                    </div>
-                )}
-
-                <div className="pt-1 border-t border-slate-50 space-y-3">
-                    {!isOdometerMode && mode !== 'local' && (
-                        <input type="number"
-                            value={isFetchingKM ? '' : distanceOverride}
-                            onChange={(e) => {
-                                setDistanceOverride(e.target.value);
-                            }}
-                            className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
-                            placeholder={isFetchingKM ? "Calculating..." : "0"}
-                        />
-                    )}
-                    {isOdometerMode && mode !== 'local' && (
-                        <div className="mt-2"></div>
-                    )}
-                    {(isOdometerMode || (mode === 'outstation' || (mode === 'drop' && parseFloat(distanceOverride) > 30))) && mode !== 'local' && (
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                                <p className="text-[9px] font-black text-slate-500 uppercase ml-1 flex justify-between items-center">Start KM <button onClick={() => { setIsScanning('start'); fileInputRef.current?.click(); }} className="text-blue-600"><Camera size={10} /></button></p>
+            {mode === 'custom' ? (
+                <>
+                    {/* 1. Primary Focus: Invoice Items (The "Excel/Word" feel) */}
+                    {/* 1. Invoice Meta Details - Separated for clarity */}
+                    <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-sm space-y-2.5">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                <StickyNote size={12} className="text-blue-600" /> Invoice Details
+                            </h3>
+                            <button
+                                onClick={() => handleShare()}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg active:scale-95 transition-all outline-none"
+                            >
+                                <span className="text-[9px] font-black uppercase tracking-wider">Download</span>
+                                <Share2 size={12} strokeWidth={2.5} />
+                            </button>
+                        </div>
+                        <div className="flex gap-2">
+                            <div className="flex-1 space-y-0.5">
+                                <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Invoice No</label>
                                 <input
-                                    type="number"
-                                    value={startKm || ''}
-                                    onChange={(e) => {
-                                        const val = parseFloat(e.target.value) || 0;
-                                        setStartKm(val);
-                                        // Auto-calculate End KM if distance exists and End KM is not yet set
-                                        if (val > 0 && distanceOverride && (!endKm || endKm <= val)) {
-                                            const d = parseFloat(distanceOverride) || 0;
-                                            setEndKm(val + d);
-                                        }
-                                    }}
-                                    className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
-                                    placeholder="0"
+                                    type="text"
+                                    value={invoiceNo}
+                                    onChange={(e) => setInvoiceNo(e.target.value)}
+                                    className="tn-input h-8 w-full bg-slate-50 border-slate-200 text-xs font-bold text-center uppercase rounded-lg"
+                                    placeholder="INV-001"
                                 />
                             </div>
-                            <div className="space-y-1">
-                                <p className="text-[9px] font-black text-slate-500 uppercase ml-1 flex justify-between items-center">End KM <button onClick={() => { setIsScanning('end'); fileInputRef.current?.click(); }} className="text-blue-600"><Camera size={10} /></button></p>
-                                <input type="number" value={endKm || ''} onChange={(e) => setEndKm(parseFloat(e.target.value) || 0)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {showMap && (
-                    <MapPicker
-                        onLocationSelect={handleMapSelect}
-                        onClose={() => setShowMap(false)}
-                    />
-                )}
-
-                <div className="pt-1 border-t border-slate-50 space-y-3">
-                    {/* Redundant Journey Details Header Removed */}
-
-
-                    {mode === 'custom' && (
-                        <div className="pt-2">
-                            <div className="flex justify-between items-center mb-3">
-                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Invoice Items</h3>
+                            <div className="flex-1 space-y-0.5">
+                                <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Date</label>
                                 <input
                                     type="date"
                                     value={invoiceDate}
                                     onChange={(e) => setInvoiceDate(e.target.value)}
-                                    className="tn-input h-8 bg-white border-slate-200 text-xs font-bold w-32"
+                                    className="tn-input h-8 w-full bg-slate-50 border-slate-200 text-xs font-bold text-center rounded-lg"
                                 />
                             </div>
-                            <div className="space-y-2">
-                                {customLineItems.map((item, idx) => (
-                                    <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                                        <div className="flex gap-2">
-                                            <div className="flex-[3]">
-                                                <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">Description</div>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Description"
-                                                    value={item.description}
-                                                    onChange={(e) => {
-                                                        const newItems = [...customLineItems];
-                                                        newItems[idx].description = e.target.value;
-                                                        setCustomLineItems(newItems);
-                                                    }}
-                                                    className="w-full h-8 bg-white border-slate-200 rounded-lg px-2 text-xs font-bold"
-                                                />
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">SAC Code</div>
-                                                <input
-                                                    type="text"
-                                                    placeholder="SAC"
-                                                    value={item.sac}
-                                                    onChange={(e) => {
-                                                        const newItems = [...customLineItems];
-                                                        newItems[idx].sac = e.target.value;
-                                                        setCustomLineItems(newItems);
-                                                    }}
-                                                    className="w-full h-8 bg-white border-slate-200 rounded-lg px-2 text-xs text-center"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2 items-center">
-                                            <div className="flex-1">
-                                                <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">Qty</div>
-                                                <input
-                                                    type="number"
-                                                    placeholder="Qty"
-                                                    value={item.qty}
-                                                    onChange={(e) => {
-                                                        const rawVal = e.target.value;
-                                                        const val = parseFloat(rawVal) || 0;
-                                                        const newItems = [...customLineItems];
-                                                        newItems[idx].qty = rawVal === '' ? 0 : val;
-                                                        newItems[idx].amount = (rawVal === '' ? 0 : val) * newItems[idx].rate;
-                                                        setCustomLineItems(newItems);
-                                                    }}
-                                                    className="w-full h-8 bg-white border-slate-200 rounded-lg px-2 text-xs font-bold text-center"
-                                                />
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">Rate</div>
-                                                <input
-                                                    type="number"
-                                                    placeholder="Rate"
-                                                    value={item.rate}
-                                                    onChange={(e) => {
-                                                        const rawVal = e.target.value;
-                                                        const val = parseFloat(rawVal) || 0;
-                                                        const newItems = [...customLineItems];
-                                                        // Update rate with raw value to allow clearing to empty string if needed, or handle 0
-                                                        // Ideally, we persist the number, but React number inputs can be tricky with 0.
-                                                        // Let's store direct value for inputs if we changed the type, but here we can just use valueAsNumber or handle string.
-                                                        // FIX: Cast to any or change type to string | number in definition. For now, we will assume strict number but allow empty string handling via controlled input logic if we changed the type.
-                                                        // Since we are using type="number", we can use e.target.valueAsNumber.
+                        </div>
+                    </div>
 
-                                                        // Simpler fix: Allow the input to be empty string in UI logic if we could,
-                                                        // but state is typed number.
-                                                        // Best approach for "unable to delete 0":
-                                                        // If the user clears the input, it becomes "", parseFloat becomes NaN or 0.
-                                                        // If we set state to 0, it shows "0".
-                                                        // To fix, we should likely allow the string value in the input, OR handle the "0" case better.
-                                                        // But the user says "unable to delete the 0". This implies they backspace and it stays 0.
-                                                        // This happens because `value={item.rate}` where rate is 0.
-                                                        // We can change value to `{item.rate === 0 ? '' : item.rate}` but that hides actual 0 rates.
-                                                        // Better: check if the string is empty.
+                    {/* 2. Billable Items List */}
+                    <div className="p-3 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                        <div className="flex justify-between items-center mb-0.5">
+                            <div className="flex flex-col">
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <PenLine size={12} className="text-blue-600" /> Billable Items
+                                </h3>
+                            </div>
+                            <div className="bg-slate-100 px-2 py-0.5 rounded-md">
+                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">
+                                    {customLineItems.length} Item{customLineItems.length !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                        </div>
 
-                                                        newItems[idx].rate = rawVal === '' ? 0 : val;
-                                                        newItems[idx].amount = newItems[idx].qty * (rawVal === '' ? 0 : val);
-                                                        setCustomLineItems(newItems);
-                                                    }}
-                                                    className="w-full h-8 bg-white border-slate-200 rounded-lg px-2 text-xs font-bold text-center"
-                                                />
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="text-[8px] text-slate-400 uppercase font-black mb-0.5 ml-1">Amount</div>
-                                                <div className="w-full h-8 flex items-center justify-end px-2 text-xs font-black text-slate-700 bg-slate-100 rounded-lg">
-                                                    {item.amount.toLocaleString()}
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() => {
-                                                    const newItems = customLineItems.filter((_, i) => i !== idx);
+                        <div className="space-y-2.5">
+                            {customLineItems.map((item, idx) => (
+                                <div key={idx} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/60 shadow-sm flex flex-col gap-2 group">
+                                    {/* Top Row: Description & SAC */}
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Item Description"
+                                            value={item.description}
+                                            onChange={(e) => {
+                                                const newItems = [...customLineItems];
+                                                newItems[idx].description = e.target.value;
+                                                setCustomLineItems(newItems);
+                                            }}
+                                            className="flex-1 h-8 bg-white border-slate-200 rounded-lg px-2.5 text-xs font-bold focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all placeholder:text-slate-300"
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="SAC"
+                                            value={item.sac}
+                                            onChange={(e) => {
+                                                const newItems = [...customLineItems];
+                                                newItems[idx].sac = e.target.value;
+                                                setCustomLineItems(newItems);
+                                            }}
+                                            className="w-14 h-8 bg-white border-slate-200 rounded-lg px-1 text-[10px] text-center font-bold placeholder:text-slate-300"
+                                            title="SAC Code"
+                                        />
+                                    </div>
+
+                                    {/* Bottom Row: Qty x Rate = Amount */}
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative w-14 group/input shrink-0">
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] text-slate-400 font-bold uppercase pointer-events-none group-focus-within/input:text-blue-500">Qty</span>
+                                            <input
+                                                type="number"
+                                                placeholder="0"
+                                                value={item.qty === 0 ? '' : item.qty}
+                                                onChange={(e) => {
+                                                    const rawVal = e.target.value;
+                                                    const val = parseFloat(rawVal) || 0;
+                                                    const newItems = [...customLineItems];
+                                                    newItems[idx].qty = rawVal === '' ? 0 : val;
+                                                    newItems[idx].amount = (rawVal === '' ? 0 : val) * newItems[idx].rate;
                                                     setCustomLineItems(newItems);
                                                 }}
-                                                className="h-8 w-8 flex items-center justify-center text-red-500 bg-white border border-red-100 text-xs font-bold rounded-lg hover:bg-red-50 mt-4"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
+                                                className="w-full h-8 bg-white border-slate-200 rounded-lg pl-6 pr-1 text-xs font-bold text-center focus:border-blue-500 transition-colors"
+                                            />
                                         </div>
+
+                                        <span className="text-slate-300 font-bold text-xs shrink-0">×</span>
+
+                                        <div className="relative w-18 group/input shrink-0">
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] text-slate-400 font-bold uppercase pointer-events-none group-focus-within/input:text-blue-500">₹</span>
+                                            <input
+                                                type="number"
+                                                placeholder="Rate"
+                                                value={item.rate === 0 ? '' : item.rate}
+                                                onChange={(e) => {
+                                                    const rawVal = e.target.value;
+                                                    const val = parseFloat(rawVal) || 0;
+                                                    const newItems = [...customLineItems];
+                                                    newItems[idx].rate = rawVal === '' ? 0 : val;
+                                                    newItems[idx].amount = newItems[idx].qty * (rawVal === '' ? 0 : val);
+                                                    setCustomLineItems(newItems);
+                                                }}
+                                                className="w-full h-8 bg-white border-slate-200 rounded-lg pl-3 pr-1 text-xs font-bold text-center focus:border-blue-500 transition-colors"
+                                            />
+                                        </div>
+
+                                        <div className="h-4 w-px bg-slate-300 mx-1 shrink-0" />
+
+                                        <div className="flex-1 min-w-[50px] text-right font-black text-slate-900 text-sm">
+                                            ₹{item.amount.toLocaleString()}
+                                        </div>
+
+                                        <button
+                                            onClick={() => {
+                                                const newItems = customLineItems.filter((_, i) => i !== idx);
+                                                setCustomLineItems(newItems);
+                                            }}
+                                            className="h-8 w-8 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all shrink-0"
+                                            title="Remove Item"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
                                     </div>
-                                ))}
+                                </div>
+                            ))}
+                            <div className="flex justify-between items-center px-3 py-2.5 bg-slate-900 text-white rounded-xl shadow-lg shadow-slate-200 mt-2">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">Total Amount</span>
+                                <span className="text-sm font-black tracking-wide">
+                                    ₹{customLineItems.reduce((acc, item) => acc + item.amount, 0).toLocaleString()}
+                                </span>
+                            </div>
+
+                            <button
+                                onClick={() => setCustomLineItems([...customLineItems, { description: '', sac: '9966', qty: 1, rate: 0, amount: 0 }])}
+                                className="w-full py-2.5 flex items-center justify-center gap-2 text-[9px] font-black text-blue-600 bg-blue-50/50 rounded-xl border-2 border-dashed border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-all uppercase tracking-widest mt-2"
+                            >
+                                <Plus size={12} strokeWidth={3} /> Add Another Line Item
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* 2. Optional: Journey Section for Record */}
+                    <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-3">
+                        <div className="flex justify-between items-center mb-0.5">
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><MapPin size={12} className="text-blue-600" /> Route (Optional)</h3>
+                            <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
                                 <button
-                                    onClick={() => setCustomLineItems([...customLineItems, { description: '', sac: '9966', qty: 1, rate: 0, amount: 0 }])}
-                                    className="w-full py-2 flex items-center justify-center gap-2 text-xs font-black text-indigo-600 bg-indigo-50 rounded-xl border border-indigo-100 hover:bg-indigo-100 uppercase tracking-wider"
+                                    onClick={() => setIsOdometerMode(false)}
+                                    className={`px-1.5 py-0.5 text-[8px] font-black uppercase rounded-md transition-all ${!isOdometerMode ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
                                 >
-                                    <Plus size={14} /> Add Line Item
+                                    Address
+                                </button>
+                                <button
+                                    onClick={() => setIsOdometerMode(true)}
+                                    className={`px-1.5 py-0.5 text-[8px] font-black uppercase rounded-md transition-all ${isOdometerMode ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                                >
+                                    Odometer
                                 </button>
                             </div>
                         </div>
-                    )}
+                        <div className="space-y-2 relative">
+                            <PlacesAutocomplete
+                                label="From"
+                                value={fromLoc}
+                                onChange={setFromLoc}
+                                onPlaceSelected={(p) => { setFromLoc(p.address); setPickupCoords({ lat: p.lat, lng: p.lng }); }}
+                                onMapClick={() => setShowMap(true)}
+                            />
 
-                    {mode === 'local' && (
-                        <div className="pt-3 border-t border-slate-50 space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Start Time</label>
-                                    <input type="time" value={startTimeLog} onChange={e => setStartTimeLog(e.target.value)} className="tn-input h-10 w-full font-bold text-xs bg-slate-50 border-slate-200" />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1">End Time</label>
-                                    <input type="time" value={endTimeLog} onChange={e => setEndTimeLog(e.target.value)} className="tn-input h-10 w-full font-bold text-xs bg-slate-50 border-slate-200" />
-                                </div>
+                            {/* Swap Button */}
+                            <div className="absolute right-10 top-9 z-10">
+                                <button
+                                    onClick={handleSwapRoute}
+                                    className="w-7 h-7 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center text-blue-600 hover:bg-blue-50 transition-colors"
+                                    title="Swap Route"
+                                >
+                                    <Repeat size={12} className="rotate-90" />
+                                </button>
                             </div>
 
-                            <div className="flex items-center justify-between px-2 py-1 bg-blue-50 rounded-lg">
-                                <span className="text-[10px] uppercase font-bold text-slate-400">Calculated:</span>
-                                <div className="flex gap-3">
-                                    <span className="text-xs font-black text-slate-700">{localPackageHours} Hrs</span>
-                                    <span className="text-xs font-black text-slate-700">{localPackageKm} KM</span>
-                                </div>
-                            </div>
+                            <PlacesAutocomplete
+                                label="To"
+                                value={toLoc}
+                                onChange={setToLoc}
+                                onPlaceSelected={(p) => { setToLoc(p.address); setDropCoords({ lat: p.lat, lng: p.lng }); }}
+                                onMapClick={() => setShowMap(true)}
+                            />
                         </div>
-                    )}
 
+                        {isOdometerMode && (
+                            <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-50">
+                                <div className="space-y-0.5">
+                                    <p className="text-[8px] font-bold text-slate-400 uppercase ml-1 flex justify-between items-center">Start KM <button onClick={() => { setIsScanning('start'); fileInputRef.current?.click(); }} className="text-blue-600"><Camera size={10} /></button></p>
+                                    <input type="number" value={startKm || ''} onChange={(e) => setStartKm(parseFloat(e.target.value) || 0)} className="tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-950 font-bold rounded-lg" placeholder="0" />
+                                </div>
+                                <div className="space-y-0.5">
+                                    <p className="text-[8px] font-bold text-slate-400 uppercase ml-1 flex justify-between items-center">End KM <button onClick={() => { setIsScanning('end'); fileInputRef.current?.click(); }} className="text-blue-600"><Camera size={10} /></button></p>
+                                    <input type="number" value={endKm || ''} onChange={(e) => setEndKm(parseFloat(e.target.value) || 0)} className="tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-950 font-bold rounded-lg" placeholder="0" />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </>
+            ) : (
+                <>
+                    {/* Standard Journey Details for Automated Modes */}
+                    <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-3">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><MapPin size={12} className="text-blue-600" /> Journey Details</h3>
+                        <div className="space-y-2 relative">
+                            <PlacesAutocomplete
+                                label="Pickup"
+                                value={fromLoc}
+                                onChange={setFromLoc}
+                                onPlaceSelected={(p) => { setFromLoc(p.address); setPickupCoords({ lat: p.lat, lng: p.lng }); }}
+                                onMapClick={() => setShowMap(true)}
+                            />
 
-                </div>
-            </div>
+                            {mode !== 'local' && (
+                                <>
+                                    {/* Swap Button */}
+                                    <div className="absolute right-10 top-9 z-10">
+                                        <button
+                                            onClick={handleSwapRoute}
+                                            className="w-7 h-7 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center text-blue-600 hover:bg-blue-50 transition-colors"
+                                            title="Swap Route"
+                                        >
+                                            <Repeat size={12} className="rotate-90" />
+                                        </button>
+                                    </div>
+                                    <PlacesAutocomplete
+                                        label="Drop"
+                                        value={toLoc}
+                                        onChange={setToLoc}
+                                        onPlaceSelected={(p) => { setToLoc(p.address); setDropCoords({ lat: p.lat, lng: p.lng }); }}
+                                        onMapClick={() => setShowMap(true)}
+                                    />
+                                </>
+                            )}
+                        </div>
+
+                        {mode !== 'local' && (
+                            <div className="flex justify-end -mt-1">
+                                <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                                    <button
+                                        onClick={() => setIsOdometerMode(false)}
+                                        className={`px-1.5 py-0.5 text-[8px] font-black uppercase rounded-md transition-all ${!isOdometerMode ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                                    >
+                                        Direct KM
+                                    </button>
+                                    <button
+                                        onClick={() => setIsOdometerMode(true)}
+                                        className={`px-1.5 py-0.5 text-[8px] font-black uppercase rounded-md transition-all ${isOdometerMode ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                                    >
+                                        Odometer
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="pt-0.5 border-t border-slate-50 space-y-2">
+                            {!isOdometerMode && mode !== 'local' && (
+                                <div className="space-y-0.5">
+                                    <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Trip Distance (KM)</label>
+                                    <input type="number"
+                                        value={isFetchingKM ? '' : distanceOverride}
+                                        onChange={(e) => setDistanceOverride(e.target.value)}
+                                        className="tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg"
+                                        placeholder={isFetchingKM ? "Calculating..." : "0"}
+                                    />
+                                </div>
+                            )}
+                            {(isOdometerMode || (mode === 'outstation' || (mode === 'drop' && parseFloat(distanceOverride) > 30))) && mode !== 'local' && (
+                                <div className="grid grid-cols-2 gap-2.5">
+                                    <div className="space-y-0.5">
+                                        <p className="text-[8px] font-bold text-slate-400 uppercase ml-1 flex justify-between items-center">Start KM <button onClick={() => { setIsScanning('start'); fileInputRef.current?.click(); }} className="text-blue-600"><Camera size={10} /></button></p>
+                                        <input type="number" value={startKm || ''} onChange={(e) => setStartKm(parseFloat(e.target.value) || 0)} className="tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg" placeholder="0" />
+                                    </div>
+                                    <div className="space-y-0.5">
+                                        <p className="text-[8px] font-bold text-slate-400 uppercase ml-1 flex justify-between items-center">End KM <button onClick={() => { setIsScanning('end'); fileInputRef.current?.click(); }} className="text-blue-600"><Camera size={10} /></button></p>
+                                        <input type="number" value={endKm || ''} onChange={(e) => setEndKm(parseFloat(e.target.value) || 0)} className="tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg" placeholder="0" />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {mode === 'local' && (
+                            <div className="pt-2 border-t border-slate-50 space-y-2.5">
+                                <div className="grid grid-cols-2 gap-2.5">
+                                    <div className="space-y-0.5">
+                                        <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Start Time</label>
+                                        <input type="time" value={startTimeLog} onChange={e => setStartTimeLog(e.target.value)} className="tn-input h-9 w-full font-bold text-xs bg-slate-50 border-slate-100 rounded-lg px-2" />
+                                    </div>
+                                    <div className="space-y-0.5">
+                                        <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">End Time</label>
+                                        <input type="time" value={endTimeLog} onChange={e => setEndTimeLog(e.target.value)} className="tn-input h-9 w-full font-bold text-xs bg-slate-50 border-slate-100 rounded-lg px-2" />
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between px-2.5 py-1.5 bg-blue-50/50 rounded-lg border border-blue-100/50">
+                                    <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider">Calculated:</span>
+                                    <div className="flex gap-4">
+                                        <span className="text-xs font-black text-blue-700">{localPackageHours} Hrs</span>
+                                        <span className="text-xs font-black text-blue-700">{localPackageKm} KM</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
+
+            {showMap && (
+                <MapPicker
+                    onLocationSelect={handleMapSelect}
+                    onClose={() => setShowMap(false)}
+                />
+            )}
 
             {/* Vehicle Section */}
-            < div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4" >
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Car size={12} /> Fleet Profile</h3>
+            <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-3">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Car size={12} className="text-slate-600" /> Vehicle Branding</h3>
 
-                <div className="space-y-3">
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Select Cab</label>
+                <div className="space-y-2.5">
+                    <div className="space-y-0.5">
+                        <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Select Cab</label>
                         <select
                             value={selectedVehicleId}
                             onChange={(e) => setSelectedVehicleId(e.target.value)}
-                            className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
+                            className="tn-input h-9 w-full bg-slate-50 border-slate-100 text-xs text-slate-900 font-bold rounded-lg px-2"
                         >
                             <option value="">Choose from Fleet</option>
                             {userVehicles.map((v) => (
@@ -1095,23 +1221,17 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                         </select>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-50">
-                        {mode !== 'local' && (
-                            <div className="space-y-1">
-                                <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Base Rate / KM</label>
-                                <input type="number" value={customRate || ''} onChange={e => setCustomRate(parseFloat(e.target.value) || 0)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
-                            </div>
-                        )}
+                    <div className="grid grid-cols-1 gap-3 pt-1">
                         {mode === 'outstation' ? (
-                            <div className="space-y-1">
-                                <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Trip Days</label>
-                                <input type="number" value={days} onChange={e => setDays(parseFloat(e.target.value) || 1)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="1" />
+                            <div className="space-y-0.5">
+                                <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Trip Days</label>
+                                <input type="number" value={days} onChange={e => setDays(parseFloat(e.target.value) || 1)} className="tn-input h-9 w-full bg-slate-50 border-slate-100 text-xs text-slate-900 font-bold rounded-lg px-3" placeholder="1" />
                             </div>
                         ) : mode === 'local' ? (
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Local Package</label>
-                                    <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none snap-x">
+                                    <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Rental Package</label>
+                                    <div className="flex gap-2 overflow-x-auto pb-1 -mx-0.5 px-0.5 scrollbar-none snap-x">
                                         {[
                                             { id: '2hr_20km', hr: '2 Hr', km: '20 Km' },
                                             { id: '4hr_40km', hr: '4 Hr', km: '40 Km' },
@@ -1133,21 +1253,21 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                                         setLocalPackageHours(2); setLocalPackageKm(20); setDistanceOverride('20');
                                                     }
                                                 }}
-                                                className={`min-w-[70px] flex-shrink-0 flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all snap-start
+                                                className={`min-w-[64px] flex-shrink-0 flex flex-col items-center justify-center py-1.5 px-1 rounded-lg border transition-all snap-start
                                                         ${hourlyPackage === pkg.id
-                                                        ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200 ring-1 ring-blue-600 ring-offset-1'
-                                                        : 'bg-white border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600'}
-                                                        ${!selectedVehicleId ? 'opacity-50 cursor-not-allowed' : ''}
+                                                        ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-100'
+                                                        : 'bg-white border-slate-100 text-slate-500 hover:border-blue-200 active:bg-slate-50'}
+                                                        ${!selectedVehicleId ? 'opacity-40 grayscale cursor-not-allowed' : ''}
                                                     `}
                                                 disabled={!selectedVehicleId}
                                             >
                                                 {pkg.label && (
-                                                    <span className={`text-[8px] font-black uppercase tracking-wider mb-0.5 ${hourlyPackage === pkg.id ? 'text-blue-200' : 'text-blue-600'}`}>
+                                                    <span className={`text-[7px] font-black uppercase tracking-wider mb-0.5 ${hourlyPackage === pkg.id ? 'text-blue-100' : 'text-blue-600'}`}>
                                                         {pkg.label}
                                                     </span>
                                                 )}
-                                                <span className="text-xs font-black uppercase tracking-wider leading-none">{pkg.hr}</span>
-                                                <span className={`text-[9px] font-bold uppercase tracking-wider leading-none mt-1 ${hourlyPackage === pkg.id ? 'text-blue-100' : 'text-slate-400'}`}>
+                                                <span className="text-[10px] font-black uppercase tracking-wider leading-none">{pkg.hr}</span>
+                                                <span className={`text-[8px] font-bold uppercase tracking-wider leading-none mt-0.5 ${hourlyPackage === pkg.id ? 'text-blue-200' : 'text-slate-400'}`}>
                                                     {pkg.km}
                                                 </span>
                                             </button>
@@ -1155,19 +1275,19 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                     </div>
                                 </div>
                                 {hourlyPackage !== 'custom' ? (
-                                    <div className="flex items-center gap-4 p-3 bg-white rounded-xl border border-slate-200 shadow-sm mt-3">
+                                    <div className="flex items-center gap-3 p-2 bg-slate-50/50 rounded-lg border border-slate-100 mt-1">
                                         <div className="flex-1 text-center border-r border-slate-100">
-                                            <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mb-0.5">Includes</p>
-                                            <p className="text-base font-black text-slate-700">{hourlyPackage === '8hr_80km' ? 80 : hourlyPackage === '12hr_120km' ? 120 : hourlyPackage === '4hr_40km' ? 40 : 20} KM</p>
+                                            <p className="text-[7px] text-slate-400 uppercase font-black tracking-widest mb-0.5">Includes</p>
+                                            <p className="text-xs font-black text-slate-700 uppercase tracking-tight">{hourlyPackage === '8hr_80km' ? 80 : hourlyPackage === '12hr_120km' ? 120 : hourlyPackage === '4hr_40km' ? 40 : 20} KM</p>
                                         </div>
                                         <div className="flex-1 text-center">
-                                            <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mb-0.5">Duration</p>
-                                            <p className="text-base font-black text-slate-700">{hourlyPackage === '8hr_80km' ? 8 : hourlyPackage === '12hr_120km' ? 12 : hourlyPackage === '4hr_40km' ? 4 : 2} HRS</p>
+                                            <p className="text-[7px] text-slate-400 uppercase font-black tracking-widest mb-0.5">Duration</p>
+                                            <p className="text-xs font-black text-slate-700 uppercase tracking-tight">{hourlyPackage === '8hr_80km' ? 8 : hourlyPackage === '12hr_120km' ? 12 : hourlyPackage === '4hr_40km' ? 4 : 2} HRS</p>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm mt-3 text-center">
-                                        <p className="text-[10px] text-slate-400 italic">Enter Start/End Time & KM in Journey Details above</p>
+                                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-100 mt-1 text-center">
+                                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider italic">Input Time & KM in Journey Details</p>
                                     </div>
                                 )}
                             </div>
@@ -1176,113 +1296,113 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 </div>
             </div >
 
-            <div className="flex gap-2.5">
-                <button onClick={handleBack} className="flex-1 h-12 border-2 border-slate-100 text-slate-400 font-black rounded-2xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-2"><ChevronLeft size={14} /> Back</button>
-                <div className="flex-[3] flex gap-2">
+            <div className="flex gap-2">
+                <button onClick={handleBack} className="flex-1 h-11 border border-slate-200 text-slate-500 font-black rounded-xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-1.5 active:bg-slate-50 transition-colors"><ChevronLeft size={14} /> Back</button>
+                <div className="flex-[2.5] flex gap-2">
                     {mode === 'custom' && (
-                        <button onClick={handlePreview} disabled={customLineItems.length === 0} className="flex-1 h-12 border-2 border-indigo-600 text-indigo-600 font-black rounded-2xl uppercase text-[10px] tracking-[0.2em] flex items-center justify-center hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <button onClick={handlePreview} disabled={customLineItems.length === 0} className="flex-1 h-11 border-2 border-indigo-600 text-indigo-600 font-black rounded-xl uppercase text-[9px] tracking-widest flex items-center justify-center active:bg-indigo-50 disabled:opacity-30 transition-colors">
                             PREVIEW
                         </button>
                     )}
-                    <button onClick={handleNext} disabled={(mode !== 'custom' && (!selectedVehicleId || (!distanceOverride && mode !== 'local'))) || (mode === 'custom' && customLineItems.length === 0)} className="flex-1 tn-button-primary h-12 text-[10px] tracking-[0.2em]">CONTINUE</button>
+                    <button onClick={handleNext} disabled={(mode !== 'custom' && (!selectedVehicleId || (!distanceOverride && mode !== 'local'))) || (mode === 'custom' && customLineItems.length === 0)} className="flex-1 tn-button-primary h-11 text-[10px] tracking-widest font-black uppercase shadow-lg shadow-blue-100 disabled:opacity-50">CONTINUE</button>
                 </div>
             </div>
         </div >
     );
 
     const renderStep3 = () => (
-        <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
-            <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight flex items-center gap-2 px-2">
-                <Plus className="text-blue-600" size={14} /> Additional Charges
+        <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
+            <h2 className="text-[10px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-2 px-1">
+                <Plus className="text-blue-600" size={14} strokeWidth={3} /> Extra Charges
             </h2>
 
-            <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
+            <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-3">
                 {/* Main Charges Grid */}
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
+                <div className="grid grid-cols-2 gap-2.5">
+                    <div className="space-y-0.5">
                         <div className="flex justify-between items-center px-1">
-                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Batta</label>
+                            <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Batta</label>
                             {manualDriverBatta && <button onClick={() => setManualDriverBatta(false)} className="text-blue-600"><RotateCcw size={10} /></button>}
                         </div>
-                        <input type="number" value={driverBatta} onChange={e => { setDriverBatta(e.target.value); setManualDriverBatta(true); }} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 ${manualDriverBatta ? 'bg-blue-50 text-blue-700' : ''}`} placeholder="0" />
+                        <input type="number" value={driverBatta} onChange={e => { setDriverBatta(e.target.value); setManualDriverBatta(true); }} className={`tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg ${manualDriverBatta ? 'bg-blue-50 text-blue-700' : ''}`} placeholder="0" />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                         <div className="flex justify-between items-center px-1">
-                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Tolls</label>
+                            <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Tolls</label>
                             {manualToll && <button onClick={() => setManualToll(false)} className="text-blue-600"><RotateCcw size={10} /></button>}
                         </div>
-                        <input type="number" value={toll} onChange={e => { setToll(e.target.value); setManualToll(true); }} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 ${manualToll ? 'bg-blue-50 text-blue-700' : ''}`} placeholder="0" />
+                        <input type="number" value={toll} onChange={e => { setToll(e.target.value); setManualToll(true); }} className={`tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg ${manualToll ? 'bg-blue-50 text-blue-700' : ''}`} placeholder="0" />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                         <div className="flex justify-between items-center px-1">
-                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Parking</label>
+                            <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Parking</label>
                             {manualParking && <button onClick={() => setManualParking(false)} className="text-blue-600"><RotateCcw size={10} /></button>}
                         </div>
-                        <input type="number" value={parking} onChange={e => { setParking(e.target.value); setManualParking(true); }} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 ${manualParking ? 'bg-blue-50 text-blue-700' : ''}`} placeholder="0" />
+                        <input type="number" value={parking} onChange={e => { setParking(e.target.value); setManualParking(true); }} className={`tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg ${manualParking ? 'bg-blue-50 text-blue-700' : ''}`} placeholder="0" />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                         <div className="flex justify-between items-center px-1">
-                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Permit</label>
+                            <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Permit</label>
                             {manualPermit && <button onClick={() => setManualPermit(false)} className="text-blue-600"><RotateCcw size={10} /></button>}
                         </div>
-                        <input type="number" value={permit} onChange={e => { setPermit(e.target.value); setManualPermit(true); }} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 ${manualPermit ? 'bg-blue-50 text-blue-700' : ''}`} placeholder="0" />
+                        <input type="number" value={permit} onChange={e => { setPermit(e.target.value); setManualPermit(true); }} className={`tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg ${manualPermit ? 'bg-blue-50 text-blue-700' : ''}`} placeholder="0" />
                     </div>
                 </div>
 
-                <div className="h-px bg-slate-50 my-1" />
+                <div className="h-px bg-slate-50 my-0.5" />
 
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Hill Station</label>
-                        <input type="number" value={hillStationCharge} onChange={e => { setHillStationCharge(e.target.value); setManualHillStation(true); }} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
+                <div className="grid grid-cols-2 gap-2.5">
+                    <div className="space-y-0.5">
+                        <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Hill Station</label>
+                        <input type="number" value={hillStationCharge} onChange={e => { setHillStationCharge(e.target.value); setManualHillStation(true); }} className="tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg" placeholder="0" />
                     </div>
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Pet Charge</label>
-                        <input type="number" value={petCharge} onChange={e => setPetCharge(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
+                    <div className="space-y-0.5">
+                        <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Pet Charge</label>
+                        <input type="number" value={petCharge} onChange={e => setPetCharge(e.target.value)} className="tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg" placeholder="0" />
                     </div>
                 </div>
 
-                <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Night Drive (11 PM - 5 AM)</label>
-                    <input type="number" value={nightCharge} onChange={e => setNightCharge(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
+                <div className="space-y-0.5">
+                    <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Night Drive (11 PM - 5 AM)</label>
+                    <input type="number" value={nightCharge} onChange={e => setNightCharge(e.target.value)} className="tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg" placeholder="0" />
                 </div>
 
-                <div className="pt-4 border-t border-slate-50 space-y-3">
-                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1">More Charges</label>
+                <div className="pt-3 border-t border-slate-50 space-y-2.5">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Misc Charges</label>
                     <div className="flex gap-2">
-                        <select className="tn-input h-10 flex-1 bg-slate-50 border-slate-200 text-xs text-slate-900 shadow-none" value={selectedChargeType} onChange={(e) => { setSelectedChargeType(e.target.value); if (e.target.value !== 'Custom') setCustomChargeName(''); }}>
-                            <option value="">Select Charge Type</option>
-                            <option value="Custom">Custom Charge</option>
-                            <option value="Cleaning Fee">Cleaning Fee</option>
-                            <option value="Driver Allowance">Driver Allowance</option>
-                            <option value="Guide Fee">Guide Fee</option>
-                            <option value="Luggage Charge">Luggage Charge</option>
-                            <option value="Airport Entry">Airport Entry</option>
-                            <option value="FastTag Recharge">FastTag Recharge</option>
+                        <select className="tn-input h-9 flex-1 bg-slate-100 border-none text-[10px] text-slate-900 font-black uppercase tracking-wider rounded-lg" value={selectedChargeType} onChange={(e) => { setSelectedChargeType(e.target.value); if (e.target.value !== 'Custom') setCustomChargeName(''); }}>
+                            <option value="">Select Type</option>
+                            <option value="Custom">Custom</option>
+                            <option value="Cleaning Fee">Cleaning</option>
+                            <option value="Driver Allowance">Allowance</option>
+                            <option value="Guide Fee">Guide</option>
+                            <option value="Luggage Charge">Luggage</option>
+                            <option value="Airport Entry">Airport</option>
+                            <option value="FastTag Recharge">FastTag</option>
                             <option value="Decoration">Decoration</option>
-                            <option value="Waiting Charge">Waiting Charge</option>
+                            <option value="Waiting Charge">Waiting</option>
                         </select>
                     </div>
 
                     {selectedChargeType && (
                         <div className="flex gap-2 animate-in slide-in-from-top-2">
-                            {selectedChargeType === 'Custom' && <input placeholder="Charge Name" className="tn-input h-10 flex-[2] bg-white font-bold text-xs" value={customChargeName} onChange={e => setCustomChargeName(e.target.value)} autoFocus />}
-                            <input type="number" placeholder="Amt" className="tn-input h-10 flex-1 bg-white font-black text-xs" value={customChargeAmount} onChange={e => setCustomChargeAmount(e.target.value)} />
-                            <button onClick={handleAddCharge} className="w-10 h-10 bg-slate-900 text-white rounded-xl shadow-lg shadow-slate-200 flex items-center justify-center shrink-0">
-                                <Plus size={16} />
+                            {selectedChargeType === 'Custom' && <input placeholder="Name" className="tn-input h-9 flex-[2] bg-white border-slate-200 font-bold text-xs rounded-lg" value={customChargeName} onChange={e => setCustomChargeName(e.target.value)} autoFocus />}
+                            <input type="number" placeholder="Amt" className="tn-input h-9 flex-1 bg-white border-slate-200 font-bold text-xs rounded-lg text-center" value={customChargeAmount} onChange={e => setCustomChargeAmount(e.target.value)} />
+                            <button onClick={handleAddCharge} className="w-9 h-9 bg-slate-900 text-white rounded-lg shadow-lg shadow-slate-200 flex items-center justify-center shrink-0">
+                                <Plus size={16} strokeWidth={3} />
                             </button>
                         </div>
                     )}
 
                     {extraItems.length > 0 && (
-                        <div className="space-y-2 pt-1">
+                        <div className="space-y-1.5 pt-1">
                             {extraItems.map((item, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 rounded-xl group/item">
-                                    <span className="text-[10px] font-bold text-slate-600">{item.description}</span>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-[10px] font-black text-slate-900">₹{item.amount.toLocaleString()}</span>
+                                <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg group/item border border-slate-100">
+                                    <span className="text-[10px] font-black text-slate-600 uppercase tracking-tight">{item.description}</span>
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="text-[11px] font-black text-slate-900">₹{item.amount.toLocaleString()}</span>
                                         <button onClick={() => setExtraItems(prev => prev.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500 transition-colors">
-                                            <Trash2 size={12} />
+                                            <Trash2 size={14} />
                                         </button>
                                     </div>
                                 </div>
@@ -1292,51 +1412,51 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 </div>
             </div>
 
-            <div className="flex gap-2.5">
-                <button onClick={handleBack} className="flex-1 h-12 border-2 border-slate-100 text-slate-400 font-black rounded-2xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-2"><ChevronLeft size={14} /> Back</button>
-                <div className="flex-[3] flex gap-2">
-                    <button onClick={handlePreview} className="flex-1 border-2 border-[#0047AB] text-[#0047AB] h-12 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] hover:bg-blue-50 transition-colors">PREVIEW</button>
-                    <button onClick={handleNext} className="flex-1 tn-button-primary h-12 text-[10px] tracking-[0.2em]">CONTINUE</button>
+            <div className="flex gap-2">
+                <button onClick={handleBack} className="flex-1 h-11 border border-slate-200 text-slate-500 font-black rounded-xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-1.5 active:bg-slate-50"><ChevronLeft size={14} /> Back</button>
+                <div className="flex-[2.5] flex gap-2">
+                    <button onClick={handlePreview} className="flex-1 border-2 border-[#0047AB] text-[#0047AB] h-11 rounded-xl text-[9px] uppercase font-black tracking-widest hover:bg-blue-50 transition-colors">PREVIEW</button>
+                    <button onClick={handleNext} className="flex-1 tn-button-primary h-11 text-[9px] tracking-widest font-black uppercase rounded-xl">CONTINUE</button>
                 </div>
             </div>
         </div>
     );
 
     const renderStep4 = () => (
-        <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
+        <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
             {/* Customer Section */}
-            <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
+            <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-3">
                 <div className="flex justify-between items-center">
-                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><UserCheck size={12} /> Client Details</h3>
-                    <div className="bg-slate-100 px-2 py-1 rounded-lg">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Invoice #: <span className="text-blue-600">{nextInvoiceNo}</span></span>
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><UserCheck size={12} className="text-blue-600" /> Client Details</h3>
+                    <div className="bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Bill ID: <span className="text-blue-700">{invoiceNo.split('/').pop()}</span></span>
                     </div>
                 </div>
-                <div className="space-y-3">
-                    <div className="space-y-3">
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Client Name</label>
-                            <input placeholder="Client Name" className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" value={customerName} onChange={e => setCustomerName(e.target.value)} />
+                <div className="space-y-2.5">
+                    <div className="grid grid-cols-2 gap-2.5">
+                        <div className="space-y-0.5">
+                            <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Client Name</label>
+                            <input placeholder="Name" className="tn-input h-9 w-full bg-slate-50 border-slate-100 text-xs text-slate-900 font-bold rounded-lg px-2.5" value={customerName} onChange={e => setCustomerName(e.target.value)} />
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Phone</label>
-                            <input placeholder="Phone" className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
+                        <div className="space-y-0.5">
+                            <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Phone</label>
+                            <input placeholder="Phone" className="tn-input h-9 w-full bg-slate-50 border-slate-100 text-xs text-slate-900 font-bold rounded-lg px-2.5" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Address</label>
-                            <textarea placeholder="Address" className="tn-input h-16 w-full py-2 resize-none bg-slate-50 border-slate-200 text-xs text-slate-900" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">GSTIN (Optional)</label>
-                            <input placeholder="GSTIN" className="tn-input h-10 w-full uppercase bg-slate-50 border-slate-200 text-xs text-slate-900" value={customerGst} onChange={e => setCustomerGst(e.target.value)} />
-                        </div>
+                    </div>
+                    <div className="space-y-0.5">
+                        <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Business Address</label>
+                        <textarea placeholder="Line 1, City, State..." className="tn-input h-14 w-full py-2 resize-none bg-slate-50 border-slate-100 text-xs text-slate-900 font-bold rounded-lg px-2.5 leading-snug" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} />
+                    </div>
+                    <div className="space-y-0.5">
+                        <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Tax/GSTIN (Optional)</label>
+                        <input placeholder="27XXXXX..." className="tn-input h-9 w-full uppercase bg-slate-50 border-slate-100 text-xs text-slate-900 font-bold rounded-lg px-2.5" value={customerGst} onChange={e => setCustomerGst(e.target.value)} />
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                    <div className={`p-3 rounded-2xl border flex flex-col gap-2 ${includeGst ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-100'}`}>
+                <div className="grid grid-cols-2 gap-2.5">
+                    <div className={`p-2 rounded-lg border transition-all flex flex-col gap-1.5 ${includeGst ? 'bg-blue-50 border-blue-200 shadow-sm shadow-blue-50' : 'bg-slate-50 border-slate-100'}`}>
                         <div className="flex justify-between items-center w-full">
-                            <div><p className="text-[10px] font-black uppercase">GST Tax (Forward Charge)</p></div>
+                            <p className="text-[9px] font-black uppercase tracking-wider text-slate-700">GST Add</p>
                             <button onClick={() => {
                                 if (!settings.gstin) {
                                     alert('Please add your GSTIN in Settings to enable Forward Charge GST.');
@@ -1345,20 +1465,20 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                 const newState = !includeGst;
                                 setIncludeGst(newState);
                                 if (newState) setRcmEnabled(false);
-                            }} className={`w-8 h-4 rounded-full relative ${includeGst ? 'bg-blue-600' : 'bg-slate-300'}`}><div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${includeGst ? 'left-4.5' : 'left-0.5'}`} /></button>
+                            }} className={`w-7 h-3.5 rounded-full relative transition-colors ${includeGst ? 'bg-blue-600' : 'bg-slate-300'}`}><div className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full transition-all ${includeGst ? 'left-4' : 'left-0.5'}`} /></button>
                         </div>
                         {includeGst && (
-                            <div className="flex items-center gap-2 pt-1 border-t border-blue-100/50">
-                                <span className="text-[9px] font-black text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md">5% Rate</span>
-                                <span className="text-[8px] font-bold text-slate-400 ml-auto uppercase">
-                                    {determineGSTType(settings.gstin, customerGst) === 'IGST' ? 'IGST (Inter-State)' : 'CGST+SGST (Intra)'}
+                            <div className="flex items-center justify-between pt-1 border-t border-blue-100/50">
+                                <span className="text-[8px] font-black text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded uppercase leading-none">5%</span>
+                                <span className="text-[7px] font-black text-slate-400 uppercase leading-none">
+                                    {determineGSTType(settings.gstin, customerGst) === 'IGST' ? 'IGST' : 'CGST+SGST'}
                                 </span>
                             </div>
                         )}
                     </div>
-                    <div className={`p-3 rounded-2xl border flex flex-col gap-2 ${rcmEnabled ? 'bg-orange-50 border-orange-200' : 'bg-slate-50 border-slate-100'}`}>
+                    <div className={`p-2 rounded-lg border transition-all flex flex-col gap-1.5 ${rcmEnabled ? 'bg-orange-50 border-orange-200 shadow-sm shadow-orange-50' : 'bg-slate-50 border-slate-100'}`}>
                         <div className="flex justify-between items-center w-full">
-                            <div><p className="text-[10px] font-black uppercase">RCM (Reverse Charge)</p></div>
+                            <p className="text-[9px] font-black uppercase tracking-wider text-slate-700">RCM Mode</p>
                             <button onClick={() => {
                                 if (!settings.gstin) {
                                     alert('Please add your GSTIN in Settings to enable RCM.');
@@ -1367,23 +1487,21 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                 const newState = !rcmEnabled;
                                 setRcmEnabled(newState);
                                 if (newState) setIncludeGst(false);
-                            }} className={`w-8 h-4 rounded-full relative ${rcmEnabled ? 'bg-orange-600' : 'bg-slate-300'}`}><div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${rcmEnabled ? 'left-4.5' : 'left-0.5'}`} /></button>
+                            }} className={`w-7 h-3.5 rounded-full relative transition-colors ${rcmEnabled ? 'bg-orange-600' : 'bg-slate-300'}`}><div className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full transition-all ${rcmEnabled ? 'left-4' : 'left-0.5'}`} /></button>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Terms Section */}
-            <div className="p-4 bg-white rounded-3xl border-2 border-slate-100 shadow-sm space-y-4">
+            <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-3">
                 <div className="flex justify-between items-center">
-                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><StickyNote size={12} /> INVOICE TERMS</h3>
-                    <span className="text-[9px] font-black text-slate-400 uppercase">{terms.length} Selected</span>
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><StickyNote size={12} className="text-slate-600" /> INVOICE TERMS</h3>
+                    <span className="text-[9px] font-black text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded-full">{terms.length} Active</span>
                 </div>
 
-                {/* Quick Selection List (Checkboxes) */}
-                <div className="space-y-3">
-                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Suggested Terms (Select to include)</label>
-                    <div className="grid grid-cols-1 gap-2">
+                <div className="space-y-2">
+                    <div className="flex gap-2 p-1 bg-slate-50 rounded-lg max-h-32 overflow-y-auto custom-scrollbar flex-col">
                         {DEFAULT_TERMS.map((term, idx) => {
                             const isSelected = terms.includes(term);
                             return (
@@ -1396,79 +1514,58 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                             setTerms(t => [...t, term]);
                                         }
                                     }}
-                                    className={`flex items-start gap-3 p-3 rounded-2xl border transition-all text-left ${isSelected
-                                        ? 'bg-blue-50 border-blue-200'
-                                        : 'bg-slate-50 border-slate-100 hover:border-slate-200'
+                                    className={`flex items-start gap-2 p-2 rounded-md transition-all text-left text-[10px] font-bold leading-tight ${isSelected
+                                        ? 'bg-white shadow-sm border border-blue-50 text-blue-900'
+                                        : 'text-slate-500 hover:bg-slate-100'
                                         }`}
                                 >
-                                    <div className={`mt-0.5 w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-all ${isSelected
+                                    <div className={`mt-0.5 w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-all ${isSelected
                                         ? 'bg-blue-600 border-blue-600 text-white'
-                                        : 'bg-white border-slate-300'
+                                        : 'bg-white border-slate-200'
                                         }`}>
-                                        {isSelected && <Check size={10} strokeWidth={4} />}
+                                        {isSelected && <Check size={8} strokeWidth={5} />}
                                     </div>
-                                    <span className={`text-[11px] font-bold ${isSelected ? 'text-blue-900' : 'text-slate-600'}`}>
-                                        {term}
-                                    </span>
+                                    <span className="flex-1">{term}</span>
                                 </button>
                             );
                         })}
                     </div>
                 </div>
 
-                {/* Active Terms List */}
-                {terms.length > 0 && (
-                    <div className="space-y-2 pt-4 border-t border-slate-50">
-                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Terms to appear in PDF</label>
-                        <div className="space-y-2">
-                            {terms.map((term, idx) => (
-                                <div key={idx} className="flex gap-2 items-start group">
-                                    <div className="mt-2 w-1 h-1 rounded-full bg-blue-500 shrink-0" />
-                                    <div className="flex-1 text-xs text-slate-600 leading-relaxed">{term}</div>
-                                    <button
-                                        onClick={() => setTerms(t => t.filter((_, i) => i !== idx))}
-                                        className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                        <Trash2 size={12} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2 pt-1 border-t border-slate-50">
                     <input
-                        placeholder="Add a custom term..."
-                        className="tn-input h-9 flex-1 text-xs"
+                        placeholder="Add manual term..."
+                        className="tn-input h-8 flex-1 text-[10px] font-bold rounded-lg border-slate-100 bg-slate-50 px-2.5"
                         value={newTerm}
                         onChange={e => setNewTerm(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter' && newTerm) { setTerms([...terms, newTerm]); setNewTerm(''); } }}
                     />
                     <button
                         onClick={() => { if (newTerm) { setTerms([...terms, newTerm]); setNewTerm(''); } }}
-                        className="w-9 h-9 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-slate-800 transition-colors"
+                        className="w-8 h-8 bg-slate-900 text-white rounded-lg flex items-center justify-center active:scale-95 transition-all"
                     >
-                        <Plus size={16} />
+                        <Plus size={14} strokeWidth={3} />
                     </button>
                 </div>
             </div>
 
-            <div className="flex gap-2.5">
-                <button onClick={handleBack} className="flex-1 h-12 border-2 border-slate-100 text-slate-400 font-black rounded-2xl uppercase text-[9px] tracking-widest">Back</button>
-                <div className="flex-[3] flex gap-2">
-                    <button onClick={handlePreview} disabled={isSubmitting} className="flex-1 border-2 border-[#0047AB] text-[#0047AB] h-12 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] hover:bg-blue-50 transition-colors disabled:opacity-50">PREVIEW</button>
+            <div className="flex gap-2">
+                <button onClick={handleBack} className="flex-1 h-11 border border-slate-200 text-slate-500 font-black rounded-xl uppercase text-[9px] tracking-widest active:bg-slate-50">Back</button>
+                <div className="flex-[2.5] flex gap-2">
+                    <button onClick={handlePreview} disabled={isSubmitting} className="flex-1 border-2 border-[#0047AB] text-[#0047AB] h-11 rounded-xl text-[9px] uppercase font-black tracking-widest hover:bg-blue-50 transition-colors disabled:opacity-30">PREVIEW</button>
                     <button
                         onClick={handleSaveAndShare}
                         disabled={isSubmitting}
-                        className="flex-1 bg-blue-600 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-blue-600/20 flex items-center justify-center gap-3 disabled:opacity-50"
+                        className="flex-1 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-lg shadow-blue-100 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
                     >
                         {isSubmitting ? (
                             <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                         ) : (
-                            <Share2 size={16} />
+                            <>
+                                <Share2 size={14} strokeWidth={3} />
+                                SAVE & SHARE
+                            </>
                         )}
-                        SAVE & SHARE
                     </button>
                 </div>
             </div>
@@ -1477,22 +1574,24 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
     return (
         <div className="max-w-xl mx-auto space-y-4 pb-32 px-2 sm:px-0">
-            {/* Progress Header */}
-            <div className="flex items-center justify-between mb-1 px-4">
-                {[1, 2, 3, 4].map((s) => (
-                    <div key={s} className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${step === s ? 'bg-blue-600 text-white shadow-lg ring-4 ring-blue-100' : (step > s ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-400')}`}>
-                            {step > s ? <CheckCircle2 size={14} /> : s}
+            {/* Progress Header - Only show if mode selected */}
+            {mode && (
+                <div className="flex items-center justify-between mb-4 px-6 bg-white py-3 rounded-2xl border border-slate-100 shadow-sm mx-1">
+                    {[1, 2, 3].map((s) => (
+                        <div key={s} className="flex items-center gap-2">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black transition-all ${step === s ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 ring-2 ring-blue-100' : (step > s ? 'bg-green-500 text-white' : 'bg-slate-100 text-slate-300')}`}>
+                                {step > s ? <CheckCircle2 size={12} strokeWidth={3} /> : s}
+                            </div>
+                            {s < 3 && <div className={`h-0.5 w-8 sm:w-16 rounded-full transition-colors ${step > s ? 'bg-green-500' : 'bg-slate-100'}`} />}
                         </div>
-                        {s < 4 && <div className={`h-1 w-6 sm:w-12 rounded-full ${step > s ? 'bg-green-500' : 'bg-slate-200'}`} />}
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
 
-            {step === 1 && renderStep1()}
-            {step === 2 && renderStep2()}
-            {step === 3 && renderStep3()}
-            {step === 4 && renderStep4()}
+            {!mode && renderStep1()}
+            {mode && step === 1 && renderStep2()}
+            {mode && step === 2 && renderStep3()}
+            {mode && step === 3 && renderStep4()}
 
             {/* Hidden Cloud Vision Input */}
             <input type="file" ref={fileInputRef} onChange={handleOdometerScan} accept="image/*" className="hidden" capture="environment" />

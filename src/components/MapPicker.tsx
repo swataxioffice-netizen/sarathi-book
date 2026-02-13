@@ -406,34 +406,34 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
                 </div>
             )}
             {/* Header */}
-            <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between">
+            <div className="bg-white border-b border-slate-200 px-3 py-2.5 flex items-center justify-between shrink-0 z-20 shadow-sm">
                 <div>
-                    <h3 className="text-lg font-black text-slate-900">Select Pickup & Drop</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                        {mode === 'pickup' ? '📍 Drag map to set pickup location' : '🎯 Drag map to set drop location'}
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Select Location</h3>
+                    <p className="text-[10px] text-slate-500 font-bold mt-0.5 flex items-center gap-1">
+                        {mode === 'pickup' ? <span className="text-green-600">Drag for Pickup</span> : <span className="text-red-600">Drag for Drop</span>}
                     </p>
                 </div>
                 <button
                     onClick={onClose}
-                    className="w-10 h-10 flex items-center justify-center bg-slate-100 rounded-full hover:bg-slate-200"
+                    className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-full hover:bg-slate-200 active:scale-95 transition-all"
                 >
-                    <X size={20} />
+                    <X size={16} />
                 </button>
             </div>
 
             {/* Map Container with Overlays */}
             <div className="flex-1 relative">
                 {/* Search Bar */}
-                <div className="absolute top-4 left-4 right-4 z-10">
-                    <div className="bg-white rounded-xl shadow-lg flex items-center p-3 animate-in fade-in slide-in-from-top-4 duration-300">
-                        <Search className="text-slate-400 w-5 h-5 mr-3" />
+                <div className="absolute top-3 left-3 right-3 z-10 w-auto">
+                    <div className="bg-white rounded-xl shadow-lg flex items-center p-2.5 animate-in fade-in slide-in-from-top-4 duration-300">
+                        <Search className="text-slate-400 w-4 h-4 mr-2" />
                         <input
                             ref={searchInputRef}
                             type="text"
                             value={inputValue}
                             onChange={handleSearchInput}
                             placeholder="Search places..."
-                            className="flex-1 outline-none text-slate-700 placeholder:text-slate-400 text-sm font-medium bg-transparent"
+                            className="flex-1 outline-none text-slate-700 placeholder:text-slate-400 text-xs font-bold bg-transparent"
                         />
                     </div>
                     {/* Predictions Dropdown */}
@@ -445,8 +445,8 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
                                     onClick={() => handlePredictionSelect(prediction.place_id, prediction.description)}
                                     className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-50 last:border-0 transition-colors"
                                 >
-                                    <p className="text-sm font-bold text-slate-700">{prediction.structured_formatting.main_text}</p>
-                                    <p className="text-xs text-slate-500">{prediction.structured_formatting.secondary_text}</p>
+                                    <p className="text-xs font-bold text-slate-700">{prediction.structured_formatting.main_text}</p>
+                                    <p className="text-[10px] text-slate-500 font-medium">{prediction.structured_formatting.secondary_text}</p>
                                 </button>
                             ))}
                         </div>
@@ -484,27 +484,27 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
             </div>
 
             {/* Location Info */}
-            <div className="bg-white border-t border-slate-200 p-4 space-y-3">
+            <div className="bg-white border-t border-slate-200 p-3 space-y-2.5 shrink-0 z-30 shadow-[0_-5px_20px_-5px_rgba(0,0,0,0.1)]">
                 {pickupLocation && (
-                    <div className="flex items-start gap-3 p-3 bg-green-50 rounded-xl border border-green-200">
-                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                            <MapPin size={16} className="text-white" />
+                    <div className="flex items-start gap-2.5 p-2 bg-green-50 rounded-xl border border-green-200 shadow-sm">
+                        <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <MapPin size={12} className="text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-xs font-black text-green-700 uppercase tracking-wide">Pickup</p>
-                            <p className="text-sm text-slate-700 truncate">{pickupLocation.address}</p>
+                            <p className="text-[9px] font-black text-green-700 uppercase tracking-wide leading-none mb-0.5">Pickup</p>
+                            <p className="text-xs font-bold text-slate-700 truncate leading-tight">{pickupLocation.address}</p>
                         </div>
                     </div>
                 )}
 
                 {dropLocation && (
-                    <div className="flex items-start gap-3 p-3 bg-red-50 rounded-xl border border-red-200">
-                        <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                            <MapPin size={16} className="text-white" />
+                    <div className="flex items-start gap-2.5 p-2 bg-red-50 rounded-xl border border-red-200 shadow-sm">
+                        <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <MapPin size={12} className="text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-xs font-black text-red-700 uppercase tracking-wide">Drop</p>
-                            <p className="text-sm text-slate-700 truncate">{dropLocation.address}</p>
+                            <p className="text-[9px] font-black text-red-700 uppercase tracking-wide leading-none mb-0.5">Drop</p>
+                            <p className="text-xs font-bold text-slate-700 truncate leading-tight">{dropLocation.address}</p>
                         </div>
                     </div>
                 )}
@@ -512,32 +512,32 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
                 {(distance > 0 || tollEstimate > 0) && (
                     <div className="flex gap-2">
                         {distance > 0 && (
-                            <div className="flex-1 flex items-center justify-between p-3 bg-blue-50 rounded-xl border border-blue-200">
-                                <span className="text-[10px] font-bold text-blue-900 uppercase">Distance</span>
-                                <span className="text-sm font-black text-blue-600">{distance} KM</span>
+                            <div className="flex-1 flex items-center justify-between p-2 bg-blue-50 rounded-lg border border-blue-200">
+                                <span className="text-[9px] font-black text-blue-900 uppercase tracking-wide">Distance</span>
+                                <span className="text-xs font-black text-blue-700">{distance} KM</span>
                             </div>
                         )}
                         {tollEstimate > 0 && (
-                            <div className="flex-1 flex items-center justify-between p-3 bg-orange-50 rounded-xl border border-orange-200">
-                                <span className="text-[10px] font-bold text-orange-900 uppercase">Est. Toll</span>
-                                <span className="text-sm font-black text-orange-600">₹{tollEstimate}</span>
+                            <div className="flex-1 flex items-center justify-between p-2 bg-orange-50 rounded-lg border border-orange-200">
+                                <span className="text-[9px] font-black text-orange-900 uppercase tracking-wide">Est. Toll</span>
+                                <span className="text-xs font-black text-orange-700">₹{tollEstimate}</span>
                             </div>
                         )}
                     </div>
                 )}
 
                 {/* Action Buttons */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-1">
                     <button
                         onClick={() => setMode(mode === 'pickup' ? 'drop' : 'pickup')}
-                        className="flex-1 bg-slate-100 text-slate-700 h-12 rounded-xl font-bold text-sm"
+                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 h-10 rounded-xl font-black text-[10px] uppercase tracking-wider"
                     >
                         Switch to {mode === 'pickup' ? 'Drop' : 'Pickup'}
                     </button>
                     <button
                         onClick={handleConfirm}
                         disabled={!pickupLocation || !dropLocation}
-                        className="flex-1 bg-[#0047AB] text-white h-12 rounded-xl font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 bg-[#0047AB] text-white h-10 rounded-xl font-black text-[10px] uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-200"
                     >
                         Confirm ({distance} KM)
                     </button>

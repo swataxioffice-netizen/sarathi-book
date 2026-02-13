@@ -75,55 +75,55 @@ const SeoFareDisplay = ({ result, tripData, onEdit }: { result: any, tripData: a
                 description={description}
                 schema={schema}
             />
-            <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-                <h2 className="text-sm font-black text-slate-700 uppercase tracking-widest">
+            <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 flex justify-between items-center">
+                <h2 className="text-xs font-black text-slate-700 uppercase tracking-widest">
                     Trip Estimate Details
                 </h2>
                 <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-slate-400 bg-white border border-slate-200 px-2 py-1 rounded-md uppercase tracking-wider">
+                    <span className="text-[9px] font-bold text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded-md uppercase tracking-wider">
                         {tripData.type === 'roundtrip' ? 'Round Trip' : 'Drop Trip'}
                     </span>
                 </div>
             </div>
 
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Column 1: Trip Information */}
-                <div className="space-y-6">
-                    <div className="space-y-4">
-                        <div className="flex items-start gap-4">
-                            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">
-                                <Car size={16} />
+                <div className="space-y-3">
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                                <Car size={14} />
                             </div>
                             <div>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Vehicle</p>
-                                <p className="text-sm font-bold text-slate-800 capitalize">{tripData.vehicle}</p>
+                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Vehicle</p>
+                                <p className="text-xs font-black text-slate-800 capitalize">{tripData.vehicle}</p>
                             </div>
                         </div>
 
-                        <div className="flex items-start gap-4">
-                            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">
-                                <MapPin size={16} />
+                        <div className="flex items-start gap-3">
+                            <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">
+                                <MapPin size={14} />
                             </div>
                             <div className="flex-1">
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Route</p>
-                                <div className="flex flex-col gap-1">
-                                    <p className="text-sm font-bold text-slate-800">{tripData.pickup}</p>
-                                    <div className="pl-1 border-l-2 border-slate-200 ml-1 py-1">
-                                        <p className="text-[10px] text-slate-400 font-medium pl-2">{tripData.distance} km approx</p>
+                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Route</p>
+                                <div className="flex flex-col gap-0.5">
+                                    <p className="text-xs font-bold text-slate-800">{tripData.pickup}</p>
+                                    <div className="pl-1 border-l-2 border-slate-200 ml-1 py-0.5">
+                                        <p className="text-[9px] text-slate-400 font-medium pl-2">{tripData.distance} km approx</p>
                                     </div>
-                                    <p className="text-sm font-bold text-slate-800">{tripData.drop}</p>
+                                    <p className="text-xs font-bold text-slate-800">{tripData.drop}</p>
                                 </div>
                             </div>
                         </div>
 
                         {tripData.type === 'roundtrip' && (
-                            <div className="flex items-start gap-4">
-                                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">
-                                    <Clock size={16} />
+                            <div className="flex items-center gap-3">
+                                <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                                    <Clock size={14} />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Duration</p>
-                                    <p className="text-sm font-bold text-slate-800">{tripData.days} Days</p>
+                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Duration</p>
+                                    <p className="text-xs font-black text-slate-800">{tripData.days} Days</p>
                                 </div>
                             </div>
                         )}

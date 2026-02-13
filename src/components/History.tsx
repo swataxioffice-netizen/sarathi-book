@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import type { Trip } from '../utils/fare';
 import { shareReceipt, shareQuotation, generateQuotationPDF, generateReceiptPDF, type SavedQuotation } from '../utils/pdf';
-import { FileText, Share2, Eye, Trash2, Quote } from 'lucide-react';
+import { FileText, Share2, Eye, Trash2, Quote, Download } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAdProtection } from '../hooks/useAdProtection';
 import PDFPreviewModal from './PDFPreviewModal';
@@ -101,6 +101,33 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
         setShowPreview(true);
     };
 
+    const handleDownloadQuotation = async (q: SavedQuotation) => {
+        const quoteData = {
+            customerName: q.customerName,
+            subject: q.subject,
+            date: q.date,
+            items: q.items,
+            gstEnabled: q.gstEnabled,
+            quotationNo: q.quotationNo,
+            terms: q.terms,
+            customerAddress: q.customerAddress,
+            customerGstin: q.customerGstin
+        };
+        const doc = await generateQuotationPDF(quoteData, {
+            ...settings,
+            vehicleNumber: 'N/A'
+        });
+        doc.save(`${q.quotationNo || 'quotation'}.pdf`);
+    };
+
+    const handleDownloadInvoice = async (trip: Trip) => {
+        const doc = await generateReceiptPDF(trip, {
+            ...settings,
+            vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A'
+        });
+        doc.save(`${trip.invoiceNo || 'invoice'}.pdf`);
+    };
+
     const handleShareQuotation = async (q: SavedQuotation) => {
         const quoteData = {
             customerName: q.customerName,
@@ -125,7 +152,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
 
 
     return (
-        <div className="space-y-4 pt-2 pb-24">
+        <div className="space-y-3 pt-2 pb-24">
             <React.Suspense fallback={null}>
             </React.Suspense>
 
@@ -138,18 +165,18 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
             />
 
             {/* Filter & Summary Section */}
-            <div className="flex flex-col gap-3">
-                <div className="flex justify-between items-center px-1">
-                    <h3 className={`text-[12px] font-black uppercase tracking-[0.2em] relative inline-block ${type === 'invoice' ? 'text-slate-800' : 'text-slate-800'}`}>
+            <div className="flex flex-col gap-1.5 sticky top-[-16px] md:top-[-32px] z-20 bg-[#F5F7FA]/95 backdrop-blur-md -mx-3 px-3 py-1.5 mb-2 border-b border-slate-200/50 shadow-sm">
+                <div className="flex justify-between items-center px-0.5">
+                    <h3 className={`text-[10px] font-black uppercase tracking-widest relative inline-block ${type === 'invoice' ? 'text-slate-800' : 'text-slate-800'}`}>
                         Recent {type === 'invoice' ? 'Invoices' : 'Quotations'}
-                        <span className={`absolute -bottom-1 left-0 w-8 h-1 rounded-full ${type === 'invoice' ? 'bg-blue-600' : 'bg-[#6366F1]'}`}></span>
+                        <span className={`absolute -bottom-1 left-0 w-6 h-0.5 rounded-full ${type === 'invoice' ? 'bg-blue-600' : 'bg-[#6366F1]'}`}></span>
                     </h3>
-                    <div className="flex bg-slate-100 rounded-xl p-1 shadow-inner">
+                    <div className="flex bg-slate-100/50 rounded-lg p-0.5 border border-slate-200/50">
                         {(['all', 'today', 'week', 'month'] as const).map((f) => (
                             <button
                                 key={f}
                                 onClick={() => setFilter(f)}
-                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${filter === f ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase transition-all ${filter === f ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
                             >
                                 {f}
                             </button>
@@ -157,14 +184,14 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                     </div>
                 </div>
 
-                {/* Total Card */}
-                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex justify-between items-end">
+                {/* Total Summary Card - More Compact */}
+                <div className="bg-white border border-slate-200 rounded-xl p-2 flex justify-between items-center shadow-sm">
                     <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Total {filter === 'all' ? 'Volume' : filter + ' Volume'}</p>
-                        <h2 className="text-3xl font-black tracking-tighter text-slate-900">₹{Math.round(totalAmount).toLocaleString('en-IN')}</h2>
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5 line-clamp-1">Total Volume</p>
+                        <h2 className="text-base font-black tracking-tight text-slate-900 leading-none">₹{Math.round(totalAmount).toLocaleString('en-IN')}</h2>
                     </div>
-                    <div className="mb-1">
-                        <span className="text-[11px] bg-slate-50 text-slate-600 border border-slate-100 px-3 py-1.5 rounded-full font-black uppercase tracking-wider">{filteredItems.length} {type === 'invoice' ? 'Invoices' : 'Quotes'}</span>
+                    <div className="text-right">
+                        <span className="text-[8px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-black uppercase tracking-wider border border-blue-100">{filteredItems.length} {type === 'invoice' ? 'Invoices' : 'Quotes'}</span>
                     </div>
                 </div>
             </div>
@@ -173,71 +200,74 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                 filteredItems.length === 0 ? (
                     <div className="bg-white border border-slate-200 border-dashed rounded-2xl py-12 flex flex-col items-center justify-center text-center">
                         <FileText className="text-slate-200 mb-3" size={32} />
-                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">No {type === 'invoice' ? 'invoices' : 'quotations'} found for {filter}</p>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">No {type === 'invoice' ? 'invoices' : 'quotations'} found for {filter}</p>
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {filteredItems.map((item: any) => (
-                            <div key={item.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relative overflow-hidden group hover:border-blue-200 transition-colors">
-                                <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${type === 'invoice' ? (item.mode === 'outstation' ? 'bg-purple-500' : 'bg-[#0047AB]') : 'bg-[#6366F1]'}`}></div>
+                            <div key={item.id} className="bg-white border border-slate-200 rounded-xl shadow-sm relative overflow-hidden group hover:bg-slate-50 transition-all mx-1">
+                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${type === 'invoice' ? (item.mode === 'outstation' ? 'bg-purple-500' : 'bg-blue-600') : 'bg-indigo-600'}`}></div>
 
-                                <div className="flex justify-between items-start">
-                                    <div className="flex items-start gap-4 pl-1.5 w-full overflow-hidden">
-                                        <div className={`p-3.5 rounded-2xl border shrink-0 ${type === 'invoice' ? (item.mode === 'outstation' ? 'bg-purple-50 border-purple-100 text-purple-600' : 'bg-blue-50 border-blue-100 text-[#0047AB]') : 'bg-indigo-50 border-indigo-100 text-[#6366F1]'}`}>
-                                            {type === 'invoice' ? <FileText size={22} /> : <Quote size={22} />}
+                                <div className="p-2 space-y-2">
+                                    {/* Row 1: Header & Amount - Compact */}
+                                    <div className="flex justify-between items-start gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${type === 'invoice' ? (item.mode === 'outstation' ? 'bg-purple-50 border-purple-100 text-purple-600' : 'bg-blue-50 border-blue-100 text-blue-600') : 'bg-indigo-50 border-indigo-100 text-indigo-600'}`}>
+                                                {type === 'invoice' ? <FileText size={14} /> : <Quote size={14} />}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <h4 className="text-[12px] font-bold text-slate-900 uppercase tracking-wide truncate leading-tight">{item.customerName || 'Guest User'}</h4>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wide ${type === 'invoice' ? 'bg-blue-50 text-blue-700' : 'bg-indigo-50 text-indigo-700'}`}>
+                                                        {type === 'invoice' ? (item.mode || 'TRIP') : 'QUOTE'}
+                                                    </span>
+                                                    <span className="text-[9px] text-slate-400 font-bold">•</span>
+                                                    <span className="text-[9px] font-bold text-slate-500">{formatDate(item.date)}</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex flex-col min-w-0">
-                                            <h4 className="text-base font-black text-slate-900 leading-none truncate">{item.customerName || 'Guest User'}</h4>
-
-                                            {/* Invoice Number & Date Row */}
-                                            <div className="flex flex-wrap items-center gap-2 mt-2.5">
-                                                <span className="text-[10px] font-bold text-slate-600 bg-slate-50 px-2 py-1 rounded-md border border-slate-200 truncate max-w-[140px]">
-                                                    {type === 'invoice' ? (item.invoiceNo ? `#${item.invoiceNo}` : 'No Invoice #') : (item.quotationNo || 'No Quote #')}
-                                                </span>
-                                                <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-200"></span>
-                                                    {formatDate(item.date)}
-                                                </span>
-                                            </div>
-
-                                            <div className="mt-2 flex items-center gap-2">
-                                                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md shrink-0 ${type === 'invoice' ? (item.mode === 'outstation' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700') : 'bg-indigo-100 text-indigo-700'}`}>
-                                                    {type === 'invoice' ? (item.mode === 'package' ? 'PACKAGE' : item.mode === 'hourly' ? 'RENTAL' : item.mode === 'outstation' ? 'OUTSTATION' : 'DROP') : 'QUOTE'}
-                                                </span>
-                                                <span className="text-[11px] text-slate-500 font-bold truncate">
-                                                    {type === 'invoice' ? `${item.from}${item.to ? ` ➔ ${item.to}` : ''}` : item.subject}
-                                                </span>
-                                            </div>
+                                        <div className="text-right shrink-0">
+                                            <p className="text-[13px] font-bold text-slate-900 tracking-tight tabular-nums">
+                                                ₹{Math.round(type === 'invoice' ? item.totalFare : (item.items || []).reduce((s: number, i: any) => s + (parseFloat(i.amount) || 0), 0) * (item.gstEnabled ? 1.05 : 1)).toLocaleString('en-IN')}
+                                            </p>
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-col items-end gap-3">
-                                        <span className="text-base font-black text-slate-900">
-                                            ₹{Math.round(type === 'invoice' ? item.totalFare : item.items.reduce((s: number, i: any) => s + (parseFloat(i.amount) || 0), 0) * (item.gstEnabled ? 1.05 : 1)).toLocaleString('en-IN')}
-                                        </span>
-                                        <div className="flex gap-2">
+                                    {/* Row 2: Details - Compact Line */}
+                                    <div className="flex items-center justify-between pt-1 border-t border-slate-50">
+                                        <p className="text-[10px] font-bold text-slate-500 truncate max-w-[60%]">
+                                            {(type === 'invoice' ? (item.invoiceNo || 'INV-000') : (item.quotationNo || 'QTN-000'))} • {type === 'invoice' ? `${item.from}${item.to ? ` ➔ ${item.to}` : ''}` : item.subject}
+                                        </p>
+
+                                        <div className="flex gap-1">
                                             <button
                                                 onClick={() => triggerAction(() => type === 'invoice' ? handlePreviewInvoice(item) : handlePreviewQuotation(item))}
-                                                className={`p-2.5 rounded-xl transition-all border ${type === 'invoice' ? 'bg-blue-50 text-[#0047AB] border-blue-100 hover:bg-[#0047AB]' : 'bg-indigo-50 text-[#6366F1] border-indigo-100 hover:bg-[#6366F1]'} hover:text-white`}
-                                                title="View"
+                                                className="p-1.5 rounded-md bg-slate-50 text-slate-500 hover:bg-slate-100 transition-colors"
+                                                aria-label="View"
                                             >
-                                                <Eye size={16} />
+                                                <Eye size={12} />
+                                            </button>
+                                            <button
+                                                onClick={() => triggerAction(() => type === 'invoice' ? handleDownloadInvoice(item) : handleDownloadQuotation(item))}
+                                                className="p-1.5 rounded-md bg-slate-50 text-blue-600 hover:bg-blue-50 transition-colors"
+                                                aria-label="Download PDF"
+                                            >
+                                                <Download size={12} />
                                             </button>
                                             <button
                                                 onClick={() => triggerAction(() => type === 'invoice' ? shareReceipt(item, { ...settings, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A', userId: user?.id }) : handleShareQuotation(item))}
-                                                className="p-2.5 rounded-xl bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all border border-green-100"
-                                                title="Share"
+                                                className="p-1.5 rounded-md bg-slate-50 text-green-600 hover:bg-green-50 transition-colors"
+                                                aria-label="Share"
                                             >
-                                                <Share2 size={16} />
+                                                <Share2 size={12} />
                                             </button>
-
                                             {(type === 'invoice' ? onDeleteTrip : onDeleteQuotation) && (
                                                 <button
                                                     onClick={() => type === 'invoice' ? onDeleteTrip!(item.id) : onDeleteQuotation!(item.id)}
-                                                    className="p-2.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all border border-red-100"
-                                                    title="Delete"
+                                                    className="p-1.5 rounded-md bg-slate-50 text-red-500 hover:bg-red-50 transition-colors"
+                                                    aria-label="Delete"
                                                 >
-                                                    <Trash2 size={16} />
+                                                    <Trash2 size={12} />
                                                 </button>
                                             )}
                                         </div>
@@ -248,7 +278,8 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                     </div>
                 )
             }
-        </div >
+        </div>
     );
 };
+
 export default History;

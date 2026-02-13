@@ -1,6 +1,11 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Wallet, User, LogOut, Calculator, ShieldCheck, Share2, TrendingUp, BadgeIndianRupee, Landmark } from 'lucide-react';
+import {
+    LayoutDashboard, FileText, Wallet, User, LogOut, Calculator,
+    ShieldCheck, Share2, Landmark,
+    Crown, Zap, ChevronRight, History, StickyNote, Users, Palette, Paintbrush
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { Analytics } from '../utils/monitoring';
 
 interface SideNavProps {
@@ -10,58 +15,133 @@ interface SideNavProps {
 
 const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
     const { user, signOut, isAdmin } = useAuth();
+    const { settings } = useSettings();
+
+    const isPro = settings.plan === 'pro' || settings.isPremium;
+    const isSuper = settings.plan === 'super';
+
+    const handlePricing = () => {
+        window.dispatchEvent(new CustomEvent('open-pricing-modal'));
+    };
 
     const navItems = [
-        { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-        { id: 'trips', icon: <FileText size={20} />, label: 'Invoices' },
-        { id: 'expenses', icon: <Wallet size={20} />, label: 'Expenses' },
-        { id: 'taxi-fare-calculator', icon: <Calculator size={20} />, label: 'Calculator' },
-        { id: 'trending', icon: <TrendingUp size={20} />, label: 'Trending Routes' },
-        { id: 'tariff', icon: <BadgeIndianRupee size={20} />, label: 'Tariff Card' },
-        { id: 'finance', icon: <Landmark size={20} />, label: 'Easy Loans' },
-        { id: 'profile', icon: <User size={20} />, label: 'Profile' },
+        { id: 'profile', icon: User, label: 'Profile' },
+        { id: 'tariff', icon: History, label: 'Tariff Cards' },
+        { id: 'notes', icon: StickyNote, label: 'Quick Notes' },
+        { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { id: 'trips', icon: FileText, label: 'Invoices' },
+        { id: 'expenses', icon: Wallet, label: 'Expenses' },
+        { id: 'taxi-fare-calculator', icon: Calculator, label: 'Calculator' },
+        { id: 'staff', icon: Users, label: 'Staff Manager', isPro: true },
+        { id: 'watermark', icon: ShieldCheck, label: 'Remove Watermark', isPro: true },
+        { id: 'branding', icon: Palette, label: 'Custom Branding', isPro: true },
+        { id: 'colors', icon: Paintbrush, label: 'App Theme Colors', isSuper: true },
+        { id: 'finance', icon: Landmark, label: 'Loan Center' },
     ];
 
+    const handleNav = (tab: string) => {
+        if (tab === 'watermark' || tab === 'branding' || tab === 'colors') {
+            const isSuperFeature = tab === 'colors';
+            const hasAccess = isSuperFeature ? isSuper : (isPro || isSuper);
+
+            if (!hasAccess) {
+                handlePricing();
+                return;
+            }
+            setActiveTab('profile');
+            return;
+        }
+        setActiveTab(tab);
+    };
+
     if (isAdmin) {
-        navItems.push({ id: 'admin', icon: <ShieldCheck size={20} className="text-blue-600" />, label: 'Admin' });
+        navItems.push({ id: 'admin', icon: ShieldCheck, label: 'Admin Terminal' });
     }
 
     return (
-        <aside className="h-full bg-white border-r border-slate-200 flex flex-col w-64">
-            <div className="p-6 border-b border-slate-100 flex flex-col items-center justify-center text-center">
-                <div className="w-12 h-12 flex-shrink-0 mb-2">
-                    <img
-                        src="/logo.png"
-                        alt="Sarathi Book"
-                        width="48"
-                        height="48"
-                        className="w-full h-full object-contain"
-                    />
-                </div>
-                <div>
-                    <h1 className="text-xl font-black text-[#0047AB] leading-none tracking-tight" style={{ letterSpacing: '-0.02em' }}>
-                        SARATHI BOOK
-                    </h1>
+        <aside className="h-full bg-white border-r border-slate-200 flex flex-col w-72 transition-all duration-300">
+            {/* Logo Section */}
+            <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 flex-shrink-0 bg-white rounded-xl shadow-sm border border-slate-100 p-1.5 flex items-center justify-center relative overflow-hidden">
+                        <img
+                            src="/logo.png"
+                            alt="Sarathi Book"
+                            className="w-full h-full object-contain"
+                        />
+                    </div>
+                    <div>
+                        <h1 className="text-lg font-black text-[#0047AB] leading-none tracking-tight uppercase">
+                            SARATHI BOOK
+                        </h1>
+                        <div className={`mt-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isSuper ? 'bg-amber-500/10 border-amber-500/20 text-amber-600' :
+                            isPro ? 'bg-blue-600/10 border-blue-600/20 text-[#0047AB]' :
+                                'bg-slate-100 border-slate-200 text-slate-400'
+                            }`}>
+                            {isSuper ? 'Super Pro' : isPro ? 'Pro Active' : 'Free Edition'}
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <nav className="flex-1 px-4 py-6 space-y-2">
+            {/* Navigation Section */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-6 space-y-1">
+                {/* Subscription Callout - More subtle */}
+                {!isSuper && (
+                    <button
+                        onClick={handlePricing}
+                        className={`w-full mb-6 p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between group relative overflow-hidden ${isPro ? 'bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-200' :
+                            'bg-[#0047AB] border-[#0047AB] text-white shadow-lg shadow-blue-500/10 active:scale-[0.98]'
+                            }`}
+                    >
+                        <div className="absolute top-0 right-0 w-20 h-20 bg-white/5 rounded-full -mr-10 -mt-10 blur-xl"></div>
+                        <div className="flex items-center gap-3 relative z-10">
+                            <div className={`p-1.5 rounded-lg ${isPro ? 'bg-white text-[#0047AB] shadow-sm' : 'bg-white/20 text-white'}`}>
+                                {isPro ? <Crown size={14} /> : <Zap size={14} />}
+                            </div>
+                            <div className="text-left">
+                                <p className={`text-[8px] font-black uppercase tracking-[0.2em] ${isPro ? 'text-slate-400' : 'text-blue-100'}`}>
+                                    {isPro ? 'Unlock Master' : 'Go Premium'}
+                                </p>
+                                <p className="text-[10px] font-black uppercase tracking-tight">
+                                    {isPro ? 'Get Super Pro' : 'Upgrade to Pro'}
+                                </p>
+                            </div>
+                        </div>
+                        <ChevronRight size={12} className={isPro ? 'text-slate-300' : 'text-white/40'} />
+                    </button>
+                )}
+
                 {navItems.map((item) => (
                     <button
                         key={item.id}
-                        onClick={() => setActiveTab(item.id)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm ${activeTab === item.id
-                            ? 'bg-blue-50 text-[#0047AB] shadow-sm ring-1 ring-blue-100'
-                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                        onClick={() => handleNav(item.id)}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${activeTab === item.id
+                            ? 'bg-blue-50 text-[#0047AB]'
+                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                             }`}
                     >
-                        {item.icon}
-                        <span>{item.label}</span>
+                        <div className="flex items-center gap-3">
+                            <item.icon size={18} className={`transition-colors ${activeTab === item.id ? 'text-[#0047AB]' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-black uppercase tracking-tight">{item.label}</span>
+                                {item.isPro && !isPro && !isSuper && (
+                                    <span className="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">Pro</span>
+                                )}
+                                {item.isSuper && !isSuper && (
+                                    <span className="bg-amber-100 text-amber-600 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">Super</span>
+                                )}
+                            </div>
+                        </div>
                         {activeTab === item.id && (
-                            <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#0047AB]" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#0047AB] shadow-sm" />
                         )}
                     </button>
                 ))}
+            </div>
+
+            {/* Bottom Section */}
+            <div className="p-4 border-t border-slate-100 space-y-2">
                 <button
                     onClick={async () => {
                         Analytics.shareApp('sidenav');
@@ -79,25 +159,24 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                             alert('Share not supported on this device/browser');
                         }
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm text-[#0047AB] bg-blue-50/50 hover:bg-blue-50 hover:text-blue-700 mt-4 border border-blue-100 border-dashed"
+                    className="w-full h-10 flex items-center gap-3 px-4 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest text-[#0047AB] bg-blue-50/50 hover:bg-blue-50 border border-blue-100 border-dashed"
                 >
-                    <Share2 size={20} />
+                    <Share2 size={16} />
                     <span>Share App</span>
                 </button>
-            </nav>
 
-            <div className="p-4 border-t border-slate-100">
                 {user && (
                     <button
                         onClick={() => signOut()}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all font-bold text-sm"
+                        className="w-full h-10 flex items-center gap-3 px-4 rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all font-black text-[10px] uppercase tracking-widest"
                     >
-                        <LogOut size={20} />
+                        <LogOut size={16} />
                         <span>Sign Out</span>
                     </button>
                 )}
-                <div className="mt-4 text-center">
-                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">v2.4.0 Stable</p>
+
+                <div className="pt-2 text-center border-t border-slate-50 mt-2">
+                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">v2.5.0 Gold Edition</p>
                 </div>
             </div>
         </aside>
