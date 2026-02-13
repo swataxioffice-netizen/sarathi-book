@@ -27,7 +27,7 @@ const SalaryManager: React.FC = () => {
                         onClick={() => window.dispatchEvent(new CustomEvent('open-pricing-modal'))}
                         className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-200"
                     >
-                        Upgrade to Stock Pro
+                        Upgrade to Pro
                     </button>
                     <button
                         onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'profile' }))}

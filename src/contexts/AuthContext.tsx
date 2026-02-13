@@ -45,13 +45,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const current = session?.user ?? null;
                 console.log('Auth: Initial user state:', current ? current.email : 'Guest');
                 setUser(current);
-                if (current) await ensureProfile(current);
+                // Non-blocking sync to prevent hanging the entire app initialization
+                if (current) ensureProfile(current);
             } catch (err) {
                 console.error('Auth: Critical init failure:', err);
             } finally {
                 setLoading(false);
             }
         };
+
+        // Safety timeout: Ensure loading is never true for more than 10 seconds
+        const timeout = setTimeout(() => {
+            setLoading(current => {
+                if (current) console.warn('Auth: Loading stuck for 10s, forcing false');
+                return false;
+            });
+        }, 10000);
 
         initAuth();
 
@@ -63,7 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (event === 'SIGNED_IN') {
                 console.log('Auth: User signed in:', current?.email);
                 setUser(current);
-                if (current) await ensureProfile(current);
+                if (current) ensureProfile(current); // Note: we still might want to wait here if we need sync before render, but better not to hang
             } else if (event === 'SIGNED_OUT') {
                 console.log('Auth: User signed out');
                 setUser(null);
@@ -74,7 +83,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLoading(false);
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            clearTimeout(timeout);
+            subscription.unsubscribe();
+        };
     }, []);
 
     const signInWithGoogle = async () => {

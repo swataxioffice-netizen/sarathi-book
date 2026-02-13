@@ -76,8 +76,6 @@ const ExpenseTracker: React.FC = () => {
                         // Add Cloud (which now includes uploaded ones effectively)
                         cloudExpensesMap.forEach((e, id) => merged.set(id, e));
                         // Add uploaded ones explicitly to be safe for immediate UI update? 
-                        // Actually, if we just uploaded them, they are effectively consistent. 
-                        // But let's add localToUpload back to map to ensure they don't disappear if cloud fetch was slightly stale (race condition).
                         localToUpload.forEach(e => merged.set(e.id, e));
 
                         const mergedArray = Array.from(merged.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) as Expense[];
@@ -89,6 +87,68 @@ const ExpenseTracker: React.FC = () => {
             }
         };
         fetchExpenses();
+    }, [user]);
+
+    // 5. Real-time Subscription for Simultaneous Sync
+    useEffect(() => {
+        if (!user) return;
+
+        const channel = supabase
+            .channel('public:expenses')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'expenses',
+                    filter: `user_id=eq.${user.id}`,
+                },
+                (payload) => {
+                    console.log('Real-time expense change:', payload);
+                    if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                        const newExpense: Expense = {
+                            id: payload.new.id,
+                            category: payload.new.category as any,
+                            amount: Number(payload.new.amount),
+                            description: payload.new.description || '',
+                            date: payload.new.date
+                        };
+
+                        setExpenses(prev => {
+                            const idx = prev.findIndex(e => e.id === newExpense.id);
+                            if (idx !== -1) {
+                                if (JSON.stringify(prev[idx]) === JSON.stringify(newExpense)) return prev;
+                                const next = [...prev];
+                                next[idx] = newExpense;
+                                return next;
+                            }
+                            return [newExpense, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                        });
+
+                        // Update LocalStorage
+                        const current = safeJSONParse<Expense[]>('cab-expenses', []);
+                        const idx = current.findIndex(e => e.id === newExpense.id);
+                        let updated;
+                        if (idx !== -1) {
+                            updated = [...current];
+                            updated[idx] = newExpense;
+                        } else {
+                            updated = [newExpense, ...current];
+                        }
+                        localStorage.setItem('cab-expenses', JSON.stringify(updated));
+
+                    } else if (payload.eventType === 'DELETE') {
+                        setExpenses(prev => prev.filter(e => e.id !== payload.old.id));
+                        const current = safeJSONParse<Expense[]>('cab-expenses', []);
+                        localStorage.setItem('cab-expenses', JSON.stringify(current.filter(e => e.id !== payload.old.id)));
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [user]);
 
     const addExpense = async () => {

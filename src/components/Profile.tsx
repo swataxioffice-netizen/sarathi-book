@@ -212,8 +212,8 @@ const Profile: React.FC = () => {
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                             ID: <span className="text-blue-600">{user?.id?.slice(0, 6).toUpperCase() || 'GUEST'}</span>
                             <span className="mx-1.5 opacity-30">|</span>
-                            <span className={settings.plan === 'super' ? "text-amber-500 font-extrabold" : settings.plan === 'pro' || settings.isPremium ? "text-blue-600 font-extrabold" : "text-slate-500 font-bold"}>
-                                {settings.plan === 'super' ? "SUPER PRO" : settings.plan === 'pro' || settings.isPremium ? "PRO MEMBER" : "FREE PLAN"}
+                            <span className={settings.plan === 'super' ? "text-amber-500 font-extrabold" : (settings.plan === 'pro' || settings.isPremium) ? "text-blue-600 font-extrabold" : "text-slate-500 font-bold"}>
+                                {settings.plan === 'super' ? "SUPER PRO" : (settings.plan === 'pro' || settings.isPremium) ? "PRO MEMBER" : "FREE PLAN"}
                             </span>
                         </p>
 

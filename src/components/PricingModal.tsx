@@ -180,8 +180,8 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
 
                                     <button
                                         onClick={() => handleUpgrade(tier)}
-                                        disabled={loading || tier.id === 'free'}
-                                        className={`w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all ${tier.id === 'free'
+                                        disabled={loading || (settings.plan === tier.id || (tier.id === 'pro' && (settings.plan === 'super' || settings.isPremium)) || (tier.id === 'free' && (settings.plan !== 'free' || settings.isPremium)))}
+                                        className={`w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all ${(settings.plan === tier.id || (tier.id === 'pro' && (settings.plan === 'super' || settings.isPremium)) || (tier.id === 'free' && (settings.plan !== 'free' || settings.isPremium)))
                                             ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                             : tier.popular
                                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 hover:bg-blue-700 active:scale-95'
@@ -190,7 +190,9 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                                                     : 'bg-white text-slate-900 border-2 border-slate-900 hover:bg-slate-50 active:scale-95'
                                             }`}
                                     >
-                                        {loading ? 'Processing...' : tier.buttonText}
+                                        {loading ? 'Processing...' :
+                                            (settings.plan === tier.id || (tier.id === 'pro' && (settings.plan === 'super' || settings.isPremium)) || (tier.id === 'free' && (settings.plan !== 'free' || settings.isPremium)))
+                                                ? 'Current Plan' : tier.buttonText}
                                     </button>
                                 </div>
                             ))}

@@ -398,6 +398,85 @@ function AppContent() {
     }
   }, [user]);
 
+  // 4. Real-time Subscription for Simultaneous Sync
+  useEffect(() => {
+    if (!user) return;
+
+    // Subscribe to Trips
+    const tripsChannel = supabase
+      .channel('public:trips')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'trips',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Real-time trip change:', payload);
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const newTrip: Trip = { ...payload.new.details, id: payload.new.id };
+            setTrips(prev => {
+              const idx = prev.findIndex(t => t.id === newTrip.id);
+              if (idx !== -1) {
+                // Only update if data is different? Prevents recursive loops
+                if (JSON.stringify(prev[idx]) === JSON.stringify(newTrip)) return prev;
+                const next = [...prev];
+                next[idx] = newTrip;
+                return next;
+              }
+              return [newTrip, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            });
+            dbRequest.put('trips', newTrip).catch(console.error);
+          } else if (payload.eventType === 'DELETE') {
+            setTrips(prev => prev.filter(t => t.id !== payload.old.id));
+            dbRequest.delete('trips', payload.old.id).catch(console.error);
+          }
+        }
+      )
+      .subscribe();
+
+    // Subscribe to Quotations
+    const quotesChannel = supabase
+      .channel('public:quotations')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'quotations',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Real-time quotation change:', payload);
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const newQuote: SavedQuotation = { ...payload.new.data, id: payload.new.id };
+            setQuotations(prev => {
+              const idx = prev.findIndex(q => q.id === newQuote.id);
+              if (idx !== -1) {
+                if (JSON.stringify(prev[idx]) === JSON.stringify(newQuote)) return prev;
+                const next = [...prev];
+                next[idx] = newQuote;
+                return next;
+              }
+              return [newQuote, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            });
+            dbRequest.put('quotations', newQuote).catch(console.error);
+          } else if (payload.eventType === 'DELETE') {
+            setQuotations(prev => prev.filter(q => q.id !== payload.old.id));
+            dbRequest.delete('quotations', payload.old.id).catch(console.error);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(tripsChannel);
+      supabase.removeChannel(quotesChannel);
+    };
+  }, [user]);
+
   const handleSaveTrip = async (trip: Trip) => {
     // 1. Optimistic Update
     setTrips(prev => {

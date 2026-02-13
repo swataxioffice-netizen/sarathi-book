@@ -181,6 +181,13 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             }
             if (!parsed.preferredPaymentMethod) parsed.preferredPaymentMethod = 'upi';
 
+            // Sync isPremium with plan (Legacy support)
+            if (parsed.plan && parsed.plan !== 'free') {
+                parsed.isPremium = true;
+            } else if (parsed.isPremium && !parsed.plan) {
+                parsed.plan = 'pro';
+            }
+
             return parsed;
         }
         return {
@@ -221,6 +228,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         };
     });
 
+    const settingsRef = useRef(settings);
+    useEffect(() => {
+        settingsRef.current = settings;
+    }, [settings]);
+
     // Cloud Sync Logic
     useEffect(() => {
         const syncSettings = async () => {
@@ -232,7 +244,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     if (error) {
                         console.error('Error fetching cloud settings:', error);
                     } else if (data) {
-                        if (data.settings) setSettings(prev => ({ ...prev, ...data.settings }));
+                        if (data.settings) {
+                            const cloudSettings = data.settings;
+                            // Dual-direction sync for legacy support
+                            if (cloudSettings.plan && cloudSettings.plan !== 'free') {
+                                cloudSettings.isPremium = true;
+                            } else if (cloudSettings.isPremium && (!cloudSettings.plan || cloudSettings.plan === 'free')) {
+                                cloudSettings.plan = 'pro';
+                            }
+                            setSettings(prev => ({ ...prev, ...cloudSettings }));
+                        }
                         if (data.driver_code) setDriverCode(data.driver_code);
                     }
 
@@ -272,7 +293,13 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     if (error) {
                         console.error('Error fetching settings on sign in:', error);
                     } else if (data) {
-                        if (data.settings) setSettings(prev => ({ ...prev, ...data.settings }));
+                        if (data.settings) {
+                            const cloudSettings = data.settings;
+                            if (cloudSettings.plan && cloudSettings.plan !== 'free') {
+                                cloudSettings.isPremium = true;
+                            }
+                            setSettings(prev => ({ ...prev, ...cloudSettings }));
+                        }
                         if (data.driver_code) setDriverCode(data.driver_code);
                     }
 
@@ -293,6 +320,58 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return () => subscription.unsubscribe();
     }, []);
 
+    // 5. Real-time Settings Sync for Simultaneous Devices
+    useEffect(() => {
+        let channel: any = null;
+
+        const initRealtime = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.user) return;
+
+            channel = supabase
+                .channel('public:profiles')
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'profiles',
+                        filter: `id=eq.${session.user.id}`,
+                    },
+                    (payload) => {
+                        console.log('Real-time settings sync:', payload);
+                        if (payload.new && payload.new.settings) {
+                            const newCloudSettings = payload.new.settings;
+                            setSettings(prev => {
+                                // Prevent infinite loops if local state is same as cloud
+                                if (JSON.stringify(prev) === JSON.stringify(newCloudSettings)) return prev;
+                                return { ...prev, ...newCloudSettings };
+                            });
+                        }
+                        if (payload.new && payload.new.driver_code) {
+                            setDriverCode(payload.new.driver_code);
+                        }
+                    }
+                )
+                .subscribe();
+        };
+
+        initRealtime();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+            if (event === 'SIGNED_IN') initRealtime();
+            if (event === 'SIGNED_OUT' && channel) {
+                supabase.removeChannel(channel);
+                channel = null;
+            }
+        });
+
+        return () => {
+            if (channel) supabase.removeChannel(channel);
+            subscription.unsubscribe();
+        };
+    }, []);
+
     // Save to Cloud on Change (Debounced)
     // Manual Save Function
     const saveSettings = async (): Promise<boolean> => {
@@ -300,9 +379,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
                 console.log('Saving settings to cloud...');
+                const currentSettings = settingsRef.current;
                 const { error, data } = await supabase
                     .from('profiles')
-                    .update({ settings: settings, updated_at: new Date().toISOString() })
+                    .update({ settings: currentSettings, updated_at: new Date().toISOString() })
                     .eq('id', session.user.id)
                     .select();
 
@@ -316,9 +396,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     // Fallback to upsert if update failed to find row
                     const { error: upsertError } = await supabase.from('profiles').upsert({
                         id: session.user.id,
-                        settings: settings,
+                        settings: settingsRef.current,
                         updated_at: new Date().toISOString(),
-                        email: session.user.email // Try to provide email if possible, though it might be partial
+                        email: session.user.email
                     }).select();
 
                     if (upsertError) {
