@@ -67,13 +67,19 @@ const BusinessCard: React.FC = () => {
 
         const html2canvas = (await import('html2canvas')).default;
 
-        const canvas = await html2canvas(cardRef.current, {
+        const canvas = await (html2canvas as unknown as (element: HTMLElement, options?: {
+            scale?: number;
+            backgroundColor?: string | null;
+            logging?: boolean;
+            useCORS?: boolean;
+            allowTaint?: boolean;
+        }) => Promise<HTMLCanvasElement>)(cardRef.current, {
             scale: scale,
             backgroundColor: null,
             logging: false,
             useCORS: true,
             allowTaint: true,
-        } as any);
+        });
         return canvas;
     };
 
