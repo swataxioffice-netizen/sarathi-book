@@ -623,7 +623,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             waitingHours: res.waitingHours, days, vehicleType: vehicleCategory,
             startKm, endKm, distance: res.effectiveDistance || res.distance
         };
-        const doc = await generateReceiptPDF(tripData, { ...settings, gstEnabled: includeGst, rcmEnabled, userId: user?.id, vehicleNumber: currentV?.number || settings.vehicles?.[0]?.number || 'N/A' });
+        const doc = await generateReceiptPDF(tripData, { ...settings, gstEnabled: includeGst, rcmEnabled, userId: user?.id, vehicleNumber: currentV?.number || '' });
         setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
         setShowPreview(true);
     };
@@ -726,7 +726,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         };
 
         try {
-            await shareReceipt(tripData, { ...settings, gstEnabled: includeGst, rcmEnabled, userId: user?.id, vehicleNumber: currentV?.number || settings.vehicles?.[0]?.number || 'N/A' });
+            await shareReceipt(tripData, { ...settings, gstEnabled: includeGst, rcmEnabled, userId: user?.id, vehicleNumber: currentV?.number || '' });
         } catch (err) {
             console.error('Sharing failed, falling back to preview', err);
             handlePreview();

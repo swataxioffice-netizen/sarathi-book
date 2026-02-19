@@ -100,7 +100,7 @@ export const generateReceiptPDF = async (trip: any, settings: PDFSettings, isQuo
     const companyName = String(settings?.companyName || 'SARATHI BOOK OWNER');
     const driverPhone = String(settings?.driverPhone || '');
     const gstin = settings?.gstin ? String(settings.gstin).toUpperCase() : '';
-    const vehicleNumber = isQuotation ? 'N/A' : String((trip as Trip).vehicleNumber || settings?.vehicleNumber || 'N/A');
+    const vehicleNumber = isQuotation ? 'N/A' : String((trip as Trip).vehicleNumber || settings?.vehicleNumber || (trip.mode === 'custom' ? '' : 'N/A'));
     const gstEnabled = !!settings?.gstEnabled;
     const themeColor = settings?.appColor || '#0047AB';
     const rgb = hexToRgb(themeColor);
