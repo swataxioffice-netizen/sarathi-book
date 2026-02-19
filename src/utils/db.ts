@@ -1,7 +1,7 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { type Trip } from './fare';
 import { type SavedQuotation } from './pdf';
-import { type Settings } from '../contexts/SettingsContext';
+import { type Settings } from '../types/settings';
 
 interface CabDriverDB extends DBSchema {
     trips: {

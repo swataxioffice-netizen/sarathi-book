@@ -1,0 +1,317 @@
+
+D:\websites\cab driver\dev-dist\workbox-5a5d9309.js
+    69:7   error  Definition for rule '@typescript-eslint/ban-types' was not found                @typescript-eslint/ban-types
+   436:5   error  Definition for rule '@typescript-eslint/ban-types' was not found                @typescript-eslint/ban-types
+   769:11  error  Definition for rule '@typescript-eslint/no-unsafe-member-access' was not found  @typescript-eslint/no-unsafe-member-access
+   771:13  error  Definition for rule '@typescript-eslint/no-unsafe-assignment' was not found     @typescript-eslint/no-unsafe-assignment
+   965:11  error  Definition for rule '@typescript-eslint/no-unsafe-assignment' was not found     @typescript-eslint/no-unsafe-assignment
+   981:13  error  Definition for rule '@typescript-eslint/no-unsafe-assignment' was not found     @typescript-eslint/no-unsafe-assignment
+  1665:5   error  Definition for rule '@typescript-eslint/ban-types' was not found                @typescript-eslint/ban-types
+  2793:9   error  Definition for rule '@typescript-eslint/no-unsafe-return' was not found         @typescript-eslint/no-unsafe-return
+  2840:9   error  Definition for rule '@typescript-eslint/no-unsafe-return' was not found         @typescript-eslint/no-unsafe-return
+
+D:\websites\cab driver\dev-dist\workbox-7a5e81cd.js
+    52:7   error  Definition for rule '@typescript-eslint/ban-types' was not found                @typescript-eslint/ban-types
+   419:5   error  Definition for rule '@typescript-eslint/ban-types' was not found                @typescript-eslint/ban-types
+   752:11  error  Definition for rule '@typescript-eslint/no-unsafe-member-access' was not found  @typescript-eslint/no-unsafe-member-access
+   754:13  error  Definition for rule '@typescript-eslint/no-unsafe-assignment' was not found     @typescript-eslint/no-unsafe-assignment
+   948:11  error  Definition for rule '@typescript-eslint/no-unsafe-assignment' was not found     @typescript-eslint/no-unsafe-assignment
+   964:13  error  Definition for rule '@typescript-eslint/no-unsafe-assignment' was not found     @typescript-eslint/no-unsafe-assignment
+  1648:5   error  Definition for rule '@typescript-eslint/ban-types' was not found                @typescript-eslint/ban-types
+  2776:9   error  Definition for rule '@typescript-eslint/no-unsafe-return' was not found         @typescript-eslint/no-unsafe-return
+  2823:9   error  Definition for rule '@typescript-eslint/no-unsafe-return' was not found         @typescript-eslint/no-unsafe-return
+
+D:\websites\cab driver\dev-dist\workbox-fa6cb374.js
+    52:7   error    Definition for rule '@typescript-eslint/ban-types' was not found                @typescript-eslint/ban-types
+   419:5   error    Definition for rule '@typescript-eslint/ban-types' was not found                @typescript-eslint/ban-types
+   435:5   warning  Unused eslint-disable directive (no problems were reported)
+   752:11  error    Definition for rule '@typescript-eslint/no-unsafe-member-access' was not found  @typescript-eslint/no-unsafe-member-access
+   754:13  error    Definition for rule '@typescript-eslint/no-unsafe-assignment' was not found     @typescript-eslint/no-unsafe-assignment
+   948:11  error    Definition for rule '@typescript-eslint/no-unsafe-assignment' was not found     @typescript-eslint/no-unsafe-assignment
+   964:13  error    Definition for rule '@typescript-eslint/no-unsafe-assignment' was not found     @typescript-eslint/no-unsafe-assignment
+   970:13  warning  Unused eslint-disable directive (no problems were reported)
+  1257:5   error    Definition for rule '@typescript-eslint/ban-types' was not found                @typescript-eslint/ban-types
+  1275:5   error    Definition for rule '@typescript-eslint/ban-types' was not found                @typescript-eslint/ban-types
+  2768:35  warning  Unused eslint-disable directive (no problems were reported)
+  3569:11  warning  Unused eslint-disable directive (no problems were reported)
+  4089:9   error    Definition for rule '@typescript-eslint/no-unsafe-return' was not found         @typescript-eslint/no-unsafe-return
+  4136:9   error    Definition for rule '@typescript-eslint/no-unsafe-return' was not found         @typescript-eslint/no-unsafe-return
+
+D:\websites\cab driver\src\App.tsx
+  104:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  218:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  311:20  error  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  331:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  332:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  333:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  366:22  error  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  552:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  553:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  554:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\components\BusinessCard.tsx
+  76:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\components\Calculator.tsx
+    48:65  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+    48:80  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+   179:21  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+   271:36  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+   559:8   warning  React Hook useEffect has missing dependencies: 'calculate' and 'initialResult'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  1419:25  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  1764:25  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  1778:41  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  1815:56  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  1816:58  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  1837:50  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  1861:35  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  1861:43  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  1863:37  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  1874:27  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  1888:39  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  1931:42  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  1939:54  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  1953:8   warning  React Hook useEffect has a missing dependency: 'SERVICES'. Either include it or remove the dependency array                         react-hooks/exhaustive-deps
+  2050:78  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\components\Dashboard.tsx
+  193:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\components\DocumentScanner.tsx
+  56:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\components\DocumentVault.tsx
+   41:57  error    Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+   90:8   warning  React Hook useCallback has a missing dependency: 'user'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  185:31  error    Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  226:39  error    Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\components\ExpenseTracker.tsx
+   38:59  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  111:63  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  339:76  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\components\History.tsx
+  279:51   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  296:137  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\components\InterstitialAd.tsx
+  16:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\websites\cab driver\src\components\InterstitialAd.tsx:16:13
+  14 |     useEffect(() => {
+  15 |         if (isOpen) {
+> 16 |             setTimeLeft(5);
+     |             ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  17 |             setCanSkip(false);
+  18 |             const timer = setInterval(() => {
+  19 |                 setTimeLeft((prev) => {  react-hooks/set-state-in-effect
+  31:17  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/ban-ts-comment
+
+D:\websites\cab driver\src\components\MapPicker.tsx
+   63:26  error    'e' is defined but never used                                                                                                       @typescript-eslint/no-unused-vars
+  102:22  error    'err' is defined but never used                                                                                                     @typescript-eslint/no-unused-vars
+  298:8   warning  React Hook useEffect has missing dependencies: 'dropMarker' and 'pickupMarker'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\websites\cab driver\src\components\Notifications.tsx
+  47:21  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+D:\websites\cab driver\src\components\Notifications.tsx:47:21
+  45 |
+  46 |     const formatTime = (timestamp: number) => {
+> 47 |         const now = Date.now();
+     |                     ^^^^^^^^^^ Cannot call impure function
+  48 |         const diff = now - timestamp;
+  49 |
+  50 |         if (diff < 60000) return 'Just now';  react-hooks/purity
+
+D:\websites\cab driver\src\components\PlacesAutocomplete.tsx
+  46:8  warning  React Hook useEffect has a missing dependency: 'inputValue'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\websites\cab driver\src\components\PublicProfile.tsx
+   14:19  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+   43:88  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+   47:23  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+   57:8   warning  React Hook useEffect has a missing dependency: 'fetchProfile'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  101:34  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+  102:32  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+  103:21  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+  103:42  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+  104:45  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\components\QuickNotes.tsx
+   56:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\websites\cab driver\src\components\QuickNotes.tsx:56:13
+  54 |         // External trigger to create new note
+  55 |         if (onCreateNew) {
+> 56 |             handleAddNote();
+     |             ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  57 |         }
+  58 |     }, [onCreateNew]);
+  59 |  react-hooks/set-state-in-effect
+  130:44  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  137:40  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\components\QuotationForm.tsx
+  192:52  error    Unexpected any. Specify a different type                                                                 @typescript-eslint/no-explicit-any
+  311:8   warning  React Hook useEffect has a missing dependency: 'days'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\websites\cab driver\src\components\RouteLandingPage.tsx
+  28:21  error  'vehicle' is never reassigned. Use 'const' instead   prefer-const
+  29:21  error  'lastPart' is never reassigned. Use 'const' instead  prefer-const
+
+D:\websites\cab driver\src\components\SEOHead.tsx
+   6:14  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  74:8   warning  React Hook useEffect has a missing dependency: 'canonical'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\websites\cab driver\src\components\SarathiAI.tsx
+  109:9   error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  110:44  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  117:40  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\components\TrendingRoutes.tsx
+   7:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  22:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  44:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  44:43  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\components\TripForm.tsx
+  227:55  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+  236:52  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+  512:8   warning  React Hook useEffect has a missing dependency: 'performCalculation'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  609:25  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+  709:25  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+  768:27  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\contexts\AuthContext.tsx
+  288:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\websites\cab driver\src\contexts\NotificationContext.tsx
+  28:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  77:53  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  90:53  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\contexts\SettingsContext.tsx
+  183:67  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  185:35  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  318:60  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  370:22  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  500:43  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  501:54  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  502:56  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  512:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\websites\cab driver\src\contexts\UpdateContext.tsx
+  48:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\websites\cab driver\src\utils\db.ts
+   6:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  10:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  14:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\utils\fare.ts
+  294:9  error  'totalFare' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\websites\cab driver\src\utils\firebase.ts
+  20:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\utils\geminiApi.ts
+  65:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\utils\monitoring.ts
+    8:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    9:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  109:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\utils\payment.ts
+  18:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  56:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\utils\pdf.ts
+    16:16   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+    84:121  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+    90:9    error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+   229:30   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   229:57   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   230:31   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   230:56   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   230:80   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   230:106  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   253:36   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   254:36   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   273:22   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   273:47   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   274:46   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   274:68   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   275:29   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   275:55   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   276:45   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   276:71   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   317:14   error  'e' is defined but never used                                                                                        @typescript-eslint/no-unused-vars
+   317:17   error  Empty block statement                                                                                                no-empty
+   323:32   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   332:18   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   332:66   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   352:18   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   356:50   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   407:28   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   408:27   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   408:66   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   409:36   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   412:31   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   416:31   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   423:43   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   424:44   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   424:68   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   425:43   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   428:62   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   442:43   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   442:70   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   451:39   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   451:66   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   503:39   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   564:35   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   564:70   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   576:31   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   577:33   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   593:49   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   638:18   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   638:41   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   647:32   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   715:18   error  'e' is defined but never used                                                                                        @typescript-eslint/no-unused-vars
+   724:18   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   745:21   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   817:45   error  Unnecessary escape character: \/                                                                                     no-useless-escape
+   848:47   error  Unnecessary escape character: \/                                                                                     no-useless-escape
+   877:20   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  1024:10   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  1062:5    error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  1073:65   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  1297:5    error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  1315:18   error  'e' is defined but never used                                                                                        @typescript-eslint/no-unused-vars
+
+D:\websites\cab driver\src\utils\push.ts
+  70:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\websites\cab driver\src\workers\fare.worker.ts
+  8:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 200 problems (187 errors, 13 warnings)
+  2 errors and 4 warnings potentially fixable with the `--fix` option.
+

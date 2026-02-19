@@ -1,0 +1,14 @@
+
+D:\websites\cab driver\src\App.tsx
+  218:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  311:20  error  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  331:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  332:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  333:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  366:22  error  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  552:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  553:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  554:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 9 problems (9 errors, 0 warnings)
+

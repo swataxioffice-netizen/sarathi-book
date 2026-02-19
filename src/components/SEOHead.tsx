@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 interface SEOHeadProps {
     title: string;
     description?: string;
-    schema?: Record<string, unknown>;
+    schema?: Record<string, unknown> | Record<string, unknown>[] | null;
     canonical?: string;
 }
 

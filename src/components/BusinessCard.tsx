@@ -73,7 +73,7 @@ const BusinessCard: React.FC = () => {
             logging: false,
             useCORS: true,
             allowTaint: true,
-        });
+        } as any);
         return canvas;
     };
 

@@ -229,7 +229,7 @@ function AppContent() {
     const loadData = async () => {
       try {
         // 1. Trips
-        let storedTrips = await dbRequest.getAll<Trip>('trips');
+        let storedTrips = await dbRequest.getAll('trips') as Trip[];
         if (storedTrips.length === 0) {
           // Migration: Check LocalStorage
           const lsTrips = safeJSONParse<Trip[]>('namma-cab-trips', []);
@@ -243,7 +243,7 @@ function AppContent() {
         setTrips(storedTrips.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
         // 2. Quotations
-        let storedQuotes = await dbRequest.getAll<SavedQuotation>('quotations');
+        let storedQuotes = await dbRequest.getAll('quotations') as SavedQuotation[];
         if (storedQuotes.length === 0) {
           // Migration
           const lsQuotes = safeJSONParse<SavedQuotation[]>('saved-quotations', []);
@@ -308,7 +308,7 @@ function AppContent() {
           const localTipsToUpload: Trip[] = [];
           let localStored: Trip[] = [];
           try {
-            localStored = await dbRequest.getAll<Trip>('trips');
+            localStored = await dbRequest.getAll('trips') as Trip[];
           } catch {
             localStored = safeJSONParse<Trip[]>('namma-cab-trips', []);
           }
@@ -363,7 +363,7 @@ function AppContent() {
             const localQuotesToUpload: SavedQuotation[] = [];
             let localStoredQuotes: SavedQuotation[] = [];
             try {
-              localStoredQuotes = await dbRequest.getAll<SavedQuotation>('quotations');
+              localStoredQuotes = await dbRequest.getAll('quotations') as SavedQuotation[];
             } catch {
               localStoredQuotes = safeJSONParse<SavedQuotation[]>('saved-quotations', []);
             }

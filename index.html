@@ -1,278 +1,419 @@
 <!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
 
-<head>
-  <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+    <link rel="shortcut icon" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Sarathi Book" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="theme-color" content="#0047AB" />
 
-  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
-  <link rel="shortcut icon" href="/favicon.png" />
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-  <meta name="apple-mobile-web-app-title" content="Sarathi Book" />
-  <meta name="viewport"
-    content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
-  <meta name="theme-color" content="#0047AB" />
-
-  <!-- Google Analytics 4 -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-DT4R3GE75E"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
-    gtag('js', new Date());
-    gtag('config', 'G-DT4R3GE75E');
-  </script>
-  <!-- Google AdSense -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6322167461169822"
-    crossorigin="anonymous"></script>
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Sarathi Book - Your Digital Office on Car</title>
-  <meta name="description"
-    content="Free Professional Cab Management System with 0% Service Commission for Drivers in India. Calculate fares, generate GST invoices, track expenses, and get expiry alerts." />
-  <meta name="keywords"
-    content="cab management, taxi invoice maker, online cab bill generator, taxi fare calculator india, driver diary app, ola uber driver income tracker, pdf invoice generator for travel agency, driver batta calculator, outstation taxi fare calculator, chennai call taxi tariff, cab expiry alert app" />
-  <meta name="author" content="Sarathi Book" />
-  <link rel="canonical" href="https://sarathibook.com" />
-
-  <!-- Open Graph / Facebook -->
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://sarathibook.com" />
-  <meta property="og:title" content="Sarathi Book - Digital Office for Cab Drivers in India" />
-  <meta property="og:description"
-    content="Free Professional Cab Management System for Drivers in India. Calculate fares, generate GST invoices, track expenses, and get expiry date notifications." />
-  <meta property="og:image" content="https://sarathibook.com/og-banner.png" />
-  <meta property="og:locale" content="en_IN" />
-  <meta property="og:site_name" content="Sarathi Book" />
-
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:url" content="https://sarathibook.com" />
-  <meta name="twitter:title" content="Sarathi Book - Digital Office for Cab Drivers" />
-  <meta name="twitter:description"
-    content="Free Professional Cab Management System for Drivers in India. Calculate fares, generate GST invoices, track expenses, and get expiry date notifications." />
-  <meta name="twitter:image" content="https://sarathibook.com/og-banner.png" />
-
-  <!-- Additional SEO -->
-  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-  <meta name="googlebot" content="index, follow" />
-  <meta name="bingbot" content="index, follow" />
-  <meta name="geo.region" content="IN" />
-  <meta name="geo.placename" content="India" />
-  <meta name="language" content="English" />
-  <meta name="rating" content="General" />
-
-  <!-- JSON-LD Structured Data for AEO -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Sarathi Book",
-    "applicationCategory": "BusinessApplication",
-    "operatingSystem": "Web, Android, iOS",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "INR"
-    },
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "4.8",
-      "ratingCount": "150"
-    },
-    "description": "Professional Cab Management System for Drivers in India. Calculate fares, generate GST invoices, track expenses, and get expiry alerts.",
-    "screenshot": "https://sarathibook.com/web-app-manifest-512x512.png",
-    "softwareVersion": "1.0.0",
-    "applicationSubCategory": "Finance, Transportation",
-    "featureList": [
-      "0% Service Commission Fare Estimates",
-      "Fare Calculator for One-Way, Round Trip, and Hourly Rentals",
-      "GST Invoice Generation",
-      "Expense Tracking",
-      "Document Expiry Notifications",
-      "Driver Offers",
-      "Financial Dashboard",
-      "WhatsApp Integration",
-      "Offline Support"
-    ],
-    "author": {
-      "@type": "Organization",
-      "name": "Sarathi Book"
-    }
-  }
-  </script>
-
-  <!-- Local Business Schema for AEO -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "name": "Sarathi Book",
-    "description": "Digital Office Solution for Cab Drivers",
-    "url": "https://sarathibook.com",
-    "logo": "https://sarathibook.com/web-app-manifest-512x512.png",
-    "image": "https://sarathibook.com/web-app-manifest-512x512.png",
-    "areaServed": {
-      "@type": "Country",
-      "name": "India"
-    },
-    "serviceType": "Cab Management Software",
-    "priceRange": "Free"
-  }
-  </script>
-
-  <!-- FAQ Schema for AEO -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "How to calculate cab fare in India?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Use Sarathi Book's fare calculator to instantly calculate cab fares for one-way trips, round trips, and hourly rentals. The calculator includes driver batta, toll estimates, and permit charges for accurate pricing."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How to generate GST invoice for cab service?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Sarathi Book allows cab drivers to generate professional GST-compliant invoices instantly. Simply enter trip details, customer information, and GSTIN to create and share invoices via WhatsApp or PDF."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "What is the minimum KM for outstation cab booking?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "For one-way or drop trips, the minimum chargeable distance is typically 100 KM or 130 KM depending on the state. For round trips (outstation), the minimum is usually 300 KM per day (varying by location in India)."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How much is driver batta for outstation trips?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Driver batta (allowance) for outstation trips in India typically ranges from ₹300-₹600 per day, depending on the vehicle type and state. This covers the driver's food and accommodation expenses."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "What is the cab price from Chennai to Pondicherry?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "The cab price from Chennai to Pondicherry usually starts from ₹2500-₹3500 for a one-way drop trip, depending on the vehicle type (Hatchback/Sedan). You can use the Sarathi Book calculator to get an exact quote including tolls and permits."
-        }
+    <!-- Google Analytics 4 -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-DT4R3GE75E"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
       }
-    ]
-  }
-  </script>
+      gtag("js", new Date());
+      gtag("config", "G-DT4R3GE75E");
+    </script>
+    <!-- Google AdSense -->
+    <script
+      async
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6322167461169822"
+      crossorigin="anonymous"
+    ></script>
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>Sarathi Book - Your Digital Office on Car</title>
+    <meta
+      name="description"
+      content="Free Professional Cab Management System with 0% Service Commission for Drivers in India. Calculate fares, generate GST invoices, track expenses, and get expiry alerts."
+    />
+    <meta
+      name="keywords"
+      content="cab management, taxi invoice maker, online cab bill generator, taxi fare calculator india, driver diary app, ola uber driver income tracker, pdf invoice generator for travel agency, driver batta calculator, outstation taxi fare calculator, chennai call taxi tariff, cab expiry alert app"
+    />
+    <meta name="author" content="Sarathi Book" />
+    <link rel="canonical" href="https://sarathibook.com" />
 
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "Service",
-    "serviceType": "Taxi Service",
-    "provider": {
-      "@type": "LocalBusiness",
-      "name": "Sarathi Book"
-    },
-    "areaServed": {
-      "@type": "Country",
-      "name": "India"
-    },
-    "hasOfferCatalog": {
-      "@type": "OfferCatalog",
-      "name": "Transportation Services",
-      "itemListElement": [
-        {
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sarathibook.com" />
+    <meta
+      property="og:title"
+      content="Sarathi Book - Digital Office for Cab Drivers in India"
+    />
+    <meta
+      property="og:description"
+      content="Free Professional Cab Management System for Drivers in India. Calculate fares, generate GST invoices, track expenses, and get expiry date notifications."
+    />
+    <meta property="og:image" content="https://sarathibook.com/og-banner.png" />
+    <meta property="og:locale" content="en_IN" />
+    <meta property="og:site_name" content="Sarathi Book" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://sarathibook.com" />
+    <meta
+      name="twitter:title"
+      content="Sarathi Book - Digital Office for Cab Drivers"
+    />
+    <meta
+      name="twitter:description"
+      content="Free Professional Cab Management System for Drivers in India. Calculate fares, generate GST invoices, track expenses, and get expiry date notifications."
+    />
+    <meta
+      name="twitter:image"
+      content="https://sarathibook.com/og-banner.png"
+    />
+
+    <!-- Additional SEO -->
+    <meta
+      name="robots"
+      content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="bingbot" content="index, follow" />
+    <meta name="geo.region" content="IN" />
+    <meta name="geo.placename" content="India" />
+    <meta name="language" content="English" />
+    <meta name="rating" content="General" />
+
+    <!-- JSON-LD Structured Data for AEO -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Sarathi Book",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web, Android, iOS",
+        "offers": {
           "@type": "Offer",
-          "itemOffered": {
-            "@type": "Service",
-            "name": "One Way Drop"
-          }
+          "price": "0",
+          "priceCurrency": "INR"
         },
-        {
-          "@type": "Offer",
-          "itemOffered": {
-            "@type": "Service",
-            "name": "Round Trip"
-          }
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.8",
+          "ratingCount": "150"
+        },
+        "description": "Professional Cab Management System for Drivers in India. Calculate fares, generate GST invoices, track expenses, and get expiry alerts.",
+        "screenshot": "https://sarathibook.com/web-app-manifest-512x512.png",
+        "softwareVersion": "1.0.0",
+        "applicationSubCategory": "Finance, Transportation",
+        "featureList": [
+          "0% Service Commission Fare Estimates",
+          "Fare Calculator for One-Way, Round Trip, and Hourly Rentals",
+          "GST Invoice Generation",
+          "Expense Tracking",
+          "Document Expiry Notifications",
+          "Driver Offers",
+          "Financial Dashboard",
+          "WhatsApp Integration",
+          "Offline Support"
+        ],
+        "author": {
+          "@type": "Organization",
+          "name": "Sarathi Book"
         }
-      ]
-    }
-  }
-  </script>
-
-  <!-- HowTo Schema for Calculator -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "HowTo",
-    "name": "How to Calculate Cab Fare Using Sarathi Book",
-    "description": "Step-by-step guide to calculate accurate cab fares for different trip types",
-    "step": [
-      {
-        "@type": "HowToStep",
-        "name": "Select Trip Type",
-        "text": "Choose between One-Way/Drop, Round Trip, or Hourly Rental based on your customer's requirement."
-      },
-      {
-        "@type": "HowToStep",
-        "name": "Enter Locations",
-        "text": "Enter pickup and drop locations. The system will auto-calculate distance using Google Maps."
-      },
-      {
-        "@type": "HowToStep",
-        "name": "Select Vehicle",
-        "text": "Choose the vehicle type (Sedan, SUV, or Tempo Traveller) based on passenger count."
-      },
-      {
-        "@type": "HowToStep",
-        "name": "Calculate Fare",
-        "text": "Click Calculate to get instant fare breakdown including distance charges, driver batta, tolls, and permits."
-      },
-      {
-        "@type": "HowToStep",
-        "name": "Share Quote",
-        "text": "Share the fare quote directly with your customer via WhatsApp."
       }
-    ]
-  }
-  </script>
+    </script>
 
-  <!-- Preload critical fonts for faster LCP -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Local Business Schema for AEO -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "name": "Sarathi Book",
+        "description": "Digital Office Solution for Cab Drivers",
+        "url": "https://sarathibook.com",
+        "logo": "https://sarathibook.com/web-app-manifest-512x512.png",
+        "image": "https://sarathibook.com/web-app-manifest-512x512.png",
+        "areaServed": {
+          "@type": "Country",
+          "name": "India"
+        },
+        "serviceType": "Cab Management Software",
+        "priceRange": "Free"
+      }
+    </script>
 
-  <!-- Preload the most critical font file -->
-  <link rel="preload" as="style"
-    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans:wght@400;700&display=swap">
+    <!-- FAQ Schema for AEO -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How to calculate cab fare in India?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Use Sarathi Book's fare calculator to instantly calculate cab fares for one-way trips, round trips, and hourly rentals. The calculator includes driver batta, toll estimates, and permit charges for accurate pricing."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How to generate GST invoice for cab service?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Sarathi Book allows cab drivers to generate professional GST-compliant invoices instantly. Simply enter trip details, customer information, and GSTIN to create and share invoices via WhatsApp or PDF."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is the minimum KM for outstation cab booking?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "For one-way or drop trips, the minimum chargeable distance is typically 100 KM or 130 KM depending on the state. For round trips (outstation), the minimum is usually 300 KM per day (varying by location in India)."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How much is driver batta for outstation trips?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Driver batta (allowance) for outstation trips in India typically ranges from ₹300-₹600 per day, depending on the vehicle type and state. This covers the driver's food and accommodation expenses."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is the cab price from Chennai to Pondicherry?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The cab price from Chennai to Pondicherry usually starts from ₹2500-₹3500 for a one-way drop trip, depending on the vehicle type (Hatchback/Sedan). You can use the Sarathi Book calculator to get an exact quote including tolls and permits."
+            }
+          }
+        ]
+      }
+    </script>
 
-  <!-- Load fonts asynchronously to avoid render blocking -->
-  <link
-    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans:wght@400;700&display=swap"
-    rel="stylesheet" media="print" onload="this.media='all'">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Service",
+        "serviceType": "Taxi Service",
+        "provider": {
+          "@type": "LocalBusiness",
+          "name": "Sarathi Book"
+        },
+        "areaServed": {
+          "@type": "Country",
+          "name": "India"
+        },
+        "hasOfferCatalog": {
+          "@type": "OfferCatalog",
+          "name": "Transportation Services",
+          "itemListElement": [
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Service",
+                "name": "One Way Drop"
+              }
+            },
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Service",
+                "name": "Round Trip"
+              }
+            }
+          ]
+        }
+      }
+    </script>
 
-  <!-- Fallback for browsers without JS -->
-  <noscript>
+    <!-- HowTo Schema for Calculator -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        "name": "How to Calculate Cab Fare Using Sarathi Book",
+        "description": "Step-by-step guide to calculate accurate cab fares for different trip types",
+        "step": [
+          {
+            "@type": "HowToStep",
+            "name": "Select Trip Type",
+            "text": "Choose between One-Way/Drop, Round Trip, or Hourly Rental based on your customer's requirement."
+          },
+          {
+            "@type": "HowToStep",
+            "name": "Enter Locations",
+            "text": "Enter pickup and drop locations. The system will auto-calculate distance using Google Maps."
+          },
+          {
+            "@type": "HowToStep",
+            "name": "Select Vehicle",
+            "text": "Choose the vehicle type (Sedan, SUV, or Tempo Traveller) based on passenger count."
+          },
+          {
+            "@type": "HowToStep",
+            "name": "Calculate Fare",
+            "text": "Click Calculate to get instant fare breakdown including distance charges, driver batta, tolls, and permits."
+          },
+          {
+            "@type": "HowToStep",
+            "name": "Share Quote",
+            "text": "Share the fare quote directly with your customer via WhatsApp."
+          }
+        ]
+      }
+    </script>
+
+    <!-- Preload critical fonts for faster LCP -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Preload the most critical font file -->
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans:wght@400;700&display=swap"
+    />
+
+    <!-- Load fonts asynchronously to avoid render blocking -->
     <link
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans:wght@400;700&display=swap"
-      rel="stylesheet">
-  </noscript>
-</head>
+      rel="stylesheet"
+      media="print"
+      onload="this.media = 'all'"
+    />
 
-<body>
-  <div id="root">
-    <div
-      style="display:flex;justify-content:center;align-items:center;height:100vh;background:#0047AB;color:white;font-family:sans-serif;">
-      <h1>Loading Sarathi Book...</h1>
+    <!-- Fallback for browsers without JS -->
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans:wght@400;700&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      .loader-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100vw;
+        background: linear-gradient(135deg, #0047ab 0%, #002966 100%);
+        color: white;
+        font-family: "Plus Jakarta Sans", sans-serif;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 9999;
+      }
+
+      .logo-circle {
+        width: 88px;
+        height: 88px;
+        background: white;
+        border-radius: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+        margin-bottom: 24px;
+        animation: float 3s ease-in-out infinite;
+        position: relative;
+      }
+
+      .logo-circle::after {
+        content: "";
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border-radius: 24px;
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+        opacity: 0;
+        animation: pulse-ring 3s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+      }
+
+      .logo-circle img {
+        width: 52px;
+        height: 52px;
+        object-fit: contain;
+      }
+
+      .loader-text {
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        margin-bottom: 40px;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        display: flex;
+        gap: 2px;
+      }
+
+      .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3.5px solid rgba(255, 255, 255, 0.15);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 0.8s ease-in-out infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0px);
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+        }
+        50% {
+          transform: translateY(-10px);
+          box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+        }
+      }
+
+      @keyframes pulse-ring {
+        0% {
+          transform: scale(0.9);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1.4);
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="root">
+      <div class="loader-container">
+        <div class="logo-circle">
+          <img src="/logo.png" alt="Sarathi Book" />
+        </div>
+        <div class="loader-text">
+          Sarathi<span style="font-weight: 400; opacity: 0.9">Book</span>
+        </div>
+        <div class="loading-spinner"></div>
+      </div>
     </div>
-  </div>
-  <script type="module" src="/src/main.tsx"></script>
-</body>
-
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

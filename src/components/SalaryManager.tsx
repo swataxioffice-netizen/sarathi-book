@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { generateId } from '../utils/uuid';
 
-import { useSettings, type Staff } from '../contexts/SettingsContext';
+import { useSettings } from '../contexts/SettingsContext';
+import { type Staff } from '../types/settings';
 import {
     Users, Plus, ChevronRight, User, Wallet, Calendar as CalendarIcon,
     Save, ArrowLeft, ChevronLeft, Trash2
