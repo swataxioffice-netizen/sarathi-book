@@ -53,15 +53,16 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete, onClo
                 ...parsedDoc,
                 fullText: result.fullText
             });
-        } catch (err: any) {
-            console.error('OCR Process failed:', err);
-            setError(err.message || "Scanning failed. Please try again.");
+        } catch (err: unknown) {
+            const error = err as { message?: string };
+            console.error('OCR Process failed:', error);
+            setError(error.message || "Scanning failed. Please try again.");
             setIsScanning(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="relative w-full max-w-md bg-white rounded-[32px] shadow-2xl overflow-hidden border border-white/20">
 
                 {/* Header */}
@@ -83,7 +84,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete, onClo
                     {!preview ? (
                         <div
                             onClick={() => fileInputRef.current?.click()}
-                            className="aspect-[3/4] border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-all group"
+                            className="aspect-3/4 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-all group"
                         >
                             <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
                                 <Camera size={32} />
@@ -95,7 +96,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete, onClo
                         </div>
                     ) : (
                         <div className="relative group">
-                            <div className="aspect-[3/4] rounded-3xl overflow-hidden shadow-lg border-4 border-white">
+                            <div className="aspect-3/4 rounded-3xl overflow-hidden shadow-lg border-4 border-white">
                                 <img src={preview} alt="Preview" className="w-full h-full object-cover" />
                                 {isScanning && (
                                     <div className="absolute inset-0 bg-[#0047AB]/60 backdrop-blur-[2px] flex flex-col items-center justify-center text-white p-6">

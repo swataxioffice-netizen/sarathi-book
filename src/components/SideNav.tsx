@@ -2,7 +2,7 @@ import React from 'react';
 import {
     LayoutDashboard, FileText, Wallet, User, LogOut, Calculator,
     ShieldCheck, Share2, Landmark,
-    Crown, Zap, ChevronRight, History, StickyNote, Users, Palette, Paintbrush
+    Crown, Zap, ChevronRight, History, StickyNote, Users, Palette, ChevronDown
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
@@ -20,42 +20,73 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
     const isPro = settings.plan === 'pro' || settings.isPremium;
     const isSuper = settings.plan === 'super';
 
+    const [collapsedSections, setCollapsedSections] = React.useState<Record<string, boolean>>({});
+
+    const toggleSection = (title: string) => {
+        setCollapsedSections(prev => ({
+            ...prev,
+            [title]: !prev[title]
+        }));
+    };
+
     const handlePricing = () => {
         window.dispatchEvent(new CustomEvent('open-pricing-modal'));
     };
 
-    const navItems = [
-        { id: 'profile', icon: User, label: 'Profile' },
-        { id: 'tariff', icon: History, label: 'Tariff Cards' },
-        { id: 'notes', icon: StickyNote, label: 'Quick Notes' },
-        { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-        { id: 'trips', icon: FileText, label: 'Invoices' },
-        { id: 'expenses', icon: Wallet, label: 'Expenses' },
-        { id: 'taxi-fare-calculator', icon: Calculator, label: 'Calculator' },
-        { id: 'staff', icon: Users, label: 'Staff Manager', isPro: true },
-        { id: 'watermark', icon: ShieldCheck, label: 'Remove Watermark', isPro: true },
-        { id: 'branding', icon: Palette, label: 'Custom Branding', isPro: true },
-        { id: 'colors', icon: Paintbrush, label: 'App Theme Colors', isSuper: true },
-        { id: 'finance', icon: Landmark, label: 'Loan Center' },
-    ];
-
     const handleNav = (tab: string) => {
-        if (tab === 'watermark' || tab === 'branding' || tab === 'colors') {
-            const isSuperFeature = tab === 'colors';
-            const hasAccess = isSuperFeature ? isSuper : (isPro || isSuper);
-
-            if (!hasAccess) {
+        if (tab === 'watermark' || tab === 'branding') {
+            if (!isPro && !isSuper) {
                 handlePricing();
                 return;
             }
             setActiveTab('profile');
+            // Trigger Pro Studio (via hash for mount, event for update)
+            window.history.pushState(null, '', '#pro-studio');
+            window.dispatchEvent(new CustomEvent('open-pro-studio'));
             return;
         }
         setActiveTab(tab);
     };
 
+    const navSections = [
+        {
+            title: 'Account & Overview',
+            items: [
+                { id: 'profile', icon: User, label: 'Profile' },
+                { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+            ]
+        },
+        {
+            title: 'Trip Tools',
+            items: [
+                { id: 'tariff', icon: History, label: 'Tariff Cards' },
+                { id: 'notes', icon: StickyNote, label: 'Quick Notes' },
+                { id: 'taxi-fare-calculator', icon: Calculator, label: 'Calculator' },
+            ]
+        },
+        {
+            title: 'Business Management',
+            items: [
+                 { id: 'trips', icon: FileText, label: 'Invoices' },
+                 { id: 'expenses', icon: Wallet, label: 'Expenses' },
+                 { id: 'staff', icon: Users, label: 'Staff Manager', isPro: true },
+                 { id: 'finance', icon: Landmark, label: 'Loan Center' },
+            ]
+        },
+        {
+             title: 'App Customization',
+             items: [
+                { id: 'watermark', icon: ShieldCheck, label: 'Remove Watermark', isPro: true },
+                { id: 'branding', icon: Palette, label: 'Custom Branding', isPro: true },
+             ]
+        }
+    ];
+
     if (isAdmin) {
-        navItems.push({ id: 'admin', icon: ShieldCheck, label: 'Admin Terminal' });
+        navSections.push({
+            title: 'System',
+            items: [{ id: 'admin', icon: ShieldCheck, label: 'Admin Terminal' }]
+        });
     }
 
     return (
@@ -63,7 +94,7 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
             {/* Logo Section */}
             <div className="p-6 border-b border-slate-100 bg-slate-50/50">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 flex-shrink-0 bg-white rounded-xl shadow-sm border border-slate-100 p-1.5 flex items-center justify-center relative overflow-hidden">
+                    <div className="w-10 h-10 shrink-0 bg-white rounded-xl shadow-sm border border-slate-100 p-1.5 flex items-center justify-center relative overflow-hidden">
                         <img
                             src="/logo.png"
                             alt="Sarathi Book"
@@ -87,57 +118,118 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
             {/* Navigation Section */}
             <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-6 space-y-1">
                 {/* Subscription Callout - More subtle */}
-                {!isSuper && (
-                    <button
-                        onClick={handlePricing}
-                        className={`w-full mb-6 p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between group relative overflow-hidden ${isPro ? 'bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-200' :
-                            'bg-[#0047AB] border-[#0047AB] text-white shadow-lg shadow-blue-500/10 active:scale-[0.98]'
-                            }`}
-                    >
-                        <div className="absolute top-0 right-0 w-20 h-20 bg-white/5 rounded-full -mr-10 -mt-10 blur-xl"></div>
-                        <div className="flex items-center gap-3 relative z-10">
-                            <div className={`p-1.5 rounded-lg ${isPro ? 'bg-white text-[#0047AB] shadow-sm' : 'bg-white/20 text-white'}`}>
-                                {isPro ? <Crown size={14} /> : <Zap size={14} />}
-                            </div>
-                            <div className="text-left">
-                                <p className={`text-[8px] font-black uppercase tracking-[0.2em] ${isPro ? 'text-slate-400' : 'text-blue-100'}`}>
-                                    {isPro ? 'Unlock Master' : 'Go Premium'}
-                                </p>
-                                <p className="text-[10px] font-black uppercase tracking-tight">
-                                    {isPro ? 'Get Super Pro' : 'Upgrade to Pro'}
-                                </p>
-                            </div>
+                {user ? (
+                    <div className="w-full mb-6 p-4 bg-slate-900 rounded-2xl text-white relative overflow-hidden shadow-lg shadow-slate-200">
+                         {/* Background Effects */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-xl"></div>
+                        <div className="relative z-10">
+                             <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-full border-2 border-white/10 overflow-hidden bg-slate-800 shrink-0">
+                                    {user.user_metadata?.picture || user.user_metadata?.avatar_url ? (
+                                        <img 
+                                            src={user.user_metadata?.picture || user.user_metadata?.avatar_url} 
+                                            alt="Profile" 
+                                            className="w-full h-full object-cover"
+                                            referrerPolicy="no-referrer"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                            <User size={20} />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] uppercase font-black tracking-wider text-slate-400">Welcome</p>
+                                    <p className="text-xs font-bold truncate text-white" title={user.email}>{user.email}</p>
+                                </div>
+                             </div>
+
+                            {!isSuper && (
+                                <button
+                                    onClick={handlePricing}
+                                    className="w-full py-2.5 bg-white text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Zap size={14} className="text-amber-500" />
+                                    {isPro ? 'Upgrade to Super' : 'Upgrade to Pro'}
+                                </button>
+                            )}
                         </div>
-                        <ChevronRight size={12} className={isPro ? 'text-slate-300' : 'text-white/40'} />
-                    </button>
+                    </div>
+                ) : (
+                    !isSuper && (
+                        <button
+                            onClick={handlePricing}
+                            className={`w-full mb-6 p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between group relative overflow-hidden ${isPro ? 'bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-200' :
+                                'bg-[#0047AB] border-[#0047AB] text-white shadow-lg shadow-blue-500/10 active:scale-[0.98]'
+                                }`}
+                        >
+                            <div className="absolute top-0 right-0 w-20 h-20 bg-white/5 rounded-full -mr-10 -mt-10 blur-xl"></div>
+                            <div className="flex items-center gap-3 relative z-10">
+                                <div className={`p-1.5 rounded-lg ${isPro ? 'bg-white text-[#0047AB] shadow-sm' : 'bg-white/20 text-white'}`}>
+                                    {isPro ? <Crown size={14} /> : <Zap size={14} />}
+                                </div>
+                                <div className="text-left">
+                                    <p className={`text-[8px] font-black uppercase tracking-[0.2em] ${isPro ? 'text-slate-400' : 'text-blue-100'}`}>
+                                        {isPro ? 'Unlock Master' : 'Go Premium'}
+                                    </p>
+                                    <p className="text-[10px] font-black uppercase tracking-tight">
+                                        {isPro ? 'Get Super Pro' : 'Upgrade to Pro'}
+                                    </p>
+                                </div>
+                            </div>
+                            <ChevronRight size={12} className={isPro ? 'text-slate-300' : 'text-white/40'} />
+                        </button>
+                    )
                 )}
 
-                {navItems.map((item) => (
-                    <button
-                        key={item.id}
-                        onClick={() => handleNav(item.id)}
-                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${activeTab === item.id
-                            ? 'bg-blue-50 text-[#0047AB]'
-                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-                            }`}
-                    >
-                        <div className="flex items-center gap-3">
-                            <item.icon size={18} className={`transition-colors ${activeTab === item.id ? 'text-[#0047AB]' : 'text-slate-400 group-hover:text-slate-600'}`} />
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm font-black uppercase tracking-tight">{item.label}</span>
-                                {item.isPro && !isPro && !isSuper && (
-                                    <span className="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">Pro</span>
-                                )}
-                                {item.isSuper && !isSuper && (
-                                    <span className="bg-amber-100 text-amber-600 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">Super</span>
-                                )}
+                <div className="space-y-6">
+                    {navSections.map((section, index) => {
+                        const isCollapsed = collapsedSections[section.title];
+                        
+                        return (
+                            <div key={index}>
+                                <button 
+                                    onClick={() => toggleSection(section.title)}
+                                    className="w-full flex items-center justify-between px-4 mb-2 group cursor-pointer hover:bg-slate-50 py-1 rounded-lg transition-colors"
+                                >
+                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-slate-600 transition-colors">
+                                        {section.title}
+                                    </h4>
+                                    <ChevronDown 
+                                        size={14} 
+                                        className={`text-slate-300 group-hover:text-slate-500 transition-all duration-200 ${isCollapsed ? '-rotate-90' : ''}`} 
+                                    />
+                                </button>
+                                
+                                <div className={`space-y-1 overflow-hidden transition-all duration-300 ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
+                                    {section.items.map((item) => (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => handleNav(item.id)}
+                                            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${activeTab === item.id
+                                                ? 'bg-blue-50 text-[#0047AB]'
+                                                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <item.icon size={18} className={`transition-colors ${activeTab === item.id ? 'text-[#0047AB]' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-black uppercase tracking-tight">{item.label}</span>
+                                                    {item.isPro && !isPro && !isSuper && (
+                                                        <span className="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">Pro</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {activeTab === item.id && (
+                                                <div className="w-1.5 h-1.5 rounded-full bg-[#0047AB] shadow-sm" />
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                        {activeTab === item.id && (
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#0047AB] shadow-sm" />
-                        )}
-                    </button>
-                ))}
+                        );
+                    })}
+                </div>
             </div>
 
             {/* Bottom Section */}

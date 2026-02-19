@@ -25,8 +25,8 @@ const RouteLandingPage: React.FC<RouteLandingPageProps> = ({ slug }) => {
                 const restParts = parts.slice(toPartIndex + 1);
 
                 // Check for suffix like "-taxi", "-cab" at the end
-                let vehicle = 'sedan'; // default
-                let lastPart = restParts[restParts.length - 1];
+                const vehicle = 'sedan'; // default
+                const lastPart = restParts[restParts.length - 1];
 
                 const suffixes = ['taxi', 'cab', 'cabs', 'rental'];
                 if (suffixes.includes(lastPart)) {
@@ -49,8 +49,8 @@ const RouteLandingPage: React.FC<RouteLandingPageProps> = ({ slug }) => {
             // Pattern 2: Service (outstation-cabs) - fallback
             // We might just map this to the calculator with no specific route
             return null;
-        } catch (e) {
-            console.error("Failed to parse route slug", e);
+        } catch (error) {
+            console.error("Failed to parse route slug", error);
             return null;
         }
     }, [slug]);
@@ -95,15 +95,15 @@ const RouteLandingPage: React.FC<RouteLandingPageProps> = ({ slug }) => {
                         <ul className="space-y-3">
                             <li className="flex justify-between items-center text-xs">
                                 <span className="text-slate-500 font-bold uppercase tracking-wider">Estimated Distance</span>
-                                <span className="text-slate-900 font-black tracking-tight tracking-wider uppercase">Calculated in real-time</span>
+                                <span className="text-slate-900 font-black uppercase tracking-wider">Calculated in real-time</span>
                             </li>
                             <li className="flex justify-between items-center text-xs">
                                 <span className="text-slate-500 font-bold uppercase tracking-wider">Best for</span>
-                                <span className="text-slate-900 font-black tracking-tight tracking-wider uppercase underline decoration-blue-500">Outstation / Drop Trip</span>
+                                <span className="text-slate-900 font-black uppercase tracking-wider underline decoration-blue-500">Outstation / Drop Trip</span>
                             </li>
                             <li className="flex justify-between items-center text-xs">
                                 <span className="text-slate-500 font-bold uppercase tracking-wider">Pricing model</span>
-                                <span className="text-slate-900 font-black tracking-tight tracking-wider uppercase">Transparent per KM</span>
+                                <span className="text-slate-900 font-black uppercase tracking-wider">Transparent per KM</span>
                             </li>
                         </ul>
                     </div>

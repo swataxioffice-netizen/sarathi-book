@@ -35,7 +35,7 @@ const ExpenseTracker: React.FC = () => {
                         data.forEach(row => {
                             cloudExpensesMap.set(row.id, {
                                 id: row.id,
-                                category: row.category as any,
+                                category: row.category as Expense['category'],
                                 amount: Number(row.amount),
                                 description: row.description || '',
                                 date: row.date
@@ -108,7 +108,7 @@ const ExpenseTracker: React.FC = () => {
                     if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
                         const newExpense: Expense = {
                             id: payload.new.id,
-                            category: payload.new.category as any,
+                            category: payload.new.category as Expense['category'],
                             amount: Number(payload.new.amount),
                             description: payload.new.description || '',
                             date: payload.new.date
@@ -336,7 +336,7 @@ const ExpenseTracker: React.FC = () => {
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-tight ml-1">CATEGORY</label>
                         <select
                             value={category}
-                            onChange={(_) => setCategory(_.target.value as any)}
+                            onChange={(_) => setCategory(_.target.value as Expense['category'])}
                             className="tn-input h-9 bg-slate-50 border-slate-200 font-bold text-[10px] uppercase w-full"
                         >
                             {['fuel', 'maintenance', 'food', 'toll', 'permit', 'parking', 'other'].map(c => <option key={c} value={c}>{t(c)}</option>)}

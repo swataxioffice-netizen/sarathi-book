@@ -5,8 +5,10 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
-export default defineConfig([
-  globalIgnores(['dist']),
+export default tseslint.config(
+  {
+    ignores: ['dist', 'dev-dist', 'scripts', 'api', 'node_modules', '.test'],
+  },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -19,5 +21,5 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
-  },
-])
+  }
+)

@@ -3,6 +3,7 @@ import { numberToWords } from './numberToWords';
 import { toTitleCase, formatAddress } from './stringUtils';
 
 import { getFinancialYear } from './gstUtils';
+import type { Staff, Vehicle } from '../types/settings';
 
 
 export interface PDFSettings {
@@ -12,7 +13,7 @@ export interface PDFSettings {
     gstin: string;
     vehicleNumber: string;
     gstEnabled: boolean;
-    vehicles?: any[];
+    vehicles?: Vehicle[];
     driverCode?: number;
     signatureUrl?: string;
     userId?: string;
@@ -29,6 +30,8 @@ export interface PDFSettings {
     rcmEnabled?: boolean;
     showUpiOnPdf?: boolean;
     showBankOnPdf?: boolean;
+    secondaryPhone?: string;
+    companyEmail?: string;
 }
 
 export interface QuotationItem {
@@ -78,15 +81,17 @@ export interface SavedQuotation {
     terms?: string[];
 }
 
-export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQuotation: boolean = false) => {
-    // Dynamic Import for Code Splitting (Memory Efficiency)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const generateReceiptPDF = async (trip: any, settings: PDFSettings, isQuotation: boolean = false, existingDoc?: InstanceType<typeof import('jspdf').jsPDF>) => {
+    const t = trip as Trip;
+    const q = trip as SavedQuotation;
+    // Dynamic Import for Code Splitting
     const { jsPDF } = await import('jspdf');
-    // @ts-ignore
-    const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
-    // ... rest of the function remains identical, just ensuring imports are available ...
 
-    // We need to re-implement the function body here since we are replacing.
-    // Copying the logic from view_file output but wrapped in dynamic import.
+    let doc = existingDoc;
+    if (!doc) {
+        doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+    }
 
     const margin = 15;
     let y = 0;
@@ -94,8 +99,8 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     // Safety checks for settings
     const companyName = String(settings?.companyName || 'SARATHI BOOK OWNER');
     const driverPhone = String(settings?.driverPhone || '');
-    const gstin = settings?.gstin ? String(settings.gstin) : '';
-    const vehicleNumber = String(trip.vehicleNumber || settings?.vehicleNumber || 'N/A');
+    const gstin = settings?.gstin ? String(settings.gstin).toUpperCase() : '';
+    const vehicleNumber = isQuotation ? 'N/A' : String((trip as Trip).vehicleNumber || settings?.vehicleNumber || 'N/A');
     const gstEnabled = !!settings?.gstEnabled;
     const themeColor = settings?.appColor || '#0047AB';
     const rgb = hexToRgb(themeColor);
@@ -207,18 +212,24 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
         y += (Math.min(addrLines.length, 2) * 5) + 2;
     }
 
+    if (trip.customerPhone) {
+        doc.setFontSize(9);
+        doc.text(`Ph: ${trip.customerPhone}`, leftColX, y);
+        y += 5;
+    }
+
     if (trip.customerGst) {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
-        doc.text(`GSTIN: ${trip.customerGst}`, leftColX, y);
+        doc.text(`GSTIN: ${String(trip.customerGst).toUpperCase()}`, leftColX, y);
         y += 6;
     }
 
     // PICKUP & DROP Section (Stretched, One line each)
-    const hasFrom = trip.from && trip.from !== 'N/A';
-    const hasTo = trip.to && trip.to !== 'N/A';
-    const hasTime = (trip as any).startTime || (trip as any).endTime;
-    const hasDist = ((trip as any).startKm && (trip as any).endKm) || (trip as any).distance || (trip as any).effectiveDistance;
+    const hasFrom = !isQuotation && t.from && t.from !== 'N/A';
+    const hasTo = !isQuotation && t.to && t.to !== 'N/A';
+    const hasTime = !isQuotation && (t.startTime || t.endTime);
+    const hasDist = !isQuotation && ((t.startKm && t.endKm) || t.distance || t.effectiveDistance);
 
     if (hasFrom || hasTo || hasTime || hasDist) {
         y += 4; // Gap between Bill To and Trip Details
@@ -232,7 +243,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
 
         // 2. Pickup
         if (hasFrom) {
-            const fromAddr = String(trip.from).replace(/, India$/, '').replace(/, Tamil Nadu$/, '');
+            const fromAddr = String(t.from).replace(/, India$/, '').replace(/, Tamil Nadu$/, '');
             const pickupText = `Pickup: ${fromAddr}`;
             const pickupLines = doc.splitTextToSize(pickupText, 95);
             doc.text(pickupLines, leftColX, y);
@@ -241,8 +252,8 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
 
         // 3. Drop / Time logic
         if (hasTime) {
-            const sTime = (trip as any).startTime || 'N/A';
-            const eTime = (trip as any).endTime || 'N/A';
+            const sTime = t.startTime || 'N/A';
+            const eTime = t.endTime || 'N/A';
 
             const sLines = doc.splitTextToSize(`Start Time: ${sTime}`, 95);
             doc.text(sLines, leftColX, y);
@@ -252,7 +263,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
             doc.text(eLines, leftColX, y);
             y += (eLines.length * 5);
         } else if (hasTo) {
-            const toAddr = String(trip.to).replace(/, India$/, '').replace(/, Tamil Nadu$/, '');
+            const toAddr = String(t.to).replace(/, India$/, '').replace(/, Tamil Nadu$/, '');
             const dropText = `Drop:   ${toAddr}`;
             const dropLines = doc.splitTextToSize(dropText, 95);
             doc.text(dropLines, leftColX, y);
@@ -261,10 +272,10 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
 
         // 4. Distance
         let distStr = '';
-        if ((trip as any).startKm && (trip as any).endKm) {
-            distStr = `Distance: ${((trip as any).endKm - (trip as any).startKm).toFixed(1)} km`;
-        } else if ((trip as any).distance || (trip as any).effectiveDistance) {
-            distStr = `Distance: ${(trip as any).distance || (trip as any).effectiveDistance} km`;
+        if (t.startKm && t.endKm) {
+            distStr = `Distance: ${(t.endKm - t.startKm).toFixed(1)} km`;
+        } else if (t.distance || t.effectiveDistance) {
+            distStr = `Distance: ${t.distance || t.effectiveDistance} km`;
         }
 
         if (distStr) {
@@ -289,12 +300,12 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     const prefix = `INV/${fy}/`;
 
     let invoiceNo = '';
-    if (trip.invoiceNo && (trip.invoiceNo.includes('/') || trip.invoiceNo.startsWith('INV-'))) {
-        invoiceNo = trip.invoiceNo; // Use valid pre-existing sequence directly
+    if (!isQuotation && t.invoiceNo && (t.invoiceNo.includes('/') || t.invoiceNo.startsWith('INV-'))) {
+        invoiceNo = t.invoiceNo; // Use valid pre-existing sequence directly
     } else {
         const serialPart = (trip.id || '000').substring(0, 3).toUpperCase();
         invoiceNo = isQuotation
-            ? (trip.invoiceNo || `QTN/${fy}/${serialPart}`)
+            ? (q.quotationNo || `QTN/${fy}/${serialPart}`)
             : `${prefix}${serialPart}`;
     }
 
@@ -303,15 +314,18 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     y += 5;
     let dateStr = 'N/A';
     try {
-        const d = new Date(trip.date);
+        const d = new Date(trip.date || Date.now());
         dateStr = isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString('en-IN');
-    } catch (e) { }
+    } catch {
+        // Fallback to current date
+        dateStr = new Date().toLocaleDateString('en-IN');
+    }
     doc.text(`Date: ${dateStr}`, rightAlignX, y, { align: 'right' });
 
     y += 5;
     if (isQuotation) {
         // For Quotation, show "Valid Until" or "Vehicle Class" instead of specific Number
-        const vType = (trip as any).vehicleType || 'Any'; // Cast for Quotation field
+        const vType = (trip as SavedQuotation).vehicleType || 'Any';
         doc.text(`Vehicle Class: ${vType}`, rightAlignX, y, { align: 'right' });
     } else {
         doc.text(`Vehicle No: ${vehicleNumber}`, rightAlignX, y, { align: 'right' });
@@ -320,7 +334,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     // RCM Check
     let isRcm = false;
     if (settings.rcmEnabled) isRcm = true;
-    if ((trip as any).rcmEnabled !== undefined) isRcm = (trip as any).rcmEnabled;
+    if ((trip as Trip).rcmEnabled !== undefined) isRcm = !!(trip as Trip).rcmEnabled;
 
     if (gstEnabled || isRcm) {
         doc.text(`Place of Supply: Tamil Nadu (33)`, rightAlignX, y, { align: 'right' });
@@ -340,12 +354,11 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     y = Math.max(leftEndY, rightEndY) + 5;
 
     // Subject Line (Centered above table)
-    if ((trip as any).subject) {
+    const tSubject = (t as unknown as { subject?: string }).subject;
+    if (tSubject) {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
-        // doc.text(`Subject: ${(trip as any).subject}`, 105, y, { align: 'center', maxWidth: 180 });
-        const subjectText = `Subject: ${(trip as any).subject}`;
-        const subjectLines = doc.splitTextToSize(subjectText, 180);
+        const subjectLines = doc.splitTextToSize(`Subject: ${tSubject}`, 180);
         doc.text(subjectLines, 105, y, { align: 'center' });
 
         doc.setFont('helvetica', 'normal');
@@ -395,54 +408,54 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     };
 
     // --- PRINT PRE-CALCULATED ITEMS ---
-    const pStep = (trip as any).previewStep || 4;
-    const dist = (trip as any).distance !== undefined ? (trip as any).distance : Math.max(0, (trip.endKm || 0) - (trip.startKm || 0));
-    const effectiveDist = (trip as any).effectiveDistance || dist;
+    const pStep = (t as unknown as { previewStep?: number }).previewStep || 4;
+    const dist = t.distance !== undefined ? t.distance : Math.max(0, (t.endKm || 0) - (t.startKm || 0));
+    const effectiveDist = t.effectiveDistance || dist;
 
     // Logic: distanceCharge is the basic trip/KM cost. fare is the total taxable subtotal.
-    let mainAmount = (trip as any).distanceCharge;
+    let mainAmount = t.distanceCharge;
     const hasExplicitDistanceCharge = mainAmount !== undefined;
 
     if (!hasExplicitDistanceCharge) {
-        mainAmount = (trip as any).fare || 0;
+        mainAmount = (t.fare || 0);
     }
 
-    if (pStep >= 2 || (trip.mode === 'custom' && pStep >= 1)) {
-        if (trip.mode === 'custom') {
-            if (trip.extraItems && trip.extraItems.length > 0) {
-                trip.extraItems.forEach(item => {
-                    const iQty = (item as any).quantity || '1';
-                    const iRate = (item as any).rate ? `${(item as any).rate}` : `${item.amount}`;
-                    const iSac = (item as any).sac || '9966';
+    if (pStep >= 2 || (t.mode === 'custom' && pStep >= 1)) {
+        if (t.mode === 'custom') {
+            if (t.extraItems && t.extraItems.length > 0) {
+                t.extraItems.forEach(item => {
+                    const iQty = (item as unknown as { quantity?: number }).quantity || '1';
+                    const iRate = (item as unknown as { rate?: number }).rate ? `${(item as unknown as { rate?: number }).rate}` : `${item.amount}`;
+                    const iSac = (item as unknown as { sac?: string }).sac || '9966';
                     addTableRow(item.description || 'Service Charge', String(iQty), iRate, item.amount || 0, iSac);
                 });
-            } else if (hasExplicitDistanceCharge || (trip as any).fare) {
-                addTableRow('Custom Invoice', '1', `${mainAmount}`, mainAmount);
+            } else if (hasExplicitDistanceCharge || t.fare) {
+                addTableRow('Custom Invoice', '1', `${mainAmount}`, mainAmount || 0);
             }
-        } else if (trip.mode === 'hourly') {
-            const hrs = trip.waitingHours || 8;
+        } else if (t.mode === 'hourly') {
+            const hrs = t.waitingHours || 8;
             // Hourly usually has fixed package price, rate is package price
-            addTableRow(`Local Rental / Hourly Package (${hrs} Hrs)`, '1', `${mainAmount}`, mainAmount);
-        } else if (trip.mode === 'package') {
-            addTableRow(String(trip.packageName || 'TOUR PACKAGE').toUpperCase(), '1', `${trip.packagePrice}`, trip.packagePrice || 0);
-        } else if (trip.mode === 'drop') {
+            addTableRow(`Local Rental / Hourly Package (${hrs} Hrs)`, '1', `${mainAmount || 0}`, mainAmount || 0);
+        } else if (t.mode === 'package') {
+            addTableRow(String(t.packageName || 'TOUR PACKAGE').toUpperCase(), '1', `${t.packagePrice || 0}`, t.packagePrice || 0);
+        } else if (t.mode === 'drop') {
             if (dist <= 40) {
-                addTableRow(`Local Drop Trip`, '1', `${mainAmount}`, mainAmount);
+                addTableRow(`Local Drop Trip`, '1', `${mainAmount || 0}`, mainAmount || 0);
             } else {
                 // Determine rate used
-                const rateUsed = (trip as any).rateUsed || ((trip as any).ratePerKm) || (mainAmount / (effectiveDist || 1));
-                const pRate = isNaN(rateUsed) ? '-' : `${parseFloat(rateUsed).toFixed(1)}/KM`;
+                const rateUsed = (t as unknown as { rateUsed?: number }).rateUsed || (t.ratePerKm) || ((mainAmount || 0) / (effectiveDist || 1));
+                const pRate = isNaN(rateUsed) ? '-' : `${parseFloat(String(rateUsed)).toFixed(1)}/KM`;
 
                 // For Outstation Drop, it's min dist * rate
                 const calcDesc = `${effectiveDist} KM * ${pRate}`;
-                addTableRow(`Outstation Drop Trip [${calcDesc}]`, `${effectiveDist} KM`, pRate, mainAmount);
+                addTableRow(`Outstation Drop Trip [${calcDesc}]`, `${effectiveDist} KM`, pRate, mainAmount || 0);
             }
-        } else if (trip.mode === 'outstation') {
+        } else if (t.mode === 'outstation') {
             // Determine rate used
-            const rateUsed = (trip as any).rateUsed || ((trip as any).ratePerKm) || (mainAmount / (effectiveDist || 1));
-            const pRate = isNaN(rateUsed) ? '-' : `${parseFloat(rateUsed).toFixed(1)}/KM`;
+            const rateUsed = (t as unknown as { rateUsed?: number }).rateUsed || (t.ratePerKm) || ((mainAmount || 0) / (effectiveDist || 1));
+            const pRate = isNaN(Number(rateUsed)) ? '-' : `${parseFloat(String(rateUsed)).toFixed(1)}/KM`;
             const calcDesc = `${effectiveDist} KM * ${pRate}`;
-            addTableRow(`Round Trip [${calcDesc}]`, `${effectiveDist} KM`, pRate, mainAmount);
+            addTableRow(`Round Trip [${calcDesc}]`, `${effectiveDist} KM`, pRate, mainAmount || 0);
         }
     }
 
@@ -452,46 +465,43 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
 
         if (shouldAddIndividual) {
             // Night Batta
-            if ((trip.nightBata || 0) > 0) {
-                const payDays = (trip.mode === 'outstation' ? trip.days : 1) || 1;
-                const perNightBatta = (trip.nightBata || 0) / payDays;
+            if ((t.nightBata || 0) > 0) {
+                const payDays = (t.mode === 'outstation' ? t.days : 1) || 1;
+                const perNightBatta = (t.nightBata || 0) / payDays;
                 const nLabel = payDays > 1 ? `Night Allowance (${payDays} Nights * ${perNightBatta}/Night)` : 'Night Allowance';
-                addTableRow(nLabel, `${payDays}`, `${perNightBatta}`, trip.nightBata || 0);
+                addTableRow(nLabel, `${payDays}`, `${perNightBatta}`, t.nightBata || 0);
             }
 
             // Driver Batta
-            if ((trip.driverBatta || 0) > 0) {
-                const payDays = (trip.mode === 'outstation' ? trip.days : 1) || 1;
-                const perDayBatta = (trip.driverBatta || 0) / payDays;
+            if ((t.driverBatta || 0) > 0) {
+                const payDays = (t.mode === 'outstation' ? t.days : 1) || 1;
+                const perDayBatta = (t.driverBatta || 0) / payDays;
                 const bLabel = payDays > 1 ? `Driver Batta (${payDays} Days * ${perDayBatta}/Day)` : `Driver Batta`;
-                addTableRow(bLabel, `${payDays}`, `${perDayBatta}`, trip.driverBatta || 0);
+                addTableRow(bLabel, `${payDays}`, `${perDayBatta}`, t.driverBatta || 0);
             }
 
             // Night Stay
-            if ((trip.nightStay || 0) > 0) {
-                // If we have days, maybe we can calc rate? usually night stay is bulk or per night?
-                // Trip form doesn't strictly track # of night stays separately from days, but usually 1-to-1 or manually entered total.
-                // Use total as rate if single, else just total.
-                addTableRow('Night Stay Charge', '1', `${trip.nightStay}`, trip.nightStay || 0);
+            if ((t.nightStay || 0) > 0) {
+                addTableRow('Night Stay Charge', '1', `${t.nightStay}`, t.nightStay || 0);
             }
 
-            if ((trip.waitingCharges || 0) > 0) {
-                const wRate = (trip.waitingCharges || 0) / (trip.waitingHours || 1);
-                addTableRow(`Waiting Charges (${trip.waitingHours} Hrs * ${wRate}/Hr)`, `${trip.waitingHours} Hrs`, `${wRate}/Hr`, trip.waitingCharges || 0);
+            if ((t.waitingCharges || 0) > 0) {
+                const wRate = (t.waitingCharges || 0) / (t.waitingHours || 1);
+                addTableRow(`Waiting Charges (${t.waitingHours} Hrs * ${wRate}/Hr)`, `${t.waitingHours} Hrs`, `${wRate}/Hr`, t.waitingCharges || 0);
             }
-            if ((trip.hillStationCharges || 0) > 0) addTableRow('Hill Station Charges', '1', `${trip.hillStationCharges}`, trip.hillStationCharges || 0);
-            if ((trip.petCharges || 0) > 0) addTableRow('Pet Carrying Charges', '1', `${trip.petCharges}`, trip.petCharges || 0);
+            if ((t.hillStationCharges || 0) > 0) addTableRow('Hill Station Charges', '1', `${t.hillStationCharges}`, t.hillStationCharges || 0);
+            if ((t.petCharges || 0) > 0) addTableRow('Pet Carrying Charges', '1', `${t.petCharges}`, t.petCharges || 0);
         }
 
         // Tolls/Permits/Parking are ALWAYS separate even in legacy? No, usually they were separate fields.
-        if ((trip.permit || 0) > 0) addTableRow('Permit Charges', '1', `${trip.permit}`, trip.permit || 0);
-        if ((trip.parking || 0) > 0) addTableRow('Parking Charges', '1', `${trip.parking}`, trip.parking || 0);
-        if ((trip.toll || 0) > 0) addTableRow('Toll Charges', '1', `${trip.toll}`, trip.toll || 0);
+        if ((t.permit || 0) > 0) addTableRow('Permit Charges', '1', `${t.permit}`, t.permit || 0);
+        if ((t.parking || 0) > 0) addTableRow('Parking Charges', '1', `${t.parking}`, t.parking || 0);
+        if ((t.toll || 0) > 0) addTableRow('Toll Charges', '1', `${t.toll}`, t.toll || 0);
 
         // Custom extra items from step 3
-        if (trip.extraItems && trip.mode !== 'custom') {
-            trip.extraItems.forEach(item => {
-                const iSac = (item as any).sac || '9966';
+        if (t.extraItems && t.mode !== 'custom') {
+            t.extraItems.forEach(item => {
+                const iSac = (item as unknown as { sac?: string }).sac || '9966';
                 if (item.amount > 0) addTableRow(item.description || 'Extra Item', '1', '-', item.amount, iSac);
             });
         }
@@ -552,8 +562,8 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
 
     // 2. Render Totals (Right Side) - USE VALUES FROM ENGINE DIRECTLY
     let totalsY = sectionsStartY;
-    const taxableValue = (trip as any).fare !== undefined ? (trip as any).fare : runningSubtotal;
-    const gstValue = pStep >= 4 ? (trip.gst || 0) : 0;
+    const taxableValue = t.fare !== undefined ? t.fare : runningSubtotal;
+    const gstValue = pStep >= 4 ? (t.gst || 0) : 0;
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -564,8 +574,8 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     const isDriverRegistered = !!gstin;
 
     if (isDriverRegistered && gstValue > 0) {
-        const rate = (trip as any).gstRate || 5;
-        const isIgst = (trip as any).gstType === 'IGST';
+        const rate = t.gstRate || 5;
+        const isIgst = t.gstType === 'IGST';
 
         if (isIgst) {
             doc.text(`IGST (${rate}%):`, 135, totalsY);
@@ -581,7 +591,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
             doc.text(`${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, totalsY, { align: 'right' });
             totalsY += 8;
         }
-    } else if ((settings.rcmEnabled || (trip as any).rcmEnabled) && !gstEnabled) {
+    } else if ((settings.rcmEnabled || (t.rcmEnabled)) && !gstEnabled) {
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.text('Tax Payable on Reverse Charge:', 135, totalsY);
@@ -626,7 +636,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     doc.setTextColor(0, 0, 0);
 
     // --- TERMS & CONDITIONS ---
-    if ((trip as any).terms && (trip as any).terms.length > 0) {
+    if ((isQuotation ? q.terms : t.terms) && ((isQuotation ? q.terms : t.terms) || []).length > 0) {
         y += 10;
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
@@ -635,7 +645,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
 
-        const terms = (trip as any).terms as string[];
+        const terms = (isQuotation ? q.terms : t.terms) || [];
         terms.forEach((term: string) => {
             const bullet = '•';
             const cleanTerm = term.replace(/^•\s*/, ''); // Remove existing bullet if any
@@ -673,7 +683,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
     doc.setFont('helvetica', 'italic');
-    doc.text('Subject to Chennai Jurisdiction. Computer generated invoice, no signature required.', 105, y, { align: 'center' }); // Centered
+    doc.text('Computer generated invoice, no signature required.', 105, y, { align: 'center' }); // Centered
 
     y = 278;
     setDrawThemeColor();
@@ -703,7 +713,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             doc.text('sarathibook.com', 195, y + 6, { align: 'right', url: 'https://sarathibook.com' } as any);
             doc.link(175, y, 20, 10, { url: 'https://sarathibook.com' });
-        } catch (e) {
+        } catch {
             // Fallback if logo fails
             doc.setFontSize(7);
             setThemeColor();
@@ -712,7 +722,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
             doc.text('SARATHIBOOK.COM', 105, y + 2, {
                 align: 'center',
                 url: 'https://sarathibook.com'
-            } as any);
+            } as Record<string, unknown>);
 
             doc.setFontSize(4);
             doc.setTextColor(150, 150, 150);
@@ -733,7 +743,7 @@ export const generateReceiptPDF = async (trip: Trip, settings: PDFSettings, isQu
 // Sustainable Quotation Design (Refactored to match Professional Letterhead Standard)
 export const generateQuotationPDF = async (data: QuotationData, settings: PDFSettings) => {
     // Map QuotationData to Trip format to reuse the Receipt Generator
-    const tripData: any = {
+    const tripData: Record<string, unknown> = {
         id: 'QUOTATION',
         invoiceNo: data.quotationNo,
         date: data.date,
@@ -805,7 +815,7 @@ export const shareReceipt = async (trip: Trip, settings: PDFSettings) => {
     // Use Invoice Number for filename if available
     let fileName = 'Invoice';
     if (trip.invoiceNo) {
-        fileName = trip.invoiceNo.replace(/[\/\\:*?"<>|]/g, '-');
+        fileName = trip.invoiceNo.replace(/[/\\:*?"<>|]/g, '-');
     } else {
         fileName = `Invoice_${trip.customerName?.replace(/\s/g, '_') || 'Trip'}`;
     }
@@ -836,7 +846,7 @@ export const shareQuotation = async (data: QuotationData, settings: PDFSettings)
 
     let fileName = 'Quotation';
     if (data.quotationNo) {
-        fileName = data.quotationNo.replace(/[\/\\:*?"<>|]/g, '-');
+        fileName = data.quotationNo.replace(/[/\\:*?"<>|]/g, '-');
     } else {
         const qLabel = new Date().getTime();
         fileName = `Quotation_${data.customerName.replace(/\s/g, '_')}_${qLabel}`;
@@ -865,7 +875,7 @@ export const shareQuotation = async (data: QuotationData, settings: PDFSettings)
 export interface Expense {
     category: string;
     amount: number;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export const generateFinancialReportPDF = async (trips: Trip[], expenses: Expense[], settings: PDFSettings, periodLabel: string) => {
@@ -1012,7 +1022,7 @@ export const generateFinancialReportPDF = async (trips: Trip[], expenses: Expens
     doc.text('SARATHIBOOK.COM', 105, y + 2, {
         align: 'center',
         url: 'https://sarathibook.com'
-    } as any);
+    } as Record<string, unknown>);
 
     doc.setFontSize(4);
     doc.setTextColor(150, 150, 150);
@@ -1044,4 +1054,348 @@ export const shareFinancialReport = async (trips: Trip[], expenses: Expense[], s
     } else {
         doc.save(filename);
     }
+};
+
+// Bulk Generation Logic
+export const generateBulkReceiptsPDF = async (trips: Trip[], settings: PDFSettings) => {
+    // Dynamic Import
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+
+    for (let i = 0; i < trips.length; i++) {
+        const trip = trips[i];
+        if (i > 0) doc.addPage();
+        await generateReceiptPDF(trip, settings, false, doc);
+    }
+    return doc;
+};
+
+export interface PayrollSummary {
+    dutyDays: number;
+    dutyTotal: number;
+    standbyDays: number;
+    standbyTotal: number;
+    pf: number;
+    esi: number;
+    advances: number;
+    fines: number;
+    gross: number;
+    net: number;
+}
+
+export const generatePayslipPDF = async (staff: Staff, payroll: PayrollSummary, month: Date, settings: PDFSettings) => {
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+    const margin = 15;
+    let y = 15;
+    const themeColor = settings?.appColor || '#0047AB';
+    const rgb = hexToRgb(themeColor);
+    const setThemeColor = () => doc.setTextColor(rgb.r, rgb.g, rgb.b);
+    const setDrawColor = () => doc.setDrawColor(rgb.r, rgb.g, rgb.b);
+
+    // --- HELPER: Draw Table Cell ---
+    const drawCell = (x: number, y: number, w: number, h: number, text: string, align: 'left' | 'center' | 'right' = 'left', isBold = false) => {
+        doc.rect(x, y, w, h);
+        doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+        let textX = x + 2;
+        if (align === 'center') textX = x + (w / 2);
+        if (align === 'right') textX = x + w - 2;
+        doc.text(text, textX, y + (h / 2) + 1.5, { align });
+    };
+
+    // --- 1. COMPANY LETTERHEAD ---
+    setThemeColor();
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.text((settings?.companyName || 'SARATHI BOOK').toUpperCase(), margin, 20);
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 80);
+    const companyAddress = settings?.companyAddress || 'No Address Provided';
+    const splitAddress = doc.splitTextToSize(companyAddress, 80);
+    doc.text(splitAddress, margin, 26);
+    
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Contact: ${settings?.driverPhone || 'N/A'}`, margin, 26 + (splitAddress.length * 4));
+    if (settings?.gstin) {
+        doc.text(`GSTIN: ${settings.gstin}`, margin, 30 + (splitAddress.length * 4));
+    }
+
+    // Right side meta
+    doc.setFont('helvetica', 'bold');
+    doc.text('PAY SLIP', 195, 20, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Month: ${new Date(month).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }).toUpperCase()}`, 195, 26, { align: 'right' });
+    doc.text(`Dated: ${new Date().toLocaleDateString('en-IN')}`, 195, 31, { align: 'right' });
+
+    y = 45;
+    setDrawColor();
+    doc.setLineWidth(0.8);
+    doc.line(margin, y, 195, y);
+
+    // --- 2. EMPLOYEE DETAILS GRID ---
+    y += 8;
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.text('EMPLOYEE INFORMATION', margin, y);
+    
+    y += 4;
+    doc.setLineWidth(0.1);
+    doc.setFontSize(8.5);
+    
+    const rowH = 7;
+    const colW = 45;
+
+    // Row 1
+    drawCell(margin, y, colW, rowH, 'Employee Name', 'left', true);
+    drawCell(margin + colW, y, colW, rowH, staff.name);
+    drawCell(margin + (colW * 2), y, colW, rowH, 'Employee ID', 'left', true);
+    drawCell(margin + (colW * 3), y, colW, rowH, staff.employeeId || 'SB-' + staff.id.slice(0, 4).toUpperCase());
+    
+    y += rowH;
+    // Row 2
+    drawCell(margin, y, colW, rowH, 'Designation', 'left', true);
+    drawCell(margin + colW, y, colW, rowH, staff.designation || 'Driver');
+    drawCell(margin + (colW * 2), y, colW, rowH, 'Date of Joining', 'left', true);
+    drawCell(margin + (colW * 3), y, colW, rowH, staff.joinDate ? new Date(staff.joinDate).toLocaleDateString('en-IN') : 'N/A');
+
+    y += rowH;
+    // Row 3
+    drawCell(margin, y, colW, rowH, 'PAN Number', 'left', true);
+    drawCell(margin + colW, y, colW, rowH, staff.panNumber || 'N/A');
+    drawCell(margin + (colW * 2), y, colW, rowH, 'Phone Number', 'left', true);
+    drawCell(margin + (colW * 3), y, colW, rowH, staff.phone);
+
+    y += rowH;
+    // Row 4 (Bank)
+    drawCell(margin, y, colW, rowH, 'Bank Name', 'left', true);
+    drawCell(margin + colW, y, colW, rowH, staff.bankName || 'N/A');
+    drawCell(margin + (colW * 2), y, colW, rowH, 'Account Number', 'left', true);
+    drawCell(margin + (colW * 3), y, colW, rowH, staff.accountNumber || 'N/A');
+
+    y += rowH;
+    // Row 5 (Bank 2)
+    drawCell(margin, y, colW, rowH, 'IFSC Code', 'left', true);
+    drawCell(margin + colW, y, colW, rowH, staff.ifscCode || 'N/A');
+    drawCell(margin + (colW * 2), y, colW, rowH, 'Payment Mode', 'left', true);
+    drawCell(margin + (colW * 3), y, colW, rowH, settings.preferredPaymentMethod?.toUpperCase() || 'BANK TRANSFER');
+
+    y += rowH;
+    // Row 6 (Compliance)
+    drawCell(margin, y, colW, rowH, 'UAN Number', 'left', true);
+    drawCell(margin + colW, y, colW, rowH, staff.uan || 'N/A');
+    drawCell(margin + (colW * 2), y, colW, rowH, 'ESI IP Number', 'left', true);
+    drawCell(margin + (colW * 3), y, colW, rowH, staff.esiNumber || 'N/A');
+
+    // --- 3. SALARY CALCULATION TABLE ---
+    y += 15;
+    doc.setFontSize(10);
+    setThemeColor();
+    doc.setFont('helvetica', 'bold');
+    doc.text('SALARY BREAKDOWN', margin, y);
+    
+    y += 4;
+    doc.setTextColor(255, 255, 255);
+    doc.setFillColor(rgb.r, rgb.g, rgb.b);
+    doc.rect(margin, y, 90, 8, 'F');
+    doc.rect(margin + 90, y, 90, 8, 'F');
+    
+    doc.text('EARNINGS', margin + 45, y + 5.5, { align: 'center' });
+    doc.text('DEDUCTIONS', margin + 135, y + 5.5, { align: 'center' });
+
+    y += 8;
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    
+    const itemsH = 8;
+
+    // Earnings Column
+    let earnY = y;
+    drawCell(margin, earnY, 60, itemsH, `Duty Pay (${payroll.dutyDays} Days)`);
+    drawCell(margin + 60, earnY, 30, itemsH, payroll.dutyTotal.toLocaleString('en-IN'), 'right');
+    earnY += itemsH;
+    
+    if (payroll.standbyTotal > 0) {
+        drawCell(margin, earnY, 60, itemsH, `Standby/Waiting (${payroll.standbyDays} Days)`);
+        drawCell(margin + 60, earnY, 30, itemsH, payroll.standbyTotal.toLocaleString('en-IN'), 'right');
+        earnY += itemsH;
+    }
+    
+    // Fill empty earnings rows to sync with deductions if needed
+    while (earnY < y + (itemsH * 5)) {
+        drawCell(margin, earnY, 60, itemsH, '');
+        drawCell(margin + 60, earnY, 30, itemsH, '', 'right');
+        earnY += itemsH;
+    }
+
+    // Deductions Column
+    let dedY = y;
+    drawCell(margin + 90, dedY, 60, itemsH, 'EPF (12%)');
+    drawCell(margin + 150, dedY, 30, itemsH, payroll.pf > 0 ? payroll.pf.toLocaleString('en-IN') : '0', 'right');
+    dedY += itemsH;
+
+    drawCell(margin + 90, dedY, 60, itemsH, 'ESI (0.75%)');
+    drawCell(margin + 150, dedY, 30, itemsH, payroll.esi > 0 ? payroll.esi.toLocaleString('en-IN') : '0', 'right');
+    dedY += itemsH;
+
+    drawCell(margin + 90, dedY, 60, itemsH, 'Sal. Advances / Deductions');
+    drawCell(margin + 150, dedY, 30, itemsH, (payroll.advances + payroll.fines).toLocaleString('en-IN'), 'right');
+    dedY += itemsH;
+
+    drawCell(margin + 90, dedY, 60, itemsH, 'Other Deductions');
+    drawCell(margin + 150, dedY, 30, itemsH, '0', 'right');
+    dedY += itemsH;
+
+    y = Math.max(earnY, dedY);
+    
+    // Totals Row
+    doc.setFont('helvetica', 'bold');
+    drawCell(margin, y, 60, itemsH, 'GROSS EARNINGS', 'left', true);
+    drawCell(margin + 60, y, 30, itemsH, payroll.gross.toLocaleString('en-IN'), 'right', true);
+    
+    const totalDeductions = payroll.pf + payroll.esi + payroll.advances + payroll.fines;
+    drawCell(margin + 90, y, 60, itemsH, 'TOTAL DEDUCTIONS', 'left', true);
+    drawCell(margin + 150, y, 30, itemsH, totalDeductions.toLocaleString('en-IN'), 'right', true);
+
+    // --- 4. NET PAY ---
+    y += itemsH + 10;
+    doc.setFillColor(245, 247, 250);
+    doc.rect(margin, y, 180, 15, 'F');
+    setDrawColor();
+    doc.rect(margin, y, 180, 15, 'S');
+
+    setThemeColor();
+    doc.setFontSize(12);
+    doc.text('NET SALARY PAYABLE', margin + 5, y + 9);
+    doc.setFontSize(16);
+    doc.text(`Rs. ${payroll.net.toLocaleString('en-IN')}`, 185, y + 10, { align: 'right' });
+
+    y += 22;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Amount in Words:', margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(numberToWords(payroll.net), margin + 35, y);
+
+    // --- 5. SIGNATURES ---
+    y += 30;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('__________________________', margin, y);
+    doc.text('Employee Signature', margin, y + 5);
+
+    doc.text('__________________________', 195, y, { align: 'right' });
+    doc.text(`For ${(settings?.companyName || 'SARATHI BOOK').toUpperCase()}`, 195, y + 5, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
+    doc.text('Authorised Signatory', 195, y + 15, { align: 'right' });
+
+    // --- 6. FOOTER ---
+    y = 275;
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('This is a highly confidential document. Any unauthorized reproduction is prohibited.', 105, y, { align: 'center' });
+    doc.text('Generated via Sarathi Book - Your Digital Fleet Office', 105, y + 4, { align: 'center' });
+
+    return doc;
+};
+
+export const generateLetterheadPDF = async (settings: PDFSettings) => {
+    // Dynamic Import
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+    
+    const margin = 15;
+    const themeColor = settings?.appColor || '#0047AB';
+    const rgb = hexToRgb(themeColor);
+    const setThemeColor = () => doc.setTextColor(rgb.r, rgb.g, rgb.b);
+    const setDrawThemeColor = () => doc.setDrawColor(rgb.r, rgb.g, rgb.b);
+
+    // --- HEADER ---
+    if (settings?.logoUrl) {
+        try {
+            doc.addImage(settings.logoUrl, 'PNG', margin, 12, 18, 18, undefined, 'FAST');
+            setThemeColor();
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(22);
+            doc.text((settings.companyName || 'SARATHI BOOK').toUpperCase(), margin + 22, 22);
+            doc.setTextColor(0, 0, 0);
+        } catch {
+            setThemeColor();
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(24);
+            doc.text((settings.companyName || 'SARATHI BOOK').toUpperCase(), margin, 20);
+            doc.setTextColor(0, 0, 0);
+        }
+    } else {
+        setThemeColor();
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(24);
+        doc.text((settings.companyName || 'SARATHI BOOK').toUpperCase(), margin, 20);
+        doc.setTextColor(0, 0, 0);
+    }
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    const companyAddress = settings?.companyAddress || '';
+    const addressY = 28;
+    const addressLines = doc.splitTextToSize(companyAddress, 100);
+    doc.text(addressLines, margin, addressY);
+    
+    // Contact Rendering
+    const contactY = addressY + (addressLines.length * 4.5) + 2;
+    doc.setFontSize(9);
+    
+    // Line 1: Phones
+    const phoneText = `Phone: ${settings?.driverPhone || ''}${settings?.secondaryPhone ? `, ${settings?.secondaryPhone}` : ''}`;
+    doc.text(phoneText, margin, contactY);
+    
+    // Line 2: Email and GSTIN
+    const cEmail = settings?.companyEmail || '';
+    const cGst = settings?.gstin ? String(settings.gstin).toUpperCase() : '';
+    let line2 = '';
+    if (cEmail) line2 += `Email: ${cEmail}`;
+    if (cEmail && cGst) line2 += '  |  ';
+    if (cGst) line2 += `GSTIN: ${cGst}`;
+    
+    if (line2) {
+        doc.text(line2, margin, contactY + 5);
+    }
+    
+    // Divider
+    const dividerY = contactY + (line2 ? 9 : 4);
+    setDrawThemeColor();
+    doc.setLineWidth(0.6);
+    doc.line(margin, dividerY, 195, dividerY);
+    
+    // Branding Footer (Simple)
+    let y = 278;
+    setDrawThemeColor();
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, 195, y);
+    y += 4;
+    
+    if (settings.showWatermark !== false) {
+        doc.setFontSize(8);
+        setThemeColor();
+        doc.setFont('helvetica', 'bold');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        doc.text('sarathibook.com', 195, y + 2, { align: 'right', url: 'https://sarathibook.com' } as any);
+        
+        doc.setFont('times', 'bold');
+        doc.setFontSize(10);
+        doc.text('SARATHI BOOK', margin, y + 2);
+    }
+    
+    return doc;
+};
+
+export const downloadLetterhead = async (settings: PDFSettings) => {
+    const doc = await generateLetterheadPDF(settings);
+    const filename = `Letterhead_${(settings.companyName || 'Company').replace(/[^a-z0-9]/gi, '_')}.pdf`;
+    doc.save(filename);
 };

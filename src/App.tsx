@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import type { MessagePayload } from 'firebase/messaging';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { safeJSONParse } from './utils/storage';
 import { dbRequest } from './utils/db'; // IndexedDB
@@ -39,7 +40,7 @@ const SalaryManager = lazy(() => import('./components/SalaryManager'));
 const TrendingRoutes = lazy(() => import('./components/TrendingRoutes'));
 const RoutesDirectory = lazy(() => import('./components/RoutesDirectory'));
 const TariffPage = lazy(() => import('./components/TariffPage'));
-const MobileMenu = lazy(() => import('./components/MobileMenu'));
+import MobileMenu from './components/MobileMenuContainer';
 const Finance = lazy(() => import('./components/Finance'));
 const RouteLandingPage = lazy(() => import('./components/RouteLandingPage'));
 
@@ -57,7 +58,7 @@ const LoadingFallback = () => (
 
 function AppContent() {
   /* Guest Roaming Logic */
-  const { user, isAdmin, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading, originalUser, stopImpersonation } = useAuth();
   const { needRefresh, updateServiceWorker } = useUpdate();
   const { addNotification } = useNotifications();
 
@@ -101,7 +102,7 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    const handleNav = (e: any) => setActiveTab(e.detail);
+    const handleNav = (e: Event) => setActiveTab((e as CustomEvent<string>).detail);
     const handleQuoteNav = () => {
       setActiveTab('trips');
       setInvoiceQuotationToggle('quotation');
@@ -215,10 +216,10 @@ function AppContent() {
 
   // Handle foreground notifications
   useEffect(() => {
-    onMessageListener().then((payload: any) => {
+    onMessageListener().then((payload: MessagePayload) => {
       // console.log('Push received in foreground:', payload);
       if (payload.notification) {
-        addNotification(payload.notification.title, payload.notification.body, 'info');
+        addNotification(payload.notification.title || 'New Message', payload.notification.body || '', 'info');
       }
     });
   }, [addNotification]);
@@ -308,7 +309,7 @@ function AppContent() {
           let localStored: Trip[] = [];
           try {
             localStored = await dbRequest.getAll<Trip>('trips');
-          } catch (e) {
+          } catch {
             localStored = safeJSONParse<Trip[]>('namma-cab-trips', []);
           }
 
@@ -328,9 +329,9 @@ function AppContent() {
                 date: new Date(t.date).toISOString(),
                 amount: t.totalFare,
                 details: t,
-                pickup_location: (t as any).from,
-                drop_location: (t as any).to,
-                distance: (t as any).distance
+                pickup_location: t.from,
+                drop_location: t.to,
+                distance: t.distance
               })
             ));
           }
@@ -363,7 +364,7 @@ function AppContent() {
             let localStoredQuotes: SavedQuotation[] = [];
             try {
               localStoredQuotes = await dbRequest.getAll<SavedQuotation>('quotations');
-            } catch (e) {
+            } catch {
               localStoredQuotes = safeJSONParse<SavedQuotation[]>('saved-quotations', []);
             }
 
@@ -549,9 +550,9 @@ function AppContent() {
             date: new Date(trip.date).toISOString(),
             amount: trip.totalFare,
             details: trip,
-            pickup_location: (trip as any).from,
-            drop_location: (trip as any).to,
-            distance: (trip as any).distance
+            pickup_location: trip.from,
+            drop_location: trip.to,
+            distance: trip.distance
           });
           if (error) console.error('Failed to sync trip to cloud:', error.message);
         } catch (err) {
@@ -897,9 +898,23 @@ function AppContent() {
 
   return (
     <>
+      {originalUser && (
+        <div className="bg-purple-600 text-white p-2 text-center text-[10px] md:text-xs font-black uppercase tracking-widest fixed top-0 w-full z-200 flex items-center justify-center gap-4 shadow-xl">
+           <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+              <span>Acting as: {user?.user_metadata?.full_name || user?.email}</span>
+           </div>
+           <button
+              onClick={stopImpersonation}
+              className="bg-white text-purple-600 px-3 py-1 rounded-lg hover:bg-slate-100 transition-colors shadow-sm"
+           >
+              Exit View
+           </button>
+        </div>
+      )}
       <UpdateWatcher />
       {/* Desktop Layout */}
-      <div className="hidden md:flex h-screen w-full bg-slate-100 overflow-hidden">
+      <div className={`hidden md:flex h-screen w-full bg-slate-100 overflow-hidden ${originalUser ? 'pt-10' : ''}`}>
         <SideNav activeTab={activeTab} setActiveTab={setActiveTab} />
         <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-[#F5F7FA]">
           <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10">
@@ -922,7 +937,7 @@ function AppContent() {
               {!user ? (
                 <GoogleSignInButton
                   text="Sign In"
-                  className="!w-fit !py-2 !px-4 !text-xs !rounded-xl !shadow-sm !border-slate-200 !gap-2"
+                  className="w-fit! py-2! px-4! text-xs! rounded-xl! shadow-sm! border-slate-200! gap-2!"
                 />
               ) : (
                 <button
@@ -957,7 +972,7 @@ function AppContent() {
       </div>
 
       {/* Mobile Layout */}
-      <div className="md:hidden h-[100dvh] w-full bg-white flex flex-col relative overflow-hidden">
+      <div className={`md:hidden h-dvh w-full bg-white flex flex-col relative overflow-hidden ${originalUser ? 'pt-10' : ''}`}>
         <Header
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -976,14 +991,12 @@ function AppContent() {
           setActiveTab={setActiveTab}
         />
 
-        <Suspense fallback={null}>
-          <MobileMenu
-            isOpen={isMobileMenuOpen}
-            onClose={() => setIsMobileMenuOpen(false)}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-          />
-        </Suspense>
+        <MobileMenu
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+        />
       </div>
 
       {/* Pricing Modal */}
@@ -1000,7 +1013,6 @@ function AppContent() {
           <div className="bg-[#1e293b] text-white p-5 rounded-2xl shadow-2xl border border-slate-700 max-w-sm relative overflow-hidden">
             {/* Gloss Effect */}
             <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/20 blur-2xl rounded-full -mr-10 -mt-10"></div>
-
             <div className="relative z-10">
               <div className="flex justify-between items-start mb-3">
                 <h3 className="font-black text-lg">Enjoying Sarathi?</h3>

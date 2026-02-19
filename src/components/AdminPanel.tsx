@@ -20,17 +20,44 @@ import {
 } from 'lucide-react';
 import { useUpdate } from '../contexts/UpdateContext';
 import { useNotifications } from '../contexts/NotificationContext';
+import { useAuth } from '../contexts/AuthContext';
+
+interface Profile {
+    id: string;
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+    address: string | null;
+    created_at: string;
+}
+
+interface UserDocument {
+    id: string;
+    user_id: string;
+    name: string;
+    type: string;
+    expiry_date: string;
+    file_url: string;
+}
+
+interface AdminActivity {
+    id: string;
+    event_type: string;
+    details: Record<string, unknown>;
+    created_at: string;
+}
 
 const AdminPanel: React.FC = () => {
     const [subTab, setSubTab] = useState<'stats' | 'users' | 'documents' | 'settings' | 'debug'>('stats');
     const { needRefresh, setNeedRefresh } = useUpdate();
     const { addNotification } = useNotifications();
-    const [notifyingUser, setNotifyingUser] = useState<any | null>(null);
+    const [notifyingUser, setNotifyingUser] = useState<{name: string, id: string} | null>(null);
     const [notificationText, setNotificationText] = useState('');
     const [isSending, setIsSending] = useState(false);
-    const [users, setUsers] = useState<any[]>([]);
-    const [documents, setDocuments] = useState<any[]>([]);
-    const [activities, setActivities] = useState<any[]>([]);
+    const { impersonateUser } = useAuth();
+    const [users, setUsers] = useState<Profile[]>([]);
+    const [documents, setDocuments] = useState<UserDocument[]>([]);
+    const [activities, setActivities] = useState<AdminActivity[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
 
     useEffect(() => {
@@ -55,7 +82,7 @@ const AdminPanel: React.FC = () => {
 
                 if (activityError) console.error('Error fetching activity:', activityError);
                 if (activityData) setActivities(activityData);
-            } catch (err) {
+            } catch (err: unknown) {
                 console.error('Unexpected error in AdminPanel fetchData:', err);
             } finally {
                 setLoadingUsers(false);
@@ -66,7 +93,7 @@ const AdminPanel: React.FC = () => {
         // Realtime Subscription
         const channel = supabase
             .channel('admin_feed')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'admin_analytics' }, (payload) => {
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'admin_analytics' }, (payload: { new: AdminActivity }) => {
                 setActivities(prev => [payload.new, ...prev]);
             })
             .subscribe();
@@ -316,6 +343,17 @@ const AdminPanel: React.FC = () => {
                                         >
                                             <Bell size={16} />
                                         </button>
+                                        <button
+                                            onClick={() => {
+                                                if (window.confirm(`Are you sure you want to log in as ${user.name || user.email}?`)) {
+                                                    impersonateUser(user.id);
+                                                }
+                                            }}
+                                            className="p-2 ml-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-600 hover:text-white transition-all shadow-sm"
+                                            title="Login as User"
+                                        >
+                                            <UserCheck size={16} />
+                                        </button>
                                     </td>
                                 </tr>
                             ))
@@ -407,15 +445,7 @@ const AdminPanel: React.FC = () => {
                             <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow-md"></div>
                         </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-black text-slate-900">Dark Mode Enforcement</p>
-                            <p className="text-xs text-slate-400 font-bold">Require all users to use premium dark theme</p>
-                        </div>
-                        <div className="w-12 h-6 bg-blue-600 rounded-full relative cursor-pointer">
-                            <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-md"></div>
-                        </div>
-                    </div>
+
                 </div>
 
                 <button className="w-full bg-[#0047AB] text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg shadow-blue-500/20 hover:scale-[0.99] transition-transform">
@@ -492,7 +522,7 @@ const AdminPanel: React.FC = () => {
                     ].map((tab) => (
                         <button
                             key={tab.id}
-                            onClick={() => setSubTab(tab.id as any)}
+                            onClick={() => setSubTab(tab.id as 'stats' | 'users' | 'documents' | 'settings' | 'debug')}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap
                                 ${subTab === tab.id ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
                         >
@@ -512,7 +542,7 @@ const AdminPanel: React.FC = () => {
 
             {/* Notification Modal */}
             {notifyingUser && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-100 flex items-center justify-center p-4 animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-blue-50/50">
                             <div>
@@ -561,9 +591,10 @@ const AdminPanel: React.FC = () => {
                                             addNotification('Success', `Notification sent to ${notifyingUser.name}`, 'success');
                                             setNotifyingUser(null);
                                             setNotificationText('');
-                                        } catch (err: any) {
-                                            console.error('Failed to send notification:', err);
-                                            alert('Failed to send notification: ' + err.message);
+                                        } catch (err: unknown) {
+                                            const error = err as Error;
+                                            console.error('Failed to send notification:', error);
+                                            alert('Failed to send notification: ' + error.message);
                                         } finally {
                                             setIsSending(false);
                                         }

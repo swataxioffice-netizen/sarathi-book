@@ -1,7 +1,17 @@
-import { VEHICLES } from '../config/vehicleRates';
+import { useState } from 'react';
+import { VEHICLES, type VehicleType } from '../config/vehicleRates';
 import { TARIFFS, TRIP_LIMITS } from '../config/tariff_config';
 import SEOHead from './SEOHead';
-import { ArrowRight, Check, ShieldCheck, BadgeIndianRupee, Clock, AlertTriangle, Moon } from 'lucide-react';
+import {
+    ArrowRight, Check, ShieldCheck, BadgeIndianRupee, Clock,
+    AlertTriangle, Moon, Share2, FileDown, User, X
+} from 'lucide-react';
+import { useSettings } from '../contexts/SettingsContext';
+import { generateQuotationPDF } from '../utils/pdf';
+import { format } from 'date-fns';
+import { generateId } from '../utils/uuid';
+
+import { useAuth } from '../contexts/AuthContext';
 
 const TariffPage = () => {
     const title = "Chennai Cab Tariff & Rates | 2025 Official Price List - Sarathi Book";
@@ -26,6 +36,100 @@ const TariffPage = () => {
         "description": "Standard rates for different vehicle types including drop and round trip charges."
     };
 
+    const { settings } = useSettings();
+    const { user } = useAuth();
+    const [customRates, setCustomRates] = useState<Record<string, { drop: number; round: number }>>(() => {
+        const rates: Record<string, { drop: number; round: number }> = {};
+        VEHICLES.forEach(v => {
+            rates[v.id] = { drop: v.dropRate, round: v.roundRate };
+        });
+        return rates;
+    });
+
+    // Quotation Modal State
+    const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+    const [selectedVehicle, setSelectedVehicle] = useState<VehicleType | null>(null);
+    const [customerName, setCustomerName] = useState('');
+    const [customerPhone, setCustomerPhone] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    const handleRateChange = (vehicleId: string, type: 'drop' | 'round', value: string) => {
+        const numValue = parseFloat(value) || 0;
+        setCustomRates(prev => ({
+            ...prev,
+            [vehicleId]: {
+                ...prev[vehicleId],
+                [type]: numValue
+            }
+        }));
+    };
+
+    const handleGenerateQuote = async () => {
+        if (!selectedVehicle || !customerName) return;
+        setIsGenerating(true);
+        try {
+            const rates = customRates[selectedVehicle.id];
+            const doc = await generateQuotationPDF({
+                customerName,
+                customerAddress: `Phone: ${customerPhone}`,
+                subject: `Tariff Quote for ${selectedVehicle.name}`,
+                date: format(new Date(), 'yyyy-MM-dd'),
+                quotationNo: `QT-${generateId().slice(0, 6).toUpperCase()}`,
+                items: [
+                    {
+                        description: `${selectedVehicle.name} - One Way Drop Rate`,
+                        package: 'One Way',
+                        vehicleType: selectedVehicle.name,
+                        rate: `${rates.drop}/km`,
+                        amount: '0', // It's a tariff card, not a fixed bill
+                        sac: '9966'
+                    },
+                    {
+                        description: `${selectedVehicle.name} - Round Trip Rate`,
+                        package: 'Round Trip',
+                        vehicleType: selectedVehicle.name,
+                        rate: `${rates.round}/km`,
+                        amount: '0',
+                        sac: '9966'
+                    },
+                    {
+                        description: `Driver Batta (Per Day)`,
+                        package: 'Mandatory',
+                        vehicleType: selectedVehicle.name,
+                        rate: `₹${selectedVehicle.batta}`,
+                        amount: '0'
+                    }
+                ],
+                terms: [
+                    `Minimum running ${selectedVehicle.minKm} KM per day for round trips.`,
+                    `Toll, Parking and State Permit charges extra at actuals.`,
+                    `Night driving allowance (10PM-6AM) ₹${selectedVehicle.nightCharge} applicable.`,
+                    `Kilometer and time will be calculated from shed to shed.`
+                ]
+            }, {
+                companyName: settings.companyName,
+                companyAddress: settings.companyAddress,
+                driverPhone: settings.driverPhone,
+                gstin: settings.gstin,
+                gstEnabled: settings.gstEnabled,
+                appColor: settings.appColor,
+                signatureUrl: settings.signatureUrl,
+                userId: user?.id || '',
+                showWatermark: settings.showWatermark,
+                vehicleNumber: ''
+            });
+            doc.save(`Quote_${customerName.replace(/\s+/g, '_')}_${selectedVehicle.name}.pdf`);
+            setIsQuoteModalOpen(false);
+            setCustomerName('');
+            setCustomerPhone('');
+        } catch (error) {
+            console.error('Error generating quote:', error);
+            alert('Failed to generate quotation. Please check your settings and try again.');
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 pb-20 md:pb-0">
             <SEOHead
@@ -35,36 +139,36 @@ const TariffPage = () => {
             />
 
             {/* Hero Section */}
-            <div className="bg-[#0047AB] text-white pt-20 pb-8 px-4">
+            <div className="bg-[#0047AB] text-white pt-10 pb-4 px-4">
                 <div className="max-w-4xl mx-auto text-center">
-                    <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider mb-2">
+                    <h1 className="text-xl md:text-3xl font-black uppercase tracking-wider mb-1">
                         Tamil Nadu Tariff
                     </h1>
-                    <p className="text-blue-100 text-sm md:text-lg font-medium max-w-2xl mx-auto leading-relaxed mb-4">
+                    <p className="text-blue-100 text-[10px] md:text-lg font-medium max-w-2xl mx-auto leading-relaxed mb-2.5">
                         Official Union Rates. Zero Commission. 100% Direct to Drivers.
                     </p>
-                    <div className="inline-flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full border border-white/20">
-                        <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></div>
-                        <span className="text-[10px] font-bold text-blue-50 tracking-wide">Rates for other states coming soon</span>
+                    <div className="inline-flex items-center gap-2 bg-white/10 px-2.5 py-1 rounded-full border border-white/20">
+                        <div className="w-1 h-1 rounded-full bg-yellow-400 animate-pulse"></div>
+                        <span className="text-[8px] font-bold text-blue-50 tracking-wide uppercase">Other states coming soon</span>
                     </div>
                 </div>
             </div>
 
             {/* Main Content */}
-            <main className="max-w-5xl mx-auto px-2 -mt-6">
+            <main className="max-w-5xl mx-auto px-2 -mt-3">
 
-                {/* Trust Indicators */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                {/* Trust Indicators - Horizontal Scroller for Mobile */}
+                <div className="flex md:grid md:grid-cols-3 overflow-x-auto gap-2 md:gap-4 mb-6 scrollbar-hide -mx-1 px-1">
                     {[
                         { icon: ShieldCheck, text: "Government Verified Rates" },
                         { icon: BadgeIndianRupee, text: "No Hidden Charges" },
                         { icon: Check, text: "Includes Toll & Permit Estimates" }
                     ].map((item, i) => (
-                        <div key={i} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                                <item.icon size={16} />
+                        <div key={i} className="flex-none md:flex-1 bg-white p-2.5 md:p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-2.5 md:gap-3 min-w-[150px] md:min-w-0 md:justify-center">
+                            <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                                <item.icon size={14} className="md:w-4 md:h-4" />
                             </div>
-                            <span className="font-bold text-slate-700 text-sm uppercase tracking-wide">{item.text}</span>
+                            <span className="font-bold text-slate-700 text-[9px] md:text-sm uppercase tracking-wide whitespace-nowrap md:whitespace-normal">{item.text}</span>
                         </div>
                     ))}
                 </div>
@@ -94,12 +198,28 @@ const TariffPage = () => {
                                             </div>
                                         </td>
                                         <td className="p-4 text-right">
-                                            <span className="block font-black text-slate-800 text-lg">₹{v.dropRate}</span>
-                                            <span className="text-[10px] text-slate-400 font-bold uppercase">per km</span>
+                                            <div className="relative inline-block w-20">
+                                                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">₹</span>
+                                                <input 
+                                                    type="number" 
+                                                    value={customRates[v.id]?.drop}
+                                                    onChange={(e) => handleRateChange(v.id, 'drop', e.target.value)}
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3.5 pr-1 py-1 text-sm font-black text-slate-800 outline-none focus:border-blue-400 text-center"
+                                                />
+                                            </div>
+                                            <span className="block text-[8px] text-slate-400 font-bold uppercase mt-0.5">per km</span>
                                         </td>
                                         <td className="p-4 text-right">
-                                            <span className="block font-black text-slate-800 text-lg">₹{v.roundRate}</span>
-                                            <span className="text-[10px] text-slate-400 font-bold uppercase">per km</span>
+                                            <div className="relative inline-block w-20">
+                                                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">₹</span>
+                                                <input 
+                                                    type="number" 
+                                                    value={customRates[v.id]?.round}
+                                                    onChange={(e) => handleRateChange(v.id, 'round', e.target.value)}
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3.5 pr-1 py-1 text-sm font-black text-slate-800 outline-none focus:border-blue-400 text-center"
+                                                />
+                                            </div>
+                                            <span className="block text-[8px] text-slate-400 font-bold uppercase mt-0.5">per km</span>
                                         </td>
                                         <td className="p-4 text-right hidden md:table-cell">
                                             <span className="font-bold text-slate-700">₹{v.batta}</span>
@@ -108,13 +228,25 @@ const TariffPage = () => {
                                             <span className="font-bold text-slate-700">{v.minKm} KM</span>
                                         </td>
                                         <td className="p-4 text-center">
-                                            <a
-                                                href={`/calculator/cab`}
-                                                className="inline-flex items-center gap-1 bg-[#0047AB] text-white px-4 py-3 rounded-xl shadow-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-800 transition-all active:scale-[0.98]"
-                                            >
-                                                Calculate
-                                                <ArrowRight size={12} />
-                                            </a>
+                                            <div className="flex items-center justify-center gap-2">
+                                                <a
+                                                    href={`/calculator/cab`}
+                                                    className="inline-flex items-center gap-1 bg-[#0047AB] text-white px-3 py-2.5 rounded-xl shadow-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-800 transition-all active:scale-[0.98]"
+                                                >
+                                                    Calc
+                                                    <ArrowRight size={10} />
+                                                </a>
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedVehicle(v);
+                                                        setIsQuoteModalOpen(true);
+                                                    }}
+                                                    className="inline-flex items-center gap-1 bg-emerald-600 text-white px-3 py-2.5 rounded-xl shadow-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all active:scale-[0.98]"
+                                                >
+                                                    <Share2 size={10} />
+                                                    Quote
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -146,11 +278,29 @@ const TariffPage = () => {
                             <div className="grid grid-cols-2 gap-2 mb-2.5">
                                 <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
                                     <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">One Way</p>
-                                    <p className="text-sm font-bold text-slate-700">₹{v.dropRate}<span className="text-[8px] text-slate-400 font-medium ml-0.5">/km</span></p>
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-xs font-bold text-slate-400">₹</span>
+                                        <input 
+                                            type="number" 
+                                            value={customRates[v.id]?.drop}
+                                            onChange={(e) => handleRateChange(v.id, 'drop', e.target.value)}
+                                            className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-700 outline-none"
+                                        />
+                                        <span className="text-[8px] text-slate-400 font-medium whitespace-nowrap">/ km</span>
+                                    </div>
                                 </div>
                                 <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
                                     <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Round Trip</p>
-                                    <p className="text-sm font-bold text-slate-700">₹{v.roundRate}<span className="text-[8px] text-slate-400 font-medium ml-0.5">/km</span></p>
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-xs font-bold text-slate-400">₹</span>
+                                        <input 
+                                            type="number" 
+                                            value={customRates[v.id]?.round}
+                                            onChange={(e) => handleRateChange(v.id, 'round', e.target.value)}
+                                            className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-700 outline-none"
+                                        />
+                                        <span className="text-[8px] text-slate-400 font-medium whitespace-nowrap">/ km</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -158,13 +308,25 @@ const TariffPage = () => {
                                 <div className="text-[9px] font-bold text-slate-500">
                                     Driver Bata: <span className="text-slate-700 font-bold">₹{v.batta}</span>
                                 </div>
-                                <a
-                                    href={`/taxi-fare-calculator`}
-                                    className="inline-flex items-center gap-1 bg-[#0047AB] text-white px-3 py-1.5 rounded-lg shadow-sm text-[9px] font-bold uppercase tracking-widest hover:bg-blue-800 transition-all active:scale-[0.98]"
-                                >
-                                    Calculate
-                                    <ArrowRight size={10} />
-                                </a>
+                                <div className="flex items-center gap-2">
+                                    <a
+                                        href={`/taxi-fare-calculator`}
+                                        className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-[0.98]"
+                                    >
+                                        Calc
+                                        <ArrowRight size={10} />
+                                    </a>
+                                    <button
+                                        onClick={() => {
+                                            setSelectedVehicle(v);
+                                            setIsQuoteModalOpen(true);
+                                        }}
+                                        className="inline-flex items-center gap-1 bg-emerald-600 text-white px-3 py-1.5 rounded-lg shadow-sm text-[9px] font-bold uppercase tracking-widest hover:bg-emerald-700 transition-all active:scale-[0.98]"
+                                    >
+                                        <Share2 size={10} />
+                                        Quote
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -305,6 +467,87 @@ const TariffPage = () => {
                     </div>
                 </div>
             </main >
+
+            {/* Quotation Modal */}
+            {isQuoteModalOpen && selectedVehicle && (
+                <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsQuoteModalOpen(false)}>
+                    <div className="bg-white w-full max-w-sm rounded-[24px] overflow-hidden shadow-2xl animate-zoom-in" onClick={e => e.stopPropagation()}>
+                        <div className="bg-emerald-600 p-6 text-white text-center relative">
+                            <button 
+                                onClick={() => setIsQuoteModalOpen(false)}
+                                className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3 backdrop-blur-md">
+                                <FileDown size={32} className="text-white" />
+                            </div>
+                            <h3 className="text-xl font-black uppercase tracking-tight">Generate Quote</h3>
+                            <p className="text-emerald-100 text-[10px] font-bold uppercase tracking-widest mt-1">Professional Letterhead Export</p>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center justify-between">
+                                <div>
+                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Selected Model</p>
+                                    <p className="text-sm font-black text-slate-800 uppercase">{selectedVehicle.name}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-black text-emerald-600">₹{customRates[selectedVehicle.id].drop}/km</p>
+                                    <p className="text-[8px] font-bold text-slate-400 uppercase">Custom Rate</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">Customer Name</label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300">
+                                        <User size={16} />
+                                    </span>
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        value={customerName}
+                                        onChange={e => setCustomerName(e.target.value)}
+                                        placeholder="e.g. John Doe"
+                                        className="w-full h-12 bg-slate-50 rounded-2xl pl-10 pr-4 font-bold text-sm border-2 border-transparent focus:border-emerald-500 outline-none transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">Phone Number (Optional)</label>
+                                <input
+                                    type="tel"
+                                    value={customerPhone}
+                                    onChange={e => setCustomerPhone(e.target.value)}
+                                    placeholder="e.g. 9876543210"
+                                    className="w-full h-12 bg-slate-50 rounded-2xl px-4 font-bold text-sm border-2 border-transparent focus:border-emerald-500 outline-none transition-all"
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleGenerateQuote}
+                                disabled={!customerName || isGenerating}
+                                className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-[18px] font-black uppercase text-[12px] tracking-widest shadow-lg shadow-emerald-100 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-2"
+                            >
+                                {isGenerating ? (
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        <span>Designing...</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Share2 size={18} />
+                                        Share PDF Quote
+                                    </>
+                                )}
+                            </button>
+                            <p className="text-[9px] text-slate-400 font-bold text-center uppercase tracking-wider">Includes terms & signature automatically</p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };

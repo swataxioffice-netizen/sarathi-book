@@ -62,20 +62,21 @@ export async function chatWithSarathi(message: string, history: { role: "user" |
             const result = await chat.sendMessage(message);
             const response = await result.response;
             return response.text();
-        } catch (error: any) {
-            console.warn(`⚠️ Model ${modelName} failed:`, error.message);
+        } catch (error: unknown) {
+            const err = error as { message?: string };
+            console.warn(`⚠️ Model ${modelName} failed:`, err.message);
 
             // Handle Quota/Enablement Error (The 429 'limit: 0' issue)
-            if (error.message?.includes('429') || error.message?.includes('quota')) {
+            if (err.message?.includes('429') || err.message?.includes('quota')) {
                 return "⚠️ AI Quota Error: Your API key has '0' limit. Please ENABLE 'Generative Language API' in Google Cloud Console for this project.";
             }
 
-            if (error.message?.includes('API key')) {
+            if (err.message?.includes('API key')) {
                 return "⚠️ API Key Error: Please ensure your key in .env is correct and has Gemini permissions.";
             }
 
             if (modelName === modelsToTry[modelsToTry.length - 1]) {
-                return `⚠️ AI Error: ${error.message || 'Connection failed'}. Please check your Google AI project settings.`;
+                return `⚠️ AI Error: ${err.message || 'Connection failed'}. Please check your Google AI project settings.`;
             }
             continue;
         }

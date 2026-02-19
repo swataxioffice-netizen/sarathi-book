@@ -5,7 +5,8 @@ self.onmessage = (e: MessageEvent) => {
     try {
         const result = calculateFare(...(args as Parameters<typeof calculateFare>));
         self.postMessage({ id, result });
-    } catch (error: any) {
-        self.postMessage({ id, error: error.message });
+    } catch (error: unknown) {
+        const err = error as { message?: string };
+        self.postMessage({ id, error: err.message });
     }
 };

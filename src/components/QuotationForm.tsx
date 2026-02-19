@@ -26,6 +26,21 @@ import { calculateGST, determineGSTType, GSTRate, GSTBreakdown } from '../utils/
 // import { useAdProtection } from '../hooks/useAdProtection';
 import { Suspense } from 'react';
 
+interface TariffVehicle {
+    name: string;
+    is_heavy_vehicle: boolean;
+    min_km_per_day: number;
+    round_trip_rate: number;
+    one_way_rate: number;
+    driver_bata: number;
+    local_2hr_pkg: number;
+    local_4hr_pkg: number;
+    local_8hr_pkg: number;
+    local_12hr_pkg: number;
+    extra_hr_rate: number;
+    min_drop_km: number;
+}
+
 
 
 // Reusing types from TripForm but adapted for Quotation context if needed, or just using local interfaces
@@ -189,7 +204,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
         else if (selectedVehicleType === 'tempo') cat = 'tempo';
         else if (selectedVehicleType === 'suv') cat = 'suv';
 
-        return (TARIFFS.vehicles as Record<string, any>)[cat] || TARIFFS.vehicles.sedan;
+        return (TARIFFS.vehicles as Record<string, TariffVehicle>)[cat] || TARIFFS.vehicles.sedan;
     }, [selectedVehicleType]);
 
     // Local Time Log
@@ -308,7 +323,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
 
         const timer = setTimeout(autoCalculateTrip, 1000);
         return () => clearTimeout(timer);
-    }, [fromLoc, toLoc, fromCoords, toCoords, mode, selectedVehicleType, manualPermit, manualParking, manualToll, manualHillStation]);
+    }, [fromLoc, toLoc, fromCoords, toCoords, mode, selectedVehicleType, manualPermit, manualParking, manualToll, manualHillStation, days]);
 
     // Enforce Min Days
     useEffect(() => {
@@ -725,7 +740,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                             {customLineItems.map((item, idx) => (
                                 <div key={idx} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 relative group">
                                     <div className="flex gap-2">
-                                        <div className="flex-[3]">
+                                        <div className="flex-3">
                                             <div className="text-[8px] text-slate-400 uppercase font-bold mb-0.5 ml-1 leading-none">Description</div>
                                             <input
                                                 type="text"
@@ -988,7 +1003,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                                                                 setLocalPackageHours(2); setLocalPackageKm(20); setDistanceOverride('20');
                                                             }
                                                         }}
-                                                        className={`min-w-[70px] flex-shrink-0 flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all snap-start
+                                                        className={`min-w-[70px] shrink-0 flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all snap-start
                                                         ${hourlyPackage === pkg.id
                                                                 ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200 ring-1 ring-indigo-600 ring-offset-1'
                                                                 : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600'}
@@ -1051,7 +1066,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
 
             <div className="flex gap-2.5">
                 <button onClick={handleBack} className="flex-1 h-12 border-2 border-slate-100 text-slate-400 font-black rounded-2xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-2"><ChevronLeft size={14} /> Back</button>
-                <div className="flex-[3] flex gap-2">
+                <div className="flex-3 flex gap-2">
                     {mode === 'custom' && (
                         <button onClick={handlePreview} disabled={customLineItems.length === 0} className="flex-1 h-12 border-2 border-indigo-600 text-indigo-600 font-black rounded-2xl uppercase text-[10px] tracking-[0.2em] flex items-center justify-center hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed">
                             PREVIEW
@@ -1126,7 +1141,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                     </div>
                     {selectedChargeType && (
                         <div className="flex gap-2">
-                            {selectedChargeType === 'Custom' && <input placeholder="Name" className="tn-input h-10 flex-[2]" value={customChargeName} onChange={e => setCustomChargeName(e.target.value)} autoFocus />}
+                            {selectedChargeType === 'Custom' && <input placeholder="Name" className="tn-input h-10 flex-2" value={customChargeName} onChange={e => setCustomChargeName(e.target.value)} autoFocus />}
                             <input type="number" placeholder="Amt" className="tn-input h-10 flex-1 font-black" value={customChargeAmount} onChange={e => setCustomChargeAmount(e.target.value)} />
                             <button onClick={handleAddCharge} className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center"><Plus size={16} /></button>
                         </div>
@@ -1149,7 +1164,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
 
             <div className="flex gap-2.5">
                 <button onClick={handleBack} className="flex-1 h-12 border-2 border-slate-100 text-slate-400 font-black rounded-2xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-2"><ChevronLeft size={14} /> Back</button>
-                <div className="flex-[3] flex gap-2">
+                <div className="flex-3 flex gap-2">
                     <button onClick={handleNext} className="flex-1 bg-indigo-600 text-white h-12 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] shadow-lg shadow-indigo-200 hover:bg-indigo-700">CONTINUE</button>
                 </div>
             </div>
@@ -1181,8 +1196,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                         <textarea placeholder="Address" className="tn-input h-16 w-full py-2 resize-none bg-slate-50 border-slate-200 text-xs text-slate-900" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} />
                     </div>
                     <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">GSTIN (Optional)</label>
-                        <input placeholder="GSTIN" className="tn-input h-10 w-full uppercase bg-slate-50 border-slate-200 text-xs text-slate-900" value={customerGst} onChange={e => setCustomerGst(e.target.value)} />
+                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Client GSTIN (For B2B Credit)</label>
+                        <input placeholder="Leave empty for Consumer" className="tn-input h-10 w-full uppercase bg-slate-50 border-slate-200 text-xs text-slate-900" value={customerGst} onChange={e => setCustomerGst(e.target.value)} />
                     </div>
                 </div>
 
@@ -1307,7 +1322,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
 
             <div className="flex gap-2.5">
                 <button onClick={handleBack} className="flex-1 h-10 border border-slate-200 text-slate-400 font-bold rounded-xl uppercase text-[9px] tracking-wide flex items-center justify-center gap-2 hover:bg-slate-50"><ChevronLeft size={14} /> Back</button>
-                <div className="flex-[3] flex gap-2">
+                <div className="flex-3 flex gap-2">
                     <button onClick={handlePreview} disabled={isSubmitting} className="flex-1 border border-indigo-600 text-indigo-600 h-10 rounded-xl text-[10px] uppercase font-bold tracking-wide hover:bg-indigo-50 transition-colors disabled:opacity-50">PREVIEW</button>
                     <button onClick={handleShare} disabled={isSubmitting} className="flex-1 bg-indigo-600 text-white h-10 rounded-xl text-[10px] uppercase font-bold tracking-wide shadow-md shadow-indigo-200 hover:bg-indigo-700 disabled:opacity-50">
                         {isSubmitting ? (

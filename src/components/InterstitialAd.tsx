@@ -13,6 +13,7 @@ const InterstitialAd: React.FC<InterstitialAdProps> = ({ isOpen, onClose, onComp
 
     useEffect(() => {
         if (isOpen) {
+            // eslint-disable-next-line
             setTimeLeft(5);
             setCanSkip(false);
             const timer = setInterval(() => {
@@ -28,10 +29,10 @@ const InterstitialAd: React.FC<InterstitialAdProps> = ({ isOpen, onClose, onComp
 
             // Initialize Ad
             try {
-                // @ts-ignore
+                // @ts-expect-error Window adsbygoogle type definition missing
                 (window.adsbygoogle = window.adsbygoogle || []).push({});
-            } catch (e) {
-                console.error('AdSense error', e);
+            } catch {
+                console.error('AdSense error');
             }
 
             return () => clearInterval(timer);
@@ -41,7 +42,7 @@ const InterstitialAd: React.FC<InterstitialAdProps> = ({ isOpen, onClose, onComp
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/95 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-120 flex items-center justify-center bg-slate-900/95 backdrop-blur-sm p-4 animate-in fade-in duration-200">
             <div className="w-full max-w-sm bg-white rounded-3xl overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
 
                 {/* Header / Top Bar */}

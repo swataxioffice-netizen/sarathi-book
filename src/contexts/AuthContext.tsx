@@ -6,15 +6,19 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     isAdmin: boolean;
+    originalUser: User | null;
     signInWithGoogle: () => Promise<void>;
     signInWithIdToken: (token: string) => Promise<void>;
     signOut: () => Promise<void>;
+    impersonateUser: (userId: string) => Promise<void>;
+    stopImpersonation: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
+    const [originalUser, setOriginalUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
     // Sync profile to database
@@ -44,8 +48,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
                 const current = session?.user ?? null;
                 console.log('Auth: Initial user state:', current ? current.email : 'Guest');
-                setUser(current);
-                // Non-blocking sync to prevent hanging the entire app initialization
+                
+                // Handle impersonation recovery on refresh
+                const impersonatedId = localStorage.getItem('impersonated_user_id');
+                const isAdmin = current?.email && ['swa.taxioffice@gmail.com', 'customercare@swataxioffice.com'].includes(current.email);
+
+                if (impersonatedId && isAdmin) {
+                    console.log('Auth: Recovering impersonation for user:', impersonatedId);
+                    const { data: profile } = await supabase.from('profiles').select('*').eq('id', impersonatedId).single();
+                    if (profile) {
+                        const impersonated: User = {
+                            id: profile.id,
+                            aud: 'authenticated',
+                            role: 'authenticated',
+                            email: profile.email,
+                            email_confirmed_at: new Date().toISOString(),
+                            phone: profile.phone,
+                            confirmation_sent_at: '',
+                            confirmed_at: new Date().toISOString(),
+                            last_sign_in_at: new Date().toISOString(),
+                            app_metadata: { provider: 'email' },
+                            user_metadata: {
+                                full_name: profile.name,
+                                avatar_url: profile.avatar_url,
+                                ...profile
+                            },
+                            created_at: profile.created_at || new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                            is_anonymous: false
+                        };
+                        setOriginalUser(current);
+                        setUser(impersonated);
+                    } else {
+                        localStorage.removeItem('impersonated_user_id');
+                        setUser(current);
+                    }
+                } else {
+                    setUser(current);
+                }
+
                 if (current) ensureProfile(current);
             } catch (err) {
                 console.error('Auth: Critical init failure:', err);
@@ -67,15 +108,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Auth state listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             console.log('Auth: State Change Event ->', event);
+            
+            // If we sign out the TRUE user, clear impersonation
+            if (event === 'SIGNED_OUT') {
+                localStorage.removeItem('impersonated_user_id');
+                setOriginalUser(null);
+                setUser(null);
+                setLoading(false);
+                return;
+            }
+
+            // Ignore auth state changes if we are currently impersonating
+            if (localStorage.getItem('impersonated_user_id')) return;
+
             const current = session?.user ?? null;
 
             if (event === 'SIGNED_IN') {
                 console.log('Auth: User signed in:', current?.email);
                 setUser(current);
-                if (current) ensureProfile(current); // Note: we still might want to wait here if we need sync before render, but better not to hang
-            } else if (event === 'SIGNED_OUT') {
-                console.log('Auth: User signed out');
-                setUser(null);
+                if (current) ensureProfile(current); 
             } else if (event === 'USER_UPDATED') {
                 setUser(current);
             }
@@ -103,13 +154,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.error('Auth: Google OAuth Error:', error.message);
                 throw error;
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const error = err as Error;
             console.error('Auth: Google Sign-In failed:', err);
             // Check for common redirect errors
-            if (err.message?.includes('redirect_uri')) {
+            if (error.message?.includes('redirect_uri')) {
                 alert(`Auth Error: This URL (${window.location.origin}) might not be whitelisted in your Supabase Auth settings.`);
             } else {
-                alert('Google Sign-In failed: ' + (err.message || 'Unknown error'));
+                alert('Google Sign-In failed: ' + (error.message || 'Unknown error'));
             }
             throw err;
         }
@@ -124,6 +176,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const signOut = async () => {
+        if (originalUser || localStorage.getItem('impersonated_user_id')) {
+            // If impersonating, just stop impersonating
+            stopImpersonation();
+            return;
+        }
         setUser(null);
         try {
             await supabase.auth.signOut();
@@ -133,15 +190,92 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         window.location.href = '/';
     };
 
-    const isAdmin = !!(user?.email && ['swa.taxioffice@gmail.com'].includes(user.email));
+    const impersonateUser = async (userId: string) => {
+        // Security check: Must assume current actual user is admin
+        const currentUser = originalUser || user;
+        const currentIsAdmin = !!(currentUser?.email && ['swa.taxioffice@gmail.com', 'customercare@swataxioffice.com'].includes(currentUser.email));
+
+        if (!currentIsAdmin) {
+            console.error("Unauthorized impersonation attempt");
+            return;
+        }
+
+        try {
+            // Fetch target profile
+            const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+
+            if (error) throw error;
+            if (!profile) throw new Error("User profile not found");
+
+            // Store original user if not already stored
+            if (!originalUser) {
+                setOriginalUser(user);
+            }
+            
+            // Persist impersonation
+            localStorage.setItem('impersonated_user_id', userId);
+
+            // Construct valid User object
+            const impersonated: User = {
+                id: profile.id,
+                aud: 'authenticated',
+                role: 'authenticated',
+                email: profile.email,
+                email_confirmed_at: new Date().toISOString(),
+                phone: profile.phone,
+                confirmation_sent_at: '',
+                confirmed_at: new Date().toISOString(),
+                last_sign_in_at: new Date().toISOString(),
+                app_metadata: { provider: 'email' },
+                user_metadata: {
+                    full_name: profile.name,
+                    avatar_url: profile.avatar_url,
+                    ...profile // Access to other profile fields if needed
+                },
+                created_at: profile.created_at || new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                is_anonymous: false
+            };
+
+            setUser(impersonated);
+            console.log(`Impersonating user: ${profile.email}`);
+            // Force reload to refresh data
+            window.location.href = '/dashboard';
+
+        } catch (err: unknown) {
+            const error = err as Error;
+            console.error("Impersonation failed:", err);
+            alert("Failed to impersonate user: " + error.message);
+        }
+    };
+
+    const stopImpersonation = () => {
+        localStorage.removeItem('impersonated_user_id');
+        if (originalUser) {
+            console.log("Stopping impersonation, reverting to:", originalUser.email);
+            setUser(originalUser);
+            setOriginalUser(null);
+            window.location.href = '/admin';
+        } else {
+            // Fallback if originalUser was lost from state but localStorage was present
+            window.location.href = '/admin';
+        }
+    };
+
+    // Admin check looks at ORIGINAL user if impersonating
+    const checkUser = originalUser || user;
+    const isAdmin = !!(checkUser?.email && ['swa.taxioffice@gmail.com', 'customercare@swataxioffice.com'].includes(checkUser.email));
 
     const value = {
         user,
         loading,
         isAdmin,
+        originalUser,
         signInWithGoogle,
         signInWithIdToken,
-        signOut
+        signOut,
+        impersonateUser,
+        stopImpersonation
     };
 
     return (

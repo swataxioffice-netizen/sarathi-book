@@ -15,7 +15,7 @@ import {
     Car, ChevronLeft,
     RotateCcw, Trash2, PenLine,
     StickyNote, Check, Share2,
-    Camera
+    Camera, Eye
 } from 'lucide-react';
 import { generateId } from '../utils/uuid';
 import { generateReceiptPDF, SavedQuotation, shareReceipt } from '../utils/pdf';
@@ -25,7 +25,7 @@ import PDFPreviewModal from './PDFPreviewModal';
 import { calculateDistance } from '../utils/googleMaps';
 import { calculateAdvancedRoute } from '../utils/routesApi';
 import { performOcr, parseOdometer } from '../utils/visionApi';
-import { calculateGST, determineGSTType, GSTRate, GSTBreakdown, getFinancialYear } from '../utils/gstUtils';
+import { calculateGST, GSTRate, GSTBreakdown, getFinancialYear } from '../utils/gstUtils';
 
 // --- Types ---
 
@@ -148,12 +148,20 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerGst, setCustomerGst] = useState('');
     const [billingAddress, setBillingAddress] = useState('');
-    const [includeGst, setIncludeGst] = useState(false);
+    const [includeGst, setIncludeGst] = useState(true);
+
+    // Auto-disable GST if not configured
+    useEffect(() => {
+        if (!settings?.gstin) {
+            setIncludeGst(false);
+        }
+    }, [settings?.gstin]);
     const [rcmEnabled, setRcmEnabled] = useState(false);
     const [terms, setTerms] = useState<string[]>([]);
     const [newTerm, setNewTerm] = useState('');
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
     const [invoiceNo, setInvoiceNo] = useState('');
+    const [customTripType, setCustomTripType] = useState('Taxi Service');
     // 5% fixed as per requirement
     const gstRate: GSTRate = 5;
 
@@ -229,10 +237,14 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     }, [vehicleCategory]);
 
     const nextInvoiceNo = useMemo(() => {
-        // Standard GST Format: INV/FY/SEQ (e.g., INV/25-26/001)
+        // Standard GST Format: INV/FY/SEQ vs Non-GST: BILL/FY/SEQ
         const date = new Date(invoiceDate);
         const fy = getFinancialYear(date);
-        const prefix = `INV/${fy}/`;
+        
+        // Use separate prefixes to maintain respective ordering
+        // INV - for Valid GST Tax Invoices (Primary)
+        // BILL - for Non-GST / Bill of Supply
+        const prefix = includeGst ? `INV/${fy}/` : `BILL/${fy}/`;
 
         if (!trips || trips.length === 0) return `${prefix}001`;
 
@@ -247,7 +259,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
         const max = sequences.length > 0 ? Math.max(...sequences) : 0;
         return `${prefix}${(max + 1).toString().padStart(3, '0')}`;
-    }, [invoiceDate, trips]);
+    }, [invoiceDate, trips, includeGst]);
 
     useEffect(() => {
         setInvoiceNo(nextInvoiceNo);
@@ -277,7 +289,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     // Auto Distance Calculation
     useEffect(() => {
         const autoCalculateTrip = async () => {
-            if (mode === 'local' || mode === 'custom' || isOdometerMode) {
+            if (mode === 'local' || isOdometerMode) {
                 setIsFetchingKM(false);
                 return;
             }
@@ -291,7 +303,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 if (pickupCoords && dropCoords) {
                     const advanced = await calculateAdvancedRoute(pickupCoords, dropCoords);
                     if (advanced) {
-                        const multiplier = mode === 'outstation' ? 2 : 1;
+                        const multiplier = (mode === 'outstation' || (mode === 'custom' && customTripType === 'Round Trip')) ? 2 : 1;
                         const distVal = advanced.distanceKm * multiplier;
                         setDistanceOverride(distVal.toString());
 
@@ -304,14 +316,14 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                     } else {
                         const res = await calculateDistance(origin, destination);
                         if (res && res.distance) {
-                            const multiplier = mode === 'outstation' ? 2 : 1;
+                            const multiplier = (mode === 'outstation' || (mode === 'custom' && customTripType === 'Round Trip')) ? 2 : 1;
                             setDistanceOverride((res.distance * multiplier).toString());
                         }
                     }
                 } else {
                     const res = await calculateDistance(fromLoc, toLoc);
                     if (res && res.distance) {
-                        const multiplier = mode === 'outstation' ? 2 : 1;
+                        const multiplier = (mode === 'outstation' || (mode === 'custom' && customTripType === 'Round Trip')) ? 2 : 1;
                         setDistanceOverride((res.distance * multiplier).toString());
                     }
                 }
@@ -333,7 +345,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
         const timer = setTimeout(autoCalculateTrip, 1000);
         return () => clearTimeout(timer);
-    }, [fromLoc, toLoc, pickupCoords, dropCoords, mode, isOdometerMode, selectedVehicleId, days, manualPermit, manualParking, manualToll]);
+    }, [fromLoc, toLoc, pickupCoords, dropCoords, mode, isOdometerMode, selectedVehicleId, days, manualPermit, manualParking, manualToll, customTripType]);
 
     // Odometer sync
     useEffect(() => {
@@ -499,9 +511,17 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         return () => clearTimeout(timer);
     }, [mode, selectedVehicleId, distanceOverride, days, localPackageHours, hourlyPackage, customRate, toll, parking, permit, driverBatta, nightCharge, hillStationCharge, petCharge, extraItems, includeGst, manualDriverBatta, manualHillStation, customLineItems]);
 
-    const handleNext = () => setStep(s => Math.min(3, s + 1));
+    const handleNext = () => {
+        if (step === 1 && mode === 'custom') {
+            setStep(3);
+        } else {
+            setStep(s => Math.min(3, s + 1));
+        }
+    };
     const handleBack = () => {
-        if (step === 1) {
+        if (step === 3 && mode === 'custom') {
+            setStep(1);
+        } else if (step === 1) {
             setMode(null);
             setStep(0);
         } else {
@@ -590,6 +610,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             id: previewId, invoiceNo: previewInvoiceNo, customerName: customerName || 'Valued Customer',
             customerPhone, customerGst, billingAddress, from: fromLoc, to: toLoc, date: invoiceDate,
             mode: 'custom',
+            customTripType: mode === 'custom' ? customTripType : undefined,
             totalFare: res.total, fare: res.fare, gst: res.gst,
             extraItems: pdfItems,
             previewStep: step,
@@ -691,6 +712,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             startTime: mode === 'local' ? startTimeLog : undefined,
             endTime: mode === 'local' ? endTimeLog : undefined,
             mode: 'custom',
+            customTripType: mode === 'custom' ? customTripType : undefined,
             totalFare: res.total, fare: res.fare, gst: res.gst,
             extraItems: pdfItems,
             vehicleNumber: currentV?.number,
@@ -875,13 +897,22 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                 <StickyNote size={12} className="text-blue-600" /> Invoice Details
                             </h3>
-                            <button
-                                onClick={() => handleShare()}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg active:scale-95 transition-all outline-none"
-                            >
-                                <span className="text-[9px] font-black uppercase tracking-wider">Download</span>
-                                <Share2 size={12} strokeWidth={2.5} />
-                            </button>
+                            <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-all ${includeGst ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-slate-50 border-slate-200'}`}>
+                                <span className={`text-[9px] font-black uppercase tracking-wider ${includeGst ? 'text-blue-700' : 'text-slate-400'}`}>
+                                    {includeGst ? 'GST Invoice' : 'Non-GST Bill'}
+                                </span>
+                                <button onClick={() => {
+                                    if (!settings.gstin) {
+                                        alert('Please add your GSTIN in Settings to enable Forward Charge GST.');
+                                        return;
+                                    }
+                                    const newState = !includeGst;
+                                    setIncludeGst(newState);
+                                    if (newState) setRcmEnabled(false);
+                                }} className={`w-9 h-5 rounded-full relative transition-colors ${includeGst ? 'bg-blue-600' : 'bg-slate-300'}`}>
+                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all shadow-sm ${includeGst ? 'left-5' : 'left-1'}`} />
+                                </button>
+                            </div>
                         </div>
                         <div className="flex gap-2">
                             <div className="flex-1 space-y-0.5">
@@ -903,6 +934,30 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                     className="tn-input h-8 w-full bg-slate-50 border-slate-200 text-xs font-bold text-center rounded-lg"
                                 />
                             </div>
+                        </div>
+                        <div className="pt-2 border-t border-slate-50 mt-2 space-y-0.5">
+                             <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Trip Description</label>
+                             <select 
+                                 value={customTripType} 
+                                 onChange={(e) => {
+                                     setCustomTripType(e.target.value);
+                                     // Optional: Auto-update the first line item description if it's generic
+                                     if (customLineItems.length > 0 && (customLineItems[0].description === 'Service Charge' || customLineItems[0].description.includes('Charges'))) {
+                                         const newItems = [...customLineItems];
+                                         newItems[0].description = `${e.target.value} Charges`;
+                                         setCustomLineItems(newItems);
+                                     }
+                                 }}
+                                 className="tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs font-bold rounded-lg px-2"
+                             >
+                                 <option value="Taxi Service">General Taxi Service</option>
+                                 <option value="One Way Drop">One Way Drop</option>
+                                 <option value="Round Trip">Round Trip</option>
+                                 <option value="Local Rental">Local Rental</option>
+                                 <option value="Airport Transfer">Airport Transfer</option>
+                                 <option value="Corporate Duty">Corporate Duty</option>
+                                 <option value="Wedding Event">Wedding Event</option>
+                             </select>
                         </div>
                     </div>
 
@@ -1010,19 +1065,19 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                     </div>
                                 </div>
                             ))}
-                            <div className="flex justify-between items-center px-3 py-2.5 bg-slate-900 text-white rounded-xl shadow-lg shadow-slate-200 mt-2">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">Total Amount</span>
-                                <span className="text-sm font-black tracking-wide">
-                                    ₹{customLineItems.reduce((acc, item) => acc + item.amount, 0).toLocaleString()}
-                                </span>
-                            </div>
-
                             <button
                                 onClick={() => setCustomLineItems([...customLineItems, { description: '', sac: '9966', qty: 1, rate: 0, amount: 0 }])}
                                 className="w-full py-2.5 flex items-center justify-center gap-2 text-[9px] font-black text-blue-600 bg-blue-50/50 rounded-xl border-2 border-dashed border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-all uppercase tracking-widest mt-2"
                             >
                                 <Plus size={12} strokeWidth={3} /> Add Another Line Item
                             </button>
+
+                            <div className="flex justify-between items-center px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-2">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Total Amount</span>
+                                <span className="text-xl font-black tracking-tight text-slate-900">
+                                    ₹{customLineItems.reduce((acc, item) => acc + item.amount, 0).toLocaleString()}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -1073,6 +1128,19 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                 onMapClick={() => setShowMap(true)}
                             />
                         </div>
+
+                        {!isOdometerMode && (
+                            <div className="pt-2 border-t border-slate-50 space-y-0.5">
+                                <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Distance Travelled (KM)</label>
+                                <input
+                                    type="number"
+                                    value={distanceOverride}
+                                    onChange={(e) => setDistanceOverride(e.target.value)}
+                                    className="tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg"
+                                    placeholder="e.g. 120"
+                                />
+                            </div>
+                        )}
 
                         {isOdometerMode && (
                             <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-50">
@@ -1253,7 +1321,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                                         setLocalPackageHours(2); setLocalPackageKm(20); setDistanceOverride('20');
                                                     }
                                                 }}
-                                                className={`min-w-[64px] flex-shrink-0 flex flex-col items-center justify-center py-1.5 px-1 rounded-lg border transition-all snap-start
+                                                className={`min-w-[64px] shrink-0 flex flex-col items-center justify-center py-1.5 px-1 rounded-lg border transition-all snap-start
                                                         ${hourlyPackage === pkg.id
                                                         ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-100'
                                                         : 'bg-white border-slate-100 text-slate-500 hover:border-blue-200 active:bg-slate-50'}
@@ -1300,8 +1368,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 <button onClick={handleBack} className="flex-1 h-11 border border-slate-200 text-slate-500 font-black rounded-xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-1.5 active:bg-slate-50 transition-colors"><ChevronLeft size={14} /> Back</button>
                 <div className="flex-[2.5] flex gap-2">
                     {mode === 'custom' && (
-                        <button onClick={handlePreview} disabled={customLineItems.length === 0} className="flex-1 h-11 border-2 border-indigo-600 text-indigo-600 font-black rounded-xl uppercase text-[9px] tracking-widest flex items-center justify-center active:bg-indigo-50 disabled:opacity-30 transition-colors">
-                            PREVIEW
+                        <button onClick={handlePreview} disabled={customLineItems.length === 0} className="flex-1 h-11 border-2 border-indigo-600 text-indigo-600 font-black rounded-xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-2 active:bg-indigo-50 disabled:opacity-30 transition-colors">
+                            <Eye size={14} strokeWidth={2.5} /> PREVIEW
                         </button>
                     )}
                     <button onClick={handleNext} disabled={(mode !== 'custom' && (!selectedVehicleId || (!distanceOverride && mode !== 'local'))) || (mode === 'custom' && customLineItems.length === 0)} className="flex-1 tn-button-primary h-11 text-[10px] tracking-widest font-black uppercase shadow-lg shadow-blue-100 disabled:opacity-50">CONTINUE</button>
@@ -1386,7 +1454,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
                     {selectedChargeType && (
                         <div className="flex gap-2 animate-in slide-in-from-top-2">
-                            {selectedChargeType === 'Custom' && <input placeholder="Name" className="tn-input h-9 flex-[2] bg-white border-slate-200 font-bold text-xs rounded-lg" value={customChargeName} onChange={e => setCustomChargeName(e.target.value)} autoFocus />}
+                            {selectedChargeType === 'Custom' && <input placeholder="Name" className="tn-input h-9 flex-2 bg-white border-slate-200 font-bold text-xs rounded-lg" value={customChargeName} onChange={e => setCustomChargeName(e.target.value)} autoFocus />}
                             <input type="number" placeholder="Amt" className="tn-input h-9 flex-1 bg-white border-slate-200 font-bold text-xs rounded-lg text-center" value={customChargeAmount} onChange={e => setCustomChargeAmount(e.target.value)} />
                             <button onClick={handleAddCharge} className="w-9 h-9 bg-slate-900 text-white rounded-lg shadow-lg shadow-slate-200 flex items-center justify-center shrink-0">
                                 <Plus size={16} strokeWidth={3} />
@@ -1415,7 +1483,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             <div className="flex gap-2">
                 <button onClick={handleBack} className="flex-1 h-11 border border-slate-200 text-slate-500 font-black rounded-xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-1.5 active:bg-slate-50"><ChevronLeft size={14} /> Back</button>
                 <div className="flex-[2.5] flex gap-2">
-                    <button onClick={handlePreview} className="flex-1 border-2 border-[#0047AB] text-[#0047AB] h-11 rounded-xl text-[9px] uppercase font-black tracking-widest hover:bg-blue-50 transition-colors">PREVIEW</button>
+                    <button onClick={handlePreview} className="flex-1 border-2 border-[#0047AB] text-[#0047AB] h-11 rounded-xl text-[9px] uppercase font-black tracking-widest flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors"><Eye size={14} strokeWidth={2.5} /> PREVIEW</button>
                     <button onClick={handleNext} className="flex-1 tn-button-primary h-11 text-[9px] tracking-widest font-black uppercase rounded-xl">CONTINUE</button>
                 </div>
             </div>
@@ -1428,9 +1496,6 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-3">
                 <div className="flex justify-between items-center">
                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><UserCheck size={12} className="text-blue-600" /> Client Details</h3>
-                    <div className="bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Bill ID: <span className="text-blue-700">{invoiceNo.split('/').pop()}</span></span>
-                    </div>
                 </div>
                 <div className="space-y-2.5">
                     <div className="grid grid-cols-2 gap-2.5">
@@ -1440,7 +1505,17 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                         </div>
                         <div className="space-y-0.5">
                             <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Phone</label>
-                            <input placeholder="Phone" className="tn-input h-9 w-full bg-slate-50 border-slate-100 text-xs text-slate-900 font-bold rounded-lg px-2.5" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
+                            <input 
+                                placeholder="10-digit Mobile Number" 
+                                className={`tn-input h-9 w-full bg-slate-50 border-slate-100 text-xs text-slate-900 font-bold rounded-lg px-2.5 ${customerPhone && customerPhone.length !== 10 ? 'border-red-300 focus:border-red-400' : ''}`} 
+                                value={customerPhone} 
+                                type="tel"
+                                maxLength={10}
+                                onChange={e => {
+                                    const val = e.target.value.replace(/\D/g, '');
+                                    setCustomerPhone(val);
+                                }} 
+                            />
                         </div>
                     </div>
                     <div className="space-y-0.5">
@@ -1448,49 +1523,24 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                         <textarea placeholder="Line 1, City, State..." className="tn-input h-14 w-full py-2 resize-none bg-slate-50 border-slate-100 text-xs text-slate-900 font-bold rounded-lg px-2.5 leading-snug" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} />
                     </div>
                     <div className="space-y-0.5">
-                        <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Tax/GSTIN (Optional)</label>
-                        <input placeholder="27XXXXX..." className="tn-input h-9 w-full uppercase bg-slate-50 border-slate-100 text-xs text-slate-900 font-bold rounded-lg px-2.5" value={customerGst} onChange={e => setCustomerGst(e.target.value)} />
+                        <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Client GSTIN (For B2B Credit)</label>
+                        <input 
+                            placeholder="Leave empty for B2C/Consumer" 
+                            className={`tn-input h-9 w-full uppercase bg-slate-50 border-slate-100 text-xs text-slate-900 font-bold rounded-lg px-2.5 ${customerGst && customerGst.length !== 15 ? 'border-red-300 focus:border-red-400' : ''}`} 
+                            value={customerGst} 
+                            maxLength={15}
+                            onChange={e => {
+                                const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                                setCustomerGst(val);
+                            }} 
+                        />
+                        {customerGst && customerGst.length > 0 && customerGst.length !== 15 && (
+                            <p className="text-[9px] text-red-500 font-bold px-1">GSTIN must be 15 characters</p>
+                        )}
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2.5">
-                    <div className={`p-2 rounded-lg border transition-all flex flex-col gap-1.5 ${includeGst ? 'bg-blue-50 border-blue-200 shadow-sm shadow-blue-50' : 'bg-slate-50 border-slate-100'}`}>
-                        <div className="flex justify-between items-center w-full">
-                            <p className="text-[9px] font-black uppercase tracking-wider text-slate-700">GST Add</p>
-                            <button onClick={() => {
-                                if (!settings.gstin) {
-                                    alert('Please add your GSTIN in Settings to enable Forward Charge GST.');
-                                    return;
-                                }
-                                const newState = !includeGst;
-                                setIncludeGst(newState);
-                                if (newState) setRcmEnabled(false);
-                            }} className={`w-7 h-3.5 rounded-full relative transition-colors ${includeGst ? 'bg-blue-600' : 'bg-slate-300'}`}><div className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full transition-all ${includeGst ? 'left-4' : 'left-0.5'}`} /></button>
-                        </div>
-                        {includeGst && (
-                            <div className="flex items-center justify-between pt-1 border-t border-blue-100/50">
-                                <span className="text-[8px] font-black text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded uppercase leading-none">5%</span>
-                                <span className="text-[7px] font-black text-slate-400 uppercase leading-none">
-                                    {determineGSTType(settings.gstin, customerGst) === 'IGST' ? 'IGST' : 'CGST+SGST'}
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                    <div className={`p-2 rounded-lg border transition-all flex flex-col gap-1.5 ${rcmEnabled ? 'bg-orange-50 border-orange-200 shadow-sm shadow-orange-50' : 'bg-slate-50 border-slate-100'}`}>
-                        <div className="flex justify-between items-center w-full">
-                            <p className="text-[9px] font-black uppercase tracking-wider text-slate-700">RCM Mode</p>
-                            <button onClick={() => {
-                                if (!settings.gstin) {
-                                    alert('Please add your GSTIN in Settings to enable RCM.');
-                                    return;
-                                }
-                                const newState = !rcmEnabled;
-                                setRcmEnabled(newState);
-                                if (newState) setIncludeGst(false);
-                            }} className={`w-7 h-3.5 rounded-full relative transition-colors ${rcmEnabled ? 'bg-orange-600' : 'bg-slate-300'}`}><div className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full transition-all ${rcmEnabled ? 'left-4' : 'left-0.5'}`} /></button>
-                        </div>
-                    </div>
-                </div>
+
             </div>
 
             {/* Terms Section */}
@@ -1501,7 +1551,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 </div>
 
                 <div className="space-y-2">
-                    <div className="flex gap-2 p-1 bg-slate-50 rounded-lg max-h-32 overflow-y-auto custom-scrollbar flex-col">
+                    <div className="flex gap-2 p-1 bg-slate-50 rounded-lg max-h-60 overflow-y-auto custom-scrollbar flex-col">
                         {DEFAULT_TERMS.map((term, idx) => {
                             const isSelected = terms.includes(term);
                             return (
@@ -1549,20 +1599,31 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 </div>
             </div>
 
-            <div className="flex gap-2">
-                <button onClick={handleBack} className="flex-1 h-11 border border-slate-200 text-slate-500 font-black rounded-xl uppercase text-[9px] tracking-widest active:bg-slate-50">Back</button>
-                <div className="flex-[2.5] flex gap-2">
-                    <button onClick={handlePreview} disabled={isSubmitting} className="flex-1 border-2 border-[#0047AB] text-[#0047AB] h-11 rounded-xl text-[9px] uppercase font-black tracking-widest hover:bg-blue-50 transition-colors disabled:opacity-30">PREVIEW</button>
+            <div className="flex gap-2 h-11 mt-4">
+                <button 
+                    onClick={handleBack} 
+                    className="w-20 bg-white border border-slate-200 text-slate-500 font-black rounded-xl uppercase text-[9px] tracking-widest hover:bg-slate-50 active:scale-95 transition-all text-center"
+                >
+                    BACK
+                </button>
+                <div className="flex-1 flex gap-2">
+                    <button 
+                        onClick={handlePreview} 
+                        disabled={isSubmitting} 
+                        className="flex-1 border-2 border-[#0047AB] text-[#0047AB] bg-white rounded-xl text-[9px] uppercase font-black tracking-widest flex items-center justify-center gap-2 hover:bg-blue-50 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                        <Eye size={14} strokeWidth={2.5} /> PREVIEW
+                    </button>
                     <button
                         onClick={handleSaveAndShare}
                         disabled={isSubmitting}
-                        className="flex-1 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-lg shadow-blue-100 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                        className="flex-[1.5] bg-[#0047AB] text-white font-black text-[9px] uppercase tracking-widest rounded-xl shadow-lg shadow-blue-100 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50 hover:bg-blue-700"
                     >
                         {isSubmitting ? (
                             <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                         ) : (
                             <>
-                                <Share2 size={14} strokeWidth={3} />
+                                <Share2 size={14} strokeWidth={2.5} />
                                 SAVE & SHARE
                             </>
                         )}
@@ -1577,12 +1638,12 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             {/* Progress Header - Only show if mode selected */}
             {mode && (
                 <div className="flex items-center justify-between mb-4 px-6 bg-white py-3 rounded-2xl border border-slate-100 shadow-sm mx-1">
-                    {[1, 2, 3].map((s) => (
+                    {(mode === 'custom' ? [1, 3] : [1, 2, 3]).map((s, idx, arr) => (
                         <div key={s} className="flex items-center gap-2">
                             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black transition-all ${step === s ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 ring-2 ring-blue-100' : (step > s ? 'bg-green-500 text-white' : 'bg-slate-100 text-slate-300')}`}>
-                                {step > s ? <CheckCircle2 size={12} strokeWidth={3} /> : s}
+                                {step > s ? <CheckCircle2 size={12} strokeWidth={3} /> : idx + 1}
                             </div>
-                            {s < 3 && <div className={`h-0.5 w-8 sm:w-16 rounded-full transition-colors ${step > s ? 'bg-green-500' : 'bg-slate-100'}`} />}
+                            {idx < arr.length - 1 && <div className={`h-0.5 w-8 sm:w-16 rounded-full transition-colors ${step > s ? 'bg-green-500' : 'bg-slate-100'}`} />}
                         </div>
                     ))}
                 </div>

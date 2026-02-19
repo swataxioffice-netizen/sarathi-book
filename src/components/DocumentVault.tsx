@@ -38,7 +38,7 @@ const VEHICLE_DOC_TYPES = [
 
 
 
-const DocumentVault: React.FC<{ onStatsUpdate?: (stats: any) => void }> = ({ onStatsUpdate }) => {
+const DocumentVault: React.FC<{ onStatsUpdate?: (stats: { hasFullVehicle: boolean; hasFullDriver: boolean }) => void }> = ({ onStatsUpdate }) => {
     const { user } = useAuth();
     const { settings, setDocStats } = useSettings();
 
@@ -87,7 +87,7 @@ const DocumentVault: React.FC<{ onStatsUpdate?: (stats: any) => void }> = ({ onS
             clearTimeout(timer);
             setIsLoading(false);
         }
-    }, [user?.id]); // Depend on ID string, not object reference
+    }, [user]); // Depend on user object to re-fetch when it changes
 
     useEffect(() => {
         fetchDocuments();
@@ -182,10 +182,11 @@ const DocumentVault: React.FC<{ onStatsUpdate?: (stats: any) => void }> = ({ onS
                             expiry: formDate
                         }, user.id);
                     }
-                } catch (err: any) {
-                    console.error('Background Save Failed:', err);
+                } catch (err: unknown) {
+                    const error = err as { message?: string };
+                    console.error('Background Save Failed:', error);
                     setAllDocs(previousDocs); // Revert
-                    alert(`Save failed: ${err.message || 'Network error'}`);
+                    alert(`Save failed: ${error.message || 'Network error'}`);
                 }
             };
             syncToDb();
@@ -223,7 +224,7 @@ const DocumentVault: React.FC<{ onStatsUpdate?: (stats: any) => void }> = ({ onS
         }
     };
 
-    const handleScanComplete = (data: any) => {
+    const handleScanComplete = (data: { expiryDate?: string; date?: string }) => {
         const rawDate = data.expiryDate || data.date;
         if (rawDate) {
             let normalized = rawDate.replace(/\//g, '-');
@@ -282,7 +283,7 @@ const DocumentVault: React.FC<{ onStatsUpdate?: (stats: any) => void }> = ({ onS
         return (
             <div key={def.id} className="bg-white border border-slate-100 rounded-3xl p-4 shadow-sm hover:shadow-md hover:border-blue-100 transition-all group">
                 <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center ${doc ? status?.bg : 'bg-slate-50'} transition-colors`}>
+                    <div className={`w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center ${doc ? status?.bg : 'bg-slate-50'} transition-colors`}>
                         {doc ? (status?.label === 'EXPIRED' ? <AlertCircle size={22} className="text-red-500" /> : <CheckCircle size={22} className="text-green-600" />) : <FileText size={22} className="text-slate-300" />}
                     </div>
                     <div className="flex-1 min-w-0">

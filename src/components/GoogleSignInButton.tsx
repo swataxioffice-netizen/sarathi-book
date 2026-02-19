@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 interface GoogleSignInButtonProps {
     className?: string;
     text?: string;
+    onClick?: () => void;
 }
 
 /**
@@ -15,7 +16,8 @@ interface GoogleSignInButtonProps {
  */
 const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
     className = '',
-    text = "Continue with Google"
+    text = "Continue with Google",
+    onClick
 }) => {
     const { signInWithGoogle } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
@@ -34,14 +36,19 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
 
     return (
         <button
-            onClick={handleLogin}
+            type="button"
+            onClick={() => {
+                console.log('Google Sign-In Clicked');
+                if (onClick) onClick();
+                handleLogin();
+            }}
             disabled={isLoading}
             className={`group relative flex items-center justify-center gap-3 w-full py-4 px-6 bg-white text-slate-800 border border-slate-200 rounded-2xl shadow-lg hover:shadow-blue-500/10 hover:border-blue-400 active:scale-[0.98] transition-all duration-300 disabled:opacity-70 ${className}`}
         >
             {isLoading ? (
-                <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                <Loader2 className="w-5 h-5 text-blue-600 animate-spin relative z-10" />
             ) : (
-                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 shrink-0 relative z-10" viewBox="0 0 24 24">
                     <path
                         fill="#4285F4"
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -61,13 +68,13 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
                 </svg>
             )}
 
-            <span className="text-sm font-bold text-inherit uppercase tracking-wide">
+            <span className="text-sm font-bold text-inherit uppercase tracking-wide relative z-10">
                 {isLoading ? "Connecting..." : text}
             </span>
 
             {/* Premium Shine Effect */}
             <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-                <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent group-hover:animate-shine" />
+                <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-linear-to-r from-transparent via-white/40 to-transparent group-hover:animate-shine" />
             </div>
         </button>
     );

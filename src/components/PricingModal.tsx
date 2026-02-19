@@ -44,7 +44,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
             price: { monthly: 99, yearly: 999 },
             description: 'The ultimate business command center',
             icon: <Crown size={24} className="text-amber-500" />,
-            features: ['Everything in Pro', 'Custom App Colors', 'Multi-Language Support', 'Advanced Analytics', 'Priority 24/7 Support'],
+            features: ['Everything in Pro', 'Advanced Analytics', 'Priority 24/7 Support'],
             buttonText: 'Get Super Pro',
             popular: false
         }
@@ -57,8 +57,6 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
         { name: 'Remove App Watermark', free: false, pro: true, super: true },
         { name: 'Custom Business Logo', free: false, pro: true, super: true },
         { name: 'Staff & Salary Management', free: false, pro: true, super: true },
-        { name: 'Custom App Theme', free: false, pro: false, super: true },
-        { name: 'Multi-Language Expert', free: false, pro: false, super: true },
         { name: 'Analytics Dashboard', free: false, pro: false, super: true },
         { name: 'Support Level', free: 'Standard', pro: 'Priority', super: '24/7 Dedicated' },
     ];
@@ -82,13 +80,20 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                     email: user.email || '',
                     contact: settings.driverPhone || ''
                 },
-                handler: async (response: any) => {
+                handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
                     console.log('Payment Success:', response);
-                    updateSettings({
+                    
+                    // Create updated settings object to save immediately to cloud
+                    // This prevents race condition where React state hasn't updated ref yet
+                    const newSettings = {
+                        ...settings,
                         isPremium: true,
-                        plan: tier.id === 'super-pro' ? 'super' : 'pro'
-                    });
-                    await saveSettings();
+                        plan: (tier.id === 'super-pro' ? 'super' : 'pro') as 'super' | 'pro'
+                    };
+
+                    updateSettings(newSettings);
+                    await saveSettings(newSettings);
+                    
                     alert(`Congratulations! You are now a ${tier.name} member.`);
                     onClose();
                 }
@@ -102,7 +107,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-2 md:p-12 animate-fade-in">
+        <div className="fixed inset-0 z-110 flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-2 md:p-12 animate-fade-in">
             <div className="bg-white w-full max-w-6xl max-h-[95vh] md:max-h-[90vh] rounded-3xl md:rounded-[40px] shadow-2xl overflow-hidden flex flex-col animate-scale-in relative border border-white/20">
 
                 {/* Close Button */}
@@ -114,19 +119,19 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                 </button>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    <div className="p-5 md:p-12">
+                    <div className="p-4 md:p-8">
 
                         {/* Header */}
-                        <div className="text-center mb-8 md:mb-12">
-                            <h2 className="text-2xl md:text-5xl font-black text-slate-900 leading-tight mb-3 md:mb-4">
+                        <div className="text-center mb-6 md:mb-10">
+                            <h2 className="text-2xl md:text-5xl font-black text-slate-900 leading-tight mb-2 md:mb-3">
                                 Choose Your <span className="text-blue-600">Success Plan</span>
                             </h2>
-                            <p className="text-slate-500 font-bold mb-6 md:mb-8 max-w-md mx-auto text-[11px] md:text-sm leading-relaxed">
+                            <p className="text-slate-500 font-bold mb-4 md:mb-6 max-w-md mx-auto text-[11px] md:text-sm leading-relaxed">
                                 Transparent pricing for businesses of all sizes. Professionalize your cab business today.
                             </p>
 
                             {/* Billing Switch */}
-                            <div className="inline-flex items-center p-1.5 bg-slate-100 rounded-2xl mb-6 md:mb-8">
+                            <div className="inline-flex items-center p-1.5 bg-slate-100 rounded-2xl mb-4 md:mb-6">
                                 <button
                                     onClick={() => setBillingCycle('monthly')}
                                     className={`px-4 md:px-6 py-2 rounded-xl text-[10px] md:text-xs font-black transition-all ${billingCycle === 'monthly' ? 'bg-white shadow-md text-blue-600' : 'text-slate-500'}`}
@@ -143,11 +148,11 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                         </div>
 
                         {/* Plans Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-12 md:mb-16">
+                        <div className="flex md:grid md:grid-cols-3 gap-3 md:gap-6 mb-8 md:mb-12 overflow-x-auto pb-4 snap-x md:overflow-visible md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
                             {tiers.map((tier) => (
                                 <div
                                     key={tier.id}
-                                    className={`relative bg-white rounded-[24px] md:rounded-[32px] p-6 md:p-8 border-2 transition-all duration-300 flex flex-col ${tier.popular
+                                    className={`relative min-w-[85%] md:min-w-0 snap-center bg-white rounded-[24px] md:rounded-[32px] p-4 md:p-6 border-2 transition-all duration-300 flex flex-col ${tier.popular
                                         ? 'border-blue-600 shadow-xl shadow-blue-500/10 z-10'
                                         : 'border-slate-100 hover:border-slate-200'
                                         }`}
@@ -158,7 +163,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                                         </div>
                                     )}
 
-                                    <div className="mb-6 md:mb-8">
+                                    <div className="mb-4 md:mb-6">
                                         <div className="mb-4">{tier.icon}</div>
                                         <h3 className="text-base md:text-lg font-black text-slate-900 uppercase tracking-wider mb-2">{tier.name}</h3>
                                         <div className="flex items-baseline gap-2">
@@ -168,7 +173,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                                         <p className="mt-3 md:mt-4 text-[10px] md:text-xs font-bold text-slate-400 leading-relaxed uppercase tracking-wider">{tier.description}</p>
                                     </div>
 
-                                    <div className="space-y-3 mb-8 md:mb-10 flex-1">
+                                    <div className="space-y-2 md:space-y-3 mb-6 md:mb-8 flex-1">
                                         {tier.features.map((feature, i) => (
                                             <div key={i} className="flex items-center gap-3">
                                                 <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${tier.id === 'super-pro' ? 'bg-amber-100 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>

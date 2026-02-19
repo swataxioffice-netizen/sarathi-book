@@ -43,7 +43,7 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
         if (value !== inputValue) {
             setInputValue(value);
         }
-    }, [value]);
+    }, [value, inputValue]);
 
     // Close dropdown on click outside
     useEffect(() => {
@@ -133,7 +133,7 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                     sessionToken: sessionTokenRef.current,
                 };
 
-                service.getPlacePredictions(request, (results, status) => {
+                service.getPlacePredictions(request, (results: google.maps.places.AutocompletePrediction[] | null, status: google.maps.places.PlacesServiceStatus) => {
                     setIsLoading(false);
                     if (status === google.maps.places.PlacesServiceStatus.OK && results) {
                         setPredictions(results);
@@ -144,7 +144,7 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                         setIsOpen(false);
                     }
                 });
-            } catch (error) {
+            } catch (error: unknown) {
                 console.warn('[PlacesAutocomplete] API Error (Falling back to manual input):', error);
                 setIsLoading(false);
                 setPredictions([]);
@@ -175,7 +175,7 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                     sessionToken: sessionTokenRef.current || undefined
                 };
 
-                placesServiceRef.current.getDetails(request, (place, status) => {
+                placesServiceRef.current.getDetails(request, (place: google.maps.places.PlaceResult | null, status: google.maps.places.PlacesServiceStatus) => {
                     if (status === google.maps.places.PlacesServiceStatus.OK && place && place.geometry && place.geometry.location) {
                         const lat = place.geometry.location.lat();
                         const lng = place.geometry.location.lng();
@@ -199,7 +199,7 @@ const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                     }
                 });
 
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error('Error fetching place details:', error);
             }
         }

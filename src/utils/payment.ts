@@ -1,3 +1,19 @@
+interface RazorpayResponse {
+    razorpay_payment_id: string;
+    razorpay_order_id: string;
+    razorpay_signature: string;
+}
+
+declare global {
+    interface Window {
+        Razorpay: {
+            new (options: RazorpayOptions): {
+                open: () => void;
+            };
+        };
+    }
+}
+
 export const loadRazorpay = (): Promise<boolean> => {
     return new Promise((resolve) => {
         const script = document.createElement('script');
@@ -15,7 +31,7 @@ interface RazorpayOptions {
     name: string;
     description: string;
     image?: string;
-    handler: (response: any) => void;
+    handler: (response: RazorpayResponse) => void;
     prefill: {
         name: string;
         email: string;
@@ -42,7 +58,7 @@ export const initializePayment = async (options: Partial<RazorpayOptions>) => {
         name: 'Sarathi Book Pro',
         description: options.description || 'Yearly Subscription',
         image: '/logo.png',
-        handler: options.handler || ((res: any) => console.log(res)),
+        handler: options.handler || ((res: RazorpayResponse) => console.log(res)),
         prefill: {
             name: options.prefill?.name || '',
             email: options.prefill?.email || '',
@@ -53,6 +69,6 @@ export const initializePayment = async (options: Partial<RazorpayOptions>) => {
         }
     };
 
-    const rzp = new (window as any).Razorpay(razorpayOptions);
+    const rzp = new window.Razorpay(razorpayOptions);
     rzp.open();
 };

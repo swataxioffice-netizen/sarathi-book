@@ -1,17 +1,20 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
+import { type Trip } from './fare';
+import { type SavedQuotation } from './pdf';
+import { type Settings } from '../contexts/SettingsContext';
 
 interface CabDriverDB extends DBSchema {
     trips: {
         key: string;
-        value: any; // Using any for now to match the flexible Trip type, but should be Trip
+        value: Trip;
     };
     quotations: {
         key: string;
-        value: any;
+        value: SavedQuotation;
     };
     settings: {
         key: string;
-        value: any;
+        value: Settings;
     };
 }
 
@@ -40,17 +43,17 @@ export const initDB = () => {
 };
 
 export const dbRequest = {
-    async getAll<T>(storeName: 'trips' | 'quotations'): Promise<T[]> {
+    async getAll<K extends 'trips' | 'quotations'>(storeName: K): Promise<CabDriverDB[K]['value'][]> {
         const db = await initDB();
-        return db.getAll(storeName) as Promise<T[]>;
+        return db.getAll(storeName);
     },
 
-    async get<T>(storeName: 'trips' | 'quotations', id: string): Promise<T | undefined> {
+    async get<K extends 'trips' | 'quotations'>(storeName: K, id: string): Promise<CabDriverDB[K]['value'] | undefined> {
         const db = await initDB();
-        return db.get(storeName, id) as Promise<T | undefined>;
+        return db.get(storeName, id);
     },
 
-    async put<T>(storeName: 'trips' | 'quotations', value: T): Promise<void> {
+    async put<K extends 'trips' | 'quotations'>(storeName: K, value: CabDriverDB[K]['value']): Promise<void> {
         const db = await initDB();
         await db.put(storeName, value);
     },
@@ -59,15 +62,4 @@ export const dbRequest = {
         const db = await initDB();
         await db.delete(storeName, id);
     },
-
-    // Settings (Key-Value store within 'settings' object store?)
-    // Actually, for simple key-value like 'namma-cab-trips' array which was in localStorage,
-    // we are migrating to individual items in an object store for better performance/querying?
-    // The user said "Switch all trip data... to IndexedDB".
-    // The previous code stored the ENTIRE array in one localStorage key.
-    // It is better to store individual items.
-    // BUT to minimize refactoring, I might store the whole array as one key in a 'keyval' store if I wanted to be lazy.
-    // The Prompt says "IndexedDB is asynchronous and won't block... during heavy write operations".
-    // Writing 1000 items as one blob is still heavy. Writing individual items is better.
-    // I will implement `getAll` which returns the array, mimicking the current load behavior.
 };

@@ -53,7 +53,15 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
     useEffect(() => {
         // External trigger to create new note
         if (onCreateNew) {
-            handleAddNote();
+            setTimeout(() => {
+                const newNote: Note = {
+                    id: Date.now().toString(),
+                    content: '',
+                    createdAt: new Date().toISOString()
+                };
+                setSelectedNote(newNote);
+                setIsEditing(true);
+            }, 0);
         }
     }, [onCreateNew]);
 
@@ -126,15 +134,20 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
             setIsRecording(false);
             return;
         }
-
-        const recognition = new (window as any).webkitSpeechRecognition();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+        if (!SpeechRecognition) {
+            alert('Voice input is not supported in this browser.');
+            return;
+        }
+        const recognition = new SpeechRecognition();
         recognition.continuous = false;
         recognition.interimResults = false;
         recognition.lang = 'en-IN'; // Default to Indian English
 
         recognition.onstart = () => setIsRecording(true);
 
-        recognition.onresult = (event: any) => {
+        recognition.onresult = (event: { results: { [key: number]: { [key: number]: { transcript: string } } } }) => {
             const transcript = event.results[0][0].transcript;
             if (selectedNote) {
                 setSelectedNote(prev => prev ? {
@@ -191,7 +204,7 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
                                     {note.content || <span className="text-slate-400 italic">Empty note...</span>}
                                 </p>
                                 {/* Fade out effect at bottom */}
-                                <div className="absolute bottom-0 left-0 w-full h-6 bg-gradient-to-t from-yellow-50 to-transparent pointer-events-none"></div>
+                                <div className="absolute bottom-0 left-0 w-full h-6 bg-linear-to-t from-yellow-50 to-transparent pointer-events-none"></div>
                             </div>
 
                             <div className="flex justify-between items-center mt-1.5 pt-1.5 border-t border-yellow-200/50">
@@ -210,9 +223,8 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
                 </div>
             )}
 
-            {/* Edit Modal (Google Keep Style) */}
             {isEditing && selectedNote && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div
                         className="bg-[#fffef0] w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[80vh] animate-slide-up"
                         onClick={(e) => e.stopPropagation()}

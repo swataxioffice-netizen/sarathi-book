@@ -2,6 +2,16 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Bell, X, Info, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 
+const formatTime = (timestamp: number) => {
+    const now = Date.now();
+    const diff = now - timestamp;
+
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    return new Date(timestamp).toLocaleDateString();
+};
+
 const Notifications: React.FC = () => {
     const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll, removeNotification } = useNotifications();
     const [isOpen, setIsOpen] = useState(false);
@@ -41,16 +51,6 @@ const Notifications: React.FC = () => {
             case 'error': return 'bg-red-50 border-red-100';
             default: return 'bg-blue-50 border-blue-100';
         }
-    };
-
-    const formatTime = (timestamp: number) => {
-        const now = Date.now();
-        const diff = now - timestamp;
-
-        if (diff < 60000) return 'Just now';
-        if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-        if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-        return new Date(timestamp).toLocaleDateString();
     };
 
     return (
@@ -116,7 +116,7 @@ const Notifications: React.FC = () => {
                                         onClick={() => markAsRead(notification.id)}
                                     >
                                         <div className="flex gap-3">
-                                            <div className={`flex-shrink-0 mt-0.5 w-8 h-8 rounded-full flex items-center justify-center ${getTypeStyles(notification.type)}`}>
+                                            <div className={`shrink-0 mt-0.5 w-8 h-8 rounded-full flex items-center justify-center ${getTypeStyles(notification.type)}`}>
                                                 {getIcon(notification.type)}
                                             </div>
                                             <div className="flex-1 min-w-0">

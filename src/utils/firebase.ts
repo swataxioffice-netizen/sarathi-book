@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { getMessaging, getToken, onMessage, Messaging } from "firebase/messaging";
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -16,8 +16,7 @@ console.log('Firebase Config:', { ...firebaseConfig, apiKey: '***' }); // Log fo
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase Cloud Messaging and get a reference to the service
-// Initialize Firebase Cloud Messaging and get a reference to the service
-let messaging: any = null;
+let messaging: Messaging | null = null;
 try {
     messaging = getMessaging(app);
 } catch (error) {

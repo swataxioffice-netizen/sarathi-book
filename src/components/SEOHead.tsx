@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 interface SEOHeadProps {
     title: string;
     description?: string;
-    schema?: any;
+    schema?: Record<string, unknown>;
     canonical?: string;
 }
 
@@ -71,7 +71,7 @@ const SEOHead: React.FC<SEOHeadProps> = ({ title, description, schema, canonical
                 document.getElementById('dynamic-seo-schema')?.remove();
             }
         };
-    }, [title, description, schema]);
+    }, [title, description, schema, canonical]);
 
     return null;
 };

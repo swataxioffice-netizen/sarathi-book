@@ -60,7 +60,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
                 let center = { lat: 20.5937, lng: 78.9629 }; // India center
                 try {
                     center = await getCurrentLocation();
-                } catch (e) {
+                } catch {
                     // Ignore error and use default
                 }
 
@@ -99,7 +99,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
 
                 if (!isMounted) return;
                 setLoading(false);
-            } catch (err) {
+            } catch {
                 if (!isMounted) return;
                 setError('Failed to load Google Maps. Please check your API key.');
                 setLoading(false);
@@ -295,7 +295,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
         };
 
         updateMarkers();
-    }, [map, mode, pickupLocation, dropLocation]);
+    }, [map, mode, pickupLocation, dropLocation, pickupMarker, dropMarker]);
 
     const handleMyLocation = async () => {
         if (!map) return;
@@ -398,7 +398,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
         <div className="fixed inset-0 bg-black/50 z-50 flex flex-col">
             {/* Loading Overlay */}
             {loading && (
-                <div className="absolute inset-0 bg-white z-[60] flex items-center justify-center">
+                <div className="absolute inset-0 bg-white z-60 flex items-center justify-center">
                     <div className="text-center">
                         <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-3"></div>
                         <p className="text-sm font-bold text-slate-600">Loading Map...</p>
@@ -487,7 +487,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
             <div className="bg-white border-t border-slate-200 p-3 space-y-2.5 shrink-0 z-30 shadow-[0_-5px_20px_-5px_rgba(0,0,0,0.1)]">
                 {pickupLocation && (
                     <div className="flex items-start gap-2.5 p-2 bg-green-50 rounded-xl border border-green-200 shadow-sm">
-                        <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center shrink-0 mt-0.5">
                             <MapPin size={12} className="text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -499,7 +499,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
 
                 {dropLocation && (
                     <div className="flex items-start gap-2.5 p-2 bg-red-50 rounded-xl border border-red-200 shadow-sm">
-                        <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center shrink-0 mt-0.5">
                             <MapPin size={12} className="text-white" />
                         </div>
                         <div className="flex-1 min-w-0">

@@ -1,4 +1,5 @@
 import { messaging, getToken, onMessage } from './firebase';
+import type { MessagePayload } from 'firebase/messaging';
 import { supabase } from './supabase';
 
 export async function subscribeToPush() {
@@ -67,20 +68,26 @@ export async function subscribeToPush() {
         } else {
             console.warn('No registration token available. Request permission to generate one.');
         }
-    } catch (err: any) {
-        if (err.code === 'messaging/permission-blocked' || err.message?.includes('permission')) {
+    } catch (err: unknown) {
+        const error = err as { code?: string; message?: string; name?: string };
+        if (error.code === 'messaging/permission-blocked' || error.message?.includes('permission')) {
             console.warn('Notification permission blocked.');
-        } else if (err.name === 'AbortError' || err.message?.includes('Registration failed')) {
-            console.error('FCM Registration Failed (Network or VAPID issue):', err.message);
+        } else if (error.name === 'AbortError' || error.message?.includes('Registration failed')) {
+            console.error('FCM Registration Failed (Network or VAPID issue):', error.message);
         } else {
+            if (error.message?.includes('403') || error.code?.includes('permission-denied')) {
+                console.error('🔥 Firebase Permission Error (403): Check your Google Cloud Console.');
+                console.error('   1. Ensure "Firebase Installations API" is ENABLED.');
+                console.error('   2. Check if your API Key has strict "HTTP Referrer" restrictions (add localhost).');
+            }
             console.error('An error occurred while retrieving token:', err);
         }
     }
 }
 
 // Listen for foreground messages
-export function onMessageListener() {
-    return new Promise((resolve) => {
+export function onMessageListener(): Promise<MessagePayload> {
+    return new Promise<MessagePayload>((resolve) => {
         try {
             if (messaging) {
                 onMessage(messaging, (payload) => {
@@ -90,7 +97,7 @@ export function onMessageListener() {
             } else {
                 console.warn('Firebase Messaging not initialized, skipping listener.');
             }
-        } catch (e) {
+        } catch (e: unknown) {
             console.warn('Failed to listen for messages:', e);
         }
     });

@@ -184,13 +184,16 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                 </div>
 
                 <div className="space-y-2">
-                    {[
+                    {([
                         ...trips.map(t => ({ ...t, type: 'trip' as const, sortDate: t.date, displayAmount: t.totalFare })),
                         ...expenses.map(e => ({ ...e, type: 'expense' as const, sortDate: e.date, displayAmount: e.amount }))
-                    ]
+                    ] as (
+                        | (Trip & { type: 'trip', sortDate: string, displayAmount: number })
+                        | (Expense & { type: 'expense', sortDate: string, displayAmount: number })
+                    )[])
                         .sort((a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime())
                         .slice(0, 3)
-                        .map((item: any) => (
+                        .map((item) => (
                             <div key={item.id} className="flex items-center justify-between group p-1.5 hover:bg-slate-50 rounded-lg transition-colors">
                                 <div className="flex items-center gap-3">
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${item.type === 'trip'

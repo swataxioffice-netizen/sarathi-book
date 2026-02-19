@@ -11,10 +11,15 @@ interface ProfileData {
         companyName: string;
         driverPhone: string;
         companyAddress: string;
-        vehicles: any[];
+        vehicles: { model: string; type: string; seatCapacity?: number }[];
         companyLogo?: string;
         services?: string[];
+        secondaryPhone?: string;
+        companyEmail?: string;
+        websiteUrl?: string;
+        contactPerson?: string;
     } | null;
+    id: string;
     full_name?: string;
     avatar_url?: string;
     driver_code?: number;
@@ -25,12 +30,12 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    const fetchProfile = async () => {
+    const fetchProfile = React.useCallback(async () => {
         setLoading(true);
         setError('');
         try {
             // Timeout promise to prevent infinite loading (15 seconds)
-            const timeoutPromise = new Promise((_, reject) =>
+            const timeoutPromise = new Promise<never>((_, reject) =>
                 setTimeout(() => reject(new Error('Request timed out. Please check your internet connection.')), 15000)
             );
 
@@ -40,21 +45,23 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId }) => {
                 .eq('id', userId)
                 .single();
 
-            const { data, error } = await Promise.race([dbPromise, timeoutPromise]) as any;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { data, error } = await (Promise.race([dbPromise, timeoutPromise]) as Promise<{ data: ProfileData; error: any }>);
 
             if (error || !data) throw error || new Error('Profile not found');
-            setProfile(data as ProfileData);
-        } catch (err: any) {
-            console.error('Error fetching public profile:', err);
-            setError(err.message || 'Profile not found or inaccessible.');
+            setProfile(data);
+        } catch (err: unknown) {
+            const error = err as { message?: string };
+            console.error('Error fetching public profile:', error);
+            setError(error.message || 'Profile not found or inaccessible.');
         } finally {
             setLoading(false);
         }
-    };
+    }, [userId]);
 
     useEffect(() => {
         if (userId) fetchProfile();
-    }, [userId]);
+    }, [userId, fetchProfile]);
 
     if (loading) return (
         <div className="min-h-screen bg-[#0F172A] flex items-center justify-center">
@@ -93,15 +100,21 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId }) => {
     );
 
     // Safe access to nested properties
-    const settings = profile.settings || {};
+    const settings = profile.settings || {
+        companyName: '',
+        driverPhone: '',
+        companyAddress: '',
+        vehicles: [],
+        services: []
+    };
     const full_name = profile.full_name;
     const avatar_url = profile.avatar_url;
 
     // Fallbacks
-    const company = (settings as any).companyName || full_name || 'Professional Driver';
-    const phone = (settings as any).driverPhone;
-    const vehicles: any[] = (settings as any).vehicles || [];
-    const services: string[] = (settings as any).services || ['Outstation', 'Local Hourly', 'Airport Transfer'];
+    const company = settings.companyName || full_name || 'Professional Driver';
+    const phone = settings.driverPhone;
+    const vehicles = settings.vehicles || [];
+    const services = settings.services || ['Outstation', 'Local Hourly', 'Airport Transfer'];
 
     // Operator ID
     const operatorId = profile.driver_code ? `#${profile.driver_code}` : null;

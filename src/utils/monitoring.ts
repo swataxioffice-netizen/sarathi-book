@@ -5,8 +5,8 @@ import { supabase } from './supabase';
 
 declare global {
     interface Window {
-        gtag: (...args: any[]) => void;
-        dataLayer: any[];
+        gtag: (...args: unknown[]) => void;
+        dataLayer: unknown[];
     }
 }
 
@@ -85,7 +85,7 @@ export const Analytics = {
         });
     },
 
-    shareApp: (location: 'header' | 'sidenav') => {
+    shareApp: (location: 'header' | 'sidenav' | 'mobile_menu') => {
         trackEvent('share_app', {
             source_location: location
         });
@@ -106,7 +106,7 @@ export const Analytics = {
         type: 'invoice_created' | 'quotation_created' | 'fare_calculated' | 'login' | 'share' |
             'expense_logged' | 'expense_deleted' | 'document_uploaded' | 'document_deleted' |
             'staff_added' | 'payslip_generated' | 'ai_query' | 'note_created' | 'note_updated',
-        details: any,
+        details: Record<string, unknown>,
         userId?: string
     ) => {
         // Fire and forget in a truly async block

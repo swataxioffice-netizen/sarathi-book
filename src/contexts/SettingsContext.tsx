@@ -1,81 +1,20 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { safeJSONParse } from '../utils/storage';
 import { supabase } from '../utils/supabase';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
-type Language = 'en' | 'ta' | 'kn' | 'hi';
-
-interface Vehicle {
-    id: string;
-    number: string;
-    model: string;
-    categoryId?: string;
-    expiryDate?: string;
-    mileage?: string;
-    fuelType?: 'petrol' | 'diesel' | 'cng' | 'ev';
-}
-
-interface Settings {
-    language: Language;
-    gstEnabled: boolean;
-    baseFare: number;
-    ratePerKm: number;
-    hourlyRate: number;
-    nightBata: number;
-    companyName: string;
-    companyAddress: string;
-    driverPhone: string;
-    gstin: string;
-    vehicles: Vehicle[];
-    currentVehicleId: string;
-    theme: 'light' | 'dark';
-    websiteUrl?: string;
-    bankName?: string;
-    accountNumber?: string;
-    ifscCode?: string;
-    branchName?: string;
-    holderName?: string;
-    upiId?: string;
-    appColor?: string;
-    secondaryColor?: string;
-    logoUrl?: string;
-    showWatermark: boolean;
-    isPremium?: boolean;
-    plan?: 'free' | 'pro' | 'super';
-    services?: string[];
-    signatureUrl?: string;
-
-    // --- Staff & Salary Management (Pro) ---
-    staff: Staff[];
-    defaultSalaryConfig: SalaryConfig;
-    preferredPaymentMethod?: 'upi' | 'bank';
-    showUpiOnPdf?: boolean;
-    showBankOnPdf?: boolean;
-}
-
-export interface SalaryConfig {
-    dutyPay: number;     // Daily Rate when generating revenue
-    standbyPay: number;  // Daily Rate when idle
-    pfDeduction: number; // Flat monthly deduction (smart default: 0 or 1800)
-    advanceLimit: number; // Max advance allowed
-}
-
-export interface Staff {
-    id: string;
-    name: string;
-    phone: string;
-    role: 'driver' | 'manager';
-    salaryConfig: SalaryConfig;
-    joinDate: string;
-    status: 'active' | 'inactive';
-    balance: number; // Ledger Balance (Positive = Company owes Driver, Negative = Driver owes Company)
-}
+import type { 
+    Vehicle, 
+    Settings, 
+    Staff, 
+} from '../types/settings';
 
 interface SettingsContextType {
     settings: Settings;
     updateSettings: (newSettings: Partial<Settings>) => void;
     currentVehicle: Vehicle | undefined;
     t: (key: string) => string;
-    saveSettings: () => Promise<boolean>;
+    saveSettings: (newSettings?: Settings) => Promise<boolean>;
     docStats: { hasFullVehicle: boolean; hasFullDriver: boolean };
     setDocStats: React.Dispatch<React.SetStateAction<{ hasFullVehicle: boolean; hasFullDriver: boolean }>>;
     driverCode: number | null;
@@ -154,10 +93,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [settings, setSettings] = useState<Settings>(() => {
         const parsed = safeJSONParse<Settings | null>('namma-cab-settings', null);
         if (parsed) {
+            const legacy = parsed as unknown as { vehicleNumber?: string };
             if (!parsed.vehicles) {
-                parsed.vehicles = [{ id: 'v1', number: (parsed as any).vehicleNumber || '', model: '' }];
+                parsed.vehicles = [{ id: 'v1', number: legacy.vehicleNumber || '', model: '' }];
                 parsed.currentVehicleId = 'v1';
-                delete (parsed as any).vehicleNumber;
+                delete legacy.vehicleNumber;
             }
             if (!parsed.theme) {
                 parsed.theme = 'light';
@@ -173,12 +113,22 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
             // Migration: Staff & Salary
             if (!parsed.staff) parsed.staff = [];
-            if (!parsed.defaultSalaryConfig) {
+            parsed.staff = parsed.staff.map((s: Staff) => ({
+                ...s,
+                attendance: s.attendance || {},
+                deductions: s.deductions || []
+            }));
+            if (parsed.defaultSalaryConfig) {
+                parsed.defaultSalaryConfig.isPfEnabled = parsed.defaultSalaryConfig.isPfEnabled ?? true;
+                parsed.defaultSalaryConfig.isEsiEnabled = parsed.defaultSalaryConfig.isEsiEnabled ?? false;
+            } else {
                 parsed.defaultSalaryConfig = {
                     dutyPay: 800,
                     standbyPay: 400,
                     pfDeduction: 0,
-                    advanceLimit: 5000
+                    advanceLimit: 5000,
+                    isPfEnabled: true,
+                    isEsiEnabled: false
                 };
             }
             if (!parsed.preferredPaymentMethod) parsed.preferredPaymentMethod = 'upi';
@@ -204,6 +154,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             companyName: '',
             companyAddress: '',
             driverPhone: '',
+            secondaryPhone: '',
+            companyEmail: '',
             gstin: '',
             vehicles: [],
             currentVehicleId: '',
@@ -226,7 +178,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 dutyPay: 800,
                 standbyPay: 400,
                 pfDeduction: 0,
-                advanceLimit: 5000
+                advanceLimit: 5000,
+                isPfEnabled: true,
+                isEsiEnabled: false
             },
             preferredPaymentMethod: 'upi',
             showUpiOnPdf: true,
@@ -275,8 +229,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     // Local Storage Fallback for Stats
                     const saved = localStorage.getItem('cab-docs');
                     if (saved) {
-                        const docs = JSON.parse(saved);
-                        const types = new Set(docs.map((d: any) => d.type));
+                        const docs = JSON.parse(saved) as { type: string }[];
+                        const types = new Set(docs.map(d => d.type));
                         const hasFullVehicle = ['Insurance', 'Permit', 'Fitness', 'Pollution'].every(t => types.has(t));
                         const hasFullDriver = ['License'].every(t => types.has(t));
                         setDocStats({ hasFullVehicle, hasFullDriver });
@@ -328,7 +282,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // 5. Real-time Settings Sync for Simultaneous Devices
     useEffect(() => {
-        let channel: any = null;
+        let channel: RealtimeChannel | null = null;
 
         const initRealtime = async () => {
             const { data: { session } } = await supabase.auth.getSession();
@@ -380,12 +334,12 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Save to Cloud on Change (Debounced)
     // Manual Save Function
-    const saveSettings = async (): Promise<boolean> => {
+    const saveSettings = async (manualSettings?: Settings): Promise<boolean> => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
                 console.log('Saving settings to cloud...');
-                const currentSettings = settingsRef.current;
+                const currentSettings = manualSettings || settingsRef.current;
                 const { error, data } = await supabase
                     .from('profiles')
                     .update({ settings: currentSettings, updated_at: new Date().toISOString() })
@@ -402,7 +356,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     // Fallback to upsert if update failed to find row
                     const { error: upsertError } = await supabase.from('profiles').upsert({
                         id: session.user.id,
-                        settings: settingsRef.current,
+                        settings: currentSettings,
                         updated_at: new Date().toISOString(),
                         email: session.user.email
                     }).select();
@@ -425,11 +379,12 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     useEffect(() => {
         localStorage.setItem('namma-cab-settings', JSON.stringify(settings));
         localStorage.setItem('doc-stats', JSON.stringify(docStats));
-        if (settings.theme === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
+        // Force Light Theme - User Request
+        // if (settings.theme === 'dark') {
+        //     document.documentElement.classList.add('dark');
+        // } else {
             document.documentElement.classList.remove('dark');
-        }
+        // }
 
         // Apply Color Theme
         if (settings.appColor) {
@@ -457,9 +412,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const currentVehicle = settings.vehicles.find(v => v.id === settings.currentVehicleId);
 
     const t = (key: string) => {
-        const langData = (translations as any)[settings.language];
-        if (!langData) return (translations['en'] as any)[key] || key;
-        return langData[key] || (translations['en'] as any)[key] || key;
+        const en = translations['en'] as Record<string, string>;
+        const langData = (translations as Record<string, Record<string, string>>)[settings.language];
+        if (!langData) return en[key] || key;
+        return langData[key] || en[key] || key;
     };
 
     return (

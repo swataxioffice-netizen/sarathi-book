@@ -45,7 +45,36 @@ import { useAdProtection } from '../hooks/useAdProtection';
 import { generateTripSchema } from '../utils/seoSchema';
 
 // --- Seo Fare Display Component (New Request) ---
-const SeoFareDisplay = ({ result, tripData, onEdit }: { result: any, tripData: any, onEdit: () => void }) => {
+interface SeoFareResult {
+    fare: number;
+    details: string[];
+}
+interface SeoTripData {
+    pickup: string;
+    drop: string;
+    distance: string;
+    vehicle: string;
+    type: 'oneway' | 'roundtrip' | 'local' | 'airport';
+    days?: string;
+    durationHours?: number;
+    hourlyPackage?: string;
+}
+
+interface TrendingRoute {
+    rank: number;
+    searches: string;
+    trend: string;
+    from: string;
+    to: string;
+    type: string;
+    mode: string;
+    dist: number;
+    fare: number;
+    veh: string;
+    count: number;
+}
+
+const SeoFareDisplay = ({ result, tripData, onEdit }: { result: SeoFareResult, tripData: SeoTripData, onEdit: () => void }) => {
     if (!result) return null;
 
     const { details, fare } = result;
@@ -176,7 +205,7 @@ interface CabProps {
     initialPickup?: string;
     initialDrop?: string;
     initialTripType?: 'oneway' | 'roundtrip' | 'local' | 'airport';
-    initialResult?: any;
+    initialResult?: { fare: number; details: string[]; breakdown: FareResult & { total: number }; distance: number; vehicle: string; totalFare: number; }; // Expanded type
     initialDistance?: string; // Add this
     initialVehicle?: string; // Add this
 }
@@ -268,7 +297,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
         }
 
         if (urlType && ['oneway', 'roundtrip', 'local', 'airport'].includes(urlType)) {
-            setTripType(urlType as any);
+            setTripType(urlType as 'oneway' | 'roundtrip' | 'local' | 'airport');
         }
 
         if (urlDays) setDays(urlDays);
@@ -547,6 +576,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
     };
 
     // AUTO-CALCULATE FARE INSTANTLY
+    // AUTO-CALCULATE FARE INSTANTLY
     useEffect(() => {
         // Only auto-calc if we DON'T have an initial result loaded, OR if user changed inputs
         if (initialResult && distance === initialResult.distance.toString() && selectedVehicle === initialResult.vehicle) {
@@ -556,7 +586,8 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                 calculate();
             }
         }
-    }, [distance, tripType, days, selectedVehicle, customRate, hillStationCharge, petCharge, toll, permit, parking, garageBuffer, driverBata, nightCharge, hourlyPackage, durationHours, extraItems, manualDriverBata]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [distance, tripType, days, selectedVehicle, customRate, hillStationCharge, petCharge, toll, permit, parking, garageBuffer, driverBata, nightCharge, hourlyPackage, durationHours, extraItems, manualDriverBata, initialResult]);
 
     // Handle vehicle selection reset
     useEffect(() => {
@@ -720,7 +751,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                                 <button
                                                     key={pkg.id}
                                                     onClick={() => setHourlyPackage(pkg.id)}
-                                                    className={`min-w-[70px] flex-shrink-0 flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all snap-start
+                                                    className={`min-w-[70px] shrink-0 flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all snap-start
                                                         ${hourlyPackage === pkg.id
                                                             ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200 ring-1 ring-blue-600 ring-offset-1'
                                                             : 'bg-white border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600'}
@@ -772,7 +803,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                                     type="number"
                                                     value={distance}
                                                     onChange={(e) => setDistance(e.target.value)}
-                                                    className="tn-input h-10 w-full bg-white border-slate-200 text-xs shadow-sm focus:border-blue-500 focus:border-blue-500"
+                                                    className="tn-input h-10 w-full bg-white border-slate-200 text-xs shadow-sm focus:border-blue-500"
                                                     placeholder="0"
                                                 />
                                             </div>
@@ -899,8 +930,8 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                 <div id="result-card-container">
                     <ResultCard
                         title="Cab Fare"
-                        amount={result ? result.fare : initialResult.totalFare}
-                        details={result ? result.details : initialResult.breakdown}
+                        amount={result ? result.fare : initialResult!.totalFare}
+                        details={result ? result.details : initialResult!.details}
                         sub="Tolls & Permits Included (Approx)"
                         tripData={{
                             pickup,
@@ -1416,7 +1447,7 @@ interface ResultCardProps {
             nightBata: string;
             hillStation: string;
             petCharge: string;
-            extraItems: any[];
+            extraItems: { description: string; amount: number }[];
         };
     };
 }
@@ -1567,14 +1598,14 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
             {/* Overlay for Expanded State */}
             {expanded && (
                 <div
-                    className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-[90] transition-opacity duration-300"
+                    className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-90 transition-opacity duration-300"
                     onClick={() => setExpanded(false)}
                     aria-hidden="true"
                 />
             )}
 
             {/* Sticky Floating Card */}
-            <div className={`fixed bottom-[90px] left-3 right-3 md:left-auto md:right-6 md:w-96 bg-white text-slate-800 z-[100] transition-all duration-300 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.15)] border border-slate-200 flex flex-col overflow-hidden ${expanded ? 'max-h-[85vh]' : 'h-auto'}`}>
+            <div className={`fixed bottom-[90px] left-3 right-3 md:left-auto md:right-6 md:w-96 bg-white text-slate-800 z-100 transition-all duration-300 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.15)] border border-slate-200 flex flex-col overflow-hidden ${expanded ? 'max-h-[85vh]' : 'h-auto'}`}>
 
                 {/* Visual Drag Handle (only visible when expanded) */}
                 {expanded && (
@@ -1657,7 +1688,7 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                                         })}
 
                                         {/* GST Toggle Section */}
-                                        <div className="flex justify-between items-center py-2 border-b border-slate-50 border-blue-100/50">
+                                        <div className="flex justify-between items-center py-2 border-b border-blue-100/50">
                                             <div className="flex items-center gap-2 cursor-pointer" onClick={() => setIncludeGst(!includeGst)}>
                                                 <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${includeGst ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
                                                     {includeGst && <Check size={12} className="text-white" />}
@@ -1761,7 +1792,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
     const [mode, setMode] = useState<'cab' | 'driver' | 'relocation' | null>(() => {
         if (initialPickup || initialDrop) return 'cab';
         const path = window.location.pathname.split('/')[2];
-        return (path as any) || null;
+        return (path as 'cab' | 'driver' | 'relocation') || null;
     });
 
     // URL Parameter Handling for Deep Linking / SEO Landing Pages
@@ -1775,7 +1806,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
 
         if (from && to) {
             setDynamicRoute({ pickup: from, drop: to });
-            setDynamicTripType((type as any) || 'oneway');
+            setDynamicTripType((type as 'oneway' | 'roundtrip' | 'local' | 'airport') || 'oneway');
             setMode('cab'); // Automatically enter cab mode
 
             // If we have distance and vehicle from URL (Speedy Result), construct result immediately
@@ -1812,8 +1843,8 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
     const [dynamicTripType, setDynamicTripType] = useState<'oneway' | 'roundtrip' | 'local' | 'airport' | null>(null);
     // New State for explicit params (Fixes auto-landing view issue)
     const [dynamicParams, setDynamicParams] = useState<{ dist?: string, veh?: string } | null>(null);
-    const [dynamicResult, setDynamicResult] = useState<any>(null);
-    const [trendingRoutes, setTrendingRoutes] = useState<any[]>([]);
+    const [dynamicResult, setDynamicResult] = useState<{ fare: number; details: string[]; breakdown: FareResult & { total: number }; distance: number; vehicle: string; totalFare: number; } | null>(null);
+    const [trendingRoutes, setTrendingRoutes] = useState<TrendingRoute[]>([]);
 
     // Fetch Real Trending Data
     const [fetchError, setFetchError] = useState<string | null>(null);
@@ -1834,7 +1865,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
 
                 if (data && data.length > 0) {
                     // Aggregate by Route (Pickup-Drop)
-                    const counts: Record<string, any> = {};
+                    const counts: Record<string, { from: string; to: string; type: string; mode: string; dist: number; fare: number; veh: string; count: number }> = {};
 
                     data.forEach(row => {
                         // Normalize key
@@ -1858,9 +1889,9 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
 
                     // Sort by popularity
                     const sorted = Object.values(counts)
-                        .sort((a: any, b: any) => b.count - a.count)
+                        .sort((a, b) => b.count - a.count)
                         .slice(0, 5) // Top 5
-                        .map((item: any, index) => ({
+                        .map((item, index) => ({
                             ...item,
                             rank: index + 1,
                             searches: `${item.count} calc`,
@@ -1871,10 +1902,10 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
                 } else {
                     setTrendingRoutes([]); // No data yet
                 }
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error("Failed to fetch trending routes", err);
                 setTrendingRoutes([]);
-                setFetchError(err.message || "Unknown Supabase Error");
+                setFetchError((err as Error).message || "Unknown Supabase Error");
             }
         };
 
@@ -1885,8 +1916,9 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
 
     // Listen for route changes within calculators
     useEffect(() => {
-        const handleRouteUpdate = (e: any) => {
-            setDynamicRoute(e.detail);
+        const handleRouteUpdate = (e: Event) => {
+            const customEvent = e as CustomEvent;
+            setDynamicRoute(customEvent.detail);
         };
         window.addEventListener('calculator-route-change', handleRouteUpdate);
         return () => window.removeEventListener('calculator-route-change', handleRouteUpdate);
@@ -1928,7 +1960,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
     useEffect(() => {
         const parseUrlParams = () => {
             const path = window.location.pathname.split('/')[2];
-            const initialMode = (path as any) || null;
+            const initialMode = (path as 'cab' | 'driver' | 'relocation') || null;
             if (initialMode && SERVICES.some(s => s.id === initialMode)) {
                 setMode(initialMode);
                 const params = new URLSearchParams(window.location.search);
@@ -1936,7 +1968,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
                 const to = params.get('to');
                 if (from && to) setDynamicRoute({ pickup: from, drop: to });
                 const type = params.get('type');
-                if (type) setDynamicTripType(type as any);
+                if (type) setDynamicTripType(type as 'oneway' | 'roundtrip' | 'local' | 'airport');
                 const dist = params.get('dist');
                 const veh = params.get('veh');
                 if (dist) setDynamicParams({ dist: dist, veh: veh || undefined });
@@ -1950,6 +1982,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
         const handlePopState = () => parseUrlParams();
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     if (!mode) {
@@ -2047,7 +2080,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
                                         onClick={(e) => {
                                             e.preventDefault();
                                             setDynamicRoute({ pickup: route.from, drop: route.to });
-                                            setDynamicTripType(route.mode as any);
+                                            setDynamicTripType(route.mode as 'oneway' | 'roundtrip' | 'local' | 'airport');
                                             setDynamicParams({ dist: route.dist.toString(), veh: route.veh });
 
                                             setDynamicResult(null);
@@ -2197,7 +2230,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
                         initialPickup={dynamicRoute?.pickup || initialPickup}
                         initialDrop={dynamicRoute?.drop || initialDrop}
                         initialTripType={dynamicTripType || undefined}
-                        initialResult={dynamicResult}
+                        initialResult={dynamicResult || undefined}
                         initialDistance={dynamicParams?.dist || new URLSearchParams(window.location.search).get('dist') || undefined}
                         initialVehicle={dynamicParams?.veh || new URLSearchParams(window.location.search).get('veh') || undefined}
                     />

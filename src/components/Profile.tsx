@@ -7,7 +7,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import {
     User as UserIcon,
     Contact, Landmark, Car, FileText, ChevronRight,
-    RefreshCw, X, Trash2, Sparkles, Crown, Cloud, Users
+    RefreshCw, X, Trash2, Sparkles, Crown, Cloud, Users, Download
 } from 'lucide-react';
 
 import { supabase } from '../utils/supabase';
@@ -62,15 +62,29 @@ const Profile: React.FC = () => {
         fetchProfile();
     }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Tab Navigation Listener
+    // Tab Navigation & Pro Studio Listener
     useEffect(() => {
         const handleTabChange = (e: CustomEvent) => {
             if (e.detail && ['business', 'payments', 'vehicles', 'docs', 'staff'].includes(e.detail)) {
                 setActiveTab(e.detail);
             }
         };
+
+        const handleProStudio = () => setShowStudio(true);
+
+        // Check hash on mount (for deep linking from other components)
+        if (window.location.hash === '#pro-studio') {
+            setShowStudio(true);
+            window.history.replaceState(null, '', window.location.pathname);
+        }
+
         window.addEventListener('nav-tab-change', handleTabChange as EventListener);
-        return () => window.removeEventListener('nav-tab-change', handleTabChange as EventListener);
+        window.addEventListener('open-pro-studio', handleProStudio);
+        
+        return () => {
+            window.removeEventListener('nav-tab-change', handleTabChange as EventListener);
+            window.removeEventListener('open-pro-studio', handleProStudio);
+        };
     }, []);
 
     // Computed Completion
@@ -149,20 +163,53 @@ const Profile: React.FC = () => {
         const file = e.target.files?.[0];
         if (!file || !user) return;
 
+        // 1. Type Validation (Strict for PDF compatibility)
+        // We avoid WEBP/SVG as they often break in PDF generation libraries
+        const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        if (!validTypes.includes(file.type)) {
+            alert('Invalid file format. Please upload a PNG or JPG image for proper invoice branding.');
+            return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) {
+             alert('File too large. Please upload a logo under 2MB.');
+             return;
+        }
+
         setUploadingLogo(true);
         try {
             const fileExt = file.name.split('.').pop();
             const filePath = `logos/${user.id}/logo_${Date.now()}.${fileExt}`;
 
-            await supabase.storage.from('public').upload(filePath, file);
+            const { error: uploadError } = await supabase.storage.from('public').upload(filePath, file, {
+                upsert: true
+            });
+
+            if (uploadError) {
+                console.error('Upload Error:', uploadError);
+                throw uploadError;
+            }
+
             const { data: { publicUrl } } = supabase.storage.from('public').getPublicUrl(filePath);
 
             updateSettings({ logoUrl: publicUrl });
             await saveSettings();
-        } catch (err) {
-            console.error(err);
+        } catch (err: unknown) {
+            console.error('Logo upload failed:', err);
+            const errorMessage = err instanceof Error ? err.message : 'Please try again';
+            alert(`Upload failed: ${errorMessage}`);
         } finally {
             setUploadingLogo(false);
+        }
+    };
+
+    const handleDownloadLetterhead = async () => {
+        try {
+            const { downloadLetterhead } = await import('../utils/pdf');
+            await downloadLetterhead({ ...settings, vehicleNumber: '' });
+        } catch (error) {
+            console.error('Error downloading letterhead:', error);
+            alert('Could not generate letterhead. Please try again.');
         }
     };
 
@@ -242,57 +289,38 @@ const Profile: React.FC = () => {
                         <p className="text-[9px] font-bold text-indigo-500 truncate">Secure trips across devices</p>
                     </div>
                     <div className="relative z-10 shrink-0">
-                        <GoogleSignInButton text="Sign In" className="!py-2 !px-3 !rounded-lg !text-[9px] !w-auto shadow-sm border-indigo-100" />
+                        <GoogleSignInButton text="Sign In" className="py-2! px-3! rounded-lg! text-[9px]! w-auto! shadow-sm border-indigo-100" />
                     </div>
                 </div>
             )}
 
-            {/* 2. Pro Feature / Upgrade Section - Only shown for signed-in users */}
-            {user && (
+            {/* 2. Upgrade Section - Only shown for free users */}
+            {user && !settings.isPremium && (
                 <div className="mb-6 animate-fade-in">
-                    {settings.isPremium ? (
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                onClick={() => setShowStudio(true)}
-                                className="bg-slate-900 text-white p-4 rounded-xl flex flex-col justify-between shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all group min-h-[100px]"
-                            >
-                                <div className="p-2 bg-white/10 rounded-lg text-pink-400 w-fit mb-3">
-                                    <Sparkles size={18} />
-                                </div>
-                                <div className="text-left">
-                                    <p className="text-[10px] font-black uppercase tracking-wider">Business Suite</p>
-                                    <p className="text-[8px] text-slate-400 font-medium leading-tight mt-1">Logo & Branding</p>
-                                </div>
-                            </button>
-
-
+                    <button
+                        onClick={() => window.dispatchEvent(new CustomEvent('open-pricing-modal'))}
+                        className="w-full bg-linear-to-r from-pink-600 to-purple-600 text-white p-4 rounded-2xl flex items-center justify-between shadow-lg shadow-pink-200 hover:shadow-xl transition-all group relative overflow-hidden"
+                    >
+                        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="flex items-center gap-3 relative z-10">
+                            <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+                                <Crown size={18} />
+                            </div>
+                            <div className="text-left">
+                                <p className="text-xs font-black uppercase tracking-wider">Upgrade to Pro</p>
+                                <p className="text-[9px] text-white/80 font-medium">Unlock Unlimited Vehicles</p>
+                            </div>
                         </div>
-                    ) : (
-                        <button
-                            onClick={() => window.dispatchEvent(new CustomEvent('open-pricing-modal'))}
-                            className="w-full bg-gradient-to-r from-pink-600 to-purple-600 text-white p-4 rounded-2xl flex items-center justify-between shadow-lg shadow-pink-200 hover:shadow-xl transition-all group relative overflow-hidden"
-                        >
-                            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            <div className="flex items-center gap-3 relative z-10">
-                                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-                                    <Crown size={18} />
-                                </div>
-                                <div className="text-left">
-                                    <p className="text-xs font-black uppercase tracking-wider">Upgrade to Pro</p>
-                                    <p className="text-[9px] text-white/80 font-medium">Unlock Unlimited Vehicles</p>
-                                </div>
-                            </div>
-                            <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm relative z-10">
-                                <ChevronRight size={16} />
-                            </div>
-                        </button>
-                    )}
+                        <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm relative z-10">
+                            <ChevronRight size={16} />
+                        </div>
+                    </button>
                 </div>
             )}
 
 
             {/* 2. Tabs Navigation - Sticky with no gap */}
-            <div className="flex bg-white p-2 border-b border-slate-200 mb-6 sticky top-[-17px] z-[30] gap-1 -mx-4 px-4 shadow-sm">
+            <div className="flex bg-white p-2 border-b border-slate-200 mb-6 sticky top-[-17px] z-30 gap-1 -mx-4 px-4 shadow-sm">
                 {(['business', 'payments', 'vehicles', 'docs'] as const).map(tab => {
                     const isActive = activeTab === tab;
                     const icons = { business: <Contact size={14} />, payments: <Landmark size={14} />, vehicles: <Car size={14} />, staff: <Users size={14} />, docs: <FileText size={14} /> };
@@ -323,8 +351,16 @@ const Profile: React.FC = () => {
                                     <input value={settings.companyName} onChange={e => updateSettings({ companyName: e.target.value })} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900" placeholder="e.g. Travels Name" />
                                 </div>
                                 <div>
-                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 block">WhatsApp Number</label>
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 block">Business Phone (Primary)</label>
                                     <input value={settings.driverPhone} onChange={e => updateSettings({ driverPhone: e.target.value })} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900" placeholder="+91 00000 00000" />
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 block">Secondary Phone (Optional)</label>
+                                    <input value={settings.secondaryPhone || ''} onChange={e => updateSettings({ secondaryPhone: e.target.value })} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900" placeholder="+91 00000 00000" />
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 block">Business Email (Optional)</label>
+                                    <input value={settings.companyEmail || ''} onChange={e => updateSettings({ companyEmail: e.target.value })} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900" placeholder="business@example.com" />
                                 </div>
                                 <div>
                                     <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 block">Address</label>
@@ -345,22 +381,81 @@ const Profile: React.FC = () => {
                                         Must be a unique 15-digit GSTIN. We validate this on save.
                                     </p>
                                 </div>
+
+                                <div>
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 block">Contact Person Name</label>
+                                    <input value={settings.contactPerson || ''} onChange={e => updateSettings({ contactPerson: e.target.value })} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900" placeholder="e.g. John Doe" />
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 block">Company Website (Optional)</label>
+                                    <input value={settings.websiteUrl || ''} onChange={e => updateSettings({ websiteUrl: e.target.value })} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900" placeholder="www.example.com" />
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-0.5 block">Services Offered (Comma Separated)</label>
+                                    <input 
+                                        value={settings.services ? settings.services.join(', ') : ''} 
+                                        onChange={e => updateSettings({ services: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} 
+                                        className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900" 
+                                        placeholder="e.g. Airport Drops, Outstation, Weddings" 
+                                    />
+                                    <p className="text-[8px] text-slate-400 mt-1 ml-1">These will appear on the back of your visiting card.</p>
+                                </div>
                                 <button onClick={() => handleSave('business')} className="w-full h-11 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 transition-colors">
                                     {savingSection === 'business' ? 'Saving...' : 'Save Settings'}
                                 </button>
                             </div>
 
-                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-5 rounded-2xl text-white shadow-lg relative overflow-hidden group cursor-pointer mt-2" onClick={() => setShowCard(true)}>
-                                <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-12 -mt-12 group-hover:scale-110 transition-transform" />
-                                <div className="relative z-10 flex items-center justify-between">
-                                    <div>
-                                        <h3 className="font-black text-sm uppercase italic mb-0.5">Digital Card</h3>
-                                        <p className="text-[9px] opacity-80">Your professional visiting card</p>
-                                    </div>
-                                    <div className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider">
-                                        View <ChevronRight size={10} />
+                            <div className="grid grid-cols-2 gap-3 mt-3">
+
+                                {/* Pro Branding Tools */}
+                                <div className="col-span-2 bg-slate-900 text-white p-4 rounded-2xl shadow-lg relative overflow-hidden group cursor-pointer" onClick={() => settings.isPremium ? setShowStudio(true) : window.dispatchEvent(new CustomEvent('open-pricing-modal'))}>
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform" />
+                                    <div className="relative z-10 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="bg-white/10 p-2.5 rounded-xl text-pink-400 backdrop-blur-sm">
+                                                <Sparkles size={20} />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-black text-sm uppercase tracking-wider mb-0.5">Pro Feature</h3>
+                                                <p className="text-[10px] text-slate-300 font-medium">Logo, Branding & Watermarks</p>
+                                            </div>
+                                        </div>
+                                        <div className="bg-white/10 p-2 rounded-full">
+                                            <ChevronRight size={16} />
+                                        </div>
                                     </div>
                                 </div>
+
+                                {/* Visiting Card */}
+                                {/* Visiting Card */}
+                                <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm relative overflow-hidden group cursor-pointer hover:border-blue-300 transition-colors text-left" onClick={() => setShowCard(true)}>
+                                    <div className="absolute top-0 right-0 w-20 h-20 bg-slate-50 rounded-full -mr-10 -mt-10 group-hover:bg-blue-50 transition-colors" />
+                                    <div className="relative z-10">
+                                        <div className="bg-slate-100 w-fit p-2 rounded-lg mb-3 group-hover:bg-blue-100 transition-colors">
+                                            <Contact size={18} className="text-slate-600 group-hover:text-blue-600" />
+                                        </div>
+                                        <h3 className="font-black text-xs uppercase text-slate-800 mb-0.5">Visiting Card</h3>
+                                        <p className="text-[9px] text-slate-400 mb-2">Share your digital card</p>
+                                        <div className="inline-flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-lg text-[8px] font-bold uppercase tracking-wider text-slate-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                            View <ChevronRight size={10} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Letterhead */}
+                                <button className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm relative overflow-hidden group cursor-pointer hover:border-blue-300 transition-colors text-left" onClick={handleDownloadLetterhead}>
+                                     <div className="absolute top-0 right-0 w-20 h-20 bg-slate-50 rounded-full -mr-10 -mt-10 group-hover:bg-blue-50 transition-colors" />
+                                    <div className="relative z-10">
+                                        <div className="bg-slate-100 w-fit p-2 rounded-lg mb-3 group-hover:bg-blue-100 transition-colors">
+                                            <FileText size={18} className="text-slate-600 group-hover:text-blue-600" />
+                                        </div>
+                                        <h3 className="font-black text-xs uppercase text-slate-800 mb-0.5">Letterhead</h3>
+                                        <p className="text-[9px] text-slate-400 mb-2">Download PDF format</p>
+                                         <div className="inline-flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-lg text-[8px] font-bold uppercase tracking-wider text-slate-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                            Download <Download size={10} />
+                                        </div>
+                                    </div>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -482,7 +577,7 @@ const Profile: React.FC = () => {
 
             {/* Visit Card Modal */}
             {showCard && (
-                <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowCard(false)}>
+                <div className="fixed inset-0 z-100 bg-black/90 flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowCard(false)}>
                     <div className="relative w-full max-w-sm" onClick={e => e.stopPropagation()}>
                         <button onClick={() => setShowCard(false)} className="absolute -top-12 right-0 text-white"><X size={32} /></button>
                         <React.Suspense fallback={<div className="bg-white p-8 rounded-2xl text-center font-bold text-slate-500">Loading Card Editor...</div>}>
@@ -494,25 +589,15 @@ const Profile: React.FC = () => {
 
             {/* Pro Studio Modal */}
             {showStudio && (
-                <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-sm flex justify-end animate-fade-in" onClick={() => setShowStudio(false)}>
+                <div className="fixed inset-0 z-110 bg-slate-900/60 backdrop-blur-sm flex justify-end animate-fade-in" onClick={() => setShowStudio(false)}>
                     <div className="bg-slate-50 w-full max-w-md h-full shadow-2xl flex flex-col animate-slide-left" onClick={e => e.stopPropagation()}>
                         <div className="p-6 bg-white border-b flex justify-between items-center">
-                            <h3 className="font-black uppercase text-sm tracking-widest">Pro Studio</h3>
+                            <h3 className="font-black uppercase text-sm tracking-widest">Pro Feature</h3>
                             <button onClick={() => setShowStudio(false)} className="text-slate-400"><X size={24} /></button>
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-8 relative">
-                            {!settings.isPremium && (
-                                <div className="absolute inset-0 z-10 bg-white/40 backdrop-blur-sm flex items-center justify-center p-6 text-center">
-                                    <div className="bg-white p-10 rounded-[40px] shadow-2xl border">
-                                        <Crown size={48} className="mx-auto text-pink-500 mb-6" />
-                                        <h4 className="font-black uppercase mb-2">Upgrade Required</h4>
-                                        <button onClick={() => window.dispatchEvent(new CustomEvent('open-pricing-modal'))} className="bg-pink-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px]">Unlock Now</button>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className={!settings.isPremium ? 'opacity-20 blur-[2px] pointer-events-none' : ''}>
+                            <div>
                                 <div className="space-y-8">
                                     <div>
                                         <label className="text-[10px] font-black uppercase text-slate-400 block mb-3">Your Branding Logo</label>
@@ -522,7 +607,7 @@ const Profile: React.FC = () => {
                                                 {uploadingLogo && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><RefreshCw className="animate-spin text-blue-600" /></div>}
                                             </div>
                                             <button onClick={() => document.getElementById('logoInput')?.click()} className="bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase">Upload Logo</button>
-                                            <input type="file" id="logoInput" className="hidden" onChange={handleLogoUpload} />
+                                            <input type="file" id="logoInput" className="hidden" accept="image/png, image/jpeg, image/jpg" onChange={handleLogoUpload} />
                                         </div>
                                     </div>
 
@@ -569,7 +654,7 @@ const Profile: React.FC = () => {
 
             {/* App Settings Modal */}
             {activeModal === 'settings' && (
-                <div className="fixed inset-0 z-[120] bg-black/60 flex items-center justify-center p-4 animate-fade-in" onClick={() => setActiveModal(null)}>
+                <div className="fixed inset-0 z-120 bg-black/60 flex items-center justify-center p-4 animate-fade-in" onClick={() => setActiveModal(null)}>
                     <div className="bg-white w-full max-w-xs rounded-3xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
                         <h3 className="font-black uppercase text-sm mb-4">Settings</h3>
                         <button onClick={() => subscribeToPush().then(() => alert('Subscribed'))} className="w-full py-4 bg-orange-50 text-orange-600 rounded-xl font-black uppercase text-[10px]">Enable Notifications</button>
