@@ -7,7 +7,8 @@ import { useSettings } from '../contexts/SettingsContext';
 import {
     User as UserIcon,
     Contact, Landmark, Car, FileText, ChevronRight,
-    RefreshCw, X, Trash2, Sparkles, Crown, Cloud, Users, Download
+    RefreshCw, X, Trash2, Sparkles, Crown, Cloud, Users, Download,
+    Palette
 } from 'lucide-react';
 
 import { supabase } from '../utils/supabase';
@@ -16,6 +17,7 @@ import { validateVehicleNumber } from '../utils/validation';
 
 // Sub-components (Lazy Loaded)
 const DocumentVault = React.lazy(() => import('./DocumentVault'));
+const SalaryManager = React.lazy(() => import('./SalaryManager'));
 const BusinessCard = React.lazy(() => import('./BusinessCard'));
 import { subscribeToPush } from '../utils/push';
 import GoogleSignInButton from './GoogleSignInButton';
@@ -30,12 +32,17 @@ const Profile: React.FC = () => {
     const { settings, updateSettings, saveSettings, docStats } = useSettings();
 
     // Local State
-    const [activeTab, setActiveTab] = useState<'business' | 'payments' | 'vehicles' | 'docs' | 'staff'>('business');
+    const [activeTab, setActiveTab] = useState<'business' | 'payments' | 'vehicles' | 'docs'>('business');
     const [showCard, setShowCard] = useState(false);
     const [activeModal, setActiveModal] = useState<string | null>(null);
     const [savingSection, setSavingSection] = useState<string | null>(null);
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [showStudio, setShowStudio] = useState(false);
+    const [proView, setProView] = useState<'menu' | 'branding' | 'staff'>('menu');
+    const [refreshing, setRefreshing] = useState(false);
+
+    // Get refreshProfile from AuthContext
+    const { refreshProfile } = useAuth();
 
     // GST State
     // Validation is done on Save
@@ -65,12 +72,23 @@ const Profile: React.FC = () => {
     // Tab Navigation & Pro Studio Listener
     useEffect(() => {
         const handleTabChange = (e: CustomEvent) => {
-            if (e.detail && ['business', 'payments', 'vehicles', 'docs', 'staff'].includes(e.detail)) {
-                setActiveTab(e.detail);
+            if (e.detail) {
+                if (['business', 'payments', 'vehicles', 'docs'].includes(e.detail)) {
+                    setActiveTab(e.detail);
+                } else if (e.detail === 'staff') {
+                   setProView('staff');
+                   setShowStudio(true);
+                } else if (e.detail === 'branding') {
+                   setProView('branding');
+                   setShowStudio(true);
+                }
             }
         };
 
-        const handleProStudio = () => setShowStudio(true);
+        const handleProStudio = () => {
+            setProView('menu');
+            setShowStudio(true);
+        };
 
         // Check hash on mount (for deep linking from other components)
         if (window.location.hash === '#pro-studio') {
@@ -128,6 +146,18 @@ const Profile: React.FC = () => {
         await saveSettings();
         await new Promise(r => setTimeout(r, 400));
         setSavingSection(null);
+    };
+
+    const handleRefreshProfile = async () => {
+        setRefreshing(true);
+        try {
+            await refreshProfile();
+        } catch (err) {
+            console.error('Manual profile refresh failed:', err);
+            alert('Failed to sync profile with Google. Please try again.');
+        } finally {
+            setTimeout(() => setRefreshing(false), 1000); // Visual feedback
+        }
     };
 
     const handleAddVehicle = () => {
@@ -231,12 +261,30 @@ const Profile: React.FC = () => {
                     {/* Avatar with Pro Badge */}
                     <div className="relative shrink-0">
                         <div className="w-12 h-12 rounded-full border-2 border-white shadow-md bg-slate-50 flex items-center justify-center overflow-hidden">
-                            {user?.user_metadata?.avatar_url ? (
-                                <img src={user.user_metadata.avatar_url || user.user_metadata.picture} referrerPolicy="no-referrer" alt="Profile" width="48" height="48" className="w-full h-full object-cover" />
+                            {(user?.user_metadata?.avatar_url || user?.user_metadata?.picture || user?.user_metadata?.avatarUrl) ? (
+                                <img 
+                                    src={user.user_metadata.avatar_url || user.user_metadata.picture || user.user_metadata.avatarUrl} 
+                                    referrerPolicy="no-referrer" 
+                                    alt="Profile" 
+                                    width="48" 
+                                    height="48" 
+                                    className="w-full h-full object-cover" 
+                                />
                             ) : (
                                 <UserIcon size={20} className="text-slate-300" />
                             )}
                         </div>
+                        
+                        {/* Sync Toggle Button */}
+                        <button 
+                            onClick={handleRefreshProfile}
+                            disabled={refreshing}
+                            className={`absolute -top-1 -left-1 w-6 h-6 bg-white rounded-full shadow-sm border border-slate-100 flex items-center justify-center text-slate-400 hover:text-blue-600 transition-all ${refreshing ? 'animate-spin text-blue-600' : ''}`}
+                            title="Sync with Google"
+                        >
+                            <RefreshCw size={12} />
+                        </button>
+
                         {settings.plan === 'super' ? (
                             <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border border-amber-600 shadow-sm flex items-center gap-0.5">
                                 <Crown size={8} className="fill-current" /> S
@@ -285,8 +333,8 @@ const Profile: React.FC = () => {
                         <Cloud size={16} />
                     </div>
                     <div className="relative z-10 flex-1 min-w-0">
-                        <h3 className="text-[10px] font-black text-indigo-900 uppercase tracking-wide">Sync Your Data</h3>
-                        <p className="text-[9px] font-bold text-indigo-500 truncate">Secure trips across devices</p>
+                        <h3 className="text-[10px] font-black text-indigo-900 uppercase tracking-wide">Business Management Tools</h3>
+                        <p className="text-[9px] font-bold text-indigo-500 truncate">Quotes, Invoices, Attendance & Payroll in one place.</p>
                     </div>
                     <div className="relative z-10 shrink-0">
                         <GoogleSignInButton text="Sign In" className="py-2! px-3! rounded-lg! text-[9px]! w-auto! shadow-sm border-indigo-100" />
@@ -320,17 +368,22 @@ const Profile: React.FC = () => {
 
 
             {/* 2. Tabs Navigation - Sticky with no gap */}
-            <div className="flex bg-white p-2 border-b border-slate-200 mb-6 sticky top-[-17px] z-30 gap-1 -mx-4 px-4 shadow-sm">
+            <div className="flex bg-white p-2 border-b border-slate-200 mb-6 sticky top-[-17px] z-30 gap-1 -mx-4 px-4 shadow-sm overflow-x-auto scrollbar-hide">
                 {(['business', 'payments', 'vehicles', 'docs'] as const).map(tab => {
                     const isActive = activeTab === tab;
-                    const icons = { business: <Contact size={14} />, payments: <Landmark size={14} />, vehicles: <Car size={14} />, staff: <Users size={14} />, docs: <FileText size={14} /> };
+                    const icons = { 
+                        business: <Contact size={14} />, 
+                        payments: <Landmark size={14} />, 
+                        vehicles: <Car size={14} />, 
+                        docs: <FileText size={14} /> 
+                    };
                     return (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`flex-1 py-3 rounded-xl flex flex-col items-center justify-center transition-all ${isActive ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
                         >
-                            <div className={isActive ? 'text-white' : 'text-blue-500'}>{icons[tab]}</div>
+                            <div className={isActive ? 'text-white' : 'text-blue-500'}>{icons[tab as keyof typeof icons]}</div>
                             <span className="text-[9px] font-black uppercase tracking-wider mt-1">{tab}</span>
                         </button>
                     );
@@ -408,7 +461,7 @@ const Profile: React.FC = () => {
                             <div className="grid grid-cols-2 gap-3 mt-3">
 
                                 {/* Pro Branding Tools */}
-                                <div className="col-span-2 bg-slate-900 text-white p-4 rounded-2xl shadow-lg relative overflow-hidden group cursor-pointer" onClick={() => settings.isPremium ? setShowStudio(true) : window.dispatchEvent(new CustomEvent('open-pricing-modal'))}>
+                                <div className="col-span-2 bg-slate-900 text-white p-4 rounded-2xl shadow-lg relative overflow-hidden group cursor-pointer" onClick={() => { if(settings.isPremium) { setProView('menu'); setShowStudio(true); } else { window.dispatchEvent(new CustomEvent('open-pricing-modal')); } }}>
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform" />
                                     <div className="relative z-10 flex items-center justify-between">
                                         <div className="flex items-center gap-3">
@@ -416,8 +469,8 @@ const Profile: React.FC = () => {
                                                 <Sparkles size={20} />
                                             </div>
                                             <div>
-                                                <h3 className="font-black text-sm uppercase tracking-wider mb-0.5">Pro Feature</h3>
-                                                <p className="text-[10px] text-slate-300 font-medium">Logo, Branding & Watermarks</p>
+                                                <h3 className="font-black text-sm uppercase tracking-wider mb-0.5">Pro Studio</h3>
+                                                <p className="text-[10px] text-slate-300 font-medium">Branding, Staff & Watermarks</p>
                                             </div>
                                         </div>
                                         <div className="bg-white/10 p-2 rounded-full">
@@ -561,6 +614,8 @@ const Profile: React.FC = () => {
 
 
 
+
+
                 {activeTab === 'docs' && (
                     <div className="animate-scale-in">
                         <React.Suspense fallback={<div className="p-8 text-center text-xs text-slate-400 font-bold uppercase tracking-widest">Loading Documents...</div>}>
@@ -591,48 +646,105 @@ const Profile: React.FC = () => {
             {showStudio && (
                 <div className="fixed inset-0 z-110 bg-slate-900/60 backdrop-blur-sm flex justify-end animate-fade-in" onClick={() => setShowStudio(false)}>
                     <div className="bg-slate-50 w-full max-w-md h-full shadow-2xl flex flex-col animate-slide-left" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 bg-white border-b flex justify-between items-center">
-                            <h3 className="font-black uppercase text-sm tracking-widest">Pro Feature</h3>
-                            <button onClick={() => setShowStudio(false)} className="text-slate-400"><X size={24} /></button>
+                        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900 text-white">
+                            <div className="flex items-center gap-3">
+                                {proView !== 'menu' && (
+                                    <button onClick={() => setProView('menu')} className="p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
+                                        <ChevronRight size={18} className="rotate-180" />
+                                    </button>
+                                )}
+                                <h3 className="font-black uppercase text-sm tracking-widest">
+                                    {proView === 'menu' ? 'Pro Studio' : proView === 'branding' ? 'Branding' : 'Staff Manager'}
+                                </h3>
+                            </div>
+                            <button onClick={() => setShowStudio(false)} className="text-slate-400 hover:text-white"><X size={24} /></button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-8 relative">
-                            <div>
-                                <div className="space-y-8">
-                                    <div>
-                                        <label className="text-[10px] font-black uppercase text-slate-400 block mb-3">Your Branding Logo</label>
-                                        <div className="flex items-center gap-6">
-                                            <div className="w-24 h-24 rounded-3xl border-2 border-dashed flex items-center justify-center bg-white overflow-hidden relative">
-                                                {settings.logoUrl ? <img src={settings.logoUrl} className="w-full h-full object-contain p-2" /> : <FileText className="text-slate-200" size={32} />}
-                                                {uploadingLogo && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><RefreshCw className="animate-spin text-blue-600" /></div>}
-                                            </div>
-                                            <button onClick={() => document.getElementById('logoInput')?.click()} className="bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase">Upload Logo</button>
-                                            <input type="file" id="logoInput" className="hidden" accept="image/png, image/jpeg, image/jpg" onChange={handleLogoUpload} />
+                        <div className="flex-1 overflow-y-auto relative">
+                            
+                            {/* MENU GRID */}
+                            {proView === 'menu' && (
+                                <div className="p-6 grid grid-cols-2 gap-4 content-start">
+                                    <div 
+                                        onClick={() => setProView('branding')}
+                                        className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-3 aspect-square"
+                                    >
+                                        <div className="w-12 h-12 bg-pink-50 text-pink-500 rounded-full flex items-center justify-center">
+                                            <Palette size={24} />
+                                        </div>
+                                        <div className="text-center">
+                                            <h4 className="font-black text-xs uppercase tracking-wide text-slate-800">Branding</h4>
+                                            <p className="text-[9px] font-bold text-slate-400 mt-1">Logo & Colors</p>
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <label className="text-[10px] font-black uppercase text-slate-400 block mb-4">Brand Accent Color</label>
-                                        <div className="grid grid-cols-5 gap-3">
-                                            {['#0047AB', '#EF4444', '#10B981', '#F59E0B', '#6366F1'].map(c => (
-                                                <button key={c} onClick={() => updateSettings({ appColor: c })} className={`w-10 h-10 rounded-xl border-2 ${settings.appColor === c ? 'border-slate-900 shadow-lg scale-110' : 'border-transparent'}`} style={{ backgroundColor: c }} />
-                                            ))}
+                                    <div 
+                                        onClick={() => setProView('staff')}
+                                        className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-3 aspect-square"
+                                    >
+                                        <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center">
+                                            <Users size={24} />
+                                        </div>
+                                        <div className="text-center">
+                                            <h4 className="font-black text-xs uppercase tracking-wide text-slate-800">Staff</h4>
+                                            <p className="text-[9px] font-bold text-slate-400 mt-1">Salary & Drivers</p>
                                         </div>
                                     </div>
 
-                                    <div className="p-6 bg-white rounded-3xl border flex items-center justify-between">
+                                    <div className="col-span-2 mt-4 p-4 bg-slate-100 rounded-2xl border border-slate-200 text-center">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">More features coming soon</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* BRANDING VIEW */}
+                            {proView === 'branding' && (
+                                <div className="p-6 space-y-8 animate-fade-in">
+                                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-8">
                                         <div>
-                                            <p className="font-black uppercase text-xs">Remove Watermark</p>
-                                            <p className="text-[9px] font-bold text-slate-400">Cleaner documents for your business</p>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 block mb-3 pl-1">Your Branding Logo</label>
+                                            <div className="flex items-center gap-6">
+                                                <div className="w-24 h-24 rounded-3xl border-2 border-dashed flex items-center justify-center bg-slate-50 overflow-hidden relative">
+                                                    {settings.logoUrl ? <img src={settings.logoUrl} className="w-full h-full object-contain p-2" /> : <FileText className="text-slate-200" size={32} />}
+                                                    {uploadingLogo && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><RefreshCw className="animate-spin text-blue-600" /></div>}
+                                                </div>
+                                                <div className="space-y-2 flex-1">
+                                                    <button onClick={() => document.getElementById('logoInput')?.click()} className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase w-full">Upload Logo</button>
+                                                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider text-center">PNG/JPG Only</p>
+                                                    <input type="file" id="logoInput" className="hidden" accept="image/png, image/jpeg, image/jpg" onChange={handleLogoUpload} />
+                                                </div>
+                                            </div>
                                         </div>
-                                        <input type="checkbox" checked={!settings.showWatermark} onChange={() => updateSettings({ showWatermark: !settings.showWatermark })} className="w-5 h-5 accent-pink-600" />
+
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 block mb-4 pl-1">Brand Accent Color</label>
+                                            <div className="grid grid-cols-5 gap-3">
+                                                {['#0047AB', '#EF4444', '#10B981', '#F59E0B', '#6366F1'].map(c => (
+                                                    <button key={c} onClick={() => updateSettings({ appColor: c })} className={`w-10 h-10 rounded-xl border-2 transition-all ${settings.appColor === c ? 'border-slate-900 shadow-lg scale-110' : 'border-transparent hover:scale-105'}`} style={{ backgroundColor: c }} />
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                                            <div>
+                                                <p className="font-black uppercase text-xs">Remove Watermark</p>
+                                                <p className="text-[9px] font-bold text-slate-400">Cleaner documents</p>
+                                            </div>
+                                            <input type="checkbox" checked={!settings.showWatermark} onChange={() => updateSettings({ showWatermark: !settings.showWatermark })} className="w-5 h-5 accent-pink-600 cursor-pointer" />
+                                        </div>
+
+                                        <button onClick={() => { handleSave('branding'); setShowStudio(false); }} className="w-full h-12 bg-pink-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-pink-200 hover:bg-pink-700 transition-all">
+                                            Apply Changes
+                                        </button>
                                     </div>
 
-                                    <div className="pt-8 border-t">
-                                        <label className="text-[10px] font-black uppercase text-slate-400 block mb-6">Document Preview</label>
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase text-slate-400 block mb-4 pl-1">Preview</label>
                                         <div className="bg-white rounded-3xl p-6 shadow-xl border relative overflow-hidden h-40">
                                             <div className="flex justify-between items-start mb-6">
-                                                <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center">{settings.logoUrl ? <img src={settings.logoUrl} className="w-full" /> : <div className="w-6 h-1 bg-slate-200" />}</div>
+                                                <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center overflow-hidden">
+                                                    {settings.logoUrl ? <img src={settings.logoUrl} className="w-full h-full object-contain" /> : <div className="w-6 h-1 bg-slate-200" />}
+                                                </div>
                                                 <div className="w-16 h-4 rounded-full" style={{ backgroundColor: settings.appColor }} />
                                             </div>
                                             <div className="space-y-2">
@@ -642,11 +754,16 @@ const Profile: React.FC = () => {
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
+                            )}
 
-                        <div className="p-6 bg-white border-t">
-                            <button onClick={() => { handleSave('branding'); setShowStudio(false); }} className="w-full h-14 bg-pink-600 text-white rounded-2xl font-black uppercase shadow-xl shadow-pink-100">Apply Branding</button>
+                            {/* STAFF VIEW */}
+                            {proView === 'staff' && (
+                                <div className="p-4 animate-slide-left">
+                                     <React.Suspense fallback={<div className="p-8 text-center text-xs text-slate-400 font-bold uppercase tracking-widest">Loading Staff Manager...</div>}>
+                                        <SalaryManager />
+                                    </React.Suspense>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

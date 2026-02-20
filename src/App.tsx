@@ -7,7 +7,7 @@ import { supabase } from './utils/supabase';
 import UpdateWatcher from './components/UpdateWatcher';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 // Staging Environment Trigger
-import { X, RefreshCw, MoveRight } from 'lucide-react';
+import { X, RefreshCw, MoveRight, TrendingUp } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useUpdate, UpdateProvider } from './contexts/UpdateContext';
 import Header from './components/Header';
@@ -639,7 +639,7 @@ function AppContent() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard trips={trips} />;
+        return <Dashboard trips={trips} quotations={quotations} />;
       case 'trips':
         return (
           <div className="relative min-h-[500px]">
@@ -685,7 +685,7 @@ function AppContent() {
                           : 'text-slate-400 hover:bg-slate-50'
                           }`}
                       >
-                        New Invoice
+                        Invoice
                       </button>
                       <button
                         onClick={() => setInvoiceQuotationToggle('quotation')}
@@ -699,27 +699,7 @@ function AppContent() {
                     </div>
                   </div>
 
-                  {/* Row 2: Mobile View Mode Toggle (Create vs History) */}
-                  <div className="flex lg:hidden bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1">
-                    <button
-                      onClick={() => setTripsSubTab('create')}
-                      className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${tripsSubTab === 'create'
-                        ? 'bg-white text-slate-800 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-600'
-                        }`}
-                    >
-                      Create
-                    </button>
-                    <button
-                      onClick={() => setTripsSubTab('history')}
-                      className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${tripsSubTab === 'history'
-                        ? 'bg-white text-slate-800 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-600'
-                        }`}
-                    >
-                      History
-                    </button>
-                  </div>
+                  {/* Row 2: Mobile View Mode Toggle (Create vs History) - REMOVED per request */}
                 </div>
               )}
 
@@ -727,25 +707,18 @@ function AppContent() {
               {invoiceQuotationToggle === 'invoice' ? (
                 <div className={invoiceStep === 0 ? "flex flex-col lg:grid lg:grid-cols-12 gap-8 items-start" : "max-w-4xl mx-auto space-y-4"}>
                   <div className={`${invoiceStep === 0 ? (tripsSubTab === 'create' ? 'block' : 'hidden lg:block') : 'block'} lg:col-span-7 w-full`}>
-                    <Suspense fallback={<LoadingFallback />}>
-                      <TripForm onSaveTrip={handleSaveTrip} onStepChange={setInvoiceStep} invoiceTemplate={selectedQuotation} trips={trips} />
-                    </Suspense>
                     {/* Inline Quick Jump to History for Mobile */}
-                    {invoiceStep === 0 && tripsSubTab === 'create' && (
-                      <button
-                        onClick={() => setTripsSubTab('history')}
-                        className="lg:hidden w-full mt-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 bg-blue-50/50 border-2 border-dashed border-blue-200 rounded-3xl"
-                      >
-                        View Recent Invoices
-                      </button>
-                    )}
+                    {/* Inline Quick Jump to History for Mobile - MOVED INTO TRIP FORM */}
+                    <Suspense fallback={<LoadingFallback />}>
+                      <TripForm onSaveTrip={handleSaveTrip} onStepChange={setInvoiceStep} invoiceTemplate={selectedQuotation} trips={trips} onViewHistory={() => setTripsSubTab('history')} />
+                    </Suspense>
                   </div>
 
                   {invoiceStep === 0 && (
                     <div className={`${tripsSubTab === 'history' ? 'block' : 'hidden lg:block'} lg:col-span-5 w-full mt-2 lg:mt-0`}>
                       <div className="sticky top-4">
                         <Suspense fallback={<LoadingFallback />}>
-                          <History trips={trips} type="invoice" onDeleteTrip={handleDeleteTrip} />
+                          <History trips={trips} type="invoice" onDeleteTrip={handleDeleteTrip} onBack={() => setTripsSubTab('create')} />
                         </Suspense>
                       </div>
                     </div>
@@ -755,17 +728,10 @@ function AppContent() {
                 <div className={quotationStep === 1 ? "flex flex-col lg:grid lg:grid-cols-12 gap-8 items-start" : "max-w-4xl mx-auto space-y-4"}>
                   <div className={`${quotationStep === 1 ? (tripsSubTab === 'create' ? 'block' : 'hidden lg:block') : 'block'} lg:col-span-7 w-full`}>
                     <Suspense fallback={<LoadingFallback />}>
-                      <QuotationForm onSaveQuotation={handleSaveQuotation} quotations={quotations} onStepChange={setQuotationStep} />
+                      <QuotationForm onSaveQuotation={handleSaveQuotation} quotations={quotations} onStepChange={setQuotationStep} onViewHistory={() => setTripsSubTab('history')} />
                     </Suspense>
                     {/* Inline Quick Jump to History for Mobile */}
-                    {quotationStep === 1 && tripsSubTab === 'create' && (
-                      <button
-                        onClick={() => setTripsSubTab('history')}
-                        className="lg:hidden w-full mt-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 bg-indigo-50/50 border-2 border-dashed border-indigo-200 rounded-3xl"
-                      >
-                        View Recent Quotations
-                      </button>
-                    )}
+                    {/* Inline Quick Jump to History for Mobile - MOVED INTO QUOTATION FORM */}
                   </div>
 
                   {quotationStep === 1 && (
@@ -777,6 +743,7 @@ function AppContent() {
                             type="quotation"
                             onDeleteQuotation={handleDeleteQuotation}
                             onConvertQuotation={handleConvertQuotation}
+                            onBack={() => setTripsSubTab('create')}
                           />
                         </Suspense>
                       </div>
@@ -845,7 +812,7 @@ function AppContent() {
           <Suspense fallback={<LoadingFallback />}>
             <AdminPanel />
           </Suspense>
-        ) : <Dashboard trips={trips} />;
+        ) : <Dashboard trips={trips} quotations={quotations} />;
       case 'about':
         return (
           <Suspense fallback={<LoadingFallback />}>
@@ -879,7 +846,7 @@ function AppContent() {
             </Suspense>
           );
         }
-        return <Dashboard trips={trips} />;
+        return <Dashboard trips={trips} quotations={quotations} />;
     }
   };
 
@@ -1007,26 +974,41 @@ function AppContent() {
         />
       </Suspense>
 
-      {/* Guest Login Nudge */}
+      {/* Guest Login Nudge - Centered Modal Style */}
       {showLoginNudge && !user && (
-        <div className="fixed bottom-24 right-4 left-4 md:left-auto md:right-8 md:bottom-8 z-50 animate-slide-up">
-          <div className="bg-[#1e293b] text-white p-5 rounded-2xl shadow-2xl border border-slate-700 max-w-sm relative overflow-hidden">
+        <div className="fixed inset-0 z-110 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#0f172a] text-white p-6 rounded-3xl shadow-2xl border border-white/10 w-full max-w-[320px] relative overflow-hidden animate-scale-up">
             {/* Gloss Effect */}
-            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/20 blur-2xl rounded-full -mr-10 -mt-10"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full -mr-16 -mt-16"></div>
             <div className="relative z-10">
-              <div className="flex justify-between items-start mb-3">
-                <h3 className="font-black text-lg">Enjoying Sarathi?</h3>
-                <button onClick={handleCloseNudge} className="text-slate-400 hover:text-white transition-colors">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-blue-500/10 rounded-xl">
+                    <TrendingUp size={18} className="text-blue-400" />
+                  </div>
+                  <h3 className="font-black text-lg tracking-tight">Pro Features</h3>
+                </div>
+                <button onClick={handleCloseNudge} className="text-slate-500 hover:text-white transition-colors p-1">
                   <X size={20} />
                 </button>
               </div>
-              <p className="text-sm text-slate-300 font-medium mb-4">
-                Sign in to sync your trips, expenses, and invoices across all your devices securely.
-              </p>
-              <GoogleSignInButton className="w-full" />
+              <div className="space-y-4 mb-6">
+                <p className="text-xs text-slate-300 font-bold leading-relaxed">
+                  Generate professional <strong>GST Invoices</strong>, <strong>Quotations</strong> & <strong>Pay Slips</strong>. Track <strong>Driver Attendance</strong> with <strong>Fare Calculator</strong>.
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {['Calculator', 'Invoice', 'Quote', 'Attendance', 'Salary'].map(tag => (
+                    <div key={tag} className="bg-white/5 border border-white/5 px-2 py-0.5 rounded-lg flex items-center gap-1.5">
+                      <div className="w-1 h-1 rounded-full bg-blue-500"></div>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{tag}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <GoogleSignInButton className="w-full scale-[1.02]" />
               <button
                 onClick={handleCloseNudge}
-                className="w-full mt-3 text-slate-400 font-bold text-[10px] uppercase tracking-widest hover:text-white"
+                className="w-full mt-4 text-slate-500 font-black text-[10px] uppercase tracking-[0.2em] hover:text-slate-300 transition-colors"
               >
                 Continue as Guest
               </button>

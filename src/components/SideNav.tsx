@@ -40,9 +40,14 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                 return;
             }
             setActiveTab('profile');
-            // Trigger Pro Studio (via hash for mount, event for update)
-            window.history.pushState(null, '', '#pro-studio');
-            window.dispatchEvent(new CustomEvent('open-pro-studio'));
+            // Trigger Branding tab in Profile
+            window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'branding' }));
+            return;
+        }
+        if (tab === 'staff') {
+            setActiveTab('profile');
+            // Trigger Staff tab in Profile
+            window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'staff' }));
             return;
         }
         setActiveTab(tab);
@@ -125,9 +130,9 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                         <div className="relative z-10">
                              <div className="flex items-center gap-3 mb-4">
                                 <div className="w-10 h-10 rounded-full border-2 border-white/10 overflow-hidden bg-slate-800 shrink-0">
-                                    {user.user_metadata?.picture || user.user_metadata?.avatar_url ? (
+                                    {user.user_metadata?.picture || user.user_metadata?.avatar_url || user.user_metadata?.avatarUrl ? (
                                         <img 
-                                            src={user.user_metadata?.picture || user.user_metadata?.avatar_url} 
+                                            src={user.user_metadata?.picture || user.user_metadata?.avatar_url || user.user_metadata?.avatarUrl} 
                                             alt="Profile" 
                                             className="w-full h-full object-cover"
                                             referrerPolicy="no-referrer"

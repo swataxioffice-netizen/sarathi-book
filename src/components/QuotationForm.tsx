@@ -65,6 +65,7 @@ interface QuotationFormProps {
     onSaveQuotation?: (quotation: SavedQuotation) => void;
     onStepChange?: (step: number) => void;
     quotations?: SavedQuotation[];
+    onViewHistory?: () => void;
 }
 
 // Vehicle Classes for Selection
@@ -84,7 +85,7 @@ const DEFAULT_TERMS = [
     "GST 5% is applicable on the total bill amount."
 ];
 
-const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepChange, quotations }) => {
+const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepChange, quotations, onViewHistory }) => {
     const { settings } = useSettings();
     const { user } = useAuth();
     // const { triggerAction } = useAdProtection();
@@ -671,44 +672,60 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
     };
 
     const renderStep1 = () => (
-        <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
-            <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight px-2">
+        <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
+            <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                <div className="w-1.5 h-4 bg-indigo-600 rounded-full" />
                 CREATE QUOTATION
             </h2>
-            <div className="grid grid-cols-2 gap-2 px-1">
+            <div className="flex flex-col gap-3 px-0.5">
                 {(['custom', 'local', 'drop', 'outstation'] as const).map((m) => (
-                    <button key={m} onClick={() => {
-                        if (mode !== m) {
-                            setMode(m);
-                            setFromLoc(''); setToLoc(''); setFromCoords(null); setToCoords(null);
-                            setDistanceOverride('');
-                            setDays(1); setLocalPackageHours(8);
-                            setExtraItems([]);
-                            setToll('0'); setParking('0'); setPermit('0'); setDriverBatta('0');
-                            setCustomLineItems([{ description: 'Service Charge', sac: '9966', qty: 1, rate: 0, amount: 0 }]);
-                        }
-                        handleNext();
-                    }} className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all text-center ${mode === m ? 'bg-indigo-600 border-indigo-600 shadow-md ring-2 ring-indigo-100' : 'bg-white border-slate-100 hover:border-indigo-200 shadow-sm'}`}>
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${mode === m ? 'bg-white text-indigo-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                            {m === 'drop' && <MoveRight size={16} />}
-                            {m === 'outstation' && <Repeat size={16} />}
-                            {m === 'local' && <Clock size={16} />}
-                            {m === 'custom' && <PenLine size={16} />}
+                    <button 
+                        key={m} 
+                        onClick={() => {
+                            if (mode !== m) {
+                                setMode(m);
+                                setFromLoc(''); setToLoc(''); setFromCoords(null); setToCoords(null);
+                                setDistanceOverride('');
+                                setDays(1); setLocalPackageHours(8);
+                                setExtraItems([]);
+                                setToll('0'); setParking('0'); setPermit('0'); setDriverBatta('0');
+                                setCustomLineItems([{ description: 'Service Charge', sac: '9966', qty: 1, rate: 0, amount: 0 }]);
+                            }
+                            handleNext();
+                        }} 
+                        className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left group ${mode === m ? 'bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-100 ring-2 ring-indigo-100' : 'bg-white border-slate-200 hover:border-indigo-400 shadow-sm active:scale-[0.98]'}`}
+                    >
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 ${mode === m ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-600'}`}>
+                            {m === 'drop' && <MoveRight size={22} />}
+                            {m === 'outstation' && <Repeat size={22} />}
+                            {m === 'local' && <Clock size={22} />}
+                            {m === 'custom' && <PenLine size={22} />}
                         </div>
-                        <div className="flex flex-col items-center gap-0.5 min-w-0">
-                            <span className={`text-[10px] font-bold uppercase tracking-wide leading-tight ${mode === m ? 'text-white' : 'text-slate-800'}`}>
-                                {m === 'drop' ? 'One Way' : m === 'outstation' ? 'Outstation' : m === 'local' ? 'Local' : 'Manual'}
-                            </span>
-                            <span className={`text-[8px] font-bold uppercase tracking-wide ${mode === m ? 'text-white/70' : 'text-slate-400'}`}>
-                                {m === 'drop' && 'Estimation'}
-                                {m === 'outstation' && 'Multi-day'}
-                                {m === 'local' && 'Package'}
-                                {m === 'custom' && 'Editor'}
-                            </span>
+                        <div className="flex-1 min-w-0">
+                            <h3 className={`text-[13px] font-black uppercase tracking-wider leading-tight ${mode === m ? 'text-white' : 'text-slate-800'}`}>
+                                {m === 'drop' ? 'One Way' : m === 'outstation' ? 'Outstation' : m === 'local' ? 'Local' : 'Manual Entry'}
+                            </h3>
+                            <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${mode === m ? 'text-white/70' : 'text-slate-400'}`}>
+                                {m === 'drop' && 'Point to Point Estimation'}
+                                {m === 'outstation' && 'Multi-day Round Trip'}
+                                {m === 'local' && 'Hourly Rental Package'}
+                                {m === 'custom' && 'Advanced Manual Editor'}
+                            </p>
+                        </div>
+                        <div className={`shrink-0 transition-transform group-hover:translate-x-1 ${mode === m ? 'text-white/50' : 'text-slate-300'}`}>
+                            <MoveRight size={18} />
                         </div>
                     </button>
                 ))}
             </div>
+            {onViewHistory && (
+                <button
+                    onClick={onViewHistory}
+                    className="w-full py-3 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 bg-indigo-50/50 border-2 border-dashed border-indigo-200 rounded-2xl active:bg-indigo-100 transition-colors"
+                >
+                    View Recent Quotations
+                </button>
+            )}
         </div>
     );
 

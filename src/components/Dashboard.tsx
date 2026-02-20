@@ -1,28 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { safeJSONParse } from '../utils/storage';
-import type { Trip, Expense } from '../utils/fare';
-import { IndianRupee, TrendingUp, CheckCircle2 } from 'lucide-react';
-
-
-
+import { Trip, Expense } from '../utils/fare'; // Use named imports if they are exported as such, or adjust if they are types
+import { IndianRupee, TrendingUp, CheckCircle2, FileText, Eye } from 'lucide-react';
+import type { SavedQuotation } from '../utils/pdf';
+import { generateReceiptPDF, generateQuotationPDF } from '../utils/pdf';
+import { useSettings } from '../contexts/SettingsContext';
+import PDFPreviewModal from './PDFPreviewModal';
 
 interface DashboardProps {
     trips: Trip[];
+    quotations: SavedQuotation[];
 }
-
-
-
 
 type TimeRange = 'today' | 'week' | 'month' | 'year';
 
-const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
+type RecentItem = 
+    | (Trip & { type: 'invoice'; sortDate: string })
+    | (SavedQuotation & { type: 'quotation'; sortDate: string });
 
+const Dashboard: React.FC<DashboardProps> = ({ trips, quotations }) => {
+    const { settings } = useSettings();
     const [range, setRange] = useState<TimeRange>('today');
-
+    const [showPreview, setShowPreview] = useState(false);
+    const [previewPdfUrl, setPreviewPdfUrl] = useState('');
+    const [previewTitle, setPreviewTitle] = useState('');
 
     const now = new Date();
     const today = now.toISOString().split('T')[0];
 
+    // ... (keep existing helper functions: isThisWeek, isThisMonth, isThisYear) ...
     const isThisWeek = (dateStr: string) => {
         const d = new Date(dateStr);
         const diff = now.getTime() - d.getTime();
@@ -71,10 +77,58 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
 
     const stats = getStats();
 
+    // Prepare Recent Invoices & Quotations
+    const recentDocs = useMemo<RecentItem[]>(() => {
+        const combined: RecentItem[] = [
+            ...trips.map(t => ({ ...t, type: 'invoice' as const, sortDate: t.date })),
+            ...quotations.map(q => ({ ...q, type: 'quotation' as const, sortDate: q.date }))
+        ];
+        return combined
+            .sort((a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime())
+            .slice(0, 5); // Show top 5
+    }, [trips, quotations]);
 
+    const handlePreview = async (item: RecentItem) => {
+        if (item.type === 'invoice') {
+            const doc = await generateReceiptPDF(item, {
+                ...settings,
+                vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A'
+            });
+            setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
+            setPreviewTitle(`Invoice: ${item.invoiceNo || 'Draft'}`);
+        } else {
+             const quoteData = {
+                customerName: item.customerName,
+                subject: item.subject,
+                date: item.date,
+                items: item.items,
+                gstEnabled: item.gstEnabled,
+                quotationNo: item.quotationNo,
+                terms: item.terms,
+                customerAddress: item.customerAddress,
+                customerGstin: item.customerGstin
+            };
+            const quoteSettings = {
+                ...settings,
+                vehicleNumber: 'N/A'
+            };
+            // Ensure compatibility with generateQuotationPDF expecting vehicles array in settings
+            const doc = await generateQuotationPDF(quoteData, quoteSettings);
+            setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
+            setPreviewTitle(`Quotation: ${item.quotationNo || 'Draft'}`);
+        }
+        setShowPreview(true);
+    };
 
     return (
         <div className="space-y-4 pb-24">
+            <PDFPreviewModal
+                isOpen={showPreview}
+                onClose={() => setShowPreview(false)}
+                pdfUrl={previewPdfUrl}
+                title={previewTitle}
+            />
+
             {/* Main Dynamic Card - Clean White Theme */}
             <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm relative overflow-hidden">
                 <div className="relative z-10 flex justify-between items-start">
@@ -134,6 +188,80 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                 </div>
             </div>
 
+            {/* Engagement Banner - Business Features */}
+            <div className="bg-linear-to-br from-[#0047AB] to-indigo-800 rounded-2xl p-4 shadow-lg shadow-blue-100 flex items-center justify-between group transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer" onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'salary' }))}>
+                <div className="space-y-1.5 flex-1 pr-4">
+                    <h3 className="text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+                        <TrendingUp size={12} className="text-blue-200" /> Pro Features
+                    </h3>
+                    <p className="text-blue-50 text-[9px] font-bold leading-relaxed">
+                        Create <strong>Invoices</strong>, <strong>Quotations</strong> & <strong>Pay Slips</strong>. Track <strong>Attendance</strong>, <strong>Salaries</strong> & <strong>Advances</strong> effortlessly.
+                    </p>
+                </div>
+                <div className="bg-white/10 p-2.5 rounded-xl backdrop-blur-sm group-hover:bg-white/20 transition-colors shrink-0">
+                    <CheckCircle2 size={24} className="text-white" />
+                </div>
+            </div>
+
+             {/* Recent Invoices & Quotations - New Section */}
+             <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-[10px] font-bold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
+                        <FileText size={12} className="text-slate-400" /> Recent Invoices & Quotations
+                    </h3>
+                    <button 
+                        onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'trips' }))}
+                        className="text-[9px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wide"
+                    >
+                        View All
+                    </button>
+                </div>
+
+                <div className="space-y-2">
+                    {recentDocs.length > 0 ? (
+                        recentDocs.map((item) => (
+                            <div key={`${item.type}-${item.id}`} className="flex items-center justify-between group p-1.5 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center border shrink-0 ${
+                                        item.type === 'invoice' 
+                                            ? 'bg-blue-50 border-blue-100 text-blue-600' 
+                                            : 'bg-indigo-50 border-indigo-100 text-indigo-600'
+                                    }`}>
+                                        <FileText size={14} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[11px] font-bold text-slate-900 uppercase tracking-wide truncate">
+                                            {item.customerName || 'Guest User'}
+                                        </p>
+                                        <p className="text-[9px] font-bold text-slate-500 mt-0 truncate">
+                                            {new Date(item.sortDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} • {item.type === 'invoice' ? item.invoiceNo || 'Draft Inv' : item.quotationNo || 'Draft Quote'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 pl-2">
+                                    <p className="text-[11px] font-bold tabular-nums tracking-tight text-slate-700">
+                                        ₹{Math.round(
+                                            item.type === 'invoice' 
+                                                ? item.totalFare 
+                                                : item.items.reduce((acc, i) => acc + parseFloat(i.amount), 0)
+                                        ).toLocaleString()}
+                                    </p>
+                                    <button 
+                                        onClick={() => handlePreview(item)}
+                                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                        title="View PDF"
+                                    >
+                                        <Eye size={12} strokeWidth={2.5} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <p className="text-center text-[11px] text-slate-400 font-bold uppercase tracking-wide py-4">No recent documents</p>
+                    )}
+                </div>
+            </div>
+
             {/* Range Toggle - Clean Pill Style */}
             <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex gap-1">
                 {(['today', 'week', 'month', 'year'] as const).map((r) => (
@@ -171,15 +299,11 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                 </div>
             </div>
 
-
-
-
-
             {/* Recent Activity Feed - Compact */}
             <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-[10px] font-bold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-                        <TrendingUp size={12} className="text-slate-400" /> Recent Activity
+                        <TrendingUp size={12} className="text-slate-400" /> Recent Logic (Cash Flow)
                     </h3>
                 </div>
 

@@ -20,15 +20,15 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                     <button
                         onClick={onMenuClick}
                         aria-label="Open Menu"
-                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 shadow-sm active:scale-95 transition-all hover:bg-slate-50"
+                        className="p-2 rounded-full hover:bg-slate-100 transition-colors focus:outline-none"
                     >
-                        <Menu size={20} strokeWidth={2.5} />
+                        <Menu size={22} className="text-slate-600" />
                     </button>
                 </div>
 
                 {/* Center: Logo + Title */}
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2.5">
-                    <div className="w-9 h-9 flex-shrink-0 bg-white rounded-xl flex items-center justify-center border border-slate-50">
+                    <div className="w-9 h-9 shrink-0 bg-white rounded-xl flex items-center justify-center border border-slate-50">
                         <img
                             src="/logo.png"
                             alt="Sarathi Book"

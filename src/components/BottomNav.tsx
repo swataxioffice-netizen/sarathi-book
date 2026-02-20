@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, FileText, Wallet, Calculator, ShieldCheck, Plus } from 'lucide-react';
+import { LayoutDashboard, FileText, Wallet, Calculator, ShieldCheck, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface BottomNavProps {
@@ -42,7 +42,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
         { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'DASHBOARD' },
         { id: 'trips', icon: <FileText size={20} />, label: 'INVOICES' },
         // Center Space is reserved
-        { id: 'notes', icon: <Plus size={24} />, label: 'NOTES' },
+        { id: 'staff', icon: <Users size={20} />, label: 'STAFF' },
         { id: 'expenses', icon: <Wallet size={20} />, label: 'SPEND' },
     ];
 

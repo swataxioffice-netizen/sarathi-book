@@ -7,7 +7,6 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { Analytics } from '../utils/monitoring';
-import GoogleSignInButton from './GoogleSignInButton';
 
 interface MobileMenuProps {
     isOpen: boolean;
@@ -17,7 +16,7 @@ interface MobileMenuProps {
 }
 
 const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activeTab, setActiveTab }) => {
-    const { user, signOut, isAdmin } = useAuth();
+    const { user, signOut, isAdmin, signInWithGoogle } = useAuth();
     const { settings } = useSettings();
 
     const isPro = settings.plan === 'pro' || settings.isPremium;
@@ -97,8 +96,12 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
                 return;
             }
             setActiveTab('profile');
-            window.history.pushState(null, '', '#pro-studio');
-            window.dispatchEvent(new CustomEvent('open-pro-studio'));
+            // Trigger Branding tab in Profile
+            window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'branding' }));
+        } else if (tab === 'staff') {
+            setActiveTab('profile');
+            // Trigger Staff tab in Profile
+            window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'staff' }));
         } else {
             setActiveTab(tab);
         }
@@ -111,29 +114,36 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
         <div className="fixed inset-0 z-50 md:hidden animate-fade-in">
             {/* Backdrop */}
             <div 
-                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300"
+                className="absolute inset-0 bg-slate-900/60 transition-opacity duration-300 z-10"
                 onClick={onClose}
             />
             
             {/* Drawer */}
-            <div className="absolute top-0 left-0 bottom-0 w-[85%] max-w-[320px] bg-white shadow-2xl flex flex-col animate-slide-right overflow-hidden">
+            <div 
+                className="absolute top-0 left-0 bottom-0 w-[85%] max-w-[320px] bg-white shadow-2xl flex flex-col animate-slide-right overflow-hidden z-20"
+                onClick={(e) => e.stopPropagation()}
+            >
                 
                 {/* BLUE HERO HEADER */}
                 <div className="bg-[#0047AB] p-4 text-center relative shrink-0">
                     <button 
-                        onClick={onClose}
-                        className="absolute top-3 right-3 p-1.5 bg-white/10 text-white hover:bg-white/20 rounded-full transition-all"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onClose();
+                        }}
+                        className="absolute top-4 right-4 p-2.5 bg-white/20 text-white hover:bg-white/30 active:bg-white/40 rounded-full transition-all z-60 flex items-center justify-center cursor-pointer shadow-lg"
+                        aria-label="Close menu"
                     >
-                        <X size={16} />
+                        <X size={20} />
                     </button>
 
-                    <div className="flex flex-col items-center pt-2 pb-2 relative z-10">
+                    <div className="flex flex-col items-center pt-2 pb-2 relative z-50">
                         {user ? (
                             <>
                                 <div className="w-14 h-14 bg-white rounded-xl shadow-lg border-2 border-white/20 mb-3 overflow-hidden p-0.5">
-                                    {user.user_metadata?.picture || user.user_metadata?.avatar_url ? (
+                                    {user.user_metadata?.picture || user.user_metadata?.avatar_url || user.user_metadata?.avatarUrl ? (
                                         <img 
-                                            src={user.user_metadata?.picture || user.user_metadata?.avatar_url} 
+                                            src={user.user_metadata?.picture || user.user_metadata?.avatar_url || user.user_metadata?.avatarUrl} 
                                             alt="Profile" 
                                             className="w-full h-full object-cover rounded-lg"
                                             referrerPolicy="no-referrer"
@@ -169,14 +179,32 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
                                 <h2 className="text-sm font-bold text-white tracking-tight mb-1">
                                     Welcome Guest
                                 </h2>
-                                <p className="text-xs font-medium text-blue-200 mb-4">
-                                    Sign in to sync your data
+                                <p className="text-[9px] font-bold text-blue-200 mb-4 uppercase tracking-wider leading-relaxed px-4">
+                                    Generate Invoices, Quotations & Pay Slips. Track Attendance & Salaries instantly.
                                 </p>
-                                <div className="w-full relative z-50 pointer-events-auto">
-                                    <GoogleSignInButton 
-                                        text="Secure Login" 
-                                        className="py-3! text-xs! bg-[#0047AB]! text-white! border-white/30! hover:bg-blue-700! shadow-xl" 
-                                    />
+                                <div className="w-full relative z-100 px-4" onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                        type="button"
+                                        onClick={async (e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            console.log('Mobile menu: Sign in clicked');
+                                            try {
+                                               await signInWithGoogle();
+                                            } catch (err: any) {
+                                               alert('Login failed: ' + err.message);
+                                            }
+                                        }}
+                                        className="group relative flex items-center justify-center gap-3 w-full py-3 px-6 bg-white text-[#0047AB] border border-white shadow-xl rounded-2xl cursor-pointer hover:bg-slate-50 active:scale-[0.98] transition-all duration-300 z-50 pointer-events-auto"
+                                    >
+                                        <svg className="w-5 h-5 shrink-0 relative z-10" viewBox="0 0 24 24">
+                                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                            <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z" />
+                                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                                        </svg>
+                                        <span className="text-xs font-bold uppercase tracking-wide relative z-10">Secure Login</span>
+                                    </button>
                                 </div>
                             </>
                         )}

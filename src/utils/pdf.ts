@@ -727,7 +727,7 @@ export const generateReceiptPDF = async (trip: any, settings: PDFSettings, isQuo
             doc.setFontSize(4);
             doc.setTextColor(150, 150, 150);
             doc.setFont('helvetica', 'normal');
-            doc.text('PROFESSIONAL CAB BUSINESS SUITE | AUTOMATE YOUR GROWTH', 105, y + 5, { align: 'center' });
+            doc.text('PROFESSIONAL CAB PRO FEATURES | AUTOMATE YOUR GROWTH', 105, y + 5, { align: 'center' });
 
             doc.link(90, y, 30, 5, { url: 'https://sarathibook.com' });
         }
@@ -1027,7 +1027,7 @@ export const generateFinancialReportPDF = async (trips: Trip[], expenses: Expens
     doc.setFontSize(4);
     doc.setTextColor(150, 150, 150);
     doc.setFont('helvetica', 'normal');
-    doc.text('PROFESSIONAL CAB BUSINESS SUITE | AUTOMATE YOUR GROWTH', 105, y + 5, { align: 'center' });
+    doc.text('PROFESSIONAL CAB PRO FEATURES | AUTOMATE YOUR GROWTH', 105, y + 5, { align: 'center' });
 
     doc.link(90, y, 30, 5, { url: 'https://sarathibook.com' });
 

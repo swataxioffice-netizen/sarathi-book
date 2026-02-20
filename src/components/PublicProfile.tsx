@@ -22,6 +22,8 @@ interface ProfileData {
     id: string;
     full_name?: string;
     avatar_url?: string;
+    picture?: string;
+    avatarUrl?: string;
     driver_code?: number;
 }
 
@@ -41,7 +43,7 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId }) => {
 
             const dbPromise = supabase
                 .from('profiles')
-                .select('settings, id, full_name, avatar_url, driver_code') // Ensure all fields are explicitly selected
+                .select('settings, id, full_name, avatar_url, picture, avatarUrl, driver_code') // Ensure all fields are explicitly selected
                 .eq('id', userId)
                 .single();
 
@@ -108,7 +110,7 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId }) => {
         services: []
     };
     const full_name = profile.full_name;
-    const avatar_url = profile.avatar_url;
+    const avatar_url = profile.avatar_url || profile.picture || profile.avatarUrl;
 
     // Fallbacks
     const company = settings.companyName || full_name || 'Professional Driver';

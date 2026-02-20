@@ -16,11 +16,12 @@ interface HistoryProps {
     onDeleteTrip?: (id: string) => void;
     onDeleteQuotation?: (id: string) => void;
     onConvertQuotation?: (quotation: SavedQuotation) => void;
+    onBack?: () => void;
 }
 
 type TimeFilter = 'all' | 'today' | 'week' | 'month';
 
-const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, onDeleteTrip, onDeleteQuotation }) => {
+const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, onDeleteTrip, onDeleteQuotation, onBack }) => {
     const { settings } = useSettings();
     const { user } = useAuth();
     const [filter, setFilter] = useState<TimeFilter>('all');
@@ -199,10 +200,17 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
             <div className="flex flex-col gap-1.5 sticky top-[-16px] md:top-[-32px] z-20 bg-[#F5F7FA]/95 backdrop-blur-md -mx-3 px-3 py-1.5 mb-2 border-b border-slate-200/50 shadow-sm">
                 <div className="flex flex-col gap-2">
                     <div className="flex justify-between items-center px-0.5">
-                        <h3 className={`text-[10px] font-black uppercase tracking-widest relative inline-block ${type === 'invoice' ? 'text-slate-800' : 'text-slate-800'}`}>
-                            {filter === 'month' ? format(selectedMonth, 'MMMM yyyy') : `Recent ${type === 'invoice' ? 'Invoices' : 'Quotations'}`}
-                            <span className={`absolute -bottom-1 left-0 w-6 h-0.5 rounded-full ${type === 'invoice' ? 'bg-blue-600' : 'bg-[#6366F1]'}`}></span>
-                        </h3>
+                        <div className="flex items-center gap-2">
+                            {onBack && (
+                                <button onClick={onBack} className="lg:hidden p-1 -ml-2 text-slate-400 hover:text-slate-600 active:scale-95 transition-transform">
+                                    <ChevronLeft size={20} strokeWidth={2.5} />
+                                </button>
+                            )}
+                            <h3 className={`text-[10px] font-black uppercase tracking-widest relative inline-block ${type === 'invoice' ? 'text-slate-800' : 'text-slate-800'}`}>
+                                {filter === 'month' ? format(selectedMonth, 'MMMM yyyy') : `Recent ${type === 'invoice' ? 'Invoices' : 'Quotations'}`}
+                                <span className={`absolute -bottom-1 left-0 w-6 h-0.5 rounded-full ${type === 'invoice' ? 'bg-blue-600' : 'bg-[#6366F1]'}`}></span>
+                            </h3>
+                        </div>
                         <div className="flex bg-slate-100/50 rounded-lg p-0.5 border border-slate-200/50">
                             {(['all', 'today', 'week', 'month'] as const).map((f) => (
                                 <button

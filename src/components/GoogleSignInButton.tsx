@@ -25,11 +25,11 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
     const handleLogin = async () => {
         setIsLoading(true);
         try {
+            console.log('Starting Google Sign-In...');
             await signInWithGoogle();
-            // Note: In redirect flows, we don't need to setIsLoading(false) here 
-            // as the page will redirect away.
-        } catch (error) {
+        } catch (error: any) {
             console.error('Login failed:', error);
+            alert(`Login Error: ${error.message || JSON.stringify(error)}`);
             setIsLoading(false);
         }
     };
@@ -37,7 +37,8 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
     return (
         <button
             type="button"
-            onClick={() => {
+            onClick={(e) => {
+                e.stopPropagation();
                 console.log('Google Sign-In Clicked');
                 if (onClick) onClick();
                 handleLogin();

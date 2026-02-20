@@ -10,6 +10,7 @@ interface AuthContextType {
     signInWithGoogle: () => Promise<void>;
     signInWithIdToken: (token: string) => Promise<void>;
     signOut: () => Promise<void>;
+    refreshProfile: () => Promise<void>;
     impersonateUser: (userId: string) => Promise<void>;
     stopImpersonation: () => void;
 }
@@ -24,11 +25,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Sync profile to database
     const ensureProfile = async (user: User) => {
         try {
+            const metadata = user.user_metadata || {};
             await supabase.from('profiles').upsert({
                 id: user.id,
                 email: user.email,
-                name: user.user_metadata.full_name || user.email?.split('@')[0],
-                avatar_url: user.user_metadata.avatar_url,
+                name: metadata.full_name || user.email?.split('@')[0],
+                avatar_url: metadata.avatar_url || metadata.picture || metadata.avatarUrl,
                 updated_at: new Date().toISOString(),
             }, { onConflict: 'id' });
         } catch (err) {
@@ -128,7 +130,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setUser(current);
                 if (current) ensureProfile(current); 
             } else if (event === 'USER_UPDATED') {
+                console.log('Auth: User metadata updated');
                 setUser(current);
+                if (current) ensureProfile(current);
             }
 
             setLoading(false);
@@ -190,6 +194,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         window.location.href = '/';
     };
 
+    const refreshProfile = async () => {
+        try {
+            console.log('Auth: Refreshing profile...');
+            const { data: { session }, error } = await supabase.auth.refreshSession();
+            if (error) throw error;
+            
+            if (session?.user) {
+                console.log('Auth: Profile metadata refreshed');
+                await ensureProfile(session.user);
+                setUser(session.user);
+            }
+        } catch (err) {
+            console.error('Auth: Refresh session failed:', err);
+            throw err;
+        }
+    };
+
     const impersonateUser = async (userId: string) => {
         // Security check: Must assume current actual user is admin
         const currentUser = originalUser || user;
@@ -229,7 +250,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 app_metadata: { provider: 'email' },
                 user_metadata: {
                     full_name: profile.name,
-                    avatar_url: profile.avatar_url,
+                    avatar_url: profile.avatar_url || profile.picture || profile.avatarUrl,
                     ...profile // Access to other profile fields if needed
                 },
                 created_at: profile.created_at || new Date().toISOString(),
@@ -274,6 +295,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signInWithGoogle,
         signInWithIdToken,
         signOut,
+        refreshProfile,
         impersonateUser,
         stopImpersonation
     };

@@ -56,6 +56,7 @@ interface TripFormProps {
     onStepChange?: (step: number) => void;
     invoiceTemplate?: SavedQuotation | null;
     trips?: Trip[];
+    onViewHistory?: () => void;
 }
 
 const DEFAULT_TERMS = [
@@ -67,7 +68,7 @@ const DEFAULT_TERMS = [
     "This is a computer-generated invoice and requires no physical signature."
 ];
 
-const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTemplate, trips }) => {
+const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTemplate, trips, onViewHistory }) => {
     const { settings } = useSettings();
     const { user } = useAuth();
     // const { triggerAction } = useAdProtection();
@@ -840,49 +841,65 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     };
 
     const renderStep1 = () => (
-        <div className="space-y-2 animate-in fade-in slide-in-from-right-4 duration-500">
-            <h2 className="text-xs font-black text-slate-800 uppercase tracking-tight px-1">
+        <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
+            <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                <div className="w-1.5 h-4 bg-blue-600 rounded-full" />
                 Create Invoice
             </h2>
-            <div className="grid grid-cols-2 gap-2 px-0.5">
+            <div className="flex flex-col gap-3 px-0.5">
                 {(['custom', 'local', 'drop', 'outstation'] as const).map((m) => (
-                    <button key={m} onClick={() => {
-                        if (mode !== m) {
-                            setMode(m);
-                            // Reset Data on Mode Switch
-                            setFromLoc(''); setToLoc('');
-                            setStartKm(0); setEndKm(0); setDistanceOverride('');
-                            setDays(1); setLocalPackageHours(8);
-                            setExtraItems([]);
-                            setToll('0'); setParking('0'); setPermit('0'); setDriverBatta('0');
-                            setNightCharge('0'); setHillStationCharge('0'); setPetCharge('0');
-                            setCustomLineItems([{ description: 'Service Charge', sac: '9966', qty: 1, rate: 0, amount: 0 }]);
-                            setIsOdometerMode(false);
-                            setManualDriverBatta(false); setManualToll(false); setManualParking(false);
-                            setManualPermit(false); setManualHillStation(false);
-                        }
-                        setStep(1);
-                    }} className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all text-center ${mode === m ? 'bg-blue-600 border-blue-600 shadow-md ring-2 ring-blue-100' : 'bg-white border-slate-100 hover:border-blue-200 shadow-sm'}`}>
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${mode === m ? 'bg-white text-blue-600' : 'bg-blue-50 text-blue-600'}`}>
-                            {m === 'drop' && <MoveRight size={16} />}
-                            {m === 'outstation' && <Repeat size={16} />}
-                            {m === 'local' && <Clock size={16} />}
-                            {m === 'custom' && <PenLine size={16} />}
+                    <button 
+                        key={m} 
+                        onClick={() => {
+                            if (mode !== m) {
+                                setMode(m);
+                                // Reset Data on Mode Switch
+                                setFromLoc(''); setToLoc('');
+                                setStartKm(0); setEndKm(0); setDistanceOverride('');
+                                setDays(1); setLocalPackageHours(8);
+                                setExtraItems([]);
+                                setToll('0'); setParking('0'); setPermit('0'); setDriverBatta('0');
+                                setNightCharge('0'); setHillStationCharge('0'); setPetCharge('0');
+                                setCustomLineItems([{ description: 'Service Charge', sac: '9966', qty: 1, rate: 0, amount: 0 }]);
+                                setIsOdometerMode(false);
+                                setManualDriverBatta(false); setManualToll(false); setManualParking(false);
+                                setManualPermit(false); setManualHillStation(false);
+                            }
+                            setStep(1);
+                        }} 
+                        className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left group ${mode === m ? 'bg-blue-600 border-blue-600 shadow-lg shadow-blue-100 ring-2 ring-blue-100' : 'bg-white border-slate-200 hover:border-blue-400 shadow-sm active:scale-[0.98]'}`}
+                    >
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 ${mode === m ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600'}`}>
+                            {m === 'drop' && <MoveRight size={22} />}
+                            {m === 'outstation' && <Repeat size={22} />}
+                            {m === 'local' && <Clock size={22} />}
+                            {m === 'custom' && <PenLine size={22} />}
                         </div>
-                        <div className="flex flex-col items-center gap-0.5 min-w-0">
-                            <span className={`text-[10px] font-black uppercase tracking-wider leading-tight ${mode === m ? 'text-white' : 'text-slate-800'}`}>
-                                {m === 'drop' ? 'One Way' : m === 'outstation' ? 'Outstation' : m === 'local' ? 'Local' : 'Manual'}
-                            </span>
-                            <span className={`text-[8px] font-bold uppercase tracking-wide ${mode === m ? 'text-white/70' : 'text-slate-400'}`}>
-                                {m === 'drop' && 'Drop'}
-                                {m === 'outstation' && 'Round Trip'}
-                                {m === 'local' && 'Rental'}
-                                {m === 'custom' && 'Editor'}
-                            </span>
+                        <div className="flex-1 min-w-0">
+                            <h3 className={`text-[13px] font-black uppercase tracking-wider leading-tight ${mode === m ? 'text-white' : 'text-slate-800'}`}>
+                                {m === 'drop' ? 'One Way' : m === 'outstation' ? 'Outstation' : m === 'local' ? 'Local' : 'Manual Entry'}
+                            </h3>
+                            <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${mode === m ? 'text-white/70' : 'text-slate-400'}`}>
+                                {m === 'drop' && 'Point to Point Drop'}
+                                {m === 'outstation' && 'Round Trip Journey'}
+                                {m === 'local' && 'Hourly Rental Package'}
+                                {m === 'custom' && 'Advanced Manual Editor'}
+                            </p>
+                        </div>
+                        <div className={`shrink-0 transition-transform group-hover:translate-x-1 ${mode === m ? 'text-white/50' : 'text-slate-300'}`}>
+                            <MoveRight size={18} />
                         </div>
                     </button>
                 ))}
             </div>
+            {onViewHistory && (
+                <button
+                    onClick={onViewHistory}
+                    className="w-full py-3 text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 bg-blue-50/50 border-2 border-dashed border-blue-200 rounded-2xl active:bg-blue-100 transition-colors"
+                >
+                    View Recent Invoices
+                </button>
+            )}
         </div >
     );
 
