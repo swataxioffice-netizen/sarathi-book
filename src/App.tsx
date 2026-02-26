@@ -113,14 +113,28 @@ function AppContent() {
       setInvoiceQuotationToggle('invoice');
       setTripsSubTab('create');
     };
+    const handleQuoteHistoryNav = () => {
+      setActiveTab('trips');
+      setInvoiceQuotationToggle('quotation');
+      setTripsSubTab('history');
+    };
+    const handleInvoiceHistoryNav = () => {
+      setActiveTab('trips');
+      setInvoiceQuotationToggle('invoice');
+      setTripsSubTab('history');
+    };
 
     window.addEventListener('nav-tab-change', handleNav);
     window.addEventListener('nav-tab-quotation', handleQuoteNav);
     window.addEventListener('nav-tab-invoice', handleInvoiceNav);
+    window.addEventListener('nav-tab-quotation-history', handleQuoteHistoryNav);
+    window.addEventListener('nav-tab-invoice-history', handleInvoiceHistoryNav);
     return () => {
       window.removeEventListener('nav-tab-change', handleNav);
       window.removeEventListener('nav-tab-quotation', handleQuoteNav);
       window.removeEventListener('nav-tab-invoice', handleInvoiceNav);
+      window.removeEventListener('nav-tab-quotation-history', handleQuoteHistoryNav);
+      window.removeEventListener('nav-tab-invoice-history', handleInvoiceHistoryNav);
     };
   }, []);
 
@@ -979,7 +993,7 @@ function AppContent() {
         <div className="fixed inset-0 z-110 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
           <div className="bg-[#0f172a] text-white p-6 rounded-3xl shadow-2xl border border-white/10 w-full max-w-[320px] relative overflow-hidden animate-scale-up">
             {/* Gloss Effect */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full -mr-16 -mt-16"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full -mr-16 -mt-16 pointer-events-none"></div>
             <div className="relative z-10">
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-2.5">

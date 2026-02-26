@@ -27,9 +27,10 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         try {
             console.log('Starting Google Sign-In...');
             await signInWithGoogle();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as Error;
             console.error('Login failed:', error);
-            alert(`Login Error: ${error.message || JSON.stringify(error)}`);
+            alert(`Login Error: ${error.message || 'Unknown error'}`);
             setIsLoading(false);
         }
     };
@@ -38,7 +39,7 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         <button
             type="button"
             onClick={(e) => {
-                e.stopPropagation();
+                e.preventDefault();
                 console.log('Google Sign-In Clicked');
                 if (onClick) onClick();
                 handleLogin();

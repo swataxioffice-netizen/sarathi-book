@@ -79,7 +79,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
                 <div className="absolute left-1/2 -translate-x-1/2 -top-6 flex flex-col items-center">
                     <button
                         onClick={() => setActiveTab('taxi-fare-calculator')}
-                        className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-[4px] border-white transform transition-all duration-300 ${activeTab === 'taxi-fare-calculator' || activeTab === 'calculator' ? 'scale-110 bg-[#0047AB] text-white shadow-blue-500/30' : 'bg-slate-50 text-slate-400 hover:bg-white hover:text-slate-600 border-slate-50'
+                        className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-4 border-white transform transition-all duration-300 ${activeTab === 'taxi-fare-calculator' || activeTab === 'calculator' ? 'scale-110 bg-[#0047AB] text-white shadow-blue-500/30' : 'bg-slate-50 text-slate-400 hover:bg-white hover:text-slate-600 border-slate-50'
                             }`}
                     >
                         <Calculator size={20} strokeWidth={2.5} />

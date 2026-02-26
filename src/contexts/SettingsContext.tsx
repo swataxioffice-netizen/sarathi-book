@@ -8,6 +8,7 @@ import type {
     Settings, 
     Staff, 
 } from '../types/settings';
+import { translations } from './translations';
 
 interface SettingsContextType {
     settings: Settings;
@@ -19,69 +20,6 @@ interface SettingsContextType {
     setDocStats: React.Dispatch<React.SetStateAction<{ hasFullVehicle: boolean; hasFullDriver: boolean }>>;
     driverCode: number | null;
 }
-
-const translations = {
-    en: {
-        title: 'Swa Taxi Office',
-        dashboard: 'Dashboard',
-        trips: 'Invoices',
-        expenses: 'Expenses',
-        docs: 'Documents',
-        profile: 'Profile',
-        startTrip: 'Start Trip',
-        endTrip: 'End Trip',
-        customer: 'Customer Name',
-        startKm: 'Start KM',
-        endKm: 'End KM',
-        startTime: 'Start Time',
-        endTime: 'End Time',
-        toll: 'Toll',
-        parking: 'Parking',
-        nightBata: 'Driver Batta',
-        calculate: 'Calculate Fare',
-        saveTrip: 'Save Invoice',
-        total: 'Total',
-        receipt: 'Receipt',
-        share: 'Share Invoice',
-        dailySummary: 'Daily Summary',
-        dailyProfit: 'Daily Profit',
-        income: 'Total Income',
-        spending: 'Total Spent',
-        gst: 'Enable GST (5%)',
-        companyName: 'Company Name',
-        companyAddress: 'Address',
-        gstin: 'GSTIN (Optional)',
-        vehicleNumber: 'Vehicle Number',
-        phone: 'Phone Number',
-        addExpense: 'Add Expense',
-        fuel: 'Fuel',
-        maintenance: 'Maintenance',
-        food: 'Food',
-        other: 'Other',
-        docVault: 'Document Vault',
-        expiring: 'Days Remaining',
-        qrTitle: 'Booking Engine',
-        qrSub: 'Manage bookings via external portal',
-        voiceNotes: 'Voice Note',
-        outstation: 'Round Trip',
-        hourly: 'Hourly Rental',
-        distance: 'Local Trip',
-        drop: 'One Way Drop',
-        addVehicle: 'Add Vehicle',
-        vehicles: 'My Fleet',
-        selectVehicle: 'Select Active Car',
-        carModel: 'Car Model (e.g. Swift, Dzire)',
-        waitingHours: 'Waiting Time (Hrs)',
-        hillStation: 'Hill Station Trip',
-        petCharge: 'Carrying Pets',
-        billingAddress: 'Billing Address (optional)',
-        partner: 'Partner',
-        package: 'Tour Package',
-        packageName: 'Package Name',
-        numPersons: 'No. of Persons',
-        packageRate: 'Package Rate'
-    }
-};
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
@@ -304,7 +242,22 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                             const newCloudSettings = payload.new.settings;
                             setSettings(prev => {
                                 // Prevent infinite loops if local state is same as cloud
-                                if (JSON.stringify(prev) === JSON.stringify(newCloudSettings)) return prev;
+                                // Using a deep equal function instead of JSON.stringify to handle Postgres jsonb key reordering
+                                const deepEqual = (obj1: unknown, obj2: unknown): boolean => {
+                                    if (obj1 === obj2) return true;
+                                    if (typeof obj1 !== "object" || typeof obj2 !== "object" || obj1 == null || obj2 == null) return false;
+                                    const o1 = obj1 as Record<string, unknown>;
+                                    const o2 = obj2 as Record<string, unknown>;
+                                    const keys1 = Object.keys(o1);
+                                    const keys2 = Object.keys(o2);
+                                    if (keys1.length !== keys2.length) return false;
+                                    for (const key of keys1) {
+                                        if (!keys2.includes(key) || !deepEqual(o1[key], o2[key])) return false;
+                                    }
+                                    return true;
+                                };
+                                
+                                if (deepEqual(prev, newCloudSettings)) return prev;
                                 return { ...prev, ...newCloudSettings };
                             });
                         }
@@ -358,7 +311,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                         id: session.user.id,
                         settings: currentSettings,
                         updated_at: new Date().toISOString(),
-                        email: session.user.email
+                        email: session.user.email || null
                     }).select();
 
                     if (upsertError) {
@@ -425,6 +378,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSettings = () => {
     const context = useContext(SettingsContext);
     if (!context) throw new Error('useSettings must be used within SettingsProvider');

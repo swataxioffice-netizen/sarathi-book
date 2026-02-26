@@ -122,30 +122,37 @@ const Profile: React.FC = () => {
 
     const handleSave = async (section: string) => {
         setSavingSection(section);
-
-        // GST Validation (Business Section Only)
-        if (section === 'business' && settings.gstin) {
-            // 1. Format Check
-            if (!GSTService.isValidFormat(settings.gstin)) {
-                alert('Invalid GSTIN Format. Example: 33ABCDE1234F1Z5');
-                setSavingSection(null);
-                return;
-            }
-
-            // 2. Uniqueness Check
-            if (user?.id) {
-                const isUnique = await GSTService.isUnique(settings.gstin, user.id);
-                if (!isUnique) {
-                    alert('This GSTIN is already linked to another account.\n\nGSTIN must be unique per account.');
-                    setSavingSection(null);
+        try {
+            // GST Validation (Business Section Only)
+            if (section === 'business' && settings.gstin) {
+                // 1. Format Check
+                if (!GSTService.isValidFormat(settings.gstin)) {
+                    alert('Invalid GSTIN Format. Example: 33ABCDE1234F1Z5');
                     return;
                 }
-            }
-        }
 
-        await saveSettings();
-        await new Promise(r => setTimeout(r, 400));
-        setSavingSection(null);
+                // 2. Uniqueness Check
+                if (user?.id) {
+                    const isUnique = await GSTService.isUnique(settings.gstin, user.id);
+                    if (!isUnique) {
+                        alert('This GSTIN is already linked to another account.\n\nGSTIN must be unique per account.');
+                        return;
+                    }
+                }
+            }
+
+            const isSuccess = await saveSettings();
+            await new Promise(r => setTimeout(r, 400));
+            
+            if (!isSuccess) {
+                alert('Cloud save failed. Please check your connection and try again.');
+            }
+        } catch (error) {
+            console.error('Error in handleSave:', error);
+            alert('Failed to save settings. Please try again.');
+        } finally {
+            setSavingSection(null);
+        }
     };
 
     const handleRefreshProfile = async () => {

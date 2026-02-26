@@ -1,11 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { safeJSONParse } from '../utils/storage';
 import { Trip, Expense } from '../utils/fare'; // Use named imports if they are exported as such, or adjust if they are types
-import { IndianRupee, TrendingUp, CheckCircle2, FileText, Eye, MoveRight, Calculator as CalculatorIcon } from 'lucide-react';
+import { IndianRupee, TrendingUp, CheckCircle2, FileText, MoveRight, Users } from 'lucide-react';
 import type { SavedQuotation } from '../utils/pdf';
-import { generateReceiptPDF, generateQuotationPDF } from '../utils/pdf';
 import { useSettings } from '../contexts/SettingsContext';
-import PDFPreviewModal from './PDFPreviewModal';
 
 interface DashboardProps {
     trips: Trip[];
@@ -14,16 +12,9 @@ interface DashboardProps {
 
 type TimeRange = 'today' | 'week' | 'month' | 'year';
 
-type RecentItem = 
-    | (Trip & { type: 'invoice'; sortDate: string })
-    | (SavedQuotation & { type: 'quotation'; sortDate: string });
-
-const Dashboard: React.FC<DashboardProps> = ({ trips, quotations }) => {
+const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
     const { settings } = useSettings();
     const [range, setRange] = useState<TimeRange>('today');
-    const [showPreview, setShowPreview] = useState(false);
-    const [previewPdfUrl, setPreviewPdfUrl] = useState('');
-    const [previewTitle, setPreviewTitle] = useState('');
 
     const now = new Date();
     const today = now.toISOString().split('T')[0];
@@ -77,145 +68,62 @@ const Dashboard: React.FC<DashboardProps> = ({ trips, quotations }) => {
 
     const stats = getStats();
 
-    // Prepare Recent Invoices & Quotations
-    const recentDocs = useMemo<RecentItem[]>(() => {
-        const combined: RecentItem[] = [
-            ...trips.map(t => ({ ...t, type: 'invoice' as const, sortDate: t.date })),
-            ...quotations.map(q => ({ ...q, type: 'quotation' as const, sortDate: q.date }))
-        ];
-        return combined
-            .sort((a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime())
-            .slice(0, 5); // Show top 5
-    }, [trips, quotations]);
-
-    const handlePreview = async (item: RecentItem) => {
-        if (item.type === 'invoice') {
-            const doc = await generateReceiptPDF(item, {
-                ...settings,
-                vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A'
-            });
-            setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
-            setPreviewTitle(`Invoice: ${item.invoiceNo || 'Draft'}`);
-        } else {
-             const quoteData = {
-                customerName: item.customerName,
-                subject: item.subject,
-                date: item.date,
-                items: item.items,
-                gstEnabled: item.gstEnabled,
-                quotationNo: item.quotationNo,
-                terms: item.terms,
-                customerAddress: item.customerAddress,
-                customerGstin: item.customerGstin
-            };
-            const quoteSettings = {
-                ...settings,
-                vehicleNumber: 'N/A'
-            };
-            // Ensure compatibility with generateQuotationPDF expecting vehicles array in settings
-            const doc = await generateQuotationPDF(quoteData, quoteSettings);
-            setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
-            setPreviewTitle(`Quotation: ${item.quotationNo || 'Draft'}`);
-        }
-        setShowPreview(true);
-    };
-
     return (
         <div className="space-y-4 pb-24">
-            <PDFPreviewModal
-                isOpen={showPreview}
-                onClose={() => setShowPreview(false)}
-                pdfUrl={previewPdfUrl}
-                title={previewTitle}
-            />
-
-            {/* Quick Actions Grid */}
-            <div className="grid grid-cols-2 gap-3 mb-2">
-                <button
-                    onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'calculator' }))}
-                    className="flex flex-col items-center justify-center bg-[#0047AB] text-white p-4 rounded-2xl shadow-lg shadow-blue-200 min-h-[110px] active:scale-95 transition-transform"
-                >
-                    <CalculatorIcon size={36} className="mb-3" />
-                    <span className="font-bold uppercase tracking-wider text-sm">Calculator</span>
-                </button>
-                <button
-                    onClick={() => {
-                        window.dispatchEvent(new Event('nav-tab-invoice'));
-                    }}
-                    className="flex flex-col items-center justify-center bg-green-600 text-white p-4 rounded-2xl shadow-lg shadow-green-200 min-h-[110px] active:scale-95 transition-transform"
-                >
-                    <FileText size={36} className="mb-3" />
-                    <span className="font-bold uppercase tracking-wider text-sm">New Invoice</span>
-                </button>
-                <button
-                    onClick={() => {
-                        window.dispatchEvent(new Event('nav-tab-quotation'));
-                    }}
-                    className="flex flex-col items-center justify-center bg-indigo-600 text-white p-4 rounded-2xl shadow-lg shadow-indigo-200 min-h-[110px] active:scale-95 transition-transform"
-                >
-                    <FileText size={36} className="mb-3 shadow-sm" />
-                    <span className="font-bold uppercase tracking-wider text-sm">Quotation</span>
-                </button>
-                <button
-                    onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'expenses' }))}
-                    className="flex flex-col items-center justify-center bg-rose-500 text-white p-4 rounded-2xl shadow-lg shadow-rose-200 min-h-[110px] active:scale-95 transition-transform"
-                >
-                    <IndianRupee size={36} className="mb-3" />
-                    <span className="font-bold uppercase tracking-wider text-sm">Expenses</span>
-                </button>
-            </div>
 
             {/* Main Dynamic Card - Clean White Theme */}
-            <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm relative overflow-hidden">
-                <div className="relative z-10 flex justify-between items-start">
+            <div className="bg-white rounded-xl p-2.5 border border-slate-200 shadow-sm relative overflow-hidden mb-3">
+                {/* Range Toggle - Clean Pill Style */}
+                <div className="bg-slate-50 p-1 rounded-xl shadow-inner border border-slate-100 flex gap-1 mb-2.5">
+                    {(['today', 'week', 'month', 'year'] as const).map((r) => (
+                        <button
+                            key={r}
+                            onClick={() => setRange(r)}
+                            aria-label={`Show stats for ${r}`}
+                            aria-pressed={range === r}
+                            className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide transition-all ${range === r
+                                ? 'bg-[#0047AB] text-white shadow-sm'
+                                : 'text-slate-500 hover:bg-slate-100'
+                                }`}
+                        >
+                            {r}
+                        </button>
+                    ))}
+                </div>
+                
+                <div className="relative z-10 flex justify-between items-start mb-2.5">
                     <div>
                         <p className="text-[9px] font-bold uppercase tracking-wide flex items-center gap-1.5 text-slate-400">
-                            <TrendingUp size={12} aria-hidden="true" /> {stats.label}
+                            <TrendingUp size={11} aria-hidden="true" /> {stats.label}
                         </p>
-                        <h2 className={`text-xl font-bold mt-1.5 tabular-nums tracking-tight ${stats.profit >= 0 ? 'text-slate-900' : 'text-red-600'}`}>
+                        <h2 className={`text-xl font-bold mt-0.5 tabular-nums tracking-tight ${stats.profit >= 0 ? 'text-slate-900' : 'text-red-600'}`}>
                             ₹{stats.profit.toLocaleString()}
                         </h2>
                     </div>
-                    <div className="bg-blue-50 p-2 rounded-lg border border-blue-100">
-                        <IndianRupee size={16} strokeWidth={2.5} className="text-[#0047AB]" />
+                    <div className="bg-blue-50 p-1.5 rounded-lg border border-blue-100 text-[#0047AB]">
+                        <IndianRupee size={16} strokeWidth={2.5} />
                     </div>
                 </div>
 
-                <div className="mt-3 flex gap-2">
-                    <div className="flex-1 bg-slate-50 rounded-xl p-2.5 border border-slate-100 relative group">
-                        <div className="flex justify-between items-start">
-                            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">INCOME</p>
-                            <button
-                                onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'trips' }))}
-                                className="text-[9px] font-bold bg-white border border-slate-200 text-slate-600 px-2 py-0.5 rounded-full uppercase tracking-wide hover:text-green-600 hover:border-green-300 transition-all shadow-sm"
-                            >
-                                Add
-                            </button>
-                        </div>
-                        <p className="text-sm font-bold mt-0.5 text-slate-800">₹{stats.income.toLocaleString()}</p>
+                <div className="flex bg-slate-50 rounded-lg py-1.5 border border-slate-100 divide-x divide-slate-200">
+                    <div className="flex-1 px-2.5">
+                        <p className="text-[9px] font-bold uppercase tracking-wide text-green-600 mb-0.5">INCOME</p>
+                        <p className="text-[13px] font-bold text-slate-800 tabular-nums leading-none">₹{stats.income.toLocaleString()}</p>
                     </div>
-                    <div className="flex-1 bg-slate-50 rounded-xl p-2.5 border border-slate-100 relative group">
-                        <div className="flex justify-between items-start">
-                            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">SPENT</p>
-                            <button
-                                onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'expenses' }))}
-                                className="text-[9px] font-bold bg-white border border-slate-200 text-slate-600 px-2 py-0.5 rounded-full uppercase tracking-wide hover:text-red-500 hover:border-red-300 transition-all shadow-sm"
-                            >
-                                Add
-                            </button>
-                        </div>
-                        <p className="text-sm font-bold mt-0.5 text-slate-800">₹{stats.spending.toLocaleString()}</p>
+                    <div className="flex-1 px-2.5 text-right">
+                        <p className="text-[9px] font-bold uppercase tracking-wide text-red-500 mb-0.5">SPENT</p>
+                        <p className="text-[13px] font-bold text-slate-800 tabular-nums leading-none">₹{stats.spending.toLocaleString()}</p>
                     </div>
                 </div>
 
-                <div className="mt-3 pt-3 border-t border-slate-50 flex justify-between items-center">
-                    <div className="text-left">
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">MARGIN</p>
-                        <p className={`text-base font-bold mt-0.5 ${stats.income > 0 && stats.profit >= 0 ? 'text-green-600' : stats.profit < 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                <div className="mt-2 pt-2 border-t border-slate-50 flex justify-between items-center">
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500 flex items-center gap-1.5">
+                        MARGIN 
+                        <span className={`text-[11px] font-black ${stats.income > 0 && stats.profit >= 0 ? 'text-green-600' : stats.profit < 0 ? 'text-red-600' : 'text-slate-400'}`}>
                             {stats.income > 0 ? Math.round((stats.profit / stats.income) * 100) : 0}%
-                        </p>
-                    </div>
-                    <div className="w-1/2 h-2.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                        </span>
+                    </p>
+                    <div className="w-1/2 h-1.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
                         <div
                             className={`h-full rounded-full transition-all duration-1000 ${stats.profit >= 0 ? 'bg-green-500' : 'bg-red-500'}`}
                             style={{ width: `${Math.max(0, Math.min(100, stats.income > 0 ? Math.abs((stats.profit / stats.income) * 100) : 0))}%` }}
@@ -224,19 +132,44 @@ const Dashboard: React.FC<DashboardProps> = ({ trips, quotations }) => {
                 </div>
             </div>
 
-            {/* Engagement Banner - Business Features */}
-            <div className="bg-linear-to-br from-[#0047AB] to-indigo-800 rounded-2xl p-4 shadow-lg shadow-blue-100 flex items-center justify-between group transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer" onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'staff' }))}>
-                <div className="space-y-1.5 flex-1 pr-4">
-                    <h3 className="text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
-                        <TrendingUp size={12} className="text-blue-200" /> Pro Features {settings.isPremium && <span className="bg-white/20 px-1.5 py-0.5 rounded text-[8px]">Active</span>}
-                    </h3>
-                    <p className="text-blue-50 [9px] font-bold leading-relaxed">
-                        Create <strong>Invoices</strong>, <strong>Quotations</strong> & <strong>Pay Slips</strong>. Track <strong>Attendance</strong>, <strong>Salaries</strong> & <strong>Advances</strong> effortlessly.
-                    </p>
-                </div>
-                <div className="bg-white/10 p-2.5 rounded-xl backdrop-blur-sm group-hover:bg-white/20 transition-colors shrink-0">
-                    <CheckCircle2 size={24} className="text-white" />
-                </div>
+            {/* Quick Actions Grid */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+                <button
+                    onClick={() => {
+                        window.dispatchEvent(new Event('nav-tab-invoice'));
+                    }}
+                    className="flex flex-col items-center justify-center bg-white border border-slate-200 text-slate-700 p-4 rounded-2xl shadow-sm hover:bg-slate-50 min-h-[110px] active:scale-95 transition-all"
+                >
+                    <FileText size={36} className="mb-3 text-green-600" />
+                    <span className="font-bold uppercase tracking-wider text-[11px]">New Invoice</span>
+                </button>
+                <button 
+                    onClick={() => {
+                        window.dispatchEvent(new Event('nav-tab-invoice-history'));
+                    }}
+                    className="flex flex-col items-center justify-center bg-white border border-slate-200 text-slate-700 p-4 rounded-2xl shadow-sm hover:bg-slate-50 min-h-[110px] active:scale-95 transition-all"
+                >
+                    <FileText size={36} className="mb-3 text-blue-500" />
+                    <span className="font-bold uppercase tracking-wider text-[11px]">Recent Invoices</span>
+                </button>
+                <button
+                    onClick={() => {
+                        window.dispatchEvent(new Event('nav-tab-quotation'));
+                    }}
+                    className="flex flex-col items-center justify-center bg-white border border-slate-200 text-slate-700 p-4 rounded-2xl shadow-sm hover:bg-slate-50 min-h-[110px] active:scale-95 transition-all"
+                >
+                    <FileText size={36} className="mb-3 text-indigo-600" />
+                    <span className="font-bold uppercase tracking-wider text-[11px]">New Quotation</span>
+                </button>
+                <button 
+                    onClick={() => {
+                        window.dispatchEvent(new Event('nav-tab-quotation-history'));
+                    }}
+                    className="flex flex-col items-center justify-center bg-white border border-slate-200 text-slate-700 p-4 rounded-2xl shadow-sm hover:bg-slate-50 min-h-[110px] active:scale-95 transition-all"
+                >
+                    <FileText size={36} className="mb-3 text-indigo-400" />
+                    <span className="font-bold uppercase tracking-wider text-[11px]">Recent Quotations</span>
+                </button>
             </div>
 
             {/* Super Pro - Market Insights */}
@@ -261,99 +194,35 @@ const Dashboard: React.FC<DashboardProps> = ({ trips, quotations }) => {
                 </div>
             )}
 
-             {/* Recent Invoices & Quotations - New Section */}
-             <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-[10px] font-bold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-                        <FileText size={12} className="text-slate-400" /> Recent Invoices & Quotations
-                    </h3>
-                    <button 
-                        onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'trips' }))}
-                        className="text-[9px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wide"
-                    >
-                        View All
-                    </button>
-                </div>
 
-                <div className="space-y-2">
-                    {recentDocs.length > 0 ? (
-                        recentDocs.map((item) => (
-                            <div key={`${item.type}-${item.id}`} className="flex items-center justify-between group p-1.5 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100">
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center border shrink-0 ${
-                                        item.type === 'invoice' 
-                                            ? 'bg-blue-50 border-blue-100 text-blue-600' 
-                                            : 'bg-indigo-50 border-indigo-100 text-indigo-600'
-                                    }`}>
-                                        <FileText size={14} />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-[11px] font-bold text-slate-900 uppercase tracking-wide truncate">
-                                            {item.customerName || 'Guest User'}
-                                        </p>
-                                        <p className="text-[9px] font-bold text-slate-500 mt-0 truncate">
-                                            {new Date(item.sortDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} • {item.type === 'invoice' ? item.invoiceNo || 'Draft Inv' : item.quotationNo || 'Draft Quote'}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 pl-2">
-                                    <p className="text-[11px] font-bold tabular-nums tracking-tight text-slate-700">
-                                        ₹{Math.round(
-                                            item.type === 'invoice' 
-                                                ? item.totalFare 
-                                                : item.items.reduce((acc, i) => acc + parseFloat(i.amount), 0)
-                                        ).toLocaleString()}
-                                    </p>
-                                    <button 
-                                        onClick={() => handlePreview(item)}
-                                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                                        title="View PDF"
-                                    >
-                                        <Eye size={12} strokeWidth={2.5} />
-                                    </button>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <p className="text-center text-[11px] text-slate-400 font-bold uppercase tracking-wide py-4">No recent documents</p>
-                    )}
-                </div>
-            </div>
 
-            {/* Range Toggle - Clean Pill Style */}
-            <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex gap-1">
-                {(['today', 'week', 'month', 'year'] as const).map((r) => (
-                    <button
-                        key={r}
-                        onClick={() => setRange(r)}
-                        aria-label={`Show stats for ${r}`}
-                        aria-pressed={range === r}
-                        className={`flex-1 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-all ${range === r
-                            ? 'bg-[#0047AB] text-white shadow-sm'
-                            : 'text-slate-500 hover:bg-slate-50'
-                            }`}
-                    >
-                        {r}
-                    </button>
-                ))}
-            </div>
 
-            {/* Daily Audit - Compact */}
-            <div
-                onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'expenses' }))}
-                className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer hover:bg-slate-50 transition-colors"
-            >
-                <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-green-50 border border-green-100 rounded-xl text-green-700 shadow-sm">
-                        <CheckCircle2 size={18} />
+
+            {/* Management & Operations block */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+                <div
+                    onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'expenses' }))}
+                    className="flex flex-col p-3 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer hover:bg-slate-50 transition-all active:scale-95"
+                >
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="p-2 bg-green-50 rounded-lg text-green-600">
+                            <CheckCircle2 size={16} />
+                        </div>
+                        <span className="text-[11px] font-bold uppercase tracking-wide text-slate-900 leading-tight">Daily Summary</span>
                     </div>
-                    <div>
-                        <p className="text-[12px] font-bold uppercase tracking-wide text-slate-900 leading-tight">Daily Audit</p>
-                        <p className="text-[10px] font-bold text-slate-500 mt-0.5 tracking-tight">Verify today's accounts</p>
-                    </div>
+                    <p className="text-[9px] font-bold text-slate-500 tracking-tight leading-relaxed">Verify today's accounts</p>
                 </div>
-                <div className="px-5 py-2 bg-green-600 text-white rounded-full shadow-md shadow-green-100">
-                    <span className="text-[11px] font-bold uppercase tracking-wider">Start Now</span>
+                <div
+                    onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'staff' }))}
+                    className="flex flex-col p-3 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer hover:bg-slate-50 transition-all active:scale-95"
+                >
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="p-2 bg-blue-50 rounded-lg text-[#0047AB]">
+                            <Users size={16} />
+                        </div>
+                        <span className="text-[11px] font-bold uppercase tracking-wide text-slate-900 leading-tight">Attendance</span>
+                    </div>
+                    <p className="text-[9px] font-bold text-slate-500 tracking-tight leading-relaxed">Manage driver salary</p>
                 </div>
             </div>
 
@@ -361,7 +230,7 @@ const Dashboard: React.FC<DashboardProps> = ({ trips, quotations }) => {
             <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-[10px] font-bold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-                        <TrendingUp size={12} className="text-slate-400" /> Recent Logic (Cash Flow)
+                        <TrendingUp size={12} className="text-slate-400" /> Recent Activity
                     </h3>
                 </div>
 

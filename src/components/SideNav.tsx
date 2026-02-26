@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-    LayoutDashboard, FileText, Wallet, User, LogOut, Calculator,
+    User, LogOut,
     ShieldCheck, Share2, Landmark,
     Crown, Zap, ChevronRight, History, StickyNote, Users, Palette, ChevronDown, TrendingUp
 } from 'lucide-react';
@@ -10,7 +10,7 @@ import { Analytics } from '../utils/monitoring';
 
 interface NavItem {
     id: string;
-    icon: any;
+    icon: React.ElementType;
     label: string;
     isPro?: boolean;
     isSuper?: boolean;
@@ -71,35 +71,20 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
 
     const navSections: { title: string; items: NavItem[] }[] = [
         {
-            title: 'Account & Overview',
-            items: [
-                { id: 'profile', icon: User, label: 'Profile' },
-                { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-                { id: 'trending', icon: TrendingUp, label: 'Market Trends', isSuper: true },
-            ]
-        },
-        {
-            title: 'Trip Tools',
+            title: 'Business & Tools',
             items: [
                 { id: 'tariff', icon: History, label: 'Tariff Cards' },
                 { id: 'notes', icon: StickyNote, label: 'Quick Notes' },
-                { id: 'taxi-fare-calculator', icon: Calculator, label: 'Calculator' },
-            ]
-        },
-        {
-            title: 'Business Management',
-            items: [
-                { id: 'trips', icon: FileText, label: 'Invoices' },
-                { id: 'expenses', icon: Wallet, label: 'Expenses' },
+                { id: 'trending', icon: TrendingUp, label: 'Market Trends', isSuper: true },
                 { id: 'staff', icon: Users, label: 'Staff Manager', isPro: true },
                 { id: 'finance', icon: Landmark, label: 'Loan Center' },
             ]
         },
         {
-             title: 'App Customization',
+             title: 'App Settings',
              items: [
-                { id: 'watermark', icon: ShieldCheck, label: 'Remove Watermark', isPro: true },
-                { id: 'branding', icon: Palette, label: 'Custom Branding', isPro: true },
+                { id: 'watermark', icon: ShieldCheck, label: 'Watermark', isPro: true },
+                { id: 'branding', icon: Palette, label: 'Branding', isPro: true },
              ]
         }
     ];
