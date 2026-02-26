@@ -13,9 +13,9 @@ import MapPicker from './MapPicker';
 import {
     MoveRight, MapPin, Plus,
     Repeat, Clock, UserCheck,
-    Car, ChevronLeft,
+    Car, ChevronLeft, ChevronDown, ChevronUp,
     RotateCcw, Trash2, PenLine,
-    StickyNote, Check
+    StickyNote, Check, Settings
 } from 'lucide-react';
 import { shareQuotation, generateQuotationPDF, QuotationData, SavedQuotation } from '../utils/pdf';
 import PDFPreviewModal from './PDFPreviewModal';
@@ -169,6 +169,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
     const [showPreview, setShowPreview] = useState(false);
     const [previewPdfUrl, setPreviewPdfUrl] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
     const [showMap, setShowMap] = useState(false);
 
@@ -1137,21 +1138,33 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 border-t border-slate-50 pt-2">
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Hill Station</label>
-                        <input type="number" value={hillStationCharge} onChange={e => { setHillStationCharge(e.target.value); setManualHillStation(true); }} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Pet Charge</label>
-                        <input type="number" value={petCharge} onChange={e => setPetCharge(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
-                    </div>
-                </div>
+                <button
+                    onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+                    className="w-full py-2.5 px-3 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-50/50 hover:bg-slate-100 rounded-xl transition-colors border border-slate-100 mt-2"
+                >
+                    <span className="flex items-center gap-2"><Settings size={14} className="text-slate-400" /> Advanced Options</span>
+                    {isAdvancedOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
 
-                <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Night Drive</label>
-                    <input type="number" value={nightCharge} onChange={e => setNightCharge(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
-                </div>
+                {isAdvancedOpen && (
+                    <div className="space-y-3 pt-2 animate-in slide-in-from-top-2">
+                        <div className="grid grid-cols-2 gap-3 border-t border-slate-50 pt-2">
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Hill Station</label>
+                                <input type="number" value={hillStationCharge} onChange={e => { setHillStationCharge(e.target.value); setManualHillStation(true); }} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Pet Charge</label>
+                                <input type="number" value={petCharge} onChange={e => setPetCharge(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
+                            </div>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Night Drive</label>
+                            <input type="number" value={nightCharge} onChange={e => setNightCharge(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder="0" />
+                        </div>
+                    </div>
+                )}
 
                 {/* More Charges */}
                 <div className="pt-2 border-t border-slate-50 space-y-3">

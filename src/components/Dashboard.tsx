@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { safeJSONParse } from '../utils/storage';
 import { Trip, Expense } from '../utils/fare'; // Use named imports if they are exported as such, or adjust if they are types
-import { IndianRupee, TrendingUp, CheckCircle2, FileText, Eye, MoveRight } from 'lucide-react';
+import { IndianRupee, TrendingUp, CheckCircle2, FileText, Eye, MoveRight, Calculator as CalculatorIcon } from 'lucide-react';
 import type { SavedQuotation } from '../utils/pdf';
 import { generateReceiptPDF, generateQuotationPDF } from '../utils/pdf';
 import { useSettings } from '../contexts/SettingsContext';
@@ -128,6 +128,42 @@ const Dashboard: React.FC<DashboardProps> = ({ trips, quotations }) => {
                 pdfUrl={previewPdfUrl}
                 title={previewTitle}
             />
+
+            {/* Quick Actions Grid */}
+            <div className="grid grid-cols-2 gap-3 mb-2">
+                <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'calculator' }))}
+                    className="flex flex-col items-center justify-center bg-[#0047AB] text-white p-4 rounded-2xl shadow-lg shadow-blue-200 min-h-[110px] active:scale-95 transition-transform"
+                >
+                    <CalculatorIcon size={36} className="mb-3" />
+                    <span className="font-bold uppercase tracking-wider text-sm">Calculator</span>
+                </button>
+                <button
+                    onClick={() => {
+                        window.dispatchEvent(new Event('nav-tab-invoice'));
+                    }}
+                    className="flex flex-col items-center justify-center bg-green-600 text-white p-4 rounded-2xl shadow-lg shadow-green-200 min-h-[110px] active:scale-95 transition-transform"
+                >
+                    <FileText size={36} className="mb-3" />
+                    <span className="font-bold uppercase tracking-wider text-sm">New Invoice</span>
+                </button>
+                <button
+                    onClick={() => {
+                        window.dispatchEvent(new Event('nav-tab-quotation'));
+                    }}
+                    className="flex flex-col items-center justify-center bg-indigo-600 text-white p-4 rounded-2xl shadow-lg shadow-indigo-200 min-h-[110px] active:scale-95 transition-transform"
+                >
+                    <FileText size={36} className="mb-3 shadow-sm" />
+                    <span className="font-bold uppercase tracking-wider text-sm">Quotation</span>
+                </button>
+                <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'expenses' }))}
+                    className="flex flex-col items-center justify-center bg-rose-500 text-white p-4 rounded-2xl shadow-lg shadow-rose-200 min-h-[110px] active:scale-95 transition-transform"
+                >
+                    <IndianRupee size={36} className="mb-3" />
+                    <span className="font-bold uppercase tracking-wider text-sm">Expenses</span>
+                </button>
+            </div>
 
             {/* Main Dynamic Card - Clean White Theme */}
             <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm relative overflow-hidden">

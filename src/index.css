@@ -27,32 +27,37 @@ body {
 
 :root {
   /* Vibrant 500 Scale Palette */
-  --bg-app: #F5F7FA;
-  --bg-card: #FFFFFF;
+  --bg-app: #f5f7fa;
+  --bg-card: #ffffff;
 
-  --primary: #3B82F6;
+  --primary: #3b82f6;
   /* Blue 500 */
-  --primary-soft: #EFF6FF;
+  --primary-soft: #eff6ff;
   /* Blue 50 */
 
-  --text-main: #1A1C1E;
-  --text-sub: #64748B;
+  --text-main: #1a1c1e;
+  --text-sub: #64748b;
 
-  --border-light: #E2E8F0;
-  --border-primary: #3B82F6;
+  --border-light: #e2e8f0;
+  --border-primary: #3b82f6;
 
   /* Safe Area Variables */
   --safe-top: env(safe-area-inset-top);
   --safe-bottom: env(safe-area-inset-bottom);
 
-  --status-success: #22C55E;
+  --status-success: #22c55e;
   /* Green 500 */
-  --status-error: #EF4444;
+  --status-error: #ef4444;
   /* Red 500 */
-  --status-warning: #EAB308;
+  --status-warning: #eab308;
   /* Yellow 500 */
 
-  font-family: 'Plus Jakarta Sans', 'Noto Sans', system-ui, -apple-system, sans-serif;
+  font-family:
+    "Plus Jakarta Sans",
+    "Noto Sans",
+    system-ui,
+    -apple-system,
+    sans-serif;
   line-height: 1.5;
   color-scheme: light;
   color: var(--text-main);
@@ -74,10 +79,10 @@ button:active {
 
 .dark {
   /* Solid Dark Mode */
-  --bg-app: #0F172A;
-  --bg-card: #1E293B;
-  --text-main: #F8FAFC;
-  --text-sub: #94A3B8;
+  --bg-app: #0f172a;
+  --bg-card: #1e293b;
+  --text-main: #f8fafc;
+  --text-sub: #94a3b8;
   --border-light: #334155;
 }
 
@@ -97,7 +102,6 @@ body {
 }
 
 @layer components {
-
   /* Professional Solid Card */
   .tn-card {
     background-color: var(--bg-card);
@@ -113,10 +117,8 @@ body {
   .tn-button-primary {
     background-color: var(--primary);
     color: white;
-    border-radius: 8px;
-    /* Slightly tighter radius */
-    @apply font-bold px-3 py-2.5 sm:px-5 sm:py-3 flex items-center justify-center gap-2 active:scale-[0.98] transition-all uppercase tracking-wide text-[13px] sm:text-[14px] min-h-[42px];
-    /* Reduced padding, text size, and min-height */
+    border-radius: 12px;
+    @apply font-bold px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-center gap-2 active:scale-[0.98] transition-all uppercase tracking-wide text-[16px] min-h-[48px];
   }
 
   /* Clean Input */
@@ -125,9 +127,8 @@ body {
     background-color: var(--bg-card);
     border: 1px solid var(--border-light);
     color: var(--text-main);
-    border-radius: 8px;
-    @apply py-2 px-3 font-semibold text-[13px] sm:text-[14px] outline-none transition-all h-10 text-slate-900;
-    /* Reduced to h-10 (40px) for compact feel, text to 13px */
+    border-radius: 10px;
+    @apply py-3 px-4 font-semibold text-[16px] outline-none transition-all h-12 text-slate-900;
   }
 
   .tn-input:focus {
@@ -138,7 +139,7 @@ body {
   /* Section Header Labels like the screenshot */
   .tn-label {
     color: var(--text-main);
-    @apply text-xs font-bold uppercase tracking-wider mb-2 block opacity-80;
+    @apply text-sm font-bold uppercase tracking-wider mb-2 block opacity-90;
   }
 
   /* Safe Area Utilities */
@@ -175,7 +176,6 @@ img {
 
 /* 4. Input & Form Resilience: Disable animations on low-power/preference */
 @media (prefers-reduced-motion: reduce) {
-
   *,
   ::before,
   ::after {
@@ -357,7 +357,9 @@ img {
   border-radius: 12px;
   border: none;
   margin-top: 8px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.15),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1);
   font-family: inherit;
   padding: 8px 0;
   min-width: 320px !important;
@@ -400,7 +402,7 @@ img {
 }
 
 .pac-matched {
-  color: #0047AB;
+  color: #0047ab;
 }
 
 /* Fix for mobile screens where 320px might be too much */
@@ -424,7 +426,7 @@ img {
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background-color: rgba(203, 213, 225, 0.5); /* slate-300/50 */
   border-radius: 9999px;
-  border: 2px solid transparent; 
+  border: 2px solid transparent;
   background-clip: content-box;
 }
 

@@ -4,7 +4,8 @@ import { TARIFFS, TRIP_LIMITS } from '../config/tariff_config';
 import SEOHead from './SEOHead';
 import {
     ArrowRight, Check, ShieldCheck, BadgeIndianRupee, Clock,
-    AlertTriangle, Moon, Share2, FileDown, User, X
+    AlertTriangle, Moon, Share2, FileDown, User, X,
+    Car, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import { generateQuotationPDF } from '../utils/pdf';
@@ -52,6 +53,7 @@ const TariffPage = () => {
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [expandedVehicleId, setExpandedVehicleId] = useState<string | null>(null);
 
     const handleRateChange = (vehicleId: string, type: 'drop' | 'round', value: string) => {
         const numValue = parseFloat(value) || 0;
@@ -262,74 +264,88 @@ const TariffPage = () => {
 
                 {/* Mobile Rate Cards */}
                 <div className="md:hidden space-y-2.5 mb-6">
-                    {VEHICLES.map((v) => (
-                        <div key={v.id} className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
-                            <div className="flex justify-between items-start mb-2.5">
-                                <div>
-                                    <h3 className="font-bold text-sm text-slate-700">{v.name}</h3>
-                                    <p className="text-[9px] font-medium text-slate-400 uppercase tracking-wider">{v.popularModels}</p>
-                                </div>
-                                <div className="bg-blue-50 px-2 py-0.5 rounded text-right">
-                                    <p className="text-[8px] font-bold text-slate-400 uppercase">Min Km/Day</p>
-                                    <p className="font-bold text-slate-700 text-xs">{v.minKm} KM</p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2 mb-2.5">
-                                <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">One Way</p>
-                                    <div className="flex items-center gap-1">
-                                        <span className="text-xs font-bold text-slate-400">₹</span>
-                                        <input 
-                                            type="number" 
-                                            value={customRates[v.id]?.drop}
-                                            onChange={(e) => handleRateChange(v.id, 'drop', e.target.value)}
-                                            className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-700 outline-none"
-                                        />
-                                        <span className="text-[8px] text-slate-400 font-medium whitespace-nowrap">/ km</span>
+                    {VEHICLES.map((v) => {
+                        const isExpanded = expandedVehicleId === v.id;
+                        return (
+                        <div key={v.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div 
+                                className="p-3 flex justify-between items-center cursor-pointer"
+                                onClick={() => setExpandedVehicleId(isExpanded ? null : v.id)}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                                        <Car size={20} />
                                     </div>
-                                </div>
-                                <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Round Trip</p>
-                                    <div className="flex items-center gap-1">
-                                        <span className="text-xs font-bold text-slate-400">₹</span>
-                                        <input 
-                                            type="number" 
-                                            value={customRates[v.id]?.round}
-                                            onChange={(e) => handleRateChange(v.id, 'round', e.target.value)}
-                                            className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-700 outline-none"
-                                        />
-                                        <span className="text-[8px] text-slate-400 font-medium whitespace-nowrap">/ km</span>
+                                    <div>
+                                        <h3 className="font-bold text-sm text-slate-800">{v.name}</h3>
+                                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">₹{customRates[v.id]?.drop}/km (Drop)</p>
                                     </div>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                                <div className="text-[9px] font-bold text-slate-500">
-                                    Driver Bata: <span className="text-slate-700 font-bold">₹{v.batta}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <a
-                                        href={`/taxi-fare-calculator`}
-                                        className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-[0.98]"
-                                    >
-                                        Calc
-                                        <ArrowRight size={10} />
-                                    </a>
                                     <button
-                                        onClick={() => {
+                                        onClick={(e) => {
+                                            e.stopPropagation();
                                             setSelectedVehicle(v);
                                             setIsQuoteModalOpen(true);
                                         }}
-                                        className="inline-flex items-center gap-1 bg-emerald-600 text-white px-3 py-1.5 rounded-lg shadow-sm text-[9px] font-bold uppercase tracking-widest hover:bg-emerald-700 transition-all active:scale-[0.98]"
+                                        className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 transition-colors"
                                     >
-                                        <Share2 size={10} />
-                                        Quote
+                                        <Share2 size={14} />
                                     </button>
+                                    <div className="text-slate-400">
+                                        {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                    </div>
                                 </div>
                             </div>
+
+                            {isExpanded && (
+                                <div className="p-3 pt-0 animate-in slide-in-from-top-2">
+                                    <div className="h-px bg-slate-100 mb-3" />
+                                    <div className="grid grid-cols-2 gap-2 mb-2.5">
+                                        <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                                            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">One Way / KM</p>
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-xs font-bold text-slate-400">₹</span>
+                                                <input 
+                                                    type="number" 
+                                                    value={customRates[v.id]?.drop}
+                                                    onChange={(e) => handleRateChange(v.id, 'drop', e.target.value)}
+                                                    className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-700 outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                                            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Round Trip / KM</p>
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-xs font-bold text-slate-400">₹</span>
+                                                <input 
+                                                    type="number" 
+                                                    value={customRates[v.id]?.round}
+                                                    onChange={(e) => handleRateChange(v.id, 'round', e.target.value)}
+                                                    className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-700 outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+                                        <div className="text-[9px] font-bold text-slate-500">
+                                            Bata: <span className="text-slate-700 font-bold">₹{v.batta}</span>
+                                            <span className="mx-1">|</span>
+                                            Min: <span className="text-slate-700 font-bold">{v.minKm} KM</span>
+                                        </div>
+                                        <a
+                                            href={`/calculator/cab`}
+                                            className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-[0.98]"
+                                        >
+                                            Calc
+                                            <ArrowRight size={10} />
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    ))}
+                    )})}
                 </div>
 
                 {/* Local Hourly Packages Table (Desktop) */}

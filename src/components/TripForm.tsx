@@ -12,10 +12,10 @@ import MapPicker from './MapPicker';
 import {
     MoveRight, MapPin, Plus, CheckCircle2,
     Repeat, Clock, UserCheck,
-    Car, ChevronLeft,
+    Car, ChevronLeft, ChevronDown, ChevronUp,
     RotateCcw, Trash2, PenLine,
     StickyNote, Check, Share2,
-    Camera, Eye
+    Camera, Eye, Settings
 } from 'lucide-react';
 import { generateId } from '../utils/uuid';
 import { generateReceiptPDF, SavedQuotation, shareReceipt } from '../utils/pdf';
@@ -49,6 +49,21 @@ interface CalculationResult {
     nightStay: number;
     gstBreakdown?: GSTBreakdown;
     breakdown: string[];
+}
+
+interface TariffVehicle {
+    name: string;
+    is_heavy_vehicle: boolean;
+    min_km_per_day: number;
+    round_trip_rate: number;
+    one_way_rate: number;
+    driver_bata: number;
+    local_2hr_pkg: number;
+    local_4hr_pkg: number;
+    local_8hr_pkg: number;
+    local_12hr_pkg: number;
+    extra_hr_rate: number;
+    min_drop_km: number;
 }
 
 interface TripFormProps {
@@ -170,6 +185,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     const [showPreview, setShowPreview] = useState(false);
     const [previewPdfUrl, setPreviewPdfUrl] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
 
 
@@ -228,7 +244,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         }
 
         // Handle case where selectedVehicleId is directly the category key (e.g. from templates)
-        if (selectedVehicleId && (TARIFFS.vehicles as any)[selectedVehicleId]) {
+        if (selectedVehicleId && (TARIFFS.vehicles as Record<string, TariffVehicle>)[selectedVehicleId]) {
             return selectedVehicleId;
         }
 
@@ -237,7 +253,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
     const currentVehicleData = useMemo(() => {
         if (!vehicleCategory) return null;
-        return (TARIFFS.vehicles as Record<string, any>)[vehicleCategory] || TARIFFS.vehicles.sedan;
+        return (TARIFFS.vehicles as Record<string, TariffVehicle>)[vehicleCategory] || TARIFFS.vehicles.sedan;
     }, [vehicleCategory]);
 
     const nextInvoiceNo = useMemo(() => {
@@ -350,7 +366,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
         const timer = setTimeout(autoCalculateTrip, 1000);
         return () => clearTimeout(timer);
-    }, [fromLoc, toLoc, pickupCoords, dropCoords, mode, isOdometerMode, selectedVehicleId, days, manualPermit, manualParking, manualToll, customTripType]);
+    }, [fromLoc, toLoc, pickupCoords, dropCoords, mode, isOdometerMode, selectedVehicleId, vehicleCategory, days, manualPermit, manualParking, manualToll, customTripType]);
 
     // Odometer sync
     useEffect(() => {
@@ -514,6 +530,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     useEffect(() => {
         const timer = setTimeout(performCalculation, 300);
         return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mode, selectedVehicleId, distanceOverride, days, localPackageHours, hourlyPackage, customRate, toll, parking, permit, driverBatta, nightCharge, hillStationCharge, petCharge, extraItems, includeGst, manualDriverBatta, manualHillStation, customLineItems]);
 
     const handleNext = () => {
@@ -612,7 +629,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
         extraItems.forEach(i => pdfItems.push({ description: i.description, amount: i.amount, rate: i.amount.toString(), quantity: 1 }));
 
-        const tripData: any = {
+        const tripData: Record<string, unknown> = {
             id: previewId, invoiceNo: previewInvoiceNo, customerName: customerName || 'Valued Customer',
             customerPhone, customerGst, billingAddress, from: fromLoc, to: toLoc, date: invoiceDate,
             mode: 'custom',
@@ -712,7 +729,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
         extraItems.forEach(i => pdfItems.push({ description: i.description, amount: i.amount, rate: i.amount.toString(), quantity: 1 }));
 
-        const tripData: any = {
+        const tripData: Record<string, unknown> = {
             id: sessionTripId.current, invoiceNo: invoiceNo, customerName: customerName || 'Valued Customer',
             customerPhone, customerGst, billingAddress, from: fromLoc, to: toLoc, date: invoiceDate,
             startTime: mode === 'local' ? startTimeLog : undefined,
@@ -732,7 +749,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         };
 
         try {
-            await shareReceipt(tripData, { ...settings, gstEnabled: includeGst, rcmEnabled, userId: user?.id, vehicleNumber: currentV?.number || '' });
+            await shareReceipt(tripData as unknown as Trip, { ...settings, gstEnabled: includeGst, rcmEnabled, userId: user?.id, vehicleNumber: currentV?.number || '' });
         } catch (err) {
             console.error('Sharing failed, falling back to preview', err);
             handlePreview();
@@ -771,7 +788,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             startTime: '', endTime: '', toll: parseFloat(toll) || 0, parking: parseFloat(parking) || 0, nightBata: parseFloat(nightCharge) || 0,
             baseFare: settings.baseFare, ratePerKm: res.rateUsed, totalFare: res.total, fare: res.fare, distanceCharge: res.distanceCharge,
             distance: res.distance, effectiveDistance: res.effectiveDistance, gst: res.gst, date: invoiceDate ? (invoiceDate.includes('T') ? invoiceDate : `${invoiceDate}T12:00:00Z`) : new Date().toISOString(),
-            mode: mode as any, notes: '', waitingHours: res.waitingHours, waitingCharges: 0, hillStationCharges: res.hillStationCharges,
+            mode: mode as unknown as Trip['mode'], notes: '', waitingHours: res.waitingHours, waitingCharges: 0, hillStationCharges: res.hillStationCharges,
             petCharges: res.petCharges, permit: parseFloat(permit) || 0, days, driverBatta: res.driverBatta, extraItems,
             rcmEnabled, // Save RCM status
             terms, // Save Terms
@@ -1441,65 +1458,77 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
                 <div className="h-px bg-slate-50 my-0.5" />
 
-                <div className="grid grid-cols-2 gap-2.5">
-                    <div className="space-y-0.5">
-                        <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Hill Station</label>
-                        <input type="number" value={hillStationCharge} onChange={e => { setHillStationCharge(e.target.value); setManualHillStation(true); }} className="tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg" placeholder="0" />
-                    </div>
-                    <div className="space-y-0.5">
-                        <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Pet Charge</label>
-                        <input type="number" value={petCharge} onChange={e => setPetCharge(e.target.value)} className="tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg" placeholder="0" />
-                    </div>
-                </div>
+                <button
+                    onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+                    className="w-full py-2.5 px-3 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-50/50 hover:bg-slate-100 rounded-xl transition-colors border border-slate-100"
+                >
+                    <span className="flex items-center gap-2"><Settings size={14} className="text-slate-400" /> Advanced Options</span>
+                    {isAdvancedOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
 
-                <div className="space-y-0.5">
-                    <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Night Drive (11 PM - 5 AM)</label>
-                    <input type="number" value={nightCharge} onChange={e => setNightCharge(e.target.value)} className="tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg" placeholder="0" />
-                </div>
-
-                <div className="pt-3 border-t border-slate-50 space-y-2.5">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Misc Charges</label>
-                    <div className="flex gap-2">
-                        <select className="tn-input h-9 flex-1 bg-slate-100 border-none text-[10px] text-slate-900 font-black uppercase tracking-wider rounded-lg" value={selectedChargeType} onChange={(e) => { setSelectedChargeType(e.target.value); if (e.target.value !== 'Custom') setCustomChargeName(''); }}>
-                            <option value="">Select Type</option>
-                            <option value="Custom">Custom</option>
-                            <option value="Cleaning Fee">Cleaning</option>
-                            <option value="Driver Allowance">Allowance</option>
-                            <option value="Guide Fee">Guide</option>
-                            <option value="Luggage Charge">Luggage</option>
-                            <option value="Airport Entry">Airport</option>
-                            <option value="FastTag Recharge">FastTag</option>
-                            <option value="Decoration">Decoration</option>
-                            <option value="Waiting Charge">Waiting</option>
-                        </select>
-                    </div>
-
-                    {selectedChargeType && (
-                        <div className="flex gap-2 animate-in slide-in-from-top-2">
-                            {selectedChargeType === 'Custom' && <input placeholder="Name" className="tn-input h-9 flex-2 bg-white border-slate-200 font-bold text-xs rounded-lg" value={customChargeName} onChange={e => setCustomChargeName(e.target.value)} autoFocus />}
-                            <input type="number" placeholder="Amt" className="tn-input h-9 flex-1 bg-white border-slate-200 font-bold text-xs rounded-lg text-center" value={customChargeAmount} onChange={e => setCustomChargeAmount(e.target.value)} />
-                            <button onClick={handleAddCharge} className="w-9 h-9 bg-slate-900 text-white rounded-lg shadow-lg shadow-slate-200 flex items-center justify-center shrink-0">
-                                <Plus size={16} strokeWidth={3} />
-                            </button>
+                {isAdvancedOpen && (
+                    <div className="space-y-3 pt-2 animate-in slide-in-from-top-2">
+                        <div className="grid grid-cols-2 gap-2.5">
+                            <div className="space-y-0.5">
+                                <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Hill Station</label>
+                                <input type="number" value={hillStationCharge} onChange={e => { setHillStationCharge(e.target.value); setManualHillStation(true); }} className="tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg" placeholder="0" />
+                            </div>
+                            <div className="space-y-0.5">
+                                <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Pet Charge</label>
+                                <input type="number" value={petCharge} onChange={e => setPetCharge(e.target.value)} className="tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg" placeholder="0" />
+                            </div>
                         </div>
-                    )}
 
-                    {extraItems.length > 0 && (
-                        <div className="space-y-1.5 pt-1">
-                            {extraItems.map((item, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg group/item border border-slate-100">
-                                    <span className="text-[10px] font-black text-slate-600 uppercase tracking-tight">{item.description}</span>
-                                    <div className="flex items-center gap-2.5">
-                                        <span className="text-[11px] font-black text-slate-900">₹{item.amount.toLocaleString()}</span>
-                                        <button onClick={() => setExtraItems(prev => prev.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500 transition-colors">
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
+                        <div className="space-y-0.5">
+                            <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Night Drive (11 PM - 5 AM)</label>
+                            <input type="number" value={nightCharge} onChange={e => setNightCharge(e.target.value)} className="tn-input h-9 w-full bg-slate-50 border-slate-200 text-xs text-slate-900 font-bold rounded-lg" placeholder="0" />
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-50 space-y-2.5">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Misc Charges</label>
+                            <div className="flex gap-2">
+                                <select className="tn-input h-9 flex-1 bg-slate-100 border-none text-[10px] text-slate-900 font-black uppercase tracking-wider rounded-lg" value={selectedChargeType} onChange={(e) => { setSelectedChargeType(e.target.value); if (e.target.value !== 'Custom') setCustomChargeName(''); }}>
+                                    <option value="">Select Type</option>
+                                    <option value="Custom">Custom</option>
+                                    <option value="Cleaning Fee">Cleaning</option>
+                                    <option value="Driver Allowance">Allowance</option>
+                                    <option value="Guide Fee">Guide</option>
+                                    <option value="Luggage Charge">Luggage</option>
+                                    <option value="Airport Entry">Airport</option>
+                                    <option value="FastTag Recharge">FastTag</option>
+                                    <option value="Decoration">Decoration</option>
+                                    <option value="Waiting Charge">Waiting</option>
+                                </select>
+                            </div>
+
+                            {selectedChargeType && (
+                                <div className="flex gap-2 animate-in slide-in-from-top-2">
+                                    {selectedChargeType === 'Custom' && <input placeholder="Name" className="tn-input h-9 flex-2 bg-white border-slate-200 font-bold text-xs rounded-lg" value={customChargeName} onChange={e => setCustomChargeName(e.target.value)} autoFocus />}
+                                    <input type="number" placeholder="Amt" className="tn-input h-9 flex-1 bg-white border-slate-200 font-bold text-xs rounded-lg text-center" value={customChargeAmount} onChange={e => setCustomChargeAmount(e.target.value)} />
+                                    <button onClick={handleAddCharge} className="w-9 h-9 bg-slate-900 text-white rounded-lg shadow-lg shadow-slate-200 flex items-center justify-center shrink-0">
+                                        <Plus size={16} strokeWidth={3} />
+                                    </button>
                                 </div>
-                            ))}
+                            )}
+
+                            {extraItems.length > 0 && (
+                                <div className="space-y-1.5 pt-1">
+                                    {extraItems.map((item, idx) => (
+                                        <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg group/item border border-slate-100">
+                                            <span className="text-[10px] font-black text-slate-600 uppercase tracking-tight">{item.description}</span>
+                                            <div className="flex items-center gap-2.5">
+                                                <span className="text-[11px] font-black text-slate-900">₹{item.amount.toLocaleString()}</span>
+                                                <button onClick={() => setExtraItems(prev => prev.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500 transition-colors">
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
 
             <div className="flex gap-2">
