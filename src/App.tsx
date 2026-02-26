@@ -766,11 +766,11 @@ function AppContent() {
           <Calculator />
         );
       case 'trending':
-        return (
+        return settings.plan === 'super' ? (
           <Suspense fallback={<LoadingFallback />}>
             <TrendingRoutes />
           </Suspense>
-        );
+        ) : <Dashboard trips={trips} quotations={quotations} />;
       case 'routes':
         return (
           <Suspense fallback={<LoadingFallback />}>
@@ -802,11 +802,11 @@ function AppContent() {
           </Suspense>
         );
       case 'staff':
-        return (
+        return settings.isPremium ? (
           <Suspense fallback={<LoadingFallback />}>
             <SalaryManager />
           </Suspense>
-        );
+        ) : <Dashboard trips={trips} quotations={quotations} />;
       case 'admin':
         return isAdmin ? (
           <Suspense fallback={<LoadingFallback />}>

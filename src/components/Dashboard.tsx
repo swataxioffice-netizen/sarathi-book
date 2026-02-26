@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { safeJSONParse } from '../utils/storage';
 import { Trip, Expense } from '../utils/fare'; // Use named imports if they are exported as such, or adjust if they are types
-import { IndianRupee, TrendingUp, CheckCircle2, FileText, Eye } from 'lucide-react';
+import { IndianRupee, TrendingUp, CheckCircle2, FileText, Eye, MoveRight } from 'lucide-react';
 import type { SavedQuotation } from '../utils/pdf';
 import { generateReceiptPDF, generateQuotationPDF } from '../utils/pdf';
 import { useSettings } from '../contexts/SettingsContext';
@@ -189,12 +189,12 @@ const Dashboard: React.FC<DashboardProps> = ({ trips, quotations }) => {
             </div>
 
             {/* Engagement Banner - Business Features */}
-            <div className="bg-linear-to-br from-[#0047AB] to-indigo-800 rounded-2xl p-4 shadow-lg shadow-blue-100 flex items-center justify-between group transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer" onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'salary' }))}>
+            <div className="bg-linear-to-br from-[#0047AB] to-indigo-800 rounded-2xl p-4 shadow-lg shadow-blue-100 flex items-center justify-between group transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer" onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'staff' }))}>
                 <div className="space-y-1.5 flex-1 pr-4">
                     <h3 className="text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
-                        <TrendingUp size={12} className="text-blue-200" /> Pro Features
+                        <TrendingUp size={12} className="text-blue-200" /> Pro Features {settings.isPremium && <span className="bg-white/20 px-1.5 py-0.5 rounded text-[8px]">Active</span>}
                     </h3>
-                    <p className="text-blue-50 text-[9px] font-bold leading-relaxed">
+                    <p className="text-blue-50 [9px] font-bold leading-relaxed">
                         Create <strong>Invoices</strong>, <strong>Quotations</strong> & <strong>Pay Slips</strong>. Track <strong>Attendance</strong>, <strong>Salaries</strong> & <strong>Advances</strong> effortlessly.
                     </p>
                 </div>
@@ -202,6 +202,28 @@ const Dashboard: React.FC<DashboardProps> = ({ trips, quotations }) => {
                     <CheckCircle2 size={24} className="text-white" />
                 </div>
             </div>
+
+            {/* Super Pro - Market Insights */}
+            {settings.plan === 'super' && (
+                <div className="bg-white border-2 border-amber-200 rounded-2xl p-4 shadow-xl shadow-amber-50 relative overflow-hidden group hover:border-amber-400 transition-all cursor-pointer" onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'trending' }))}>
+                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-100/50 rounded-full blur-2xl group-hover:scale-125 transition-transform" />
+                    <div className="relative z-10 flex items-center gap-4">
+                        <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-amber-200 rotate-3 group-hover:rotate-0 transition-transform">
+                            <TrendingUp size={24} strokeWidth={3} />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="text-amber-600 font-black text-[10px] uppercase tracking-[0.2em] mb-1 flex items-center gap-2">
+                                <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" /> Super Pro Market Insights
+                            </h3>
+                            <p className="text-slate-900 font-black text-xs uppercase tracking-tight">Access Real-time Fleet Trends</p>
+                            <p className="text-slate-400 text-[9px] font-bold mt-0.5">Optimize your business with route-search analytics</p>
+                        </div>
+                        <div className="bg-amber-50 p-2 rounded-full text-amber-600 group-hover:translate-x-1 transition-transform">
+                            <MoveRight size={16} />
+                        </div>
+                    </div>
+                </div>
+            )}
 
              {/* Recent Invoices & Quotations - New Section */}
              <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">

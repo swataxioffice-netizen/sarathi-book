@@ -2,11 +2,19 @@ import React from 'react';
 import {
     LayoutDashboard, FileText, Wallet, User, LogOut, Calculator,
     ShieldCheck, Share2, Landmark,
-    Crown, Zap, ChevronRight, History, StickyNote, Users, Palette, ChevronDown
+    Crown, Zap, ChevronRight, History, StickyNote, Users, Palette, ChevronDown, TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { Analytics } from '../utils/monitoring';
+
+interface NavItem {
+    id: string;
+    icon: any;
+    label: string;
+    isPro?: boolean;
+    isSuper?: boolean;
+}
 
 interface SideNavProps {
     activeTab: string;
@@ -34,9 +42,17 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
     };
 
     const handleNav = (tab: string) => {
-        if (tab === 'watermark' || tab === 'branding') {
+        if (tab === 'watermark' || tab === 'branding' || tab === 'trending') {
             if (!isPro && !isSuper) {
                 handlePricing();
+                return;
+            }
+            if (tab === 'trending' && !isSuper) {
+                 handlePricing();
+                 return;
+            }
+            if (tab === 'trending') {
+                setActiveTab('trending');
                 return;
             }
             setActiveTab('profile');
@@ -53,12 +69,13 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
         setActiveTab(tab);
     };
 
-    const navSections = [
+    const navSections: { title: string; items: NavItem[] }[] = [
         {
             title: 'Account & Overview',
             items: [
                 { id: 'profile', icon: User, label: 'Profile' },
                 { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+                { id: 'trending', icon: TrendingUp, label: 'Market Trends', isSuper: true },
             ]
         },
         {
@@ -72,10 +89,10 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
         {
             title: 'Business Management',
             items: [
-                 { id: 'trips', icon: FileText, label: 'Invoices' },
-                 { id: 'expenses', icon: Wallet, label: 'Expenses' },
-                 { id: 'staff', icon: Users, label: 'Staff Manager', isPro: true },
-                 { id: 'finance', icon: Landmark, label: 'Loan Center' },
+                { id: 'trips', icon: FileText, label: 'Invoices' },
+                { id: 'expenses', icon: Wallet, label: 'Expenses' },
+                { id: 'staff', icon: Users, label: 'Staff Manager', isPro: true },
+                { id: 'finance', icon: Landmark, label: 'Loan Center' },
             ]
         },
         {
@@ -222,6 +239,9 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                                                     <span className="text-sm font-black uppercase tracking-tight">{item.label}</span>
                                                     {item.isPro && !isPro && !isSuper && (
                                                         <span className="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">Pro</span>
+                                                    )}
+                                                    {item.isSuper && !isSuper && (
+                                                        <span className="bg-amber-100 text-amber-600 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">Super</span>
                                                     )}
                                                 </div>
                                             </div>

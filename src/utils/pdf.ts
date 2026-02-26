@@ -392,7 +392,7 @@ export const generateReceiptPDF = async (trip: any, settings: PDFSettings, isQuo
 
     let runningSubtotal = 0;
     const addTableRow = (label: string, qty: string, rate: string, amount: number, sac: string = '9966') => {
-        const safeAmount = isNaN(amount) ? 0 : amount;
+        const safeAmount = (Number(amount) || 0);
 
         // Description wrapping
         const descLines = doc.splitTextToSize(label, 75); // Reduced width for Desc to fit SAC
@@ -568,7 +568,7 @@ export const generateReceiptPDF = async (trip: any, settings: PDFSettings, isQuo
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text('Taxable Amount:', 135, totalsY);
-    doc.text(`${taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, totalsY, { align: 'right' });
+    doc.text(`${(taxableValue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, totalsY, { align: 'right' });
     totalsY += 8;
 
     const isDriverRegistered = !!gstin;
@@ -579,16 +579,16 @@ export const generateReceiptPDF = async (trip: any, settings: PDFSettings, isQuo
 
         if (isIgst) {
             doc.text(`IGST (${rate}%):`, 135, totalsY);
-            doc.text(`${gstValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, totalsY, { align: 'right' });
+            doc.text(`${(gstValue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, totalsY, { align: 'right' });
             totalsY += 8;
         } else {
             const halfRate = rate / 2;
             const halfGst = gstValue / 2;
             doc.text(`CGST (${halfRate}%):`, 135, totalsY);
-            doc.text(`${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, totalsY, { align: 'right' });
+            doc.text(`${(halfGst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, totalsY, { align: 'right' });
             totalsY += 6;
             doc.text(`SGST (${halfRate}%):`, 135, totalsY);
-            doc.text(`${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, totalsY, { align: 'right' });
+            doc.text(`${(halfGst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, totalsY, { align: 'right' });
             totalsY += 8;
         }
     } else if ((settings.rcmEnabled || (t.rcmEnabled)) && !gstEnabled) {
@@ -622,7 +622,7 @@ export const generateReceiptPDF = async (trip: any, settings: PDFSettings, isQuo
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text('GRAND TOTAL', 135, totalsY);
-    doc.text(`Rs. ${finalTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, totalsY, { align: 'right' });
+    doc.text(`Rs. ${(finalTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 195, totalsY, { align: 'right' });
     doc.setTextColor(0, 0, 0);
     totalsY += 12;
 
@@ -946,11 +946,11 @@ export const generateFinancialReportPDF = async (trips: Trip[], expenses: Expens
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(11);
     doc.text('Total Income (Revenue)', margin + 10, y);
-    doc.text(`${totalIncome.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}`, 185, y, { align: 'right' });
+    doc.text(`${(totalIncome || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}`, 185, y, { align: 'right' });
 
     y += 8;
     doc.text('Total Expenses', margin + 10, y);
-    doc.text(`- ${totalExpense.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}`, 185, y, { align: 'right' });
+    doc.text(`- ${(totalExpense || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}`, 185, y, { align: 'right' });
 
     y += 10;
     doc.setLineWidth(0.3);
@@ -958,7 +958,7 @@ export const generateFinancialReportPDF = async (trips: Trip[], expenses: Expens
     setThemeColor();
     doc.setFontSize(12);
     doc.text('NET PROFIT / (LOSS)', margin + 10, y);
-    doc.text(`${netProfit.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}`, 185, y, { align: 'right' });
+    doc.text(`${(netProfit || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}`, 185, y, { align: 'right' });
 
     // --- INCOME BREAKDOWN (Simplified) ---
     y += 25;
@@ -1003,7 +1003,7 @@ export const generateFinancialReportPDF = async (trips: Trip[], expenses: Expens
         doc.setFont('helvetica', 'normal');
         categories.forEach(cat => {
             doc.text(cat.toUpperCase(), margin, y);
-            doc.text(`${catTotals[cat].toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}`, 195, y, { align: 'right' });
+            doc.text(`${(catTotals[cat] || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}`, 195, y, { align: 'right' });
             y += 6;
         });
     }
@@ -1271,7 +1271,7 @@ export const generatePayslipPDF = async (staff: Staff, payroll: PayrollSummary, 
     doc.setFontSize(12);
     doc.text('NET SALARY PAYABLE', margin + 5, y + 9);
     doc.setFontSize(16);
-    doc.text(`Rs. ${payroll.net.toLocaleString('en-IN')}`, 185, y + 10, { align: 'right' });
+    doc.text(`Rs. ${(payroll.net || 0).toLocaleString('en-IN')}`, 185, y + 10, { align: 'right' });
 
     y += 22;
     doc.setTextColor(0, 0, 0);

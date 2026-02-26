@@ -88,7 +88,8 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                     const newSettings = {
                         ...settings,
                         isPremium: true,
-                        plan: (tier.id === 'super-pro' ? 'super' : 'pro') as 'super' | 'pro'
+                        plan: (tier.id === 'super-pro' ? 'super' : 'pro') as 'super' | 'pro',
+                        showWatermark: false
                     };
 
                     updateSettings(newSettings);

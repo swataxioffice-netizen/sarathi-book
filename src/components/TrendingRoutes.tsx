@@ -3,8 +3,28 @@ import { supabase } from '../utils/supabase';
 import { Car, ArrowRight, RotateCcw } from 'lucide-react';
 import SEOHead from './SEOHead';
 
+interface TrendingRoute {
+    from: string;
+    to: string;
+    type: string;
+    mode: string;
+    dist: number;
+    fare: number;
+    veh: string;
+    count: number;
+}
+
+interface RouteSearchRow {
+    pickup_location: string;
+    drop_location: string;
+    trip_type: string;
+    distance_km: number;
+    estimated_fare: number;
+    vehicle_type: string;
+}
+
 const TrendingRoutes: React.FC = () => {
-    const [trendingRoutes, setTrendingRoutes] = useState<any[]>([]);
+    const [trendingRoutes, setTrendingRoutes] = useState<TrendingRoute[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -19,9 +39,9 @@ const TrendingRoutes: React.FC = () => {
                 if (error) throw error;
 
                 if (data && data.length > 0) {
-                    const counts: Record<string, any> = {};
+                    const counts: Record<string, TrendingRoute> = {};
 
-                    data.forEach(row => {
+                    (data as RouteSearchRow[]).forEach((row) => {
                         const key = `${row.pickup_location?.trim()}-${row.drop_location?.trim()}`;
                         if (!row.pickup_location || !row.drop_location) return;
 
@@ -40,8 +60,8 @@ const TrendingRoutes: React.FC = () => {
                         counts[key].count++;
                     });
 
-                    const sorted = Object.values(counts)
-                        .sort((a: any, b: any) => b.count - a.count);
+                    const sorted = (Object.values(counts) as TrendingRoute[])
+                        .sort((a, b) => b.count - a.count);
 
                     setTrendingRoutes(sorted);
                 }
@@ -85,11 +105,11 @@ const TrendingRoutes: React.FC = () => {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {trendingRoutes.map((route, idx) => (
+                        {trendingRoutes.map((route: TrendingRoute, idx: number) => (
                             <a
                                 key={idx}
                                 href={`/${slugify(route.from)}-to-${slugify(route.to)}-taxi`}
-                                className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer active:scale-[0.99] group block"
+                                className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer active:scale-[0.99] group"
                             >
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-2">
@@ -119,7 +139,7 @@ const TrendingRoutes: React.FC = () => {
                                 <div className="mt-4 pt-3 border-t border-slate-50 flex justify-between items-end">
                                     <span className="text-[10px] font-medium text-slate-400">{route.dist} km approx</span>
                                     <div className="text-right">
-                                        <span className="text-lg font-black text-slate-900 block leading-none">₹{route.fare.toLocaleString()}</span>
+                                        <span className="text-lg font-black text-slate-900 block leading-none">₹{(route.fare || 0).toLocaleString()}</span>
                                     </div>
                                 </div>
                             </a>

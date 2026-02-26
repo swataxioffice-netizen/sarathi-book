@@ -13,6 +13,7 @@ import {
     UserCheck,
     Truck,
     RotateCcw,
+    ArrowLeft,
     X,
     FileText,
     Check,
@@ -182,7 +183,7 @@ const SeoFareDisplay = ({ result, tripData, onEdit }: { result: SeoFareResult, t
 
                         <div className="pt-3 mt-2 border-t border-slate-200 flex justify-between items-center">
                             <span className="text-sm font-black text-slate-800 uppercase tracking-widest">Total Estimated</span>
-                            <span className="text-xl font-black text-[#0047AB]">₹{fare.toLocaleString()}</span>
+                            <span className="text-xl font-black text-[#0047AB]">₹{(fare || 0).toLocaleString()}</span>
                         </div>
                         <p className="text-[10px] text-slate-400 text-right font-medium">Click customize to add options like GST</p>
                     </div>
@@ -554,11 +555,11 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
 
             const fullBreakdown = [...res.breakdown];
 
-            if (permitTotal > 0) fullBreakdown.push(`Permit Charges: ₹${permitTotal.toLocaleString()}`);
-            if (parkingTotal > 0) fullBreakdown.push(`Parking Charges: ₹${parkingTotal.toLocaleString()}`);
-            if (tollTotal > 0) fullBreakdown.push(`Toll Charges: ₹${tollTotal.toLocaleString()}`);
+            if (permitTotal > 0) fullBreakdown.push(`Permit Charges: ₹${(permitTotal || 0).toLocaleString()}`);
+            if (parkingTotal > 0) fullBreakdown.push(`Parking Charges: ₹${(parkingTotal || 0).toLocaleString()}`);
+            if (tollTotal > 0) fullBreakdown.push(`Toll Charges: ₹${(tollTotal || 0).toLocaleString()}`);
             extraItems.forEach(item => {
-                if (item.amount > 0) fullBreakdown.push(`${item.description}: ₹${item.amount.toLocaleString()}`);
+                if (item.amount > 0) fullBreakdown.push(`${item.description}: ₹${(item.amount || 0).toLocaleString()}`);
             });
 
             // Pass full context to Analytics for "Real" Trending Routes
@@ -2115,7 +2116,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
 
                                         <div className="text-right shrink-0">
                                             <div className="flex flex-col items-end">
-                                                <span className="text-lg font-black text-slate-900">₹{route.fare.toLocaleString()}</span>
+                                                <span className="text-lg font-black text-slate-900">₹{(route.fare || 0).toLocaleString()}</span>
                                                 <span className="text-[10px] font-medium text-slate-400">Total Fare</span>
                                             </div>
                                         </div>
@@ -2186,7 +2187,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
 
                     className="flex items-center gap-1.5 py-2 px-3 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 uppercase tracking-wider hover:bg-slate-50 transition-all shadow-sm"
                 >
-                    <RotateCcw size={12} className="text-blue-600" />
+                    <ArrowLeft size={12} className="text-blue-600" />
                     Change Service
                 </button>
                 <div className="flex items-center gap-2">
