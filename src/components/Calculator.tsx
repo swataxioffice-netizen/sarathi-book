@@ -89,13 +89,15 @@ const SeoFareDisplay = ({ result, tripData, onEdit }: { result: SeoFareResult, t
         tripType: tripData.type
     });
 
+    const vehicle = VEHICLES.find(v => v.id === tripData.vehicle);
+    const isTruck = vehicle?.type === 'Truck';
     const pCity = (tripData.pickup || 'Location').split(',')[0];
     const dCity = (tripData.drop || 'Location').split(',')[0];
     const vRaw = tripData.vehicle || 'Cab';
     const vehicleName = vRaw.charAt(0).toUpperCase() + vRaw.slice(1);
 
-    const title = `${fare} INR - Cab from ${pCity} to ${dCity} Fare Estimate (${vehicleName})`;
-    const description = `Get exact cab fare from ${pCity} to ${dCity}. ${vehicleName} Taxi price is ₹${fare} approx for ${tripData.distance} km. Best rates for Outstation & Local trips with Sarathi Book.`;
+    const title = `${fare} INR - ${isTruck ? 'Truck' : 'Cab'} from ${pCity} to ${dCity} Fare Estimate (${vehicleName})`;
+    const description = `Get exact ${isTruck ? 'load vehicle' : 'cab'} fare from ${pCity} to ${dCity}. ${vehicleName} price is ₹${fare} approx for ${tripData.distance} km. Best rates for Outstation & Local trips with Sarathi Book.`;
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-fade-in-up">
@@ -121,7 +123,7 @@ const SeoFareDisplay = ({ result, tripData, onEdit }: { result: SeoFareResult, t
                     <div className="space-y-3">
                         <div className="flex items-center gap-3">
                             <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-                                <Car size={14} />
+                                {isTruck ? <Truck size={14} /> : <Car size={14} />}
                             </div>
                             <div>
                                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Vehicle</p>
@@ -482,7 +484,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
             if (!manualDriverBata) {
                 let batta = 0;
                 const dist = parseFloat(distance) || 0;
-                const isHeavy = ['tempo', 'minibus', 'bus'].some(t => vehicle.id.includes(t));
+                const isHeavy = ['tempo', 'minibus', 'bus'].some(t => vehicle.id.includes(t)) || vehicle.type === 'Truck';
 
                 if (tripType === 'roundtrip') {
                     const d = parseInt(days) || 1;

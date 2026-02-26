@@ -221,6 +221,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             if (category.includes('tempo') || category.includes('traveller')) return 'tempo';
             if (category.includes('mini bus') || category.includes('minibus')) return 'minibus';
             if (category.includes('bus')) return 'bus';
+            if (category.includes('tata ace') || category.includes('tata_ace')) return 'tata_ace';
+            if (category.includes('bada dost') || category.includes('bada_dost')) return 'bada_dost';
+            if (category.includes('bolero') || category.includes('pickup')) return 'bolero_pickup';
             return 'sedan';
         }
 
@@ -310,7 +313,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
                         if (advanced.tollPrice > 0 && !manualToll) {
                             let baseToll = advanced.tollPrice;
-                            if (selectedVehicleId.includes('tempo')) baseToll *= 1.6;
+                            const isHeavy = selectedVehicleId.includes('tempo') || ['tata_ace', 'bada_dost', 'bolero_pickup'].includes(vehicleCategory || '');
+                            if (isHeavy) baseToll *= 1.6;
                             const finalToll = mode === 'drop' ? baseToll : (days > 1 ? baseToll * 2 : Math.round(baseToll * 1.6));
                             setToll(Math.round(finalToll).toString());
                         }
@@ -580,7 +584,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 description: baseDesc,
                 amount: res.distanceCharge,
                 rate: baseRate > 0 ? `${baseRate}/KM` : `${res.distanceCharge}`,
-                quantity: 1
+                quantity: 1,
+                vehicleType: vehicleCategory // Added for PDF tracking
             });
         }
 

@@ -221,6 +221,9 @@ export const calculateFare = (
             if (vehicleType === 'hatchback') basePrice = 250;
             if (vehicleType === 'suv') basePrice = 500;
             if (vehicleType === 'premium_suv') basePrice = 700;
+            if (vehicleType === 'tata_ace') basePrice = 400;
+            if (vehicleType === 'bada_dost') basePrice = 500;
+            if (vehicleType === 'bolero_pickup') basePrice = 600;
 
             if (distance <= baseKm) {
                 distanceCharge = basePrice;
@@ -302,7 +305,7 @@ export const calculateFare = (
     const roundedNight = Math.round(nightAmt);
 
     return {
-        totalFare: roundedFare + roundedBatta + roundedHill + roundedPet + roundedNight,
+        totalFare: Math.round(totalFare),
         breakdown,
         effectiveDistance: effectiveKm,
         rateUsed,
@@ -328,6 +331,7 @@ export const estimateTolls = (distanceKm: number, vehicleType: string): number =
     // Base rates per KM (Association market estimates)
     let rate = 1.8; // Hatchback/Sedan
     if (vehicleType === 'suv' || vehicleType === 'premium_suv') rate = 2.4;
+    if (vehicleType === 'tata_ace' || vehicleType === 'bada_dost' || vehicleType === 'bolero_pickup') rate = 3.0;
     if (vehicleType === 'tempo') rate = 3.8;
     if (vehicleType === 'minibus' || vehicleType === 'bus') rate = 7.5;
 

@@ -35,7 +35,7 @@ export const estimatePermitCharge = (
     // Define vehicle category based on ID
     // hatchback/sedan = Small, suv/premium_suv = SUV, tempo/minibus/bus = Van/Heavy
     const isSUV = vehicleId === 'suv' || vehicleId === 'premium_suv';
-    const isHeavy = vehicleId === 'tempo' || vehicleId === 'minibus' || vehicleId === 'bus';
+    const isHeavy = vehicleId === 'tempo' || vehicleId === 'minibus' || vehicleId === 'bus' || ['tata_ace', 'bada_dost', 'bolero_pickup'].includes(vehicleId || '');
 
     // Karnataka Permit Estimates
     if (isState(dropLower, KA)) {

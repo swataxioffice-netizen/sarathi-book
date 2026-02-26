@@ -15,7 +15,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const TariffPage = () => {
     const title = "Chennai Cab Tariff & Rates | 2025 Official Price List - Sarathi Book";
-    const description = "Transparent cab tariff in Chennai. Check official rates for Hatchback, Sedan, SUV, and Tempo Traveller. One-way drop from ₹13/km. No hidden charges.";
+    const description = "Transparent cab tariff in Chennai. Check official rates for Hatchback, Sedan, SUV, Tempo Traveller, and Load Vehicles (Tata Ace, Bada Dost). One-way drop from ₹13/km. No hidden charges.";
 
     // Generate Price Specification Schema
     const priceSchema = {

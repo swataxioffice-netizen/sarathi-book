@@ -73,7 +73,10 @@ const VEHICLE_CLASSES = [
     { id: 'sedan', label: 'Sedan (Etios/Dzire)', model: 'Sedan' },
     { id: 'suv', label: 'SUV (Ertiga/Kia)', model: 'SUV' },
     { id: 'innova', label: 'Innova Crysta', model: 'Innova Crysta' },
-    { id: 'tempo', label: 'Tempo Traveller', model: 'Tempo Traveller' }
+    { id: 'tempo', label: 'Tempo Traveller', model: 'Tempo Traveller' },
+    { id: 'tata_ace', label: 'Tata Ace (Loads)', model: 'Tata Ace' },
+    { id: 'bada_dost', label: 'Bada Dost (Loads)', model: 'Bada Dost' },
+    { id: 'bolero_pickup', label: 'Bolero Pickup (Loads)', model: 'Bolero Pickup' }
 ];
 
 const DEFAULT_TERMS = [
@@ -204,6 +207,9 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
         if (selectedVehicleType === 'innova') cat = 'premium_suv';
         else if (selectedVehicleType === 'tempo') cat = 'tempo';
         else if (selectedVehicleType === 'suv') cat = 'suv';
+        else if (selectedVehicleType === 'tata_ace') cat = 'tata_ace';
+        else if (selectedVehicleType === 'bada_dost') cat = 'bada_dost';
+        else if (selectedVehicleType === 'bolero_pickup') cat = 'bolero_pickup';
 
         return (TARIFFS.vehicles as Record<string, TariffVehicle>)[cat] || TARIFFS.vehicles.sedan;
     }, [selectedVehicleType]);
@@ -274,7 +280,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
 
                         if (advanced.tollPrice > 0 && !manualToll) {
                             let baseToll = advanced.tollPrice;
-                            if (selectedVehicleType.includes('tempo')) baseToll *= 1.6;
+                            const isHeavy = selectedVehicleType.includes('tempo') || ['tata_ace', 'bada_dost', 'bolero_pickup'].includes(selectedVehicleType);
+                            if (isHeavy) baseToll *= 1.6;
                             const finalToll = mode === 'drop' ? baseToll : (days > 1 ? baseToll * 2 : Math.round(baseToll * 1.6));
                             setToll(Math.round(finalToll).toString());
                         }
@@ -308,7 +315,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                 // Auto Hill Station
                 if (!manualHillStation && toLoc) {
                     if (isHillStationLocation(toLoc)) {
-                        const isHeavy = selectedVehicleType === 'tempo';
+                        const isHeavy = selectedVehicleType === 'tempo' || ['tata_ace', 'bada_dost', 'bolero_pickup'].includes(selectedVehicleType);
                         setHillStationCharge(isHeavy ? '1000' : '500');
                     } else {
                         setHillStationCharge('0');
