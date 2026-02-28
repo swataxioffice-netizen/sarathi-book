@@ -2,7 +2,8 @@ import React from 'react';
 import {
     User, LogOut,
     ShieldCheck, Share2, Landmark,
-    Crown, Zap, ChevronRight, History, StickyNote, Users, Palette, ChevronDown, TrendingUp
+    Crown, Zap, ChevronRight, History, StickyNote, Users, Palette, ChevronDown, TrendingUp,
+    LayoutDashboard, FileText, Wallet, Calculator
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
@@ -71,17 +72,32 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
 
     const navSections: { title: string; items: NavItem[] }[] = [
         {
-            title: 'Business & Tools',
+            title: 'Account & Overview',
             items: [
-                { id: 'tariff', icon: History, label: 'Tariff Cards' },
-                { id: 'notes', icon: StickyNote, label: 'Quick Notes' },
-                { id: 'trending', icon: TrendingUp, label: 'Market Trends', isSuper: true },
-                { id: 'staff', icon: Users, label: 'Staff Manager', isPro: true },
-                { id: 'finance', icon: Landmark, label: 'Loan Center' },
+                { id: 'profile', icon: User, label: 'My Profile' },
+                { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
             ]
         },
         {
-             title: 'App Settings',
+            title: 'Trip Tools',
+            items: [
+                { id: 'tariff', icon: History, label: 'Tariff Cards' },
+                { id: 'notes', icon: StickyNote, label: 'Quick Notes' },
+                { id: 'taxi-fare-calculator', icon: Calculator, label: 'Fare Calculator' },
+            ]
+        },
+        {
+            title: 'Business Management',
+            items: [
+                 { id: 'trips', icon: FileText, label: 'Invoices & Quotes' },
+                 { id: 'expenses', icon: Wallet, label: 'Expense Tracker' },
+                 { id: 'trending', icon: TrendingUp, label: 'Market Trends', isSuper: true },
+                 { id: 'staff', icon: Users, label: 'Staff Manager', isPro: true },
+                 { id: 'finance', icon: Landmark, label: 'Loan Center' },
+            ]
+        },
+        {
+             title: 'App Customization',
              items: [
                 { id: 'watermark', icon: ShieldCheck, label: 'Watermark', isPro: true },
                 { id: 'branding', icon: Palette, label: 'Branding', isPro: true },

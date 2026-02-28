@@ -918,7 +918,7 @@ function AppContent() {
               {!user ? (
                 <GoogleSignInButton
                   text="Sign In"
-                  className="w-fit! py-2! px-4! text-xs! rounded-xl! shadow-sm! border-slate-200! gap-2!"
+                  className="w-fit! py-2! px-4! text-xs! rounded-xl! shadow-sm! border-slate-200! gap-2! relative z-50 cursor-pointer"
                 />
               ) : (
                 <button
