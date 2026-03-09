@@ -83,7 +83,7 @@ const Finance: React.FC = () => {
     return (
         <div className="space-y-4 animate-fade-in max-w-4xl mx-auto pb-24 px-4 pt-2">
             {/* Hero Section - Compact Mobile */}
-            <div className="bg-gradient-to-r from-[#0047AB] to-[#003380] rounded-2xl p-5 md:p-8 text-white relative overflow-hidden shadow-lg">
+            <div className="bg-linear-to-r from-primary to-[#003380] rounded-2xl p-5 md:p-8 text-white relative overflow-hidden shadow-lg">
                 <div className="relative z-10">
                     <div className="inline-flex items-center gap-1.5 bg-blue-500/30 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest mb-3 border border-blue-400/30">
                         <ShieldCheck size={12} />

@@ -21,7 +21,15 @@ export default {
       },
       colors: {
         'primary': 'var(--primary)',
-        'brand': colors.blue, // Alias brand to standard blue to match 500 scale request
+        'primary-soft': 'var(--primary-soft)',
+        'success': 'var(--status-success)',
+        'error': 'var(--status-error)',
+        'warning': 'var(--status-warning)',
+        'surface': 'var(--bg-card)',
+        'app-bg': 'var(--bg-app)',
+        'text-main': 'var(--text-main)',
+        'text-sub': 'var(--text-sub)',
+        'brand': 'var(--primary)', 
         'heritage-brand': '#0747A6',
         'heritage-accent': '#FFC107',
         'heritage-bg': '#F8F9FA',

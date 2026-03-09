@@ -1,9 +1,8 @@
 import React from 'react';
 import {
-    User, LogOut,
-    ShieldCheck, Share2, Landmark,
-    Crown, Zap, ChevronRight, History, StickyNote, Users, Palette, ChevronDown, TrendingUp,
-    LayoutDashboard, FileText, Wallet, Calculator
+    User, LogOut, ShieldCheck, Share2, Landmark,
+    Crown, Zap, ChevronRight, History, Palette, ChevronDown, TrendingUp,
+    FileText, Contact, Settings
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
@@ -43,7 +42,11 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
     };
 
     const handleNav = (tab: string) => {
-        if (tab === 'watermark' || tab === 'branding' || tab === 'trending') {
+        if (tab === 'app-settings') {
+            window.dispatchEvent(new CustomEvent('open-app-settings'));
+            return;
+        }
+        if (tab === 'watermark' || tab === 'branding' || tab === 'trending' || tab === 'visiting-card' || tab === 'letterhead') {
             if (!isPro && !isSuper) {
                 handlePricing();
                 return;
@@ -54,6 +57,17 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
             }
             if (tab === 'trending') {
                 setActiveTab('trending');
+                return;
+            }
+            if (tab === 'visiting-card') {
+                window.dispatchEvent(new CustomEvent('open-visiting-card'));
+                return;
+            }
+            if (tab === 'letterhead') {
+                import('../utils/pdf').then(m => m.downloadLetterhead({ ...settings, vehicleNumber: '' })).catch(err => {
+                    console.error('Error downloading letterhead:', err);
+                    alert('Could not generate letterhead. Please try again.');
+                });
                 return;
             }
             setActiveTab('profile');
@@ -75,33 +89,30 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
             title: 'Account & Overview',
             items: [
                 { id: 'profile', icon: User, label: 'My Profile' },
-                { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+                { id: 'tariff', icon: History, label: 'Tariff Cards' },
             ]
         },
         {
-            title: 'Trip Tools',
-            items: [
-                { id: 'tariff', icon: History, label: 'Tariff Cards' },
-                { id: 'notes', icon: StickyNote, label: 'Quick Notes' },
-                { id: 'taxi-fare-calculator', icon: Calculator, label: 'Fare Calculator' },
-            ]
+             title: 'Your Brand',
+             items: [
+                { id: 'visiting-card', icon: Contact, label: 'Visiting Card', isPro: true },
+                { id: 'letterhead', icon: FileText, label: 'Letterhead', isPro: true },
+                { id: 'watermark', icon: ShieldCheck, label: 'Remove Watermark', isPro: true },
+                { id: 'branding', icon: Palette, label: 'Custom PDF Colour', isPro: true },
+             ]
         },
         {
             title: 'Business Management',
             items: [
-                 { id: 'trips', icon: FileText, label: 'Invoices & Quotes' },
-                 { id: 'expenses', icon: Wallet, label: 'Expense Tracker' },
                  { id: 'trending', icon: TrendingUp, label: 'Market Trends', isSuper: true },
-                 { id: 'staff', icon: Users, label: 'Staff Manager', isPro: true },
                  { id: 'finance', icon: Landmark, label: 'Loan Center' },
             ]
         },
         {
-             title: 'App Customization',
-             items: [
-                { id: 'watermark', icon: ShieldCheck, label: 'Watermark', isPro: true },
-                { id: 'branding', icon: Palette, label: 'Branding', isPro: true },
-             ]
+            title: 'App',
+            items: [
+                { id: 'app-settings', icon: Settings, label: 'App Settings' },
+            ]
         }
     ];
 
@@ -125,11 +136,11 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                         />
                     </div>
                     <div>
-                        <h1 className="text-lg font-black text-[#0047AB] leading-none tracking-tight uppercase">
+                        <h1 className="text-lg font-black text-primary leading-none tracking-tight uppercase">
                             SARATHI BOOK
                         </h1>
                         <div className={`mt-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isSuper ? 'bg-amber-500/10 border-amber-500/20 text-amber-600' :
-                            isPro ? 'bg-blue-600/10 border-blue-600/20 text-[#0047AB]' :
+                            isPro ? 'bg-primary/10 border-primary/20 text-primary' :
                                 'bg-slate-100 border-slate-200 text-slate-400'
                             }`}>
                             {isSuper ? 'Super Pro' : isPro ? 'Pro Active' : 'Free Edition'}
@@ -183,12 +194,12 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                         <button
                             onClick={handlePricing}
                             className={`w-full mb-6 p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between group relative overflow-hidden ${isPro ? 'bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-200' :
-                                'bg-[#0047AB] border-[#0047AB] text-white shadow-lg shadow-blue-500/10 active:scale-[0.98]'
+                                'bg-primary border-primary text-white shadow-lg shadow-primary/10 active:scale-[0.98]'
                                 }`}
                         >
                             <div className="absolute top-0 right-0 w-20 h-20 bg-white/5 rounded-full -mr-10 -mt-10 blur-xl"></div>
                             <div className="flex items-center gap-3 relative z-10">
-                                <div className={`p-1.5 rounded-lg ${isPro ? 'bg-white text-[#0047AB] shadow-sm' : 'bg-white/20 text-white'}`}>
+                                <div className={`p-1.5 rounded-lg ${isPro ? 'bg-white text-primary shadow-sm' : 'bg-white/20 text-white'}`}>
                                     {isPro ? <Crown size={14} /> : <Zap size={14} />}
                                 </div>
                                 <div className="text-left">
@@ -230,16 +241,16 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                                             key={item.id}
                                             onClick={() => handleNav(item.id)}
                                             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${activeTab === item.id
-                                                ? 'bg-blue-50 text-[#0047AB]'
+                                                ? 'bg-primary/5 text-primary'
                                                 : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-3">
-                                                <item.icon size={18} className={`transition-colors ${activeTab === item.id ? 'text-[#0047AB]' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                                                <item.icon size={18} className={`transition-colors ${activeTab === item.id ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600'}`} />
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-sm font-black uppercase tracking-tight">{item.label}</span>
                                                     {item.isPro && !isPro && !isSuper && (
-                                                        <span className="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">Pro</span>
+                                                        <span className="bg-primary/10 text-primary text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">Pro</span>
                                                     )}
                                                     {item.isSuper && !isSuper && (
                                                         <span className="bg-amber-100 text-amber-600 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">Super</span>
@@ -247,7 +258,7 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                                                 </div>
                                             </div>
                                             {activeTab === item.id && (
-                                                <div className="w-1.5 h-1.5 rounded-full bg-[#0047AB] shadow-sm" />
+                                                <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-sm" />
                                             )}
                                         </button>
                                     ))}
@@ -277,7 +288,7 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                             alert('Share not supported on this device/browser');
                         }
                     }}
-                    className="w-full h-10 flex items-center gap-3 px-4 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest text-[#0047AB] bg-blue-50/50 hover:bg-blue-50 border border-blue-100 border-dashed"
+                    className="w-full h-10 flex items-center gap-3 px-4 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest text-primary bg-primary/5 hover:bg-primary/10 border border-primary/20 border-dashed"
                 >
                     <Share2 size={16} />
                     <span>Share App</span>

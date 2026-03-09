@@ -88,7 +88,7 @@ const TrendingRoutes: React.FC = () => {
 
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-[#0047AB]">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                         <RotateCcw size={20} />
                     </div>
                     <div>

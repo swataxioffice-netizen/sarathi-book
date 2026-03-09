@@ -123,7 +123,7 @@ const SeoFareDisplay = ({ result, tripData, onEdit }: { result: SeoFareResult, t
                 <div className="space-y-3">
                     <div className="space-y-3">
                         <div className="flex items-center gap-3">
-                            <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
                                 {isTruck ? <Truck size={14} /> : <Car size={14} />}
                             </div>
                             <div>
@@ -133,7 +133,7 @@ const SeoFareDisplay = ({ result, tripData, onEdit }: { result: SeoFareResult, t
                         </div>
 
                         <div className="flex items-start gap-3">
-                            <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">
+                            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 mt-0.5">
                                 <MapPin size={14} />
                             </div>
                             <div className="flex-1">
@@ -150,7 +150,7 @@ const SeoFareDisplay = ({ result, tripData, onEdit }: { result: SeoFareResult, t
 
                         {tripData.type === 'roundtrip' && (
                             <div className="flex items-center gap-3">
-                                <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
                                     <Clock size={14} />
                                 </div>
                                 <div>
@@ -183,7 +183,7 @@ const SeoFareDisplay = ({ result, tripData, onEdit }: { result: SeoFareResult, t
 
                         <div className="pt-3 mt-2 border-t border-slate-200 flex justify-between items-center">
                             <span className="text-sm font-black text-slate-800 uppercase tracking-widest">Total Estimated</span>
-                            <span className="text-xl font-black text-[#0047AB]">₹{(fare || 0).toLocaleString()}</span>
+                            <span className="text-xl font-black text-primary">₹{(fare || 0).toLocaleString()}</span>
                         </div>
                         <p className="text-[10px] text-slate-400 text-right font-medium">Click customize to add options like GST</p>
                     </div>
@@ -193,7 +193,7 @@ const SeoFareDisplay = ({ result, tripData, onEdit }: { result: SeoFareResult, t
             <div className="bg-slate-50 border-t border-slate-200 p-4 flex justify-center">
                 <button
                     onClick={onEdit}
-                    className="flex items-center gap-2 px-8 py-3 bg-[#0047AB] text-white shadow-md rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all active:scale-95"
+                    className="flex items-center gap-2 px-8 py-3 bg-primary text-white shadow-md rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all active:scale-95"
                 >
                     <RotateCcw size={14} />
                     Edit / Customize Trip
@@ -686,7 +686,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                     aria-pressed={tripType === t}
                                     aria-label={t === 'oneway' ? 'Drop Trip' : (t === 'local' ? 'Local Package' : 'Outstation')}
                                     className={`flex-1 py-3 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all 
-                                            ${tripType === t ? 'bg-white text-[#0047AB] shadow-sm border-2 border-[#0047AB]' : 'text-slate-600 hover:text-slate-900 border-2 border-transparent'}
+                                            ${tripType === t ? 'bg-white text-primary shadow-sm border-2 border-primary' : 'text-slate-600 hover:text-slate-900 border-2 border-transparent'}
                                         `}
                                 >
                                     {t === 'oneway' ? 'Drop Trip' : (t === 'local' ? 'Local Package' : 'Outstation')}
@@ -728,7 +728,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                     onPlaceSelected={(place) => {
                                         setDrop(place.address);
                                         setDropCoords({ lat: place.lat, lng: place.lng });
-                                    }}
+                                }}
                                     onMapClick={() => setShowMap(true)}
                                     placeholder="Start typing..."
                                 />
@@ -829,7 +829,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                             />
                                             {calculatingDistance && (
                                                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                    <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" aria-hidden="true"></div>
+                                                    <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" aria-hidden="true"></div>
                                                 </div>
                                             )}
                                         </div>
@@ -1030,7 +1030,7 @@ const ActingDriverCalculator: React.FC = () => {
                         onClick={() => setServiceType('local8')}
                         aria-pressed={serviceType === 'local8'}
                         className={`py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${serviceType === 'local8'
-                            ? 'bg-[#0047AB] text-white shadow-lg'
+                            ? 'bg-primary text-white shadow-lg'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             }`}
                     >
@@ -1040,7 +1040,7 @@ const ActingDriverCalculator: React.FC = () => {
                         onClick={() => setServiceType('local12')}
                         aria-pressed={serviceType === 'local12'}
                         className={`py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${serviceType === 'local12'
-                            ? 'bg-[#0047AB] text-white shadow-lg'
+                            ? 'bg-primary text-white shadow-lg'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             }`}
                     >
@@ -1050,7 +1050,7 @@ const ActingDriverCalculator: React.FC = () => {
                         onClick={() => setServiceType('outstation')}
                         aria-pressed={serviceType === 'outstation'}
                         className={`py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${serviceType === 'outstation'
-                            ? 'bg-[#0047AB] text-white shadow-lg'
+                            ? 'bg-primary text-white shadow-lg'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             }`}
                     >
@@ -1067,7 +1067,7 @@ const ActingDriverCalculator: React.FC = () => {
                         <p className="text-[10px] font-black text-slate-600 uppercase tracking-wider mb-2">Driver Provisions</p>
 
                         <button onClick={() => setFoodProvided(!foodProvided)} aria-pressed={foodProvided} className="flex items-center gap-3 w-full text-left">
-                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${foodProvided ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${foodProvided ? 'bg-primary border-primary' : 'bg-white border-slate-300'}`}>
                                 {foodProvided && <CheckCircle2 size={14} className="text-white" aria-hidden="true" />}
                             </div>
                             <div>
@@ -1077,7 +1077,7 @@ const ActingDriverCalculator: React.FC = () => {
                         </button>
 
                         <button onClick={() => setStayProvided(!stayProvided)} aria-pressed={stayProvided} className="flex items-center gap-3 w-full text-left">
-                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${stayProvided ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${stayProvided ? 'bg-primary border-primary' : 'bg-white border-slate-300'}`}>
                                 {stayProvided && <CheckCircle2 size={14} className="text-white" aria-hidden="true" />}
                             </div>
                             <div>
@@ -1254,7 +1254,7 @@ const RelocationCalculator: React.FC = () => {
                             onClick={() => setVehicleType(v.id)}
                             aria-pressed={vehicleType === v.id}
                             className={`py-2 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${vehicleType === v.id
-                                ? 'bg-[#0047AB] text-white shadow-lg'
+                                ? 'bg-primary text-white shadow-lg'
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                 }`}
                         >
@@ -1338,8 +1338,8 @@ const RelocationCalculator: React.FC = () => {
                     <p className="text-[10px] font-black text-slate-600 uppercase tracking-wider mb-2">Customer Provides</p>
 
                     <button onClick={() => setFuelIncluded(!fuelIncluded)} aria-pressed={fuelIncluded} className="flex items-center gap-3 w-full text-left">
-                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${fuelIncluded ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
-                            {fuelIncluded && <CheckCircle2 size={14} className="text-white" aria-hidden="true" />}
+                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${fuelIncluded ? 'bg-primary border-primary' : 'bg-white border-slate-300'}`}>
+                                {fuelIncluded && <CheckCircle2 size={14} className="text-white" aria-hidden="true" />}
                         </div>
                         <div>
                             <span className="text-xs font-bold text-slate-700">Fuel Provided by Customer</span>
@@ -1348,8 +1348,8 @@ const RelocationCalculator: React.FC = () => {
                     </button>
 
                     <button onClick={() => setTollsIncluded(!tollsIncluded)} aria-pressed={tollsIncluded} className="flex items-center gap-3 w-full text-left">
-                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${tollsIncluded ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
-                            {tollsIncluded && <CheckCircle2 size={14} className="text-white" aria-hidden="true" />}
+                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${tollsIncluded ? 'bg-primary border-primary' : 'bg-white border-slate-300'}`}>
+                                {tollsIncluded && <CheckCircle2 size={14} className="text-white" aria-hidden="true" />}
                         </div>
                         <div>
                             <span className="text-xs font-bold text-slate-700">Tolls Paid by Customer</span>
@@ -1358,8 +1358,8 @@ const RelocationCalculator: React.FC = () => {
                     </button>
 
                     <button onClick={() => setDriverReturnIncluded(!driverReturnIncluded)} aria-pressed={driverReturnIncluded} className="flex items-center gap-3 w-full text-left">
-                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${driverReturnIncluded ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
-                            {driverReturnIncluded && <CheckCircle2 size={14} className="text-white" aria-hidden="true" />}
+                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${driverReturnIncluded ? 'bg-primary border-primary' : 'bg-white border-slate-300'}`}>
+                                {driverReturnIncluded && <CheckCircle2 size={14} className="text-white" aria-hidden="true" />}
                         </div>
                         <div>
                             <span className="text-xs font-bold text-slate-700">Driver Return Arranged by Customer</span>
@@ -1400,7 +1400,7 @@ const Input = ({ label, icon, value, onChange, type = 'text', highlight = false 
     return (
         <div className="space-y-1 w-full">
             <Label icon={icon} text={label} htmlFor={id} />
-            <input id={id} type={type} value={value} onChange={e => onChange(e.target.value)} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs ${highlight ? 'font-black text-[#0047AB]' : ''}`} />
+            <input id={id} type={type} value={value} onChange={e => onChange(e.target.value)} className={`tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs ${highlight ? 'font-black text-primary' : ''}`} />
         </div>
     );
 };
@@ -1423,7 +1423,7 @@ interface ButtonProps {
 }
 
 const Button = ({ onClick, disabled, text, ariaLabel }: ButtonProps) => (
-    <button onClick={onClick} disabled={disabled} aria-label={ariaLabel || text} className="w-full py-4 bg-[#0047AB] text-white font-black uppercase tracking-widest rounded-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 text-[10px]">
+    <button onClick={onClick} disabled={disabled} aria-label={ariaLabel || text} className="w-full py-4 bg-primary text-white font-black uppercase tracking-widest rounded-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 text-[10px]">
         {text}
     </button>
 );
@@ -1626,7 +1626,7 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                         <div className="flex-1">
                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">{title}</p>
                             <div className="flex items-baseline flex-wrap gap-1.5">
-                                <h2 className="text-2xl font-black text-[#0047AB]">₹{finalAmount.toLocaleString()}</h2>
+                                <h2 className="text-2xl font-black text-primary">₹{finalAmount.toLocaleString()}</h2>
                                 <span className="text-[10px] text-slate-400 font-medium">approx</span>
                                 {!includeGst && <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded ml-1">Excl. GST</span>}
                             </div>
@@ -1641,7 +1641,7 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                                         setExpanded(false);
                                     }
                                 }}
-                                className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border whitespace-nowrap flex items-center gap-2 ${expanded ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-slate-50 text-[#0047AB] border-slate-200 hover:bg-slate-100'}`}
+                                className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border whitespace-nowrap flex items-center gap-2 ${expanded ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-slate-50 text-primary border-slate-200 hover:bg-slate-100'}`}
                             >
                                 {expanded ? 'Hide Details' : 'View Detail'}
                                 {expanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
@@ -1693,17 +1693,17 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                                         {/* GST Toggle Section */}
                                         <div className="flex justify-between items-center py-2 border-b border-blue-100/50">
                                             <div className="flex items-center gap-2 cursor-pointer" onClick={() => setIncludeGst(!includeGst)}>
-                                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${includeGst ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-white border-slate-300'}`}>
+                                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${includeGst ? 'bg-primary border-primary' : 'bg-white border-slate-300'}`}>
                                                     {includeGst && <Check size={12} className="text-white" />}
                                                 </div>
                                                 <span className="text-[11px] font-bold text-slate-700 select-none">Add GST (5%)</span>
                                             </div>
-                                            {includeGst && <span className="text-[11px] font-black text-[#0047AB]">₹{gstAmount.toLocaleString()}</span>}
+                                            {includeGst && <span className="text-[11px] font-black text-primary">₹{gstAmount.toLocaleString()}</span>}
                                         </div>
                                         {/* Final Sum Line */}
                                         <div className="mt-4 pt-4 border-t-2 border-slate-100 flex justify-between items-center">
                                             <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Total Amount</span>
-                                            <span className="text-xl font-black text-[#0047AB]">₹{finalAmount.toLocaleString()}</span>
+                                            <span className="text-xl font-black text-primary">₹{finalAmount.toLocaleString()}</span>
                                         </div>
                                     </div>
                                 ) : (
@@ -1723,7 +1723,7 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                                 <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-100">
                                     <button
                                         onClick={() => triggerAction(handleCreateInvoice)}
-                                        className="bg-[#0047AB] text-white font-black py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-[9px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                                        className="bg-primary text-white font-black py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-[9px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                                     >
                                         <FilePlus size={16} />
                                         Invoice
@@ -2063,7 +2063,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
                     <div className="pt-6 space-y-4">
                         <div className="flex items-center justify-between px-1">
                             <div className="flex items-center gap-2">
-                                <TrendingUp size={16} className="text-blue-600" />
+                                <TrendingUp size={16} className="text-primary" />
                                 <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.2em]">Most Calculated Routes</h3>
                             </div>
                             <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">Community Hits</span>
@@ -2143,7 +2143,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
                         {/* Informational SEO Content Section */}
                         <div className="pt-12 space-y-8">
                             <section>
-                                <h3 className="text-xl font-black text-slate-800 uppercase tracking-tighter mb-4 leading-none border-l-4 border-blue-600 pl-4">Why use Sarathi Book Calculator?</h3>
+                                <h3 className="text-xl font-black text-slate-800 uppercase tracking-tighter mb-4 leading-none border-l-4 border-primary pl-4">Why use Sarathi Book Calculator?</h3>
                                 <p className="text-sm text-slate-600 leading-relaxed font-medium">
                                     Our platform provides the most accurate taxi fare estimates in India by integrating real-time Google Maps data with localized union tariff rates. Whether you are planning a local city trip, an outstation drop trip, or a multi-day round trip, we provide a complete breakdown of costs including base fare, driver bata, tolls, and state permit charges.
                                 </p>
@@ -2187,11 +2187,11 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
 
                     className="flex items-center gap-1.5 py-2 px-3 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 uppercase tracking-wider hover:bg-slate-50 transition-all shadow-sm"
                 >
-                    <ArrowLeft size={12} className="text-blue-600" />
+                    <ArrowLeft size={12} className="text-primary" />
                     Change Service
                 </button>
                 <div className="flex items-center gap-2">
-                    {currentService && <currentService.icon size={14} className="text-blue-600" />}
+                    {currentService && <currentService.icon size={14} className="text-primary" />}
                     <span className="text-xs font-black text-slate-800 uppercase tracking-widest">{currentService?.label}</span>
                 </div>
             </div>

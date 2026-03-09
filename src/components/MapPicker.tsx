@@ -89,7 +89,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
                     map: mapInstance,
                     suppressMarkers: true,
                     polylineOptions: {
-                        strokeColor: '#0047AB',
+                        strokeColor: '#0047AB', // Keep as CSS var not supported here
                         strokeWeight: 4,
                     },
                 });
@@ -400,7 +400,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
             {loading && (
                 <div className="absolute inset-0 bg-white z-60 flex items-center justify-center">
                     <div className="text-center">
-                        <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-3"></div>
+                        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
                         <p className="text-sm font-bold text-slate-600">Loading Map...</p>
                     </div>
                 </div>
@@ -512,9 +512,9 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
                 {(distance > 0 || tollEstimate > 0) && (
                     <div className="flex gap-2">
                         {distance > 0 && (
-                            <div className="flex-1 flex items-center justify-between p-2 bg-blue-50 rounded-lg border border-blue-200">
-                                <span className="text-[9px] font-black text-blue-900 uppercase tracking-wide">Distance</span>
-                                <span className="text-xs font-black text-blue-700">{distance} KM</span>
+                            <div className="flex-1 flex items-center justify-between p-2 bg-primary/5 rounded-lg border border-primary/20">
+                                <span className="text-[9px] font-black text-primary/80 uppercase tracking-wide">Distance</span>
+                                <span className="text-xs font-black text-primary">{distance} KM</span>
                             </div>
                         )}
                         {tollEstimate > 0 && (
@@ -537,7 +537,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationSelect, onClose }) => {
                     <button
                         onClick={handleConfirm}
                         disabled={!pickupLocation || !dropLocation}
-                        className="flex-1 bg-[#0047AB] text-white h-10 rounded-xl font-black text-[10px] uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-200"
+                        className="flex-1 bg-primary text-white h-10 rounded-xl font-black text-[10px] uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
                     >
                         Confirm ({distance} KM)
                     </button>

@@ -788,7 +788,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                     onClick={onViewHistory}
                     className="w-full py-3 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 bg-indigo-50/50 border-2 border-dashed border-indigo-200 rounded-2xl active:bg-indigo-100 transition-colors"
                 >
-                    View Recent Quotations
+                    View Quotation History
                 </button>
             )}
         </div>
@@ -813,7 +813,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                                     type="date"
                                     value={quotationDate}
                                     onChange={(e) => setQuotationDate(e.target.value)}
-                                    className="tn-input h-8 bg-white border-slate-200 text-xs font-bold w-28 shadow-none"
+                                    className="tn-input h-10 bg-white border-slate-200 text-xs font-bold w-28 shadow-none"
                                 />
                             </div>
                         </div>
@@ -833,7 +833,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                                                     newItems[idx].description = e.target.value;
                                                     setCustomLineItems(newItems);
                                                 }}
-                                                className="w-full h-9 bg-white border-slate-200 rounded-xl px-3 text-xs font-bold focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all"
+                                                className="w-full h-10 bg-white border-slate-200 rounded-xl px-3 text-xs font-bold focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all"
                                             />
                                         </div>
                                         <div className="flex-1">
@@ -847,12 +847,12 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                                                     newItems[idx].sac = e.target.value;
                                                     setCustomLineItems(newItems);
                                                 }}
-                                                className="w-full h-9 bg-white border-slate-200 rounded-xl px-2 text-[10px] text-center font-bold"
+                                                className="w-full h-10 bg-white border-slate-200 rounded-xl px-2 text-[10px] text-center font-bold"
                                             />
                                         </div>
                                     </div>
                                     <div className="flex gap-2 items-end">
-                                        <div className="flex border border-slate-200 rounded-xl overflow-hidden h-9 bg-white">
+                                        <div className="flex border border-slate-200 rounded-xl overflow-hidden h-10 bg-white">
                                             <div className="w-16 border-r border-slate-100">
                                                 <input
                                                     type="number"
@@ -888,7 +888,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                                             </div>
                                         </div>
                                         <div className="flex-1">
-                                            <div className="w-full h-9 flex items-center justify-end px-3 text-xs font-bold text-indigo-700 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
+                                            <div className="w-full h-10 flex items-center justify-end px-3 text-xs font-bold text-indigo-700 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
                                                 ₹{item.amount.toLocaleString()}
                                             </div>
                                         </div>
@@ -897,7 +897,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                                                 const newItems = customLineItems.filter((_, i) => i !== idx);
                                                 setCustomLineItems(newItems);
                                             }}
-                                            className="h-9 w-9 flex items-center justify-center text-slate-300 hover:text-red-500 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-red-50"
+                                            className="h-10 w-10 flex items-center justify-center text-slate-300 hover:text-red-500 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-red-50"
                                         >
                                             <Trash2 size={16} />
                                         </button>
@@ -918,7 +918,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                             <select
                                 value={selectedVehicleType}
                                 onChange={(e) => setSelectedVehicleType(e.target.value)}
-                                className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
+                                className="tn-input h-10 w-full text-xs font-bold"
                             >
                                 <option value="">Select Vehicle Class (Optional)</option>
                                 {VEHICLE_CLASSES.map((v) => (
@@ -1009,7 +1009,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                         <div className="pt-1 border-t border-slate-50 space-y-3">
                             {mode !== 'local' && (
                                 <div>
-                                    <input type="number" value={isFetchingKM ? '' : distanceOverride} onChange={(e) => setDistanceOverride(e.target.value)} className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900" placeholder={isFetchingKM ? "Calculating..." : "0"} />
+                                    <input type="number" value={isFetchingKM ? '' : distanceOverride} onChange={(e) => setDistanceOverride(e.target.value)} className="tn-input h-10 w-full text-xs font-bold" placeholder={isFetchingKM ? "Calculating..." : "0"} />
                                 </div>
                             )}
                             {(mode === 'outstation' || (mode === 'drop' && parseFloat(distanceOverride) > 30)) && (
@@ -1035,7 +1035,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                                 <select
                                     value={selectedVehicleType}
                                     onChange={(e) => { setSelectedVehicleType(e.target.value); setManualRate(false); }}
-                                    className="tn-input h-10 w-full bg-slate-50 border-slate-200 text-xs text-slate-900"
+                                    className="tn-input h-10 w-full text-xs font-bold"
                                 >
                                     <option value="" disabled>Select Vehicle Class</option>
                                     {VEHICLE_CLASSES.map((v) => (
@@ -1450,7 +1450,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             {step === 3 && renderStep3()}
             {step === 4 && renderStep4()}
             <Suspense fallback={null}>
-                {showPreview && <PDFPreviewModal isOpen={showPreview} onClose={() => setShowPreview(false)} pdfUrl={previewPdfUrl} title="Invoice Preview" />}
+                {showPreview && <PDFPreviewModal isOpen={showPreview} onClose={() => setShowPreview(false)} pdfUrl={previewPdfUrl} title="Quotation Preview" />}
             </Suspense>
 
         </div>

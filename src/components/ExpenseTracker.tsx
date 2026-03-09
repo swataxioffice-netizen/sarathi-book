@@ -294,7 +294,7 @@ const ExpenseTracker: React.FC = () => {
             <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-50 pb-2">
                     <div className="flex items-center gap-2.5">
-                        <div className="p-1.5 bg-blue-50 text-[#0047AB] rounded-lg">
+                        <div className="p-1.5 bg-primary/10 text-primary rounded-lg">
                             <Plus size={14} strokeWidth={3} />
                         </div>
                         <div>
@@ -303,7 +303,7 @@ const ExpenseTracker: React.FC = () => {
                     </div>
                     <button
                         onClick={() => setShowScanner(true)}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 text-[#0047AB] rounded-xl border border-blue-100 hover:bg-blue-100 transition-all active:scale-95 group"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-primary/10 text-primary rounded-xl border border-primary/20 hover:bg-primary/20 transition-all active:scale-95 group"
                     >
                         <Scan size={12} className="group-hover:rotate-12 transition-transform" />
                         <span className="text-[9px] font-black uppercase tracking-widest">Scan Bill</span>
@@ -346,7 +346,7 @@ const ExpenseTracker: React.FC = () => {
 
                 <button
                     onClick={addExpense}
-                    className="w-full bg-[#0047AB] text-white h-10 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                    className="w-full bg-primary text-white h-10 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
                     <Wallet size={14} /> REGISTER EXPENSE
                 </button>
@@ -356,7 +356,7 @@ const ExpenseTracker: React.FC = () => {
             <div className="space-y-2">
                 <div className="flex items-center justify-between px-2 pt-2">
                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recent Activity</h3>
-                    <span className="text-[9px] font-bold text-[#0047AB] bg-blue-50 px-2 py-0.5 rounded-md">{todaysExpenses.length} Today</span>
+                    <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md">{todaysExpenses.length} Today</span>
                 </div>
 
                 {expenses.length === 0 ? (

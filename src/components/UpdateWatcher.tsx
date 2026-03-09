@@ -10,9 +10,9 @@ const UpdateWatcher: React.FC = () => {
     if (!needRefresh) return null;
 
     return (
-        <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-99999 flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500">
-                <div className="bg-[#0047AB] p-6 text-center relative overflow-hidden">
+                <div className="bg-primary p-6 text-center relative overflow-hidden">
                     {/* Animated Background Effect */}
                     <div className="absolute inset-0 opacity-10">
                         <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full -translate-x-1/2 -translate-y-1/2 blur-2xl animate-pulse"></div>
@@ -40,7 +40,7 @@ const UpdateWatcher: React.FC = () => {
                                 // Fallback: Force reload after 500ms if SW update hangs due to errors
                                 setTimeout(() => window.location.reload(), 500);
                             }}
-                            className="w-full py-4 bg-[#0047AB] text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                            className="w-full py-4 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                         >
                             <RefreshCw size={16} />
                             Reload & Update Now

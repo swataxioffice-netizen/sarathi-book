@@ -16,7 +16,8 @@ import {
     Wallet,
     FileText,
     Trash2,
-    Bot
+    Bot,
+    Crown
 } from 'lucide-react';
 import { useUpdate } from '../contexts/UpdateContext';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -29,6 +30,10 @@ interface Profile {
     phone: string | null;
     address: string | null;
     created_at: string;
+    settings?: {
+        isPremium?: boolean;
+        plan?: string;
+    };
 }
 
 interface UserDocument {
@@ -119,13 +124,14 @@ const AdminPanel: React.FC = () => {
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                    { label: 'Users', value: users.length.toString(), icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-                    { label: 'Invoices', value: invoiceCount.toString(), icon: FileCheck, color: 'text-green-600', bg: 'bg-green-50' },
-                    { label: 'Quotations', value: quoteCount.toString(), icon: StickyNote, color: 'text-amber-600', bg: 'bg-amber-50' },
-                    { label: 'Calculations', value: fareCount.toString(), icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50' },
-                    { label: 'Expenses', value: expenseCount.toString(), icon: Wallet, color: 'text-orange-600', bg: 'bg-orange-50' },
-                    { label: 'Docs Uploaded', value: docUploadCount.toString(), icon: FileText, color: 'text-cyan-600', bg: 'bg-cyan-50' },
-                    { label: 'AI Queries', value: aiCount.toString(), icon: Bot, color: 'text-pink-600', bg: 'bg-pink-50' },
+                    { label: 'Users', value: users.length.toString(), icon: Users, color: 'text-primary', bg: 'bg-primary/5' },
+                    { label: 'Subscribers', value: users.filter(u => u.settings?.isPremium).length.toString(), icon: Crown, color: 'text-warning', bg: 'bg-warning/5' },
+                    { label: 'Invoices', value: invoiceCount.toString(), icon: FileCheck, color: 'text-success', bg: 'bg-success/5' },
+                    { label: 'Quotations', value: quoteCount.toString(), icon: StickyNote, color: 'text-warning', bg: 'bg-warning/5' },
+                    { label: 'Calculations', value: fareCount.toString(), icon: Activity, color: 'text-primary', bg: 'bg-primary/5' },
+                    { label: 'Expenses', value: expenseCount.toString(), icon: Wallet, color: 'text-error', bg: 'bg-error/5' },
+                    { label: 'Docs Uploaded', value: docUploadCount.toString(), icon: FileText, color: 'text-primary', bg: 'bg-primary/5' },
+                    { label: 'AI Queries', value: aiCount.toString(), icon: Bot, color: 'text-primary', bg: 'bg-primary/5' },
                 ].map((stat, i) => (
                     <div key={i} className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm">
                         <div className="flex items-center justify-between mb-3 md:mb-4">
@@ -144,7 +150,7 @@ const AdminPanel: React.FC = () => {
                 <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-96 flex flex-col">
                     <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                         <h3 className="font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                            <Activity size={16} className="text-blue-600" /> Live Activity Feed
+                            <Activity size={16} className="text-primary" /> Live Activity Feed
                         </h3>
                         <span className="text-[10px] font-bold text-slate-400 uppercase">Real-time</span>
                     </div>
@@ -163,7 +169,7 @@ const AdminPanel: React.FC = () => {
 
                                 switch (activity.event_type) {
                                     case 'invoice_created':
-                                        Icon = FileCheck; color = 'text-green-600'; bg = 'bg-green-50';
+                                        Icon = FileCheck; color = 'text-success'; bg = 'bg-success/10';
                                         title = `Invoice Generated`;
                                         desc = `${activity.details.customer || 'Unknown'} - ₹${activity.details.amount}`;
                                         break;
@@ -173,7 +179,7 @@ const AdminPanel: React.FC = () => {
                                         desc = `${activity.details.customer || 'Guest'} - ₹${activity.details.amount}`;
                                         break;
                                     case 'fare_calculated':
-                                        Icon = TrendingUp; color = 'text-blue-600'; bg = 'bg-blue-50';
+                                        Icon = TrendingUp; color = 'text-primary'; bg = 'bg-primary/5';
                                         title = `Fare Check`;
                                         desc = `${activity.details.mode} - ₹${activity.details.fare}`;
                                         break;
@@ -187,7 +193,7 @@ const AdminPanel: React.FC = () => {
                                         desc = `${activity.details.category} - ₹${activity.details.amount}`;
                                         break;
                                     case 'expense_deleted':
-                                        Icon = Trash2; color = 'text-red-600'; bg = 'bg-red-50';
+                                        Icon = Trash2; color = 'text-error'; bg = 'bg-error/5';
                                         title = 'Expense Deleted';
                                         desc = `${activity.details.category} - ₹${activity.details.amount}`;
                                         break;
@@ -197,7 +203,7 @@ const AdminPanel: React.FC = () => {
                                         desc = `${activity.details.type} - ${activity.details.name}`;
                                         break;
                                     case 'document_deleted':
-                                        Icon = Trash2; color = 'text-red-600'; bg = 'bg-red-50';
+                                        Icon = Trash2; color = 'text-error'; bg = 'bg-error/5';
                                         title = 'Document Deleted';
                                         desc = `${activity.details.type} - ${activity.details.name}`;
                                         break;
@@ -261,7 +267,7 @@ const AdminPanel: React.FC = () => {
                                 <span>{storageUsed} / 1GB</span>
                             </div>
                             <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                                <div className="bg-blue-600 h-full rounded-full" style={{ width: '5%' }}></div>
+                                <div className="bg-primary h-full rounded-full" style={{ width: '5%' }}></div>
                             </div>
                         </div>
                         <div>
@@ -270,7 +276,7 @@ const AdminPanel: React.FC = () => {
                                 <span>Good</span>
                             </div>
                             <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                                <div className="bg-green-500 h-full rounded-full" style={{ width: '25%' }}></div>
+                                <div className="bg-success h-full rounded-full" style={{ width: '25%' }}></div>
                             </div>
                         </div>
                         <div>
@@ -279,7 +285,7 @@ const AdminPanel: React.FC = () => {
                                 <span>Healthy</span>
                             </div>
                             <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                                <div className="bg-purple-500 h-full rounded-full" style={{ width: '12%' }}></div>
+                                <div className="bg-primary h-full rounded-full" style={{ width: '12%' }}></div>
                             </div>
                         </div>
                     </div>
@@ -297,12 +303,12 @@ const AdminPanel: React.FC = () => {
                     <input
                         type="text"
                         placeholder="Search by Name, Email or ID..."
-                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/10"
                     // Add search logic if needed
                     />
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
-                    <select className="flex-1 md:flex-none bg-slate-50 border border-slate-200 p-2 rounded-lg text-xs font-bold uppercase tracking-wider">
+                    <select className="flex-1 md:flex-none bg-slate-50 border border-slate-200 p-2 rounded-lg text-xs font-bold uppercase tracking-wider text-slate-900">
                         <option>All Status</option>
                         <option>Verified</option>
                         <option>Pending</option>
@@ -315,30 +321,36 @@ const AdminPanel: React.FC = () => {
                     <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">User / Profile</th>
+                            <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Plan</th>
                             <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Email</th>
-                            <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Phone</th>
-                            <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Address</th>
-                            <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Created</th>
                             <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700">
                         {loadingUsers ? (
-                            <tr><td colSpan={5} className="text-center py-8 italic text-slate-400">Loading...</td></tr>
+                            <tr><td colSpan={6} className="text-center py-8 italic text-slate-400">Loading...</td></tr>
                         ) : users.length === 0 ? (
-                            <tr><td colSpan={5} className="text-center py-8 italic text-slate-400">No Users Found</td></tr>
+                            <tr><td colSpan={6} className="text-center py-8 italic text-slate-400">No Users Found</td></tr>
                         ) : (
-                            users.map((user) => (
+                            users.sort((a,b) => (a.settings?.isPremium === b.settings?.isPremium) ? 0 : a.settings?.isPremium ? -1 : 1).map((user) => (
                                 <tr key={user.id}>
                                     <td className="p-4 font-bold">{user.name || user.id}</td>
+                                    <td className="p-4">
+                                        {user.settings?.isPremium ? (
+                                            <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-md text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit">
+                                                <Crown size={10} /> {user.settings?.plan || 'PRO'}
+                                            </span>
+                                        ) : (
+                                            <span className="px-2 py-1 bg-slate-100 text-slate-500 rounded-md text-[10px] font-black uppercase tracking-wider w-fit">
+                                                FREE
+                                            </span>
+                                        )}
+                                    </td>
                                     <td className="p-4">{user.email}</td>
-                                    <td className="p-4">{user.phone}</td>
-                                    <td className="p-4">{user.address}</td>
-                                    <td className="p-4 text-xs">{user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</td>
                                     <td className="p-4 text-right">
                                         <button
                                             onClick={() => setNotifyingUser({ name: user.name || user.id, id: user.id })}
-                                            className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                            className="p-2 bg-primary/5 text-primary rounded-lg hover:bg-primary hover:text-white transition-all shadow-sm"
                                             title="Send Notification"
                                         >
                                             <Bell size={16} />
@@ -394,7 +406,7 @@ const AdminPanel: React.FC = () => {
                                         </td>
                                         <td className="p-4 font-bold text-xs">{doc.name}</td>
                                         <td className="p-4">
-                                            <span className="text-[9px] font-bold uppercase bg-blue-50 text-blue-600 px-2 py-1 rounded-md">
+                                            <span className="text-[9px] font-bold uppercase bg-primary/10 text-primary px-2 py-1 rounded-md">
                                                 {doc.type}
                                             </span>
                                         </td>
@@ -402,7 +414,7 @@ const AdminPanel: React.FC = () => {
                                         <td className="p-4">
                                             <button
                                                 onClick={() => window.open(doc.file_url, '_blank')}
-                                                className="text-[10px] font-black uppercase text-[#0047AB] hover:underline"
+                                                className="text-[10px] font-black uppercase text-primary hover:underline"
                                             >
                                                 View
                                             </button>
@@ -427,11 +439,11 @@ const AdminPanel: React.FC = () => {
                 <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Platform Fee (%)</label>
-                        <input type="number" defaultValue="5" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-black text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/10" />
+                        <input type="number" defaultValue="5" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-black text-primary focus:outline-none focus:ring-2 focus:ring-primary/10" />
                     </div>
                     <div className="space-y-2">
                         <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">GST Rate (%)</label>
-                        <input type="number" defaultValue="5" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-black text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/10" />
+                        <input type="number" defaultValue="5" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-black text-primary focus:outline-none focus:ring-2 focus:ring-primary/10" />
                     </div>
                 </div>
 
@@ -448,7 +460,7 @@ const AdminPanel: React.FC = () => {
 
                 </div>
 
-                <button className="w-full bg-[#0047AB] text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg shadow-blue-500/20 hover:scale-[0.99] transition-transform">
+                <button className="w-full bg-primary text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20 hover:scale-[0.99] transition-transform">
                     Save Configuration
                 </button>
             </div>
@@ -471,7 +483,7 @@ const AdminPanel: React.FC = () => {
                     <button
                         onClick={() => setNeedRefresh(!needRefresh)}
                         className={`w-full py-3 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all shadow-md
-                            ${needRefresh ? 'bg-red-500 text-white shadow-red-500/20' : 'bg-slate-900 text-white shadow-slate-900/20'}`}
+                            ${needRefresh ? 'bg-error text-white shadow-error/20' : 'bg-slate-900 text-white shadow-slate-900/20'}`}
                     >
                         {needRefresh ? 'Deactivate Update State' : 'Simulate New Update'}
                         <RefreshCw size={14} className={needRefresh ? 'animate-spin' : ''} />
@@ -483,13 +495,13 @@ const AdminPanel: React.FC = () => {
                     <div className="flex gap-2">
                         <button
                             onClick={() => addNotification('Test Successful!', 'The notification system is working perfectly.', 'success')}
-                            className="flex-1 bg-green-600 text-white py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest"
+                            className="flex-1 bg-success text-white py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest"
                         >
                             Test Success
                         </button>
                         <button
                             onClick={() => addNotification('Database Alert', 'High latency detected in Supabase region.', 'warning')}
-                            className="flex-1 bg-amber-500 text-white py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest"
+                            className="flex-1 bg-warning text-white py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest"
                         >
                             Test Warning
                         </button>
@@ -506,7 +518,7 @@ const AdminPanel: React.FC = () => {
                 <div>
                     <h2 className="text-2xl font-black text-slate-900 tracking-tight">SYSTEM ADMIN</h2>
                     <div className="flex items-center gap-2 mt-1">
-                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        <span className="w-2 h-2 bg-success rounded-full animate-pulse"></span>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Platform Status: Healthy • v1.4.2</p>
                     </div>
                 </div>
@@ -524,7 +536,7 @@ const AdminPanel: React.FC = () => {
                             key={tab.id}
                             onClick={() => setSubTab(tab.id as 'stats' | 'users' | 'documents' | 'settings' | 'debug')}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap
-                                ${subTab === tab.id ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
+                                ${subTab === tab.id ? 'bg-white text-primary shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
                         >
                             <tab.icon size={14} />
                             {tab.label}
@@ -544,12 +556,12 @@ const AdminPanel: React.FC = () => {
             {notifyingUser && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-100 flex items-center justify-center p-4 animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-blue-50/50">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-primary/5">
                             <div>
                                 <h3 className="font-black text-slate-900 uppercase tracking-tight">Send Notification</h3>
-                                <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-0.5">To: {notifyingUser.name}</p>
+                                <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">To: {notifyingUser.name}</p>
                             </div>
-                            <div className="bg-white p-2 rounded-lg border border-slate-200 text-blue-600">
+                            <div className="bg-white p-2 rounded-lg border border-slate-200 text-primary">
                                 <Bell size={20} />
                             </div>
                         </div>
@@ -560,7 +572,7 @@ const AdminPanel: React.FC = () => {
                                     value={notificationText}
                                     onChange={(e) => setNotificationText(e.target.value)}
                                     placeholder="Type your message to the driver..."
-                                    className="w-full h-32 bg-slate-50 border border-slate-200 p-4 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/10 resize-none"
+                                    className="w-full h-32 bg-slate-50 border border-slate-200 p-4 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/10 resize-none"
                                 />
                             </div>
                             <div className="flex gap-3">
@@ -599,7 +611,7 @@ const AdminPanel: React.FC = () => {
                                             setIsSending(false);
                                         }
                                     }}
-                                    className="flex-2 bg-[#0047AB] text-white py-3 px-6 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                    className="flex-2 bg-primary text-white py-3 px-6 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
                                     {isSending ? (
                                         <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

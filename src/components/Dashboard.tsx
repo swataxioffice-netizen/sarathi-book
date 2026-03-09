@@ -82,7 +82,7 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                             aria-label={`Show stats for ${r}`}
                             aria-pressed={range === r}
                             className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide transition-all ${range === r
-                                ? 'bg-[#0047AB] text-white shadow-sm'
+                                ? 'bg-primary text-white shadow-sm'
                                 : 'text-slate-500 hover:bg-slate-100'
                                 }`}
                         >
@@ -96,19 +96,25 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                         <p className="text-[9px] font-bold uppercase tracking-wide flex items-center gap-1.5 text-slate-400">
                             <TrendingUp size={11} aria-hidden="true" /> {stats.label}
                         </p>
-                        <h2 className={`text-xl font-bold mt-0.5 tabular-nums tracking-tight ${stats.profit >= 0 ? 'text-slate-900' : 'text-red-600'}`}>
-                            ₹{stats.profit.toLocaleString()}
-                        </h2>
+                        {stats.income === 0 && stats.spending === 0 && range === 'today' ? (
+                            <h2 className="text-[17px] font-bold mt-0.5 tracking-tight text-slate-500">
+                                Let's get started! 🚀
+                            </h2>
+                        ) : (
+                            <h2 className={`text-xl font-bold mt-0.5 tabular-nums tracking-tight ${stats.profit >= 0 ? 'text-slate-900' : 'text-error'}`}>
+                                ₹{stats.profit.toLocaleString()}
+                            </h2>
+                        )}
                     </div>
                     <div className="flex gap-2">
                         <button 
                             onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'expenses' }))}
-                            className="bg-red-50 hover:bg-red-100 p-1.5 rounded-lg border border-red-100 text-red-600 transition-colors flex items-center gap-1.5 shadow-sm active:scale-95"
+                            className="bg-error/5 hover:bg-error/10 p-1.5 rounded-lg border border-error/10 text-error transition-colors flex items-center gap-1.5 shadow-sm active:scale-95"
                         >
                             <TrendingUp size={14} className="rotate-180" strokeWidth={3} />
                             <span className="text-[10px] font-bold uppercase">Add Expense</span>
                         </button>
-                        <div className="bg-blue-50 p-1.5 rounded-lg border border-blue-100 text-[#0047AB]">
+                        <div className="bg-success/5 p-1.5 rounded-lg border border-success/10 text-success">
                             <IndianRupee size={16} strokeWidth={2.5} />
                         </div>
                     </div>
@@ -116,25 +122,33 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
 
                 <div className="flex bg-slate-50 rounded-lg py-1.5 border border-slate-100 divide-x divide-slate-200">
                     <div className="flex-1 px-2.5">
-                        <p className="text-[9px] font-bold uppercase tracking-wide text-green-600 mb-0.5">INCOME</p>
-                        <p className="text-[13px] font-bold text-slate-800 tabular-nums leading-none">₹{stats.income.toLocaleString()}</p>
+                        <p className="text-[9px] font-bold uppercase tracking-wide text-success mb-0.5">INCOME</p>
+                        {stats.income === 0 && range === 'today' ? (
+                            <p className="text-[11px] font-bold text-slate-400 leading-none mt-1">No trips yet</p>
+                        ) : (
+                            <p className="text-[13px] font-bold text-slate-800 tabular-nums leading-none">₹{stats.income.toLocaleString()}</p>
+                        )}
                     </div>
                     <div className="flex-1 px-2.5 text-right">
-                        <p className="text-[9px] font-bold uppercase tracking-wide text-red-500 mb-0.5">SPENT</p>
-                        <p className="text-[13px] font-bold text-slate-800 tabular-nums leading-none">₹{stats.spending.toLocaleString()}</p>
+                        <p className="text-[9px] font-bold uppercase tracking-wide text-error mb-0.5">SPENT</p>
+                        {stats.spending === 0 && range === 'today' ? (
+                            <p className="text-[11px] font-bold text-slate-400 leading-none mt-1">₹0</p>
+                        ) : (
+                            <p className="text-[13px] font-bold text-slate-800 tabular-nums leading-none">₹{stats.spending.toLocaleString()}</p>
+                        )}
                     </div>
                 </div>
 
                 <div className="mt-2 pt-2 border-t border-slate-50 flex justify-between items-center">
                     <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500 flex items-center gap-1.5">
                         MARGIN 
-                        <span className={`text-[11px] font-black ${stats.income > 0 && stats.profit >= 0 ? 'text-green-600' : stats.profit < 0 ? 'text-red-600' : 'text-slate-400'}`}>
-                            {stats.income > 0 ? Math.round((stats.profit / stats.income) * 100) : 0}%
+                        <span className={`text-[11px] font-black ${stats.income > 0 && stats.profit >= 0 ? 'text-success' : stats.profit < 0 ? 'text-error' : 'text-slate-400'}`}>
+                            {stats.income === 0 && stats.spending === 0 && range === 'today' ? '--' : `${stats.income > 0 ? Math.round((stats.profit / stats.income) * 100) : 0}%`}
                         </span>
                     </p>
                     <div className="w-1/2 h-1.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
                         <div
-                            className={`h-full rounded-full transition-all duration-1000 ${stats.profit >= 0 ? 'bg-green-500' : 'bg-red-500'}`}
+                            className={`h-full rounded-full transition-all duration-1000 ${stats.profit >= 0 ? 'bg-success' : 'bg-error'}`}
                             style={{ width: `${Math.max(0, Math.min(100, stats.income > 0 ? Math.abs((stats.profit / stats.income) * 100) : 0))}%` }}
                         ></div>
                     </div>
@@ -149,7 +163,7 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                     }}
                     className="flex flex-col items-center justify-center bg-white border border-slate-200 text-slate-700 p-4 rounded-2xl shadow-sm hover:bg-slate-50 min-h-[110px] active:scale-95 transition-all"
                 >
-                    <FileText size={36} className="mb-3 text-green-600" />
+                    <FileText size={36} className="mb-3 text-primary" />
                     <span className="font-bold uppercase tracking-wider text-[11px]">New Invoice</span>
                 </button>
                 <button 
@@ -158,8 +172,8 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                     }}
                     className="flex flex-col items-center justify-center bg-white border border-slate-200 text-slate-700 p-4 rounded-2xl shadow-sm hover:bg-slate-50 min-h-[110px] active:scale-95 transition-all"
                 >
-                    <FileText size={36} className="mb-3 text-blue-500" />
-                    <span className="font-bold uppercase tracking-wider text-[11px]">Recent Invoices</span>
+                    <FileText size={36} className="mb-3 text-primary/80" />
+                    <span className="font-bold uppercase tracking-wider text-[11px]">Invoice History</span>
                 </button>
                 <button
                     onClick={() => {
@@ -167,7 +181,7 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                     }}
                     className="flex flex-col items-center justify-center bg-white border border-slate-200 text-slate-700 p-4 rounded-2xl shadow-sm hover:bg-slate-50 min-h-[110px] active:scale-95 transition-all"
                 >
-                    <FileText size={36} className="mb-3 text-indigo-600" />
+                    <FileText size={36} className="mb-3 text-primary" />
                     <span className="font-bold uppercase tracking-wider text-[11px]">New Quotation</span>
                 </button>
                 <button 
@@ -176,8 +190,8 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                     }}
                     className="flex flex-col items-center justify-center bg-white border border-slate-200 text-slate-700 p-4 rounded-2xl shadow-sm hover:bg-slate-50 min-h-[110px] active:scale-95 transition-all"
                 >
-                    <FileText size={36} className="mb-3 text-indigo-400" />
-                    <span className="font-bold uppercase tracking-wider text-[11px]">Recent Quotations</span>
+                    <FileText size={36} className="mb-3 text-primary/80" />
+                    <span className="font-bold uppercase tracking-wider text-[11px]">Quotation History</span>
                 </button>
             </div>
 
@@ -214,7 +228,7 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                     className="flex flex-col p-3 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer hover:bg-slate-50 transition-all active:scale-95"
                 >
                     <div className="flex items-center gap-2 mb-2">
-                        <div className="p-2 bg-green-50 rounded-lg text-green-600">
+                        <div className="p-2 bg-success/5 rounded-lg text-success">
                             <CheckCircle2 size={16} />
                         </div>
                         <span className="text-[11px] font-bold uppercase tracking-wide text-slate-900 leading-tight">Daily Summary</span>
@@ -226,7 +240,7 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                     className="flex flex-col p-3 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer hover:bg-slate-50 transition-all active:scale-95"
                 >
                     <div className="flex items-center gap-2 mb-2">
-                        <div className="p-2 bg-blue-50 rounded-lg text-[#0047AB]">
+                        <div className="p-2 bg-primary/5 rounded-lg text-primary">
                             <Users size={16} />
                         </div>
                         <span className="text-[11px] font-bold uppercase tracking-wide text-slate-900 leading-tight">Attendance</span>
@@ -257,8 +271,8 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                             <div key={item.id} className="flex items-center justify-between group p-1.5 hover:bg-slate-50 rounded-lg transition-colors">
                                 <div className="flex items-center gap-3">
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${item.type === 'trip'
-                                        ? 'bg-green-50 border-green-100 text-green-600'
-                                        : 'bg-red-50 border-red-100 text-red-600'}`}>
+                                        ? 'bg-success/5 border-success/10 text-success'
+                                        : 'bg-error/5 border-error/10 text-error'}`}>
                                         {item.type === 'trip' ? <IndianRupee size={14} /> : <TrendingUp size={14} className="rotate-180" />}
                                     </div>
                                     <div>
@@ -270,7 +284,7 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                                         </p>
                                     </div>
                                 </div>
-                                <span className={`text-[13px] font-bold tabular-nums tracking-tight ${item.type === 'trip' ? 'text-green-600' : 'text-red-600'}`}>
+                                <span className={`text-[13px] font-bold tabular-nums tracking-tight ${item.type === 'trip' ? 'text-success' : 'text-error'}`}>
                                     {item.type === 'trip' ? '+' : '-'}₹{item.displayAmount?.toLocaleString()}
                                 </span>
                             </div>

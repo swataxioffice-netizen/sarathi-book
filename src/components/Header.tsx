@@ -1,5 +1,4 @@
-import { useUpdate } from '../contexts/UpdateContext';
-import { RefreshCw, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import Notifications from './Notifications';
 
 
@@ -10,7 +9,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
-    const { needRefresh, updateServiceWorker } = useUpdate();
+
 
     return (
         <header className="bg-white border-b-2 border-slate-100 px-3 py-1.5 flex-none sticky top-0 z-40 shadow-sm">
@@ -39,24 +38,14 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                     </div>
                     <div className="flex flex-col justify-center">
                         <h1 className="text-lg font-bold text-slate-900 leading-none tracking-tight" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                            Sarathi<span className="text-[#0047AB]">Book</span>
+                            Sarathi<span className="text-primary">Book</span>
                         </h1>
 
                     </div>
                 </div>
 
-                {/* Right: Update + Notifications */}
+                {/* Right: Notifications */}
                 <div className="flex-1 flex justify-end items-center gap-3">
-                    {needRefresh && (
-                        <button
-                            onClick={() => updateServiceWorker(true)}
-                            aria-label="New version available. Click to update."
-                            className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-1 rounded-full border border-red-100 animate-pulse shadow-sm"
-                        >
-                            <RefreshCw size={12} className="animate-spin-slow" aria-hidden="true" />
-                            <span className="text-[9px] font-bold uppercase tracking-wide">Update</span>
-                        </button>
-                    )}
 
                     <Notifications />
                 </div>

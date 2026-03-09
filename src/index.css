@@ -30,8 +30,8 @@ body {
   --bg-app: #f5f7fa;
   --bg-card: #ffffff;
 
-  --primary: #3b82f6;
-  /* Blue 500 */
+  --primary: #0047AB;
+  /* Brand Blue */
   --primary-soft: #eff6ff;
   /* Blue 50 */
 
@@ -39,7 +39,7 @@ body {
   --text-sub: #64748b;
 
   --border-light: #e2e8f0;
-  --border-primary: #3b82f6;
+  --border-primary: #0047AB;
 
   /* Safe Area Variables */
   --safe-top: env(safe-area-inset-top);
@@ -49,8 +49,8 @@ body {
   /* Green 500 */
   --status-error: #ef4444;
   /* Red 500 */
-  --status-warning: #eab308;
-  /* Yellow 500 */
+  --status-warning: #f59e0b;
+  /* Amber 500 */
 
   font-family:
     "Plus Jakarta Sans",
@@ -128,12 +128,18 @@ body {
     border: 1px solid var(--border-light);
     color: var(--text-main);
     border-radius: 10px;
-    @apply py-3 px-4 font-semibold text-[16px] outline-none transition-all h-12 text-slate-900;
+    @apply py-2 px-4 font-semibold text-[16px] outline-none transition-all h-12;
   }
 
   .tn-input:focus {
     border-color: var(--primary);
     @apply ring-4 ring-blue-500/10;
+  }
+
+  /* Ensure dropdown options are visible in all themes */
+  select.tn-input option {
+    background-color: var(--bg-card);
+    color: var(--text-main);
   }
 
   /* Section Header Labels like the screenshot */

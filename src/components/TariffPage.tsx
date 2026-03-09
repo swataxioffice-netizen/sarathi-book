@@ -141,7 +141,7 @@ const TariffPage = () => {
             />
 
             {/* Hero Section */}
-            <div className="bg-[#0047AB] text-white pt-10 pb-4 px-4">
+            <div className="bg-primary text-white pt-10 pb-4 px-4">
                 <div className="max-w-4xl mx-auto text-center">
                     <h1 className="text-xl md:text-3xl font-black uppercase tracking-wider mb-1">
                         Tamil Nadu Tariff
@@ -233,7 +233,7 @@ const TariffPage = () => {
                                             <div className="flex items-center justify-center gap-2">
                                                 <a
                                                     href={`/calculator/cab`}
-                                                    className="inline-flex items-center gap-1 bg-[#0047AB] text-white px-3 py-2.5 rounded-xl shadow-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-800 transition-all active:scale-[0.98]"
+                                                    className="inline-flex items-center gap-1 bg-primary text-white px-3 py-2.5 rounded-xl shadow-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-800 transition-all active:scale-[0.98]"
                                                 >
                                                     Calc
                                                     <ArrowRight size={10} />

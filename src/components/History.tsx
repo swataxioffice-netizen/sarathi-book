@@ -193,11 +193,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
 
 
     return (
-        <div className="space-y-3 pt-2 pb-24">
-            <React.Suspense fallback={null}>
-            </React.Suspense>
-
-
+        <div className="pb-24">
             <PDFPreviewModal
                 isOpen={showPreview}
                 onClose={() => setShowPreview(false)}
@@ -215,44 +211,27 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                     <ChevronLeft size={20} strokeWidth={2.5} />
                                 </button>
                             )}
-                            <h3 className={`text-[10px] font-black uppercase tracking-widest relative inline-block ${type === 'invoice' ? 'text-slate-800' : 'text-slate-800'}`}>
-                                {filter === 'month' ? format(selectedMonth, 'MMMM yyyy') : `Recent ${type === 'invoice' ? 'Invoices' : 'Quotations'}`}
-                                <span className={`absolute -bottom-1 left-0 w-6 h-0.5 rounded-full ${type === 'invoice' ? 'bg-blue-600' : 'bg-[#6366F1]'}`}></span>
+                            <h3 className="text-[10px] font-black uppercase tracking-widest relative inline-block text-slate-800">
+                                {onBack ? 'BACK' : `${type === 'invoice' ? 'Invoice' : 'Quotation'} History`}
+                                <span className="absolute -bottom-1 left-0 w-6 h-0.5 rounded-full bg-primary"></span>
                             </h3>
                         </div>
 
                     </div>
 
-                    {/* GST Filter Toggle */}
-                    {type === 'invoice' && (
-                        <div className="bg-slate-100/30 p-1 rounded-xl border border-slate-200/50 flex gap-1 mx-0.5">
-                            {(['gst', 'non-gst'] as const).map((f) => (
-                                <button
-                                    key={f}
-                                    onClick={() => setGstFilter(f)}
-                                    className={`flex-1 py-1.5 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-wider transition-all ${gstFilter === f 
-                                        ? 'bg-[#0047AB] text-white shadow-md' 
-                                        : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'}`}
-                                >
-                                    {f === 'gst' ? 'GST Invoice' : 'Non-GST Bill'}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-
                     {/* Month Navigator & Actions */}
                     {filter === 'month' && (
                         <div className="flex items-center gap-2">
-                            <div className="flex-1 flex items-center justify-between bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
+                            <div className="flex-1 flex items-center justify-between bg-white rounded-lg p-1.5 border border-slate-200 shadow-sm">
                                 <button
                                     onClick={() => setSelectedMonth((prev: Date) => subMonths(prev, 1))}
                                     className="p-1 hover:bg-slate-50 rounded-md text-slate-400 hover:text-slate-600 transition-colors"
                                 >
-                                    <ChevronLeft size={16} />
+                                    <ChevronLeft size={18} />
                                 </button>
                                 <div className="flex items-center gap-2 text-slate-600">
-                                    <Calendar size={12} className="text-slate-400" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">
+                                    <Calendar size={14} className="text-slate-400" />
+                                    <span className="text-[11px] font-black uppercase tracking-widest">
                                         {format(selectedMonth, 'MMMM yyyy')}
                                     </span>
                                 </div>
@@ -260,7 +239,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                     onClick={() => setSelectedMonth((prev: Date) => addMonths(prev, 1))}
                                     className="p-1 hover:bg-slate-50 rounded-md text-slate-400 hover:text-slate-600 transition-colors"
                                 >
-                                    <ChevronRight size={16} />
+                                    <ChevronRight size={18} />
                                 </button>
                             </div>
 
@@ -268,12 +247,29 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                             {type === 'invoice' && filteredItems.length > 0 && (
                                 <button
                                     onClick={() => triggerAction(handleBulkDownload)}
-                                    className="p-1.5 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center"
+                                    className="px-4 py-2 bg-primary text-white rounded-lg shadow-sm hover:bg-blue-800 transition-colors flex items-center justify-center"
                                     title="Download Monthly GST Report"
                                 >
-                                    <Download size={16} />
+                                    <Download size={20} />
                                 </button>
                             )}
+                        </div>
+                    )}
+
+                    {/* GST Filter Toggle */}
+                    {type === 'invoice' && (
+                        <div className="bg-slate-100/30 p-1 rounded-xl border border-slate-200/50 flex gap-1 mx-0.5 mt-1">
+                            {(['gst', 'non-gst'] as const).map((f) => (
+                                <button
+                                    key={f}
+                                    onClick={() => setGstFilter(f)}
+                                    className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${gstFilter === f 
+                                        ? 'bg-primary text-white shadow-md' 
+                                        : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'}`}
+                                >
+                                    {f === 'gst' ? 'GST Invoice' : 'Non-GST Bill'}
+                                </button>
+                            ))}
                         </div>
                     )}
                 </div>
@@ -285,7 +281,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                         <h2 className="text-base font-black tracking-tight text-slate-900 leading-none">₹{Math.round(totalAmount).toLocaleString('en-IN')}</h2>
                     </div>
                     <div className="text-right">
-                        <span className="text-[8px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-black uppercase tracking-wider border border-blue-100">{filteredItems.length} {type === 'invoice' ? 'Invoices' : 'Quotes'}</span>
+                        <span className="text-[8px] bg-primary/5 text-primary border-primary/10 px-2 py-0.5 rounded-md font-black uppercase tracking-wider border">{filteredItems.length} {type === 'invoice' ? 'Invoices' : 'Quotes'}</span>
                     </div>
                 </div>
             </div>
@@ -307,7 +303,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
 
                             return (
                                 <div key={item.id} className="bg-white border border-slate-200 rounded-xl shadow-sm relative overflow-hidden group hover:shadow-md transition-all mx-1 mb-2">
-                                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${isInvoice ? (trip?.mode === 'outstation' ? 'bg-purple-500' : 'bg-blue-600') : 'bg-indigo-600'}`}></div>
+                                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${isInvoice && trip?.mode === 'outstation' ? 'bg-purple-400' : 'bg-primary'}`}></div>
 
                                     <div className="p-2.5 pl-3.5">
                                         {/* Top Row: Invoice No & Date */}
@@ -328,11 +324,11 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
 
                                         {/* Route Details */}
                                         <div className="flex items-center gap-2 mb-2">
-                                            <span className={`inline-flex items-center px-1 py-px rounded-[4px] text-[8px] font-black uppercase tracking-wider border ${isInvoice ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-indigo-50 text-indigo-700 border-indigo-100'}`}>
+                                            <span className="inline-flex items-center px-1 py-px rounded-[4px] text-[8px] font-black uppercase tracking-wider border bg-primary/5 text-primary border-primary/10">
                                                 {isInvoice ? (trip?.mode || 'TRIP') : 'QUOTE'}
                                             </span>
                                             {isInvoice && (trip?.invoiceNo?.startsWith('INV') || (trip?.gst !== undefined && trip.gst > 0)) && (
-                                                <span className="inline-flex items-center px-1 py-px rounded-[4px] text-[8px] font-black uppercase tracking-wider border bg-green-50 text-green-700 border-green-100">
+                                                <span className="inline-flex items-center px-1 py-px rounded-[4px] text-[8px] font-black uppercase tracking-wider border bg-primary/5 text-primary border-primary/10">
                                                     GST
                                                 </span>
                                             )}
@@ -346,21 +342,21 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                             <div className="flex gap-4">
                                                 <button
                                                     onClick={() => triggerAction(() => isInvoice ? handlePreviewInvoice(trip!) : handlePreviewQuotation(quotation!))}
-                                                    className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-wide"
+                                                    className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-primary transition-colors uppercase tracking-wide"
                                                 >
                                                     <Eye size={12} strokeWidth={2.5} />
                                                     <span>View</span>
                                                 </button>
                                                 <button
                                                     onClick={() => triggerAction(() => isInvoice ? handleDownloadInvoice(trip!) : handleDownloadQuotation(quotation!))}
-                                                    className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-wide"
+                                                    className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-primary transition-colors uppercase tracking-wide"
                                                 >
                                                     <Download size={12} strokeWidth={2.5} />
                                                     <span>PDF</span>
                                                 </button>
                                                 <button
                                                     onClick={() => triggerAction(() => isInvoice ? shareReceipt(trip!, { ...settings, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A', userId: user?.id }) : handleShareQuotation(quotation!))}
-                                                    className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-green-600 transition-colors uppercase tracking-wide"
+                                                    className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-primary transition-colors uppercase tracking-wide"
                                                 >
                                                     <Share2 size={12} strokeWidth={2.5} />
                                                     <span>Share</span>
@@ -368,7 +364,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                                 {(isInvoice ? onEditTrip : onEditQuotation) && (
                                                     <button
                                                         onClick={() => triggerAction(() => isInvoice ? onEditTrip!(trip!) : onEditQuotation!(quotation!))}
-                                                        className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-wide"
+                                                        className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-primary transition-colors uppercase tracking-wide"
                                                     >
                                                         <PenLine size={12} strokeWidth={2.5} />
                                                         <span>Edit</span>

@@ -139,7 +139,7 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId }) => {
 
             <div className="relative z-10 max-w-md mx-auto min-h-screen bg-white shadow-2xl overflow-y-auto pb-24">
                 {/* Header / Cover */}
-                <div className="bg-[#0047AB] p-6 pt-12 pb-16 text-center text-white relative overflow-hidden">
+                <div className="bg-primary p-6 pt-12 pb-16 text-center text-white relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32"></div>
                     <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24"></div>
 

@@ -7,7 +7,7 @@ import { supabase } from './utils/supabase';
 import UpdateWatcher from './components/UpdateWatcher';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 // Staging Environment Trigger
-import { X, RefreshCw, MoveRight, TrendingUp } from 'lucide-react';
+import { X, RefreshCw, MoveRight, TrendingUp, Bell, Settings } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useUpdate, UpdateProvider } from './contexts/UpdateContext';
 import Header from './components/Header';
@@ -43,6 +43,7 @@ const TariffPage = lazy(() => import('./components/TariffPage'));
 import MobileMenu from './components/MobileMenuContainer';
 const Finance = lazy(() => import('./components/Finance'));
 const RouteLandingPage = lazy(() => import('./components/RouteLandingPage'));
+const BusinessCard = lazy(() => import('./components/BusinessCard'));
 
 const AboutUs = lazy(() => import('./components/AboutUs'));
 const ContactUs = lazy(() => import('./components/ContactUs'));
@@ -52,7 +53,7 @@ const TermsOfService = lazy(() => import('./components/TermsOfService'));
 // Loading fallback component
 const LoadingFallback = () => (
   <div className="flex items-center justify-center h-64">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0047AB]"></div>
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
   </div>
 );
 
@@ -225,11 +226,21 @@ function AppContent() {
   };
 
   const [showPricing, setShowPricing] = useState(false);
+  const [showCard, setShowCard] = useState(false);
+  const [showAppSettings, setShowAppSettings] = useState(false);
 
   useEffect(() => {
     const handleOpenPricing = () => setShowPricing(true);
+    const handleOpenCard = () => setShowCard(true);
+    const handleOpenAppSettings = () => setShowAppSettings(true);
     window.addEventListener('open-pricing-modal', handleOpenPricing);
-    return () => window.removeEventListener('open-pricing-modal', handleOpenPricing);
+    window.addEventListener('open-visiting-card', handleOpenCard);
+    window.addEventListener('open-app-settings', handleOpenAppSettings);
+    return () => {
+        window.removeEventListener('open-pricing-modal', handleOpenPricing);
+        window.removeEventListener('open-visiting-card', handleOpenCard);
+        window.removeEventListener('open-app-settings', handleOpenAppSettings);
+    };
   }, []);
 
   // Handle foreground notifications
@@ -939,7 +950,7 @@ function AppContent() {
               ) : (
                 <button
                   onClick={() => setActiveTab('profile')}
-                  className="w-10 h-10 rounded-full bg-blue-100 text-[#0047AB] flex items-center justify-center font-black border border-blue-200 hover:bg-blue-200 transition-colors"
+                  className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-black border border-primary/20 hover:bg-primary/20 transition-colors"
                   title={loading ? "Syncing data..." : "View Profile"}
                 >
                   {authLoading ? (
@@ -996,6 +1007,53 @@ function AppContent() {
         />
       </div>
 
+      {/* App Settings Modal */}
+      {showAppSettings && (
+        <div
+          className="fixed inset-0 z-120 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setShowAppSettings(false)}
+        >
+          <div
+            className="bg-white w-full max-w-xs rounded-3xl overflow-hidden shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/10 rounded-xl">
+                  <Settings size={16} />
+                </div>
+                <h3 className="font-black uppercase text-sm tracking-widest">App Settings</h3>
+              </div>
+              <button onClick={() => setShowAppSettings(false)} className="text-slate-400 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-5 space-y-3">
+              <button
+                onClick={() => subscribeToPush().then(() => { alert('Push notifications enabled!'); setShowAppSettings(false); })}
+                className="w-full py-4 flex items-center gap-3 bg-orange-50 text-orange-600 rounded-2xl font-black uppercase text-[10px] tracking-widest px-4 hover:bg-orange-100 transition-colors"
+              >
+                <Bell size={16} />
+                Enable Notifications
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="w-full py-4 flex items-center gap-3 border border-slate-200 text-slate-700 rounded-2xl font-black uppercase text-[10px] tracking-widest px-4 hover:bg-slate-50 transition-colors"
+              >
+                <RefreshCw size={16} />
+                Refresh Application
+              </button>
+              <button
+                onClick={() => setShowAppSettings(false)}
+                className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-800 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Pricing Modal */}
       <Suspense fallback={null}>
         <PricingModal
@@ -1003,6 +1061,18 @@ function AppContent() {
           onClose={() => setShowPricing(false)}
         />
       </Suspense>
+
+      {/* Business Card Modal */}
+      {showCard && (
+        <div className="fixed inset-0 z-120 bg-black/90 flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowCard(false)}>
+            <div className="relative w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                <button onClick={() => setShowCard(false)} className="absolute -top-12 right-0 text-white p-2 hover:bg-white/10 rounded-full transition-colors"><X size={24} /></button>
+                <Suspense fallback={<div className="bg-white p-8 rounded-2xl text-center font-bold text-slate-500">Loading Card Editor...</div>}>
+                    <BusinessCard />
+                </Suspense>
+            </div>
+        </div>
+      )}
 
       {/* Guest Login Nudge - Centered Modal Style */}
       {showLoginNudge && !user && (

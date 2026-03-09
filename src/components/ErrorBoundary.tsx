@@ -63,7 +63,7 @@ export class ErrorBoundary extends Component<Props, State> {
     render() {
         if (this.state.hasError) {
             return (
-                <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-[#F5F7FA] font-sans">
+                <div className="fixed inset-0 z-99999 flex items-center justify-center p-4 bg-[#F5F7FA] font-sans">
                     <div className="bg-white w-full max-w-sm rounded-[24px] shadow-2xl border border-slate-200 overflow-hidden text-center p-8 animate-in fade-in zoom-in duration-300">
 
                         <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -81,7 +81,7 @@ export class ErrorBoundary extends Component<Props, State> {
                         <div className="space-y-4">
                             <button
                                 onClick={this.handleReload}
-                                className="w-full py-4 bg-[#0047AB] text-white rounded-xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                                className="w-full py-4 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                             >
                                 <RefreshCw size={16} />
                                 Reload Application

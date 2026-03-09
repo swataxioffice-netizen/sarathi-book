@@ -177,7 +177,7 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
                 </div>
                 <button
                     onClick={handleAddNote}
-                    className="flex items-center gap-1.5 bg-[#0047AB] text-white px-3 py-2 rounded-xl hover:bg-[#003a8c] transition-all active:scale-95 shadow-md shadow-blue-500/20"
+                    className="flex items-center gap-1.5 bg-primary text-white px-3 py-2 rounded-xl hover:bg-primary/90 transition-all active:scale-95 shadow-md shadow-primary/20"
                 >
                     <Plus size={16} strokeWidth={3} />
                     <span className="text-[10px] font-black uppercase tracking-wider">New Note</span>
@@ -287,7 +287,7 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
                             </button>
                             <button
                                 onClick={handleSave}
-                                className="flex items-center gap-1.5 px-5 py-2 bg-[#0047AB] text-white rounded-xl font-black text-[10px] uppercase tracking-wider shadow-lg shadow-blue-500/20 active:scale-95 transition-all hover:bg-blue-700"
+                                className="flex items-center gap-1.5 px-5 py-2 bg-primary text-white rounded-xl font-black text-[10px] uppercase tracking-wider shadow-lg shadow-primary/20 active:scale-95 transition-all hover:bg-primary/90"
                             >
                                 <Save size={14} />
                                 Save Note

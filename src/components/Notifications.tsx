@@ -81,7 +81,7 @@ const Notifications: React.FC = () => {
                             {unreadCount > 0 && (
                                 <button
                                     onClick={markAllAsRead}
-                                    className="text-[10px] font-bold text-[#0047AB] hover:text-blue-700 uppercase tracking-wider"
+                                    className="text-[10px] font-bold text-primary hover:text-blue-700 uppercase tracking-wider"
                                 >
                                     Mark all read
                                 </button>
@@ -112,7 +112,7 @@ const Notifications: React.FC = () => {
                                 {notifications.map((notification) => (
                                     <div
                                         key={notification.id}
-                                        className={`p-4 hover:bg-slate-50 transition-colors relative group ${!notification.read ? 'bg-blue-50/30' : ''}`}
+                                        className={`p-4 hover:bg-slate-50 transition-colors relative group ${!notification.read ? 'bg-primary/5' : ''}`}
                                         onClick={() => markAsRead(notification.id)}
                                     >
                                         <div className="flex gap-3">
@@ -145,7 +145,7 @@ const Notifications: React.FC = () => {
                                         </div>
                                         {/* Unread Indicator */}
                                         {!notification.read && (
-                                            <div className="absolute left-0 top-4 bottom-4 w-1 bg-[#0047AB] rounded-r-full"></div>
+                                            <div className="absolute left-0 top-4 bottom-4 w-1 bg-primary rounded-r-full"></div>
                                         )}
                                     </div>
                                 ))}

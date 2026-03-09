@@ -127,7 +127,7 @@ END:VCARD`;
                         <button
                             onClick={handleShare}
                             disabled={generating}
-                            className="bg-blue-50 text-[#0047AB] p-2 rounded-xl hover:bg-blue-100 transition-all active:scale-90"
+                            className="bg-primary/10 text-primary p-2 rounded-xl hover:bg-primary/20 transition-all active:scale-90"
                             title="Share Card"
                         >
                             <Share2 size={16} />

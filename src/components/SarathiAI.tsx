@@ -106,15 +106,34 @@ const SarathiAI: React.FC<SarathiAIProps> = ({ onNavigate }) => {
 
         if (isTyping) return;
 
-        // @ts-ignore
-        const recognition = new (window as any).webkitSpeechRecognition();
+        interface SpeechRecognitionResult {
+            readonly isFinal: boolean;
+            readonly length: number;
+            [index: number]: { transcript: string; confidence: number };
+        }
+        interface SpeechRecognitionEvent extends Event {
+            readonly results: SpeechRecognitionResult[];
+        }
+        interface WebkitSpeechRecognition {
+            lang: string;
+            continuous: boolean;
+            interimResults: boolean;
+            onstart: (() => void) | null;
+            onresult: ((event: SpeechRecognitionEvent) => void) | null;
+            onerror: (() => void) | null;
+            onend: (() => void) | null;
+            start(): void;
+        }
+
+        const SpeechRecognition = (window as Window & { webkitSpeechRecognition: new () => WebkitSpeechRecognition }).webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
         recognition.lang = 'en-IN'; // Works well for Tanglish too
         recognition.continuous = false;
         recognition.interimResults = true;
 
         recognition.onstart = () => setIsTyping(true); // Reuse typing state as a "Listening" indicator
 
-        recognition.onresult = (event: any) => {
+        recognition.onresult = (event: SpeechRecognitionEvent) => {
             const transcript = event.results[0][0].transcript;
             setMessage(transcript);
 
@@ -137,7 +156,7 @@ const SarathiAI: React.FC<SarathiAIProps> = ({ onNavigate }) => {
             {!isOpen && (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="fixed bottom-24 right-5 md:bottom-10 md:right-10 w-16 h-16 bg-gradient-to-tr from-[#0047AB] to-[#4F46E5] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50 group"
+                    className="fixed bottom-24 right-5 md:bottom-10 md:right-10 w-16 h-16 bg-linear-to-tr from-primary to-[#4F46E5] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50 group"
                 >
                     <div className="absolute inset-0 bg-white/20 rounded-full animate-ping group-hover:block hidden"></div>
                     <Bot size={28} className="relative z-10" />
@@ -151,7 +170,7 @@ const SarathiAI: React.FC<SarathiAIProps> = ({ onNavigate }) => {
             {isOpen && (
                 <div className="fixed inset-x-4 bottom-24 md:inset-auto md:bottom-10 md:right-10 md:w-[450px] h-[600px] bg-[#0f172a] border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-slide-up z-50">
                     {/* Header */}
-                    <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-5 flex items-center justify-between border-b border-white/5">
+                    <div className="bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 p-5 flex items-center justify-between border-b border-white/5">
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center border border-blue-500/30">
                                 <Bot className="text-blue-400" size={28} />
@@ -180,7 +199,7 @@ const SarathiAI: React.FC<SarathiAIProps> = ({ onNavigate }) => {
                     {/* Chat Body */}
                     <div
                         ref={scrollRef}
-                        className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth bg-gradient-to-b from-[#0f172a] to-[#1e293b]"
+                        className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth bg-linear-to-b from-[#0f172a] to-[#1e293b]"
                     >
                         {chatHistory.length === 0 && (
                             <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-6">
@@ -218,7 +237,7 @@ const SarathiAI: React.FC<SarathiAIProps> = ({ onNavigate }) => {
                                 className={`flex ${item.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}
                             >
                                 <div className={`flex gap-3 max-w-[90%] ${item.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                    <div className={`w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg ${item.role === 'user' ? 'bg-[#0047AB]' : 'bg-slate-800 border border-white/10'}`}>
+                                    <div className={`w-8 h-8 rounded-xl shrink-0 flex items-center justify-center shadow-lg ${item.role === 'user' ? 'bg-primary' : 'bg-slate-800 border border-white/10'}`}>
                                         {item.role === 'user' ? <User size={16} className="text-white" /> : <Bot size={18} className="text-blue-400" />}
                                     </div>
                                     <div className={`p-4 rounded-2xl text-[14px] leading-relaxed font-bold shadow-xl ${item.role === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-slate-800/80 text-slate-100 border border-white/10 rounded-tl-none'}`}>

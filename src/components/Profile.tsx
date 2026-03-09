@@ -7,7 +7,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import {
     User as UserIcon,
     Contact, Landmark, Car, FileText, ChevronRight,
-    RefreshCw, X, Trash2, Sparkles, Crown, Cloud, Users, Download,
+    RefreshCw, X, Trash2, Crown, Cloud, Users,
     Palette
 } from 'lucide-react';
 
@@ -18,7 +18,6 @@ import { validateVehicleNumber } from '../utils/validation';
 // Sub-components (Lazy Loaded)
 const DocumentVault = React.lazy(() => import('./DocumentVault'));
 const SalaryManager = React.lazy(() => import('./SalaryManager'));
-const BusinessCard = React.lazy(() => import('./BusinessCard'));
 import { subscribeToPush } from '../utils/push';
 import GoogleSignInButton from './GoogleSignInButton';
 
@@ -33,7 +32,6 @@ const Profile: React.FC = () => {
 
     // Local State
     const [activeTab, setActiveTab] = useState<'business' | 'payments' | 'vehicles' | 'docs'>('business');
-    const [showCard, setShowCard] = useState(false);
     const [activeModal, setActiveModal] = useState<string | null>(null);
     const [savingSection, setSavingSection] = useState<string | null>(null);
     const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -237,16 +235,6 @@ const Profile: React.FC = () => {
             alert(`Upload failed: ${errorMessage}`);
         } finally {
             setUploadingLogo(false);
-        }
-    };
-
-    const handleDownloadLetterhead = async () => {
-        try {
-            const { downloadLetterhead } = await import('../utils/pdf');
-            await downloadLetterhead({ ...settings, vehicleNumber: '' });
-        } catch (error) {
-            console.error('Error downloading letterhead:', error);
-            alert('Could not generate letterhead. Please try again.');
         }
     };
 
@@ -464,59 +452,6 @@ const Profile: React.FC = () => {
                                     {savingSection === 'business' ? 'Saving...' : 'Save Settings'}
                                 </button>
                             </div>
-
-                            <div className="grid grid-cols-2 gap-3 mt-3">
-
-                                {/* Pro Branding Tools */}
-                                <div className="col-span-2 bg-slate-900 text-white p-4 rounded-2xl shadow-lg relative overflow-hidden group cursor-pointer" onClick={() => { if(settings.isPremium) { setProView('menu'); setShowStudio(true); } else { window.dispatchEvent(new CustomEvent('open-pricing-modal')); } }}>
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform" />
-                                    <div className="relative z-10 flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="bg-white/10 p-2.5 rounded-xl text-pink-400 backdrop-blur-sm">
-                                                <Sparkles size={20} />
-                                            </div>
-                                            <div>
-                                                <h3 className="font-black text-sm uppercase tracking-wider mb-0.5">Pro Studio</h3>
-                                                <p className="text-[10px] text-slate-300 font-medium">Branding, Staff & Watermarks</p>
-                                            </div>
-                                        </div>
-                                        <div className="bg-white/10 p-2 rounded-full">
-                                            <ChevronRight size={16} />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Visiting Card */}
-                                {/* Visiting Card */}
-                                <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm relative overflow-hidden group cursor-pointer hover:border-blue-300 transition-colors text-left" onClick={() => setShowCard(true)}>
-                                    <div className="absolute top-0 right-0 w-20 h-20 bg-slate-50 rounded-full -mr-10 -mt-10 group-hover:bg-blue-50 transition-colors" />
-                                    <div className="relative z-10">
-                                        <div className="bg-slate-100 w-fit p-2 rounded-lg mb-3 group-hover:bg-blue-100 transition-colors">
-                                            <Contact size={18} className="text-slate-600 group-hover:text-blue-600" />
-                                        </div>
-                                        <h3 className="font-black text-xs uppercase text-slate-800 mb-0.5">Visiting Card</h3>
-                                        <p className="text-[9px] text-slate-400 mb-2">Share your digital card</p>
-                                        <div className="inline-flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-lg text-[8px] font-bold uppercase tracking-wider text-slate-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                            View <ChevronRight size={10} />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Letterhead */}
-                                <button className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm relative overflow-hidden group cursor-pointer hover:border-blue-300 transition-colors text-left" onClick={handleDownloadLetterhead}>
-                                     <div className="absolute top-0 right-0 w-20 h-20 bg-slate-50 rounded-full -mr-10 -mt-10 group-hover:bg-blue-50 transition-colors" />
-                                    <div className="relative z-10">
-                                        <div className="bg-slate-100 w-fit p-2 rounded-lg mb-3 group-hover:bg-blue-100 transition-colors">
-                                            <FileText size={18} className="text-slate-600 group-hover:text-blue-600" />
-                                        </div>
-                                        <h3 className="font-black text-xs uppercase text-slate-800 mb-0.5">Letterhead</h3>
-                                        <p className="text-[9px] text-slate-400 mb-2">Download PDF format</p>
-                                         <div className="inline-flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-lg text-[8px] font-bold uppercase tracking-wider text-slate-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                            Download <Download size={10} />
-                                        </div>
-                                    </div>
-                                </button>
-                            </div>
                         </div>
                     </div>
                 )}
@@ -636,18 +571,6 @@ const Profile: React.FC = () => {
             <div className="mt-12 text-center">
                 <button onClick={() => setActiveModal('settings')} className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600">App Settings</button>
             </div>
-
-            {/* Visit Card Modal */}
-            {showCard && (
-                <div className="fixed inset-0 z-100 bg-black/90 flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowCard(false)}>
-                    <div className="relative w-full max-w-sm" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setShowCard(false)} className="absolute -top-12 right-0 text-white"><X size={32} /></button>
-                        <React.Suspense fallback={<div className="bg-white p-8 rounded-2xl text-center font-bold text-slate-500">Loading Card Editor...</div>}>
-                            <BusinessCard />
-                        </React.Suspense>
-                    </div>
-                </div>
-            )}
 
             {/* Pro Studio Modal */}
             {showStudio && (

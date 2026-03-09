@@ -55,12 +55,12 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({ isOpen, onClose, pdfU
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
             <div className="bg-white w-full max-w-4xl h-[90vh] rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-scale-in">
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
+                        <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
                             <FileText size={20} />
                         </div>
                         <div>
@@ -83,7 +83,7 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({ isOpen, onClose, pdfU
 
                         {loading && (
                             <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
-                                <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+                                <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
                             </div>
                         )}
 
@@ -98,7 +98,7 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({ isOpen, onClose, pdfU
                                     <a
                                         href={pdfUrl}
                                         download={`Quotation_${new Date().getTime()}.pdf`}
-                                        className="px-6 py-3 bg-[#0047AB] text-white rounded-xl font-bold text-xs uppercase tracking-wider"
+                                        className="px-6 py-3 bg-primary text-white rounded-xl font-bold text-xs uppercase tracking-wider"
                                     >
                                         Download PDF
                                     </a>

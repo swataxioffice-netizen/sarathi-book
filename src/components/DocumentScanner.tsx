@@ -84,9 +84,9 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete, onClo
                     {!preview ? (
                         <div
                             onClick={() => fileInputRef.current?.click()}
-                            className="aspect-3/4 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-all group"
+                            className="aspect-3/4 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all group"
                         >
-                            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                                 <Camera size={32} />
                             </div>
                             <div className="space-y-1">
@@ -99,7 +99,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete, onClo
                             <div className="aspect-3/4 rounded-3xl overflow-hidden shadow-lg border-4 border-white">
                                 <img src={preview} alt="Preview" className="w-full h-full object-cover" />
                                 {isScanning && (
-                                    <div className="absolute inset-0 bg-[#0047AB]/60 backdrop-blur-[2px] flex flex-col items-center justify-center text-white p-6">
+                                    <div className="absolute inset-0 bg-primary/60 backdrop-blur-[2px] flex flex-col items-center justify-center text-white p-6">
                                         <div className="relative">
                                             <Loader2 size={48} className="animate-spin mb-4" />
                                             <div className="absolute inset-0 flex items-center justify-center">
@@ -142,7 +142,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete, onClo
                     {preview && !isScanning && (
                         <button
                             onClick={startScan}
-                            className="w-full py-4 bg-[#0047AB] text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                            className="w-full py-4 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                         >
                             <Scan size={18} />
                             Start Smart Scan

@@ -1,14 +1,23 @@
 import React, { useEffect } from 'react';
-import { 
-    X, User, History, StickyNote, LayoutDashboard, FileText, 
-    Wallet, Calculator, Users, ShieldCheck, Palette, 
-    Landmark, Share2, LogOut, Zap, ChevronDown
+import {
+    X, User, History, FileText, Contact, 
+    Landmark, Share2, LogOut, Zap, ChevronDown, 
+    ShieldCheck, Palette, Settings
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { Analytics } from '../utils/monitoring';
 import GoogleSignInButton from './GoogleSignInButton';
 
+
+interface NavItem {
+    id: string;
+    icon: React.ElementType;
+    label: string;
+    subtitle: string;
+    isPro?: boolean;
+    isSuper?: boolean;
+}
 
 interface MobileMenuProps {
     isOpen: boolean;
@@ -50,37 +59,34 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
         window.dispatchEvent(new CustomEvent('open-pricing-modal'));
     };
 
-    const navSections = [
+    const navSections: { title: string, items: NavItem[] }[] = [
         {
             title: 'Account & Overview',
             items: [
                 { id: 'profile', icon: User, label: 'My Profile', subtitle: 'Company details & bank info' },
-                { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', subtitle: 'Earnings & performance overview' },
+                { id: 'tariff', icon: History, label: 'Tariff Cards', subtitle: 'Preset rate lists for customers' },
             ]
         },
         {
-            title: 'Trip Tools',
-            items: [
-                { id: 'tariff', icon: History, label: 'Tariff Cards', subtitle: 'Preset rate lists for customers' },
-                { id: 'notes', icon: StickyNote, label: 'Quick Notes', subtitle: 'Important trip & customer notes' },
-                { id: 'taxi-fare-calculator', icon: Calculator, label: 'Fare Calculator', subtitle: 'Smart distance-based pricing' },
-            ]
+             title: 'Your Brand',
+             items: [
+                { id: 'visiting-card', icon: Contact, label: 'Visiting Card', subtitle: 'Share your digital card', isPro: true },
+                { id: 'letterhead', icon: FileText, label: 'Letterhead', subtitle: 'Download PDF format', isPro: true },
+                { id: 'watermark', icon: ShieldCheck, label: 'Remove Watermark', subtitle: 'Clean professional invoices', isPro: true },
+                { id: 'branding', icon: Palette, label: 'Custom PDF Colour', subtitle: 'Change invoice theme & colors', isPro: true },
+             ]
         },
         {
             title: 'Business Management',
             items: [
-                 { id: 'trips', icon: FileText, label: 'Invoices & Quotes', subtitle: 'Create & manage documents' },
-                 { id: 'expenses', icon: Wallet, label: 'Expense Tracker', subtitle: 'Track fuel, repairs & maintenance' },
-                 { id: 'staff', icon: Users, label: 'Staff Manager', subtitle: 'Driver salaries & management', isPro: true },
                  { id: 'finance', icon: Landmark, label: 'Loan Center', subtitle: 'Get loans for your business' },
             ]
         },
         {
-             title: 'App Customization',
-             items: [
-                { id: 'watermark', icon: ShieldCheck, label: 'Remove Watermark', subtitle: 'Clean professional invoices', isPro: true },
-                { id: 'branding', icon: Palette, label: 'Custom Branding', subtitle: 'Add your business logo to PDF', isPro: true },
-             ]
+            title: 'App',
+            items: [
+                { id: 'app-settings', icon: Settings, label: 'App Settings', subtitle: 'Notifications & preferences' },
+            ]
         }
     ];
 
@@ -92,9 +98,27 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
     }
 
     const handleNav = (tab: string) => {
-        if (tab === 'watermark' || tab === 'branding') {
+        if (tab === 'app-settings') {
+            window.dispatchEvent(new CustomEvent('open-app-settings'));
+            onClose();
+            return;
+        }
+        if (tab === 'watermark' || tab === 'branding' || tab === 'visiting-card' || tab === 'letterhead') {
             if (!isPro && !isSuper) {
                 handlePricing();
+                return;
+            }
+            if (tab === 'visiting-card') {
+                window.dispatchEvent(new CustomEvent('open-visiting-card'));
+                onClose();
+                return;
+            }
+            if (tab === 'letterhead') {
+                import('../utils/pdf').then(m => m.downloadLetterhead({ ...settings, vehicleNumber: '' })).catch(err => {
+                    console.error('Error downloading letterhead:', err);
+                    alert('Could not generate letterhead. Please try again.');
+                });
+                onClose();
                 return;
             }
             setActiveTab('profile');
@@ -127,7 +151,7 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
             >
                 
                 {/* BLUE HERO HEADER */}
-                <div className="bg-[#0047AB] p-4 text-center relative shrink-0">
+                <div className="bg-primary p-4 text-center relative shrink-0">
                     <button 
                         onClick={(e) => {
                             e.stopPropagation();
@@ -166,7 +190,7 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
                                 {!isSuper && (
                                     <button
                                         onClick={handlePricing}
-                                        className="w-full py-3 bg-white text-[#0047AB] rounded-xl text-xs font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                                        className="w-full py-3 bg-white text-primary rounded-xl text-xs font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
                                     >
                                         <Zap size={14} className="fill-current" />
                                         {isPro ? 'Upgrade to Super' : 'Upgrade to Pro'}
@@ -175,7 +199,7 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
                             </>
                         ) : (
                             <>
-                                <div className="w-14 h-14 bg-white rounded-xl shadow-lg border-2 border-white/20 mb-3 flex items-center justify-center text-[#0047AB]">
+                                <div className="w-14 h-14 bg-white rounded-xl shadow-lg border-2 border-white/20 mb-3 flex items-center justify-center text-primary">
                                     <User size={24} />
                                 </div>
                                 <h2 className="text-sm font-bold text-white tracking-tight mb-1">
@@ -231,29 +255,29 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
                                                 key={item.id}
                                                 onClick={() => handleNav(item.id)}
                                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${
-                                                    activeTab === item.id ? 'bg-blue-50 text-[#0047AB]' : 'hover:bg-slate-50 text-slate-500'
+                                                    activeTab === item.id ? 'bg-primary/10 text-primary' : 'hover:bg-slate-50 text-slate-500'
                                                 }`}
                                             >
                                                 <item.icon size={18} className={`transition-colors ${
-                                                    activeTab === item.id ? 'text-[#0047AB]' : 'text-slate-400 group-hover:text-slate-600'
+                                                    activeTab === item.id ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600'
                                                 }`} />
                                                 
                                                 <div className="flex-1 text-left">
                                                     <div className="flex items-center gap-2">
                                                         <span className={`text-sm font-semibold tracking-tight ${
-                                                            activeTab === item.id ? 'text-[#0047AB]' : 'text-slate-700'
+                                                            activeTab === item.id ? 'text-primary' : 'text-slate-700'
                                                         }`}>
                                                             {item.label}
                                                         </span>
                                                         {item.isPro && !isPro && !isSuper && (
-                                                            <span className="bg-blue-100 text-blue-600 text-[10px] font-bold px-1.5 py-0.5 rounded">Pro</span>
+                                                            <span className="bg-primary/10 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded">Pro</span>
                                                         )}
                                                     </div>
                                                     <p className="text-xs text-slate-500 truncate mt-0.5">
                                                         {item.subtitle}
                                                     </p>
                                                 </div>
-                                                {activeTab === item.id && <div className="w-1.5 h-1.5 rounded-full bg-[#0047AB] shadow-sm ml-2" />}
+                                                {activeTab === item.id && <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-sm ml-2" />}
                                             </button>
                                         ))}
                                     </div>
@@ -278,7 +302,7 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
                                 } catch (error) { console.log('Error sharing:', error); }
                             } else { alert('Share not supported'); }
                         }}
-                        className="w-full h-11 flex items-center justify-center gap-3 px-4 rounded-xl font-bold text-sm text-[#0047AB] bg-blue-100/50 hover:bg-blue-100 border border-blue-200 border-dashed transition-all"
+                        className="w-full h-11 flex items-center justify-center gap-3 px-4 rounded-xl font-bold text-sm text-primary bg-primary/5 hover:bg-primary/10 border border-primary/20 border-dashed transition-all"
                     >
                         <Share2 size={16} />
                         <span>Share App With Friends</span>
