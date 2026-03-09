@@ -175,13 +175,6 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
                         <p className="text-[10px] text-slate-500 font-bold">Trip logs & reminders</p>
                     </div>
                 </div>
-                <button
-                    onClick={handleAddNote}
-                    className="flex items-center gap-1.5 bg-primary text-white px-3 py-2 rounded-xl hover:bg-primary/90 transition-all active:scale-95 shadow-md shadow-primary/20"
-                >
-                    <Plus size={16} strokeWidth={3} />
-                    <span className="text-[10px] font-black uppercase tracking-wider">New Note</span>
-                </button>
             </div>
 
             {notes.length === 0 ? (
@@ -296,6 +289,13 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
                     </div>
                 </div>
             )}
+            {/* Floating Action Button */}
+            <button
+                onClick={handleAddNote}
+                className="fixed bottom-24 right-6 w-14 h-14 bg-yellow-100 text-yellow-700 border-2 border-yellow-200 rounded-full flex items-center justify-center shadow-xl hover:bg-yellow-200 transition-all active:scale-95 z-40 animate-scale-up"
+            >
+                <Plus size={28} strokeWidth={3} />
+            </button>
         </div>
     );
 };

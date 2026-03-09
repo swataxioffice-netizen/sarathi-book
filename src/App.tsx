@@ -967,12 +967,13 @@ function AppContent() {
             </div>
           </header>
 
-          <div className="flex-1 overflow-y-auto p-8">
+            <div className="flex-1 overflow-y-auto p-8">
             <div className="max-w-5xl mx-auto w-full">
               {renderContent()}
             </div>
-            {/* Show Footer on Public Pages */}
-            {!['dashboard', 'admin', 'profile', 'staff', 'finance'].includes(activeTab) && (
+            {/* Show Footer only on Public/SEO/Legal Pages */}
+            {(['about', 'contact', 'privacy', 'terms', 'routes', 'tariff', 'trending'].includes(activeTab) || 
+               activeTab.includes('-to-') || activeTab.endsWith('-taxi') || activeTab.endsWith('-rental')) && (
               <Footer setActiveTab={setActiveTab} />
             )}
           </div>
@@ -988,8 +989,9 @@ function AppContent() {
         />
         <main className="flex-1 overflow-y-auto scrollbar-hide px-3 py-4 pb-24 bg-[#F5F7FA] relative">
           {renderContent()}
-          {/* Show Footer on Public Pages for Mobile */}
-          {!['dashboard', 'admin', 'profile', 'staff', 'finance', 'notes'].includes(activeTab) && (
+          {/* Show Footer only on Public/SEO/Legal Pages for Mobile */}
+          {(['about', 'contact', 'privacy', 'terms', 'routes', 'tariff', 'trending'].includes(activeTab) || 
+             activeTab.includes('-to-') || activeTab.includes('-taxi') || activeTab.includes('-rental')) && (
             <Footer setActiveTab={setActiveTab} />
           )}
         </main>

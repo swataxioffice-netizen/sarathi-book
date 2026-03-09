@@ -113,6 +113,15 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
             items: [
                 { id: 'app-settings', icon: Settings, label: 'App Settings' },
             ]
+        },
+        {
+            title: 'Support & Legal',
+            items: [
+                { id: 'about', icon: User, label: 'About Us' },
+                { id: 'contact', icon: Contact, label: 'Contact Us' },
+                { id: 'privacy', icon: ShieldCheck, label: 'Privacy Policy' },
+                { id: 'terms', icon: FileText, label: 'Terms of Service' },
+            ]
         }
     ];
 
