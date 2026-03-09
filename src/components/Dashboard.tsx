@@ -100,8 +100,17 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                             ₹{stats.profit.toLocaleString()}
                         </h2>
                     </div>
-                    <div className="bg-blue-50 p-1.5 rounded-lg border border-blue-100 text-[#0047AB]">
-                        <IndianRupee size={16} strokeWidth={2.5} />
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'expenses' }))}
+                            className="bg-red-50 hover:bg-red-100 p-1.5 rounded-lg border border-red-100 text-red-600 transition-colors flex items-center gap-1.5 shadow-sm active:scale-95"
+                        >
+                            <TrendingUp size={14} className="rotate-180" strokeWidth={3} />
+                            <span className="text-[10px] font-bold uppercase">Add Expense</span>
+                        </button>
+                        <div className="bg-blue-50 p-1.5 rounded-lg border border-blue-100 text-[#0047AB]">
+                            <IndianRupee size={16} strokeWidth={2.5} />
+                        </div>
                     </div>
                 </div>
 

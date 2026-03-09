@@ -1,7 +1,7 @@
 import { TARIFFS, TRIP_LIMITS } from '../config/tariff_config';
 
 // Keep types for compatibility
-export type FareMode = 'distance' | 'hourly' | 'outstation' | 'drop' | 'package' | 'fixed' | 'custom';
+export type FareMode = 'distance' | 'hourly' | 'outstation' | 'drop' | 'package' | 'fixed' | 'custom' | 'local';
 
 export interface Trip {
     id: string;

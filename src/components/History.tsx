@@ -3,7 +3,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import type { Trip } from '../utils/fare';
 import { shareReceipt, shareQuotation, generateQuotationPDF, generateReceiptPDF, generateBulkReceiptsPDF, type SavedQuotation } from '../utils/pdf';
 import { format, subMonths, addMonths, isSameMonth } from 'date-fns';
-import { FileText, Share2, Eye, Trash2, Download, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { FileText, Share2, Eye, Trash2, Download, ChevronLeft, ChevronRight, Calendar, PenLine } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAdProtection } from '../hooks/useAdProtection';
 import PDFPreviewModal from './PDFPreviewModal';
@@ -17,14 +17,18 @@ interface HistoryProps {
     onDeleteQuotation?: (id: string) => void;
     onConvertQuotation?: (quotation: SavedQuotation) => void;
     onBack?: () => void;
+    onEditTrip?: (trip: Trip) => void;
+    onEditQuotation?: (quotation: SavedQuotation) => void;
 }
 
-type TimeFilter = 'all' | 'today' | 'week' | 'month';
+type TimeFilter = 'month';
+type GstFilter = 'gst' | 'non-gst';
 
-const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, onDeleteTrip, onDeleteQuotation, onBack }) => {
+const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, onDeleteTrip, onDeleteQuotation, onBack, onEditTrip, onEditQuotation }) => {
     const { settings } = useSettings();
     const { user } = useAuth();
-    const [filter, setFilter] = useState<TimeFilter>('all');
+    const [filter] = useState<TimeFilter>('month');
+    const [gstFilter, setGstFilter] = useState<GstFilter>('gst');
     const [selectedMonth, setSelectedMonth] = useState(new Date());
 
     // Preview State
@@ -33,26 +37,27 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
 
     // Filter Logic
     const filteredItems = useMemo(() => {
-        const now = new Date();
-        const today = now.toISOString().split('T')[0];
         const data = type === 'invoice' ? trips : quotations;
 
         return data.filter(item => {
             const date = new Date(item.date);
-            const dateStr = date.toISOString().split('T')[0];
 
-            if (filter === 'today') return dateStr === today;
-            if (filter === 'week') {
-                const diffTime = Math.abs(now.getTime() - date.getTime());
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                return diffDays <= 7;
+
+            if (filter === 'month' && !isSameMonth(date, selectedMonth)) {
+                return false;
             }
-            if (filter === 'month') {
-                return isSameMonth(date, selectedMonth);
+
+            if (type === 'invoice') {
+                const trip = item as Trip;
+                const isGst = (trip.invoiceNo?.startsWith('INV') || (trip.gst !== undefined && trip.gst > 0));
+                
+                if (gstFilter === 'gst' && !isGst) return false;
+                if (gstFilter === 'non-gst' && isGst) return false;
             }
+
             return true;
         }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [trips, quotations, filter, type, selectedMonth]);
+    }, [trips, quotations, filter, gstFilter, type, selectedMonth]);
 
     // Calculate Total Amount
     const totalAmount = useMemo(() => {
@@ -154,7 +159,11 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
         if (type !== 'invoice') return;
         
         // Sort items by Invoice Number for the report
-        const itemsToPrint = [...filteredItems] as Trip[];
+        // Filter: Only include GST Invoices (INV prefix), skip Non-GST Bills (BILL prefix)
+        const itemsToPrint = ([...filteredItems] as Trip[]).filter(trip => 
+            trip.invoiceNo?.startsWith('INV') || (trip.gst !== undefined && trip.gst > 0)
+        );
+
         itemsToPrint.sort((a, b) => {
              const aNum = a.invoiceNo || '';
              const bNum = b.invoiceNo || '';
@@ -162,7 +171,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
         });
 
         if (itemsToPrint.length === 0) {
-            alert('No invoices to download for this month.');
+            alert('No GST invoices found to download for this month.');
             return;
         }
 
@@ -172,7 +181,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                 vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A'
             });
             const monthStr = format(selectedMonth, 'MMM-yyyy');
-            doc.save(`${monthStr}-Invoices.pdf`);
+            doc.save(`${monthStr}-GST-Invoices.pdf`);
         } catch (error) {
             console.error('Bulk download failed:', error);
             alert('Failed to generate monthly report.');
@@ -211,18 +220,25 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                 <span className={`absolute -bottom-1 left-0 w-6 h-0.5 rounded-full ${type === 'invoice' ? 'bg-blue-600' : 'bg-[#6366F1]'}`}></span>
                             </h3>
                         </div>
-                        <div className="flex bg-slate-100/50 rounded-lg p-0.5 border border-slate-200/50">
-                            {(['all', 'today', 'week', 'month'] as const).map((f) => (
+
+                    </div>
+
+                    {/* GST Filter Toggle */}
+                    {type === 'invoice' && (
+                        <div className="bg-slate-100/30 p-1 rounded-xl border border-slate-200/50 flex gap-1 mx-0.5">
+                            {(['gst', 'non-gst'] as const).map((f) => (
                                 <button
                                     key={f}
-                                    onClick={() => setFilter(f)}
-                                    className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase transition-all ${filter === f ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                                    onClick={() => setGstFilter(f)}
+                                    className={`flex-1 py-1.5 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-wider transition-all ${gstFilter === f 
+                                        ? 'bg-[#0047AB] text-white shadow-md' 
+                                        : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'}`}
                                 >
-                                    {f}
+                                    {f === 'gst' ? 'GST Invoice' : 'Non-GST Bill'}
                                 </button>
                             ))}
                         </div>
-                    </div>
+                    )}
 
                     {/* Month Navigator & Actions */}
                     {filter === 'month' && (
@@ -253,7 +269,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                 <button
                                     onClick={() => triggerAction(handleBulkDownload)}
                                     className="p-1.5 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center"
-                                    title="Download Monthly Report"
+                                    title="Download Monthly GST Report"
                                 >
                                     <Download size={16} />
                                 </button>
@@ -315,6 +331,11 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                             <span className={`inline-flex items-center px-1 py-px rounded-[4px] text-[8px] font-black uppercase tracking-wider border ${isInvoice ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-indigo-50 text-indigo-700 border-indigo-100'}`}>
                                                 {isInvoice ? (trip?.mode || 'TRIP') : 'QUOTE'}
                                             </span>
+                                            {isInvoice && (trip?.invoiceNo?.startsWith('INV') || (trip?.gst !== undefined && trip.gst > 0)) && (
+                                                <span className="inline-flex items-center px-1 py-px rounded-[4px] text-[8px] font-black uppercase tracking-wider border bg-green-50 text-green-700 border-green-100">
+                                                    GST
+                                                </span>
+                                            )}
                                             <span className="text-[10px] font-bold text-slate-500 truncate max-w-[200px]">
                                                 {isInvoice ? `${trip?.from}${trip?.to ? ` ➔ ${trip.to}` : ''}` : quotation?.subject}
                                             </span>
@@ -344,6 +365,15 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                                     <Share2 size={12} strokeWidth={2.5} />
                                                     <span>Share</span>
                                                 </button>
+                                                {(isInvoice ? onEditTrip : onEditQuotation) && (
+                                                    <button
+                                                        onClick={() => triggerAction(() => isInvoice ? onEditTrip!(trip!) : onEditQuotation!(quotation!))}
+                                                        className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-wide"
+                                                    >
+                                                        <PenLine size={12} strokeWidth={2.5} />
+                                                        <span>Edit</span>
+                                                    </button>
+                                                )}
                                             </div>
 
                                             {(isInvoice ? onDeleteTrip : onDeleteQuotation) && (

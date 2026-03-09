@@ -107,11 +107,13 @@ function AppContent() {
       setActiveTab('trips');
       setInvoiceQuotationToggle('quotation');
       setTripsSubTab('create');
+      setEditingQuotation(null);
     };
     const handleInvoiceNav = () => {
       setActiveTab('trips');
       setInvoiceQuotationToggle('invoice');
       setTripsSubTab('create');
+      setEditingTrip(null);
     };
     const handleQuoteHistoryNav = () => {
       setActiveTab('trips');
@@ -193,6 +195,8 @@ function AppContent() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [quotations, setQuotations] = useState<SavedQuotation[]>([]);
   const [selectedQuotation, setSelectedQuotation] = useState<SavedQuotation | null>(null);
+  const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
+  const [editingQuotation, setEditingQuotation] = useState<SavedQuotation | null>(null);
   const [showLoginNudge, setShowLoginNudge] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -545,6 +549,7 @@ function AppContent() {
       return [trip, ...prev];
     });
     setSelectedQuotation(null); // Clear any active template
+    setEditingTrip(null); // Clear editing state
 
     // 2. Persistent Save (IDB)
     try {
@@ -593,7 +598,16 @@ function AppContent() {
   };
 
   const handleSaveQuotation = async (q: SavedQuotation) => {
-    setQuotations(prev => [q, ...prev]);
+    setQuotations(prev => {
+      const idx = prev.findIndex(item => item.id === q.id);
+      if (idx !== -1) {
+        const next = [...prev];
+        next[idx] = q;
+        return next;
+      }
+      return [q, ...prev];
+    });
+    setEditingQuotation(null);
     await dbRequest.put('quotations', q);
 
     if (user) {
@@ -686,32 +700,8 @@ function AppContent() {
 
               {!isLocked && (
                 <div className="space-y-3">
-                  {/* Row 1: Document Type Toggle */}
-                  <div className="flex items-center gap-2">
-                    <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex gap-1 relative overflow-auto flex-1">
-                      <button
-                        onClick={() => {
-                          setInvoiceQuotationToggle('invoice');
-                          setSelectedQuotation(null);
-                        }}
-                        className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all ${invoiceQuotationToggle === 'invoice'
-                          ? 'bg-[#0047AB] text-white shadow-md'
-                          : 'text-slate-400 hover:bg-slate-50'
-                          }`}
-                      >
-                        Invoice
-                      </button>
-                      <button
-                        onClick={() => setInvoiceQuotationToggle('quotation')}
-                        className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all ${invoiceQuotationToggle === 'quotation'
-                          ? 'bg-[#6366F1] text-white shadow-md'
-                          : 'text-slate-400 hover:bg-slate-50'
-                          }`}
-                      >
-                        Quotation
-                      </button>
-                    </div>
-                  </div>
+              {/* Per request: Invoice/Quotation toggle removed to keep Invoices section focused. Quotations are accessible via Dashboard. */}
+
 
                   {/* Row 2: Mobile View Mode Toggle (Create vs History) - REMOVED per request */}
                 </div>
@@ -724,7 +714,14 @@ function AppContent() {
                     {/* Inline Quick Jump to History for Mobile */}
                     {/* Inline Quick Jump to History for Mobile - MOVED INTO TRIP FORM */}
                     <Suspense fallback={<LoadingFallback />}>
-                      <TripForm onSaveTrip={handleSaveTrip} onStepChange={setInvoiceStep} invoiceTemplate={selectedQuotation} trips={trips} onViewHistory={() => setTripsSubTab('history')} />
+                      <TripForm 
+                        onSaveTrip={handleSaveTrip} 
+                        onStepChange={setInvoiceStep} 
+                        invoiceTemplate={selectedQuotation} 
+                        trips={trips} 
+                        onViewHistory={() => setTripsSubTab('history')} 
+                        editingTrip={editingTrip}
+                      />
                     </Suspense>
                   </div>
 
@@ -732,7 +729,16 @@ function AppContent() {
                     <div className={`${tripsSubTab === 'history' ? 'block' : 'hidden lg:block'} lg:col-span-5 w-full mt-2 lg:mt-0`}>
                       <div className="sticky top-4">
                         <Suspense fallback={<LoadingFallback />}>
-                          <History trips={trips} type="invoice" onDeleteTrip={handleDeleteTrip} onBack={() => setTripsSubTab('create')} />
+                          <History 
+                            trips={trips} 
+                            type="invoice" 
+                            onDeleteTrip={handleDeleteTrip} 
+                            onBack={() => setTripsSubTab('create')} 
+                            onEditTrip={(trip) => {
+                              setEditingTrip(trip);
+                              setTripsSubTab('create');
+                            }}
+                          />
                         </Suspense>
                       </div>
                     </div>
@@ -742,7 +748,13 @@ function AppContent() {
                 <div className={quotationStep === 1 ? "flex flex-col lg:grid lg:grid-cols-12 gap-8 items-start" : "max-w-4xl mx-auto space-y-4"}>
                   <div className={`${quotationStep === 1 ? (tripsSubTab === 'create' ? 'block' : 'hidden lg:block') : 'block'} lg:col-span-7 w-full`}>
                     <Suspense fallback={<LoadingFallback />}>
-                      <QuotationForm onSaveQuotation={handleSaveQuotation} quotations={quotations} onStepChange={setQuotationStep} onViewHistory={() => setTripsSubTab('history')} />
+                      <QuotationForm 
+                        onSaveQuotation={handleSaveQuotation} 
+                        quotations={quotations} 
+                        onStepChange={setQuotationStep} 
+                        onViewHistory={() => setTripsSubTab('history')} 
+                        editingQuotation={editingQuotation}
+                      />
                     </Suspense>
                     {/* Inline Quick Jump to History for Mobile */}
                     {/* Inline Quick Jump to History for Mobile - MOVED INTO QUOTATION FORM */}
@@ -758,6 +770,10 @@ function AppContent() {
                             onDeleteQuotation={handleDeleteQuotation}
                             onConvertQuotation={handleConvertQuotation}
                             onBack={() => setTripsSubTab('create')}
+                            onEditQuotation={(q) => {
+                              setEditingQuotation(q);
+                              setTripsSubTab('create');
+                            }}
                           />
                         </Suspense>
                       </div>

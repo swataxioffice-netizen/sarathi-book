@@ -71,6 +71,8 @@ export interface SavedQuotation {
     customerAddress?: string; // Added
     customerGstin?: string;   // Added
     subject: string;
+    pickup?: string;          // Added
+    drop?: string;            // Added
     date: string;
     items: QuotationItem[];
     vehicleType: string;
@@ -82,7 +84,7 @@ export interface SavedQuotation {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const generateReceiptPDF = async (trip: any, settings: PDFSettings, isQuotation: boolean = false, existingDoc?: InstanceType<typeof import('jspdf').jsPDF>) => {
+export const generateReceiptPDF = async (trip: Trip | SavedQuotation | any, settings: PDFSettings, isQuotation: boolean = false, existingDoc?: InstanceType<typeof import('jspdf').jsPDF>) => {
     const t = trip as Trip;
     const q = trip as SavedQuotation;
     // Dynamic Import for Code Splitting
@@ -408,7 +410,7 @@ export const generateReceiptPDF = async (trip: any, settings: PDFSettings, isQuo
     };
 
     // --- PRINT PRE-CALCULATED ITEMS ---
-    const pStep = (t as unknown as { previewStep?: number }).previewStep || 4;
+    const pStep = (t as Trip & { previewStep?: number }).previewStep || 4;
     const dist = t.distance !== undefined ? t.distance : Math.max(0, (t.endKm || 0) - (t.startKm || 0));
     const effectiveDist = t.effectiveDistance || dist;
 
@@ -420,90 +422,92 @@ export const generateReceiptPDF = async (trip: any, settings: PDFSettings, isQuo
         mainAmount = (t.fare || 0);
     }
 
-    if (pStep >= 2 || (t.mode === 'custom' && pStep >= 1)) {
-        if (t.mode === 'custom') {
-            if (t.extraItems && t.extraItems.length > 0) {
-                t.extraItems.forEach(item => {
-                    const iQty = (item as unknown as { quantity?: number }).quantity || '1';
-                    const iRate = (item as unknown as { rate?: number }).rate ? `${(item as unknown as { rate?: number }).rate}` : `${item.amount}`;
-                    const iSac = (item as unknown as { sac?: string }).sac || '9966';
-                    addTableRow(item.description || 'Service Charge', String(iQty), iRate, item.amount || 0, iSac);
-                });
-            } else if (hasExplicitDistanceCharge || t.fare) {
+    const hasItems = t.extraItems && t.extraItems.length > 0;
+
+    if (hasItems && t.extraItems) {
+        // --- PRE-CONSTRUCTED ITEMS SOURCE ---
+        // In the new unified data model, constructTripData() in TripForm.tsx 
+        // prepopulates extraItems with everything (Base Fare, Batta, Tolls, Misc).
+        // This makes it the sole source of truth for the table.
+        t.extraItems.forEach(item => {
+            if (!item.amount && !item.description) return; 
+            const iQty = item.qty || 1;
+            let iRate = item.rate;
+            if (iRate === undefined || iRate === null) iRate = item.amount;
+            const iSac = item.sac || '9966';
+            addTableRow(item.description || 'Service Charge', String(iQty), String(iRate), item.amount || 0, iSac);
+        });
+
+        // Safeguard for legacy or partially constructed records where fare > sum of items
+        const baseFareValue = t.fare || 0;
+        if (baseFareValue > runningSubtotal + 1) {
+            const gap = baseFareValue - runningSubtotal;
+            addTableRow('Trip Charges / Base Fare', '1', `${gap.toFixed(0)}`, gap);
+        }
+    } else {
+        // --- LEGACY FALLBACK LOGIC ---
+        // Used only when extraItems is empty or doesn't exist.
+        if (pStep >= 2 || (t.mode === 'custom' && pStep >= 1)) {
+            if (t.mode === 'custom' || (!t.mode && t.fare)) {
                 addTableRow('Custom Invoice', '1', `${mainAmount}`, mainAmount || 0);
-            }
-        } else if (t.mode === 'hourly') {
-            const hrs = t.waitingHours || 8;
-            // Hourly usually has fixed package price, rate is package price
-            addTableRow(`Local Rental / Hourly Package (${hrs} Hrs)`, '1', `${mainAmount || 0}`, mainAmount || 0);
-        } else if (t.mode === 'package') {
-            addTableRow(String(t.packageName || 'TOUR PACKAGE').toUpperCase(), '1', `${t.packagePrice || 0}`, t.packagePrice || 0);
-        } else if (t.mode === 'drop') {
-            if (dist <= 40) {
-                addTableRow(`Local Drop Trip`, '1', `${mainAmount || 0}`, mainAmount || 0);
-            } else {
-                // Determine rate used
-                const rateUsed = (t as unknown as { rateUsed?: number }).rateUsed || (t.ratePerKm) || ((mainAmount || 0) / (effectiveDist || 1));
+            } else if (t.mode === 'hourly' || t.mode === 'local') {
+                const hrs = t.waitingHours || 8;
+                addTableRow(`Local Rental / Package (${hrs} Hrs)`, '1', `${mainAmount || 0}`, mainAmount || 0);
+            } else if (t.mode === 'package') {
+                addTableRow(String(t.packageName || 'TOUR PACKAGE').toUpperCase(), '1', `${t.packagePrice || 0}`, t.packagePrice || 0);
+            } else if (t.mode === 'drop') {
+                const rateUsed = t.ratePerKm || ((mainAmount || 0) / (effectiveDist || 1));
                 const pRate = isNaN(rateUsed) ? '-' : `${parseFloat(String(rateUsed)).toFixed(1)}/KM`;
-
-                // For Outstation Drop, it's min dist * rate
-                const calcDesc = `${effectiveDist} KM * ${pRate}`;
-                addTableRow(`Outstation Drop Trip [${calcDesc}]`, `${effectiveDist} KM`, pRate, mainAmount || 0);
+                if (dist <= 40) {
+                    addTableRow(`Local Drop Trip`, '1', `${mainAmount || 0}`, mainAmount || 0);
+                } else {
+                    addTableRow(`Outstation Drop Trip [${effectiveDist} KM * ${pRate}]`, `${effectiveDist} KM`, pRate, mainAmount || 0);
+                }
+            } else if (t.mode === 'outstation') {
+                const rateUsed = t.ratePerKm || ((mainAmount || 0) / (effectiveDist || 1));
+                const pRate = isNaN(Number(rateUsed)) ? '-' : `${parseFloat(String(rateUsed)).toFixed(1)}/KM`;
+                addTableRow(`Round Trip [${effectiveDist} KM * ${pRate}]`, `${effectiveDist} KM`, pRate, mainAmount || 0);
             }
-        } else if (t.mode === 'outstation') {
-            // Determine rate used
-            const rateUsed = (t as unknown as { rateUsed?: number }).rateUsed || (t.ratePerKm) || ((mainAmount || 0) / (effectiveDist || 1));
-            const pRate = isNaN(Number(rateUsed)) ? '-' : `${parseFloat(String(rateUsed)).toFixed(1)}/KM`;
-            const calcDesc = `${effectiveDist} KM * ${pRate}`;
-            addTableRow(`Round Trip [${calcDesc}]`, `${effectiveDist} KM`, pRate, mainAmount || 0);
-        }
-    }
-
-    if (pStep >= 3) {
-        // Only add these IF they weren't already bundled into 'mainAmount' (legacy fallback case)
-        const shouldAddIndividual = hasExplicitDistanceCharge;
-
-        if (shouldAddIndividual) {
-            // Night Batta
-            if ((t.nightBata || 0) > 0) {
-                const payDays = (t.mode === 'outstation' ? t.days : 1) || 1;
-                const perNightBatta = (t.nightBata || 0) / payDays;
-                const nLabel = payDays > 1 ? `Night Allowance (${payDays} Nights * ${perNightBatta}/Night)` : 'Night Allowance';
-                addTableRow(nLabel, `${payDays}`, `${perNightBatta}`, t.nightBata || 0);
-            }
-
-            // Driver Batta
-            if ((t.driverBatta || 0) > 0) {
-                const payDays = (t.mode === 'outstation' ? t.days : 1) || 1;
-                const perDayBatta = (t.driverBatta || 0) / payDays;
-                const bLabel = payDays > 1 ? `Driver Batta (${payDays} Days * ${perDayBatta}/Day)` : `Driver Batta`;
-                addTableRow(bLabel, `${payDays}`, `${perDayBatta}`, t.driverBatta || 0);
-            }
-
-            // Night Stay
-            if ((t.nightStay || 0) > 0) {
-                addTableRow('Night Stay Charge', '1', `${t.nightStay}`, t.nightStay || 0);
-            }
-
-            if ((t.waitingCharges || 0) > 0) {
-                const wRate = (t.waitingCharges || 0) / (t.waitingHours || 1);
-                addTableRow(`Waiting Charges (${t.waitingHours} Hrs * ${wRate}/Hr)`, `${t.waitingHours} Hrs`, `${wRate}/Hr`, t.waitingCharges || 0);
-            }
-            if ((t.hillStationCharges || 0) > 0) addTableRow('Hill Station Charges', '1', `${t.hillStationCharges}`, t.hillStationCharges || 0);
-            if ((t.petCharges || 0) > 0) addTableRow('Pet Carrying Charges', '1', `${t.petCharges}`, t.petCharges || 0);
         }
 
-        // Tolls/Permits/Parking are ALWAYS separate even in legacy? No, usually they were separate fields.
-        if ((t.permit || 0) > 0) addTableRow('Permit Charges', '1', `${t.permit}`, t.permit || 0);
-        if ((t.parking || 0) > 0) addTableRow('Parking Charges', '1', `${t.parking}`, t.parking || 0);
-        if ((t.toll || 0) > 0) addTableRow('Toll Charges', '1', `${t.toll}`, t.toll || 0);
+        if (pStep >= 3) {
+            // Only add these IF they weren't already bundled into 'mainAmount' (legacy fallback case)
+            const shouldAddIndividual = hasExplicitDistanceCharge;
 
-        // Custom extra items from step 3
-        if (t.extraItems && t.mode !== 'custom') {
-            t.extraItems.forEach(item => {
-                const iSac = (item as unknown as { sac?: string }).sac || '9966';
-                if (item.amount > 0) addTableRow(item.description || 'Extra Item', '1', '-', item.amount, iSac);
-            });
+            if (shouldAddIndividual) {
+                // Night Batta
+                if ((t.nightBata || 0) > 0) {
+                    const payDays = (t.mode === 'outstation' ? t.days : 1) || 1;
+                    const perNightBatta = (t.nightBata || 0) / payDays;
+                    const nLabel = payDays > 1 ? `Night Allowance (${payDays} Nights * ${perNightBatta}/Night)` : 'Night Allowance';
+                    addTableRow(nLabel, `${payDays}`, `${perNightBatta}`, t.nightBata || 0);
+                }
+
+                // Driver Batta
+                if ((t.driverBatta || 0) > 0) {
+                    const payDays = (t.mode === 'outstation' ? t.days : 1) || 1;
+                    const perDayBatta = (t.driverBatta || 0) / payDays;
+                    const bLabel = payDays > 1 ? `Driver Batta (${payDays} Days * ${perDayBatta}/Day)` : `Driver Batta`;
+                    addTableRow(bLabel, `${payDays}`, `${perDayBatta}`, t.driverBatta || 0);
+                }
+
+                // Night Stay
+                if ((t.nightStay || 0) > 0) {
+                    addTableRow('Night Stay Charge', '1', `${t.nightStay}`, t.nightStay || 0);
+                }
+
+                if ((t.waitingCharges || 0) > 0) {
+                    const wRate = (t.waitingCharges || 0) / (t.waitingHours || 1);
+                    addTableRow(`Waiting Charges (${t.waitingHours} Hrs * ${wRate}/Hr)`, `${t.waitingHours} Hrs`, `${wRate}/Hr`, t.waitingCharges || 0);
+                }
+                if ((t.hillStationCharges || 0) > 0) addTableRow('Hill Station Charges', '1', `${t.hillStationCharges}`, t.hillStationCharges || 0);
+                if ((t.petCharges || 0) > 0) addTableRow('Pet Carrying Charges', '1', `${t.petCharges}`, t.petCharges || 0);
+            }
+
+            // Tolls/Permits/Parking are ALWAYS separate even in legacy? No, usually they were separate fields.
+            if ((t.permit || 0) > 0) addTableRow('Permit Charges', '1', `${t.permit}`, t.permit || 0);
+            if ((t.parking || 0) > 0) addTableRow('Parking Charges', '1', `${t.parking}`, t.parking || 0);
+            if ((t.toll || 0) > 0) addTableRow('Toll Charges', '1', `${t.toll}`, t.toll || 0);
         }
     }
 

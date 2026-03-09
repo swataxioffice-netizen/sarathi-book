@@ -66,6 +66,7 @@ interface QuotationFormProps {
     onStepChange?: (step: number) => void;
     quotations?: SavedQuotation[];
     onViewHistory?: () => void;
+    editingQuotation?: SavedQuotation | null;
 }
 
 // Vehicle Classes for Selection
@@ -88,7 +89,7 @@ const DEFAULT_TERMS = [
     "GST 5% is applicable on the total bill amount."
 ];
 
-const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepChange, quotations, onViewHistory }) => {
+const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepChange, quotations, onViewHistory, editingQuotation }) => {
     const { settings } = useSettings();
     const { user } = useAuth();
     // const { triggerAction } = useAdProtection();
@@ -247,6 +248,62 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
     useEffect(() => {
         if (onStepChange) onStepChange(step);
     }, [step, onStepChange]);
+
+    useEffect(() => {
+        if (editingQuotation) {
+            setCustomerName(editingQuotation.customerName || '');
+            setCustomerGst(editingQuotation.customerGstin || '');
+            setBillingAddress(editingQuotation.customerAddress || '');
+            setFromLoc(editingQuotation.pickup || '');
+            setToLoc(editingQuotation.drop || '');
+            setQuotationDate(editingQuotation.date?.split('T')[0] || new Date().toISOString().split('T')[0]);
+            setIncludeGst(!!editingQuotation.gstEnabled);
+            setRcmEnabled(!!editingQuotation.rcmEnabled);
+            if (editingQuotation.terms) setTerms(editingQuotation.terms);
+            
+            // Restore Custom Line Items or Manual Extra Items from items
+            if (editingQuotation.items && editingQuotation.items.length > 0) {
+                if (editingQuotation.items.some(i => i.vehicleType === 'Custom')) {
+                    setMode('custom');
+                    setCustomLineItems(editingQuotation.items.filter(i => i.vehicleType === 'Custom').map(i => ({
+                        description: i.description,
+                        sac: i.sac || '9966',
+                        qty: i.quantity || 1,
+                        rate: parseFloat(i.rate) || 0,
+                        amount: parseFloat(i.amount) || 0
+                    })));
+                } else {
+                    const first = editingQuotation.items[0];
+                    if (first.description.includes('One Way')) setMode('drop');
+                    else if (first.description.includes('Round Trip')) setMode('outstation');
+                    else if (first.description.includes('Local')) setMode('local');
+                    
+                    // Map vehicle type
+                    const vMatch = VEHICLE_CLASSES.find(v => v.label === first.vehicleType);
+                    if (vMatch) setSelectedVehicleType(vMatch.id);
+
+                    // Filter out standard ones to populate manual extra items
+                    const standardDescriptions = [
+                        'Toll Charges', 'Parking Charges', 'Permit Charges', 
+                        'Hill Station Charges', 'Night Charges', 'Pet Carrying Charges',
+                        'Driver Batta', 'One Way Drop', 'Round Trip', 'Local Rental', 'Base Fare'
+                    ];
+                    const manualExtras = editingQuotation.items.filter(item => 
+                        !standardDescriptions.some(sd => item.description.startsWith(sd))
+                    );
+                    setExtraItems(manualExtras.map(item => ({
+                        description: item.description,
+                        amount: parseFloat(item.amount) || 0,
+                        qty: item.quantity,
+                        rate: parseFloat(item.rate) || undefined,
+                        sac: item.sac
+                    })));
+                }
+            }
+            
+            setStep(1);
+        }
+    }, [editingQuotation]);
 
     // Auto Distance Calculation
     useEffect(() => {
@@ -634,7 +691,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
 
                 if (onSaveQuotation) {
                     onSaveQuotation({
-                        id: generateId(),
+                        id: editingQuotation?.id || generateId(),
                         ...qData,
                         quotationNo: qData.quotationNo!,
                         vehicleType: items[0].vehicleType

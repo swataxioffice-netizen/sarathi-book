@@ -72,6 +72,7 @@ interface TripFormProps {
     invoiceTemplate?: SavedQuotation | null;
     trips?: Trip[];
     onViewHistory?: () => void;
+    editingTrip?: Trip | null;
 }
 
 const DEFAULT_TERMS = [
@@ -83,7 +84,7 @@ const DEFAULT_TERMS = [
     "This is a computer-generated invoice and requires no physical signature."
 ];
 
-const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTemplate, trips, onViewHistory }) => {
+const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTemplate, trips, onViewHistory, editingTrip }) => {
     const { settings } = useSettings();
     const { user } = useAuth();
     // const { triggerAction } = useAdProtection();
@@ -292,7 +293,87 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     }, [step, onStepChange]);
 
     useEffect(() => {
-        if (invoiceTemplate) {
+        if (editingTrip) {
+            sessionTripId.current = editingTrip.id;
+            sessionInvoiceNo.current = editingTrip.invoiceNo || null;
+            if (editingTrip.invoiceNo) setInvoiceNo(editingTrip.invoiceNo);
+            
+            setCustomerName(editingTrip.customerName || '');
+            setCustomerPhone(editingTrip.customerPhone || '');
+            setCustomerGst(editingTrip.customerGst || '');
+            setBillingAddress(editingTrip.billingAddress || '');
+            
+            setFromLoc(editingTrip.from || '');
+            setToLoc(editingTrip.to || '');
+            setDistanceOverride(editingTrip.effectiveDistance?.toString() || editingTrip.distance?.toString() || '0');
+            
+            setIncludeGst(!!editingTrip.gstRate && editingTrip.gstRate > 0);
+            setRcmEnabled(!!editingTrip.rcmEnabled);
+            setInvoiceDate(editingTrip.date?.split('T')[0] || new Date().toISOString().split('T')[0]);
+            
+            setStartKm(editingTrip.startKm || 0);
+            setEndKm(editingTrip.endKm || 0);
+            setIsOdometerMode(!!(editingTrip.startKm || editingTrip.endKm));
+            
+            if (editingTrip.mode) setMode(editingTrip.mode as TripMode);
+            if (editingTrip.vehicleId) setSelectedVehicleId(editingTrip.vehicleId);
+            
+            setToll(editingTrip.toll?.toString() || '0');
+            setParking(editingTrip.parking?.toString() || '0');
+            setPermit(editingTrip.permit?.toString() || '0');
+            setDriverBatta(editingTrip.driverBatta?.toString() || '0');
+            setNightCharge(editingTrip.nightBata?.toString() || '0');
+            setHillStationCharge(editingTrip.hillStationCharges?.toString() || '0');
+            setPetCharge(editingTrip.petCharges?.toString() || '0');
+            
+            if (editingTrip.mode === 'local') {
+                setStartTimeLog(editingTrip.startTime || '');
+                setEndTimeLog(editingTrip.endTime || '');
+                setLocalPackageHours(editingTrip.waitingHours || 0);
+                if (editingTrip.packageName) setHourlyPackage(editingTrip.packageName);
+            }
+            
+            if (editingTrip.terms) setTerms(editingTrip.terms);
+            
+            // Restore Custom Line Items or Manual Extra Items
+            if (editingTrip.extraItems && editingTrip.extraItems.length > 0) {
+                if (editingTrip.mode === 'custom') {
+                    setCustomLineItems(editingTrip.extraItems.map(item => ({
+                        description: item.description,
+                        sac: item.sac || '9966',
+                        qty: item.qty || 1,
+                        rate: item.rate || item.amount,
+                        amount: item.amount
+                    })));
+                } else {
+                    // Filter out standard ones to populate manual extra items
+                    const standardDescriptions = [
+                        'Toll Charges', 'Parking Charges', 'Permit Charges', 
+                        'Hill Station Charges', 'Night Charges', 'Pet Carrying Charges',
+                        'Driver Batta', 'One Way Drop', 'Round Trip', 'Local Rental'
+                    ];
+                    const manualExtras = editingTrip.extraItems.filter(item => 
+                        !standardDescriptions.some(sd => item.description.startsWith(sd))
+                    );
+                    setExtraItems(manualExtras.map(item => ({
+                        description: item.description,
+                        amount: item.amount,
+                        qty: item.qty,
+                        rate: item.rate,
+                        sac: item.sac
+                    })));
+                }
+            }
+            
+            setManualDriverBatta(editingTrip.driverBatta !== undefined);
+            setManualToll(editingTrip.toll !== undefined);
+            setManualParking(editingTrip.parking !== undefined);
+            setManualPermit(editingTrip.permit !== undefined);
+            setManualHillStation(editingTrip.hillStationCharges !== undefined);
+            
+            setStep(1); 
+        } else if (invoiceTemplate) {
+            sessionTripId.current = null;
             setCustomerName(invoiceTemplate.customerName);
             if (invoiceTemplate.customerAddress) setBillingAddress(invoiceTemplate.customerAddress);
             if (invoiceTemplate.customerGstin) setCustomerGst(invoiceTemplate.customerGstin);
@@ -303,8 +384,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             if (invoiceTemplate.date) setInvoiceDate(invoiceTemplate.date.split('T')[0]);
             setMode('drop'); // Default from template if unknown
             setStep(1);
+        } else {
+            // New Trip - Reset session if editingTrip and invoiceTemplate are both null
+            sessionTripId.current = null;
         }
-    }, [invoiceTemplate]);
+    }, [editingTrip, invoiceTemplate]);
 
     // Auto Distance Calculation
     useEffect(() => {
@@ -507,7 +591,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 hourlyPackage
             );
 
-            const otherExtras = (parseFloat(permit) || 0) + (parseFloat(parking) || 0) + (parseFloat(toll) || 0) + extraItems.reduce((a, b) => a + b.amount, 0);
+            const otherExtras = (mode === 'custom' ? 0 : (parseFloat(permit) || 0) + (parseFloat(parking) || 0) + (parseFloat(toll) || 0)) + extraItems.reduce((a, b) => a + b.amount, 0);
             const subtotal = (mode === 'custom' ? customBaseTotal : res.totalFare) + otherExtras;
 
             const gstRes = calculateGST(subtotal, gstRate, settings.gstin, customerGst);
@@ -540,6 +624,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             setStep(s => Math.min(3, s + 1));
         }
     };
+    
     const handleBack = () => {
         if (step === 3 && mode === 'custom') {
             setStep(1);
@@ -551,146 +636,39 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         }
     };
 
-    const handlePreview = async () => {
-        const res = await performCalculation();
-        if (!res) return;
+    // --- Unified Trip Data Construction ---
+    const constructTripData = (res: CalculationResult, isPreview: boolean = false): Trip => {
         const currentV = userVehicles.find(v => v.id === selectedVehicleId);
-
-        // Use existing session ID/Invoice if available, or generate purely for preview (don't set session yet? or should we?)
-        // For preview, we don't necessarily want to "lock in" the invoice number unless saved.
-        // But to be consistent with what WILL be saved:
-        const previewId = sessionTripId.current || generateId();
-        const previewInvoiceNo = invoiceNo || nextInvoiceNo;
-
-
-
-        // Construct items for Consistent PDF Format
-        const pdfItems = [];
-
-        // 1. Base Fare or Custom Invoice Items
+        
+        // 1. Construct unified items for the PDF table
+        // This ensures the table in the PDF matches the calculated totals exactly.
+        const pdfItems: NonNullable<Trip['extraItems']> = [];
+        
+        // Step 1: Base Fare / Custom Items
         if (mode === 'custom') {
-            customLineItems.forEach(i => pdfItems.push({
-                description: i.description,
-                amount: i.amount,
-                rate: i.rate.toString(),
-                quantity: i.qty,
-                sac: i.sac
-            }));
+            customLineItems.forEach(i => {
+                if (i.amount > 0 || i.description) {
+                    pdfItems.push({
+                        description: i.description,
+                        amount: i.amount,
+                        rate: i.rate,
+                        qty: i.qty,
+                        sac: i.sac
+                    });
+                }
+            });
         } else {
             const baseRate = res.rateUsed;
             const baseDist = res.effectiveDistance || res.distance;
             let baseDesc = mode === 'local' ? `Local Rental` : (mode === 'outstation' ? `Round Trip` : `One Way Drop`);
 
             if (mode === 'local') {
-                if (hourlyPackage === '8hr_80km') {
-                    baseDesc += ` [8 Hrs / 80 KM Package]`;
-                } else if (hourlyPackage === '12hr_120km') {
-                    baseDesc += ` [12 Hrs / 120 KM Package]`;
-                } else if (hourlyPackage === '4hr_40km') {
-                    baseDesc += ` [4 Hrs / 40 KM Package]`;
-                } else if (hourlyPackage === '2hr_20km') {
-                    baseDesc += ` [2 Hrs / 20 KM Package]`;
-                } else {
-                    baseDesc += ` [${localPackageHours} Hrs / ${localPackageKm} KM Package]`;
-                }
-            } else if (baseRate > 0) {
-                baseDesc += ` [${baseDist} KM * ${baseRate}/KM]`;
-            }
-
-            pdfItems.push({
-                description: baseDesc,
-                amount: res.distanceCharge,
-                rate: baseRate > 0 ? `${baseRate}/KM` : `${res.distanceCharge}`,
-                quantity: 1,
-                vehicleType: vehicleCategory // Added for PDF tracking
-            });
-        }
-
-        // 2. Add Additional Charges (Batta, Tolls, etc.)
-        if (res.driverBatta > 0) {
-            const dist = res.effectiveDistance || res.distance;
-            let daysUsed = mode === 'outstation' ? Math.max(days, Math.ceil(dist / TRIP_LIMITS.max_km_per_day)) : 1;
-            if (mode === 'drop') {
-                daysUsed = Math.max(1, Math.ceil(dist / TRIP_LIMITS.max_km_per_day));
-            }
-            const battaRate = res.driverBatta / daysUsed;
-            pdfItems.push({
-                description: `Driver Batta [${daysUsed} Day${daysUsed > 1 ? 's' : ''} * ${battaRate}/Day]`,
-                amount: res.driverBatta,
-                rate: `${battaRate}/Day`,
-                quantity: daysUsed
-            });
-        }
-        if (parseFloat(toll) > 0) pdfItems.push({ description: 'Toll Charges', amount: parseFloat(toll), rate: toll, quantity: 1 });
-        if (parseFloat(parking) > 0) pdfItems.push({ description: 'Parking Charges', amount: parseFloat(parking), rate: parking, quantity: 1 });
-        if (parseFloat(permit) > 0) pdfItems.push({ description: 'Permit Charges', amount: parseFloat(permit), rate: permit, quantity: 1 });
-        if (res.hillStationCharges > 0) pdfItems.push({ description: 'Hill Station Charges', amount: res.hillStationCharges, rate: res.hillStationCharges.toString(), quantity: 1 });
-        if (parseFloat(nightCharge) > 0) pdfItems.push({ description: 'Night Charges', amount: parseFloat(nightCharge), rate: nightCharge, quantity: 1 });
-
-        extraItems.forEach(i => pdfItems.push({ description: i.description, amount: i.amount, rate: i.amount.toString(), quantity: 1 }));
-
-        const tripData: Record<string, unknown> = {
-            id: previewId, invoiceNo: previewInvoiceNo, customerName: customerName || 'Valued Customer',
-            customerPhone, customerGst, billingAddress, from: fromLoc, to: toLoc, date: invoiceDate,
-            mode: 'custom',
-            customTripType: mode === 'custom' ? customTripType : undefined,
-            totalFare: res.total, fare: res.fare, gst: res.gst,
-            extraItems: pdfItems,
-            previewStep: step,
-            vehicleNumber: currentV?.number,
-            vehicleModel: currentV?.model,
-            gstRate: includeGst ? gstRate : 0,
-            gstType: includeGst ? (res.gstBreakdown?.type || 'CGST_SGST') : undefined,
-            rcmEnabled: rcmEnabled,
-            terms: terms,
-            waitingHours: res.waitingHours, days, vehicleType: vehicleCategory,
-            startKm, endKm, distance: res.effectiveDistance || res.distance
-        };
-        const doc = await generateReceiptPDF(tripData, { ...settings, gstEnabled: includeGst, rcmEnabled, userId: user?.id, vehicleNumber: currentV?.number || '' });
-        setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
-        setShowPreview(true);
-    };
-
-    const handleShare = async (calcRes?: CalculationResult) => {
-        const res = calcRes || await performCalculation();
-        if (!res) return;
-
-        // Ensure we have a session ID/Invoice if not already saved
-        if (!sessionTripId.current) sessionTripId.current = generateId();
-        // if (!sessionInvoiceNo.current) sessionInvoiceNo.current = nextInvoiceNo; // Use state now
-
-        const currentV = userVehicles.find(v => v.id === selectedVehicleId);
-
-        // Construct items for Consistent PDF Format (Same as Quotation)
-        const pdfItems = [];
-
-        // 1. Base Fare or Custom Invoice Items
-        if (mode === 'custom') {
-            customLineItems.forEach(i => pdfItems.push({
-                description: i.description,
-                amount: i.amount,
-                rate: i.rate.toString(),
-                quantity: i.qty,
-                sac: i.sac
-            }));
-        } else {
-            const baseRate = res.rateUsed;
-            const baseDist = res.effectiveDistance || res.distance;
-            let baseDesc = mode === 'local' ? `Local Rental` : (mode === 'outstation' ? `Round Trip` : `One Way Drop`);
-
-            if (mode === 'local') {
-                if (hourlyPackage === '8hr_80km') {
-                    baseDesc += ` [8 Hrs / 80 KM Package]`;
-                } else if (hourlyPackage === '12hr_120km') {
-                    baseDesc += ` [12 Hrs / 120 KM Package]`;
-                } else if (hourlyPackage === '4hr_40km') {
-                    baseDesc += ` [4 Hrs / 40 KM Package]`;
-                } else if (hourlyPackage === '2hr_20km') {
-                    baseDesc += ` [2 Hrs / 20 KM Package]`;
-                } else {
-                    baseDesc += ` [${localPackageHours} Hrs / ${localPackageKm} KM Package]`;
-                }
-                // Append actual usage
+                if (hourlyPackage === '8hr_80km') baseDesc += ` [8 Hrs / 80 KM Package]`;
+                else if (hourlyPackage === '12hr_120km') baseDesc += ` [12 Hrs / 120 KM Package]`;
+                else if (hourlyPackage === '4hr_40km') baseDesc += ` [4 Hrs / 40 KM Package]`;
+                else if (hourlyPackage === '2hr_20km') baseDesc += ` [2 Hrs / 20 KM Package]`;
+                else baseDesc += ` [${localPackageHours} Hrs / ${localPackageKm} KM Package]`;
+                
                 if (localPackageHours > 0 || localPackageKm > 0) {
                     baseDesc += ` (Journey: ${localPackageHours}hrs/${localPackageKm}km)`;
                 }
@@ -701,55 +679,135 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             pdfItems.push({
                 description: baseDesc,
                 amount: res.distanceCharge,
-                rate: baseRate > 0 ? `${baseRate}/KM` : `${res.distanceCharge}`,
-                quantity: 1
+                rate: baseRate > 0 ? baseRate : res.distanceCharge,
+                qty: 1
             });
         }
 
-        // 2. Add Additional Charges (Batta, Tolls, etc.)
-        if (res.driverBatta > 0) {
+        // Step 2: Auto-calculated Extras (Batta, Hill Station, etc.)
+        // Skip these in 'custom' mode as users expect to control all items manually via the list
+        if (mode !== 'custom' && res.driverBatta > 0) {
             const dist = res.effectiveDistance || res.distance;
             let daysUsed = mode === 'outstation' ? Math.max(days, Math.ceil(dist / TRIP_LIMITS.max_km_per_day)) : 1;
-            if (mode === 'drop') {
-                daysUsed = Math.max(1, Math.ceil(dist / TRIP_LIMITS.max_km_per_day));
-            }
+            if (mode === 'drop') daysUsed = Math.max(1, Math.ceil(dist / TRIP_LIMITS.max_km_per_day));
             const battaRate = res.driverBatta / daysUsed;
             pdfItems.push({
                 description: `Driver Batta [${daysUsed} Day${daysUsed > 1 ? 's' : ''} * ${battaRate}/Day]`,
                 amount: res.driverBatta,
-                rate: `${battaRate}/Day`,
-                quantity: daysUsed
+                rate: battaRate,
+                qty: daysUsed
             });
         }
-        if (parseFloat(toll) > 0) pdfItems.push({ description: 'Toll Charges', amount: parseFloat(toll), rate: toll, quantity: 1 });
-        if (parseFloat(parking) > 0) pdfItems.push({ description: 'Parking Charges', amount: parseFloat(parking), rate: parking, quantity: 1 });
-        if (parseFloat(permit) > 0) pdfItems.push({ description: 'Permit Charges', amount: parseFloat(permit), rate: permit, quantity: 1 });
-        if (res.hillStationCharges > 0) pdfItems.push({ description: 'Hill Station Charges', amount: res.hillStationCharges, rate: res.hillStationCharges.toString(), quantity: 1 });
-        if (parseFloat(nightCharge) > 0) pdfItems.push({ description: 'Night Charges', amount: parseFloat(nightCharge), rate: nightCharge, quantity: 1 });
+        
+        if (mode !== 'custom') {
+            if (parseFloat(toll) > 0) pdfItems.push({ description: 'Toll Charges', amount: parseFloat(toll), rate: parseFloat(toll), qty: 1 });
+            if (parseFloat(parking) > 0) pdfItems.push({ description: 'Parking Charges', amount: parseFloat(parking), rate: parseFloat(parking), qty: 1 });
+            if (parseFloat(permit) > 0) pdfItems.push({ description: 'Permit Charges', amount: parseFloat(permit), rate: parseFloat(permit), qty: 1 });
+        }
+        
+        if (mode !== 'custom' && res.hillStationCharges > 0) {
+            pdfItems.push({ 
+                description: 'Hill Station Charges', 
+                amount: res.hillStationCharges, 
+                rate: res.hillStationCharges, 
+                qty: 1 
+            });
+        }
+        
+        if (parseFloat(nightCharge) > 0) {
+            pdfItems.push({ 
+                description: 'Night Charges', 
+                amount: parseFloat(nightCharge), 
+                rate: parseFloat(nightCharge), 
+                qty: 1 
+            });
+        }
+        
+        if (mode !== 'custom' && res.petCharges > 0) {
+            pdfItems.push({ 
+                description: 'Pet Carrying Charges', 
+                amount: res.petCharges, 
+                rate: res.petCharges, 
+                qty: 1 
+            });
+        }
 
-        extraItems.forEach(i => pdfItems.push({ description: i.description, amount: i.amount, rate: i.amount.toString(), quantity: 1 }));
+        // Step 3: Manual Extra Items (Step 3 Additionals)
+        extraItems.forEach(i => {
+            if (i.amount > 0) {
+                pdfItems.push({
+                    description: i.description,
+                    amount: i.amount,
+                    rate: i.amount,
+                    qty: 1
+                });
+            }
+        });
 
-        const tripData: Record<string, unknown> = {
-            id: sessionTripId.current, invoiceNo: invoiceNo, customerName: customerName || 'Valued Customer',
-            customerPhone, customerGst, billingAddress, from: fromLoc, to: toLoc, date: invoiceDate,
-            startTime: mode === 'local' ? startTimeLog : undefined,
-            endTime: mode === 'local' ? endTimeLog : undefined,
-            mode: 'custom',
-            customTripType: mode === 'custom' ? customTripType : undefined,
-            totalFare: res.total, fare: res.fare, gst: res.gst,
-            extraItems: pdfItems,
-            vehicleNumber: currentV?.number,
-            vehicleModel: currentV?.model,
+        const tripData: Trip = {
+            id: isPreview ? (sessionTripId.current || generateId()) : (sessionTripId.current || generateId()),
+            invoiceNo: isPreview ? (invoiceNo || nextInvoiceNo) : (invoiceNo || nextInvoiceNo),
+            customerName: customerName || 'Cash Guest',
+            customerPhone,
+            customerGst,
+            billingAddress,
+            from: fromLoc,
+            to: toLoc,
+            startKm: isOdometerMode ? startKm : 0,
+            endKm: isOdometerMode ? endKm : (parseFloat(distanceOverride) || 0),
+            startTime: mode === 'local' ? startTimeLog : '',
+            endTime: mode === 'local' ? endTimeLog : '',
+            totalFare: res.total,
+            fare: res.fare,
+            gst: res.gst,
             gstRate: includeGst ? gstRate : 0,
             gstType: includeGst ? (res.gstBreakdown?.type || 'CGST_SGST') : undefined,
-            rcmEnabled: rcmEnabled,
-            terms: terms,
-            waitingHours: res.waitingHours, days, vehicleType: vehicleCategory,
-            startKm, endKm, distance: res.effectiveDistance || res.distance
+            distance: res.distance,
+            effectiveDistance: res.effectiveDistance,
+            ratePerKm: res.rateUsed,
+            distanceCharge: res.distanceCharge,
+            driverBatta: res.driverBatta,
+            hillStationCharges: res.hillStationCharges,
+            petCharges: res.petCharges,
+            nightBata: parseFloat(nightCharge) || 0,
+            toll: parseFloat(toll) || 0,
+            parking: parseFloat(parking) || 0,
+            permit: parseFloat(permit) || 0,
+            days,
+            waitingHours: mode === 'local' ? localPackageHours : 0,
+            waitingCharges: 0,
+            extraItems: pdfItems,
+            mode: (mode || 'custom') as any,
+            date: invoiceDate ? (invoiceDate.includes('T') ? invoiceDate : `${invoiceDate}T12:00:00Z`) : new Date().toISOString(),
+            rcmEnabled,
+            terms: terms.length > 0 ? terms : DEFAULT_TERMS,
+            vehicleId: selectedVehicleId,
+            vehicleNumber: currentV?.number,
+            vehicleModel: currentV?.model,
+            packageName: mode === 'local' ? hourlyPackage : undefined,
+            baseFare: settings.baseFare
         };
 
+        return tripData;
+    };
+
+    const handlePreview = async () => {
+        const res = await performCalculation();
+        if (!res) return;
+        const tripData = constructTripData(res, true);
+        const doc = await generateReceiptPDF(tripData, { ...settings, gstEnabled: includeGst, rcmEnabled, userId: user?.id, vehicleNumber: tripData.vehicleNumber || '' });
+        setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
+        setShowPreview(true);
+    };
+
+    const handleShare = async (calcRes?: CalculationResult) => {
+        const res = calcRes || await performCalculation();
+        if (!res) return;
+
+        const tripData = constructTripData(res);
+
         try {
-            await shareReceipt(tripData as unknown as Trip, { ...settings, gstEnabled: includeGst, rcmEnabled, userId: user?.id, vehicleNumber: currentV?.number || '' });
+            await shareReceipt(tripData, { ...settings, gstEnabled: includeGst, rcmEnabled, userId: user?.id, vehicleNumber: tripData.vehicleNumber || '' });
         } catch (err) {
             console.error('Sharing failed, falling back to preview', err);
             handlePreview();
@@ -766,11 +824,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         if (customerPhone) saveToHistory('customer_phone', customerPhone);
         if (fromLoc) saveToHistory('location', fromLoc);
         if (toLoc) saveToHistory('location', toLoc);
-        const currentV = userVehicles.find(v => v.id === selectedVehicleId);
 
         // LOCK IN the ID and Invoice Number for this session
         if (!sessionTripId.current) sessionTripId.current = generateId();
-        // if (!sessionInvoiceNo.current) sessionInvoiceNo.current = nextInvoiceNo; // Use state now
 
         // Log to Admin Analytics (Non-blocking)
         Analytics.logActivity('invoice_created', {
@@ -782,22 +838,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
         Analytics.generateInvoice('invoice', res.total);
 
-        const tripData: Trip = {
-            id: sessionTripId.current, invoiceNo: invoiceNo, customerName: customerName || 'Cash Guest', customerPhone, customerGst,
-            from: fromLoc, to: toLoc, billingAddress, startKm: isOdometerMode ? startKm : 0, endKm: isOdometerMode ? endKm : (parseFloat(distanceOverride) || 0),
-            startTime: '', endTime: '', toll: parseFloat(toll) || 0, parking: parseFloat(parking) || 0, nightBata: parseFloat(nightCharge) || 0,
-            baseFare: settings.baseFare, ratePerKm: res.rateUsed, totalFare: res.total, fare: res.fare, distanceCharge: res.distanceCharge,
-            distance: res.distance, effectiveDistance: res.effectiveDistance, gst: res.gst, date: invoiceDate ? (invoiceDate.includes('T') ? invoiceDate : `${invoiceDate}T12:00:00Z`) : new Date().toISOString(),
-            mode: mode as unknown as Trip['mode'], notes: '', waitingHours: res.waitingHours, waitingCharges: 0, hillStationCharges: res.hillStationCharges,
-            petCharges: res.petCharges, permit: parseFloat(permit) || 0, days, driverBatta: res.driverBatta, extraItems,
-            rcmEnabled, // Save RCM status
-            terms, // Save Terms
-            gstRate: includeGst ? gstRate : 0, // Save Rate
-            gstType: includeGst ? (res.gstBreakdown?.type || 'CGST_SGST') : undefined,
-            vehicleId: selectedVehicleId,
-            vehicleNumber: currentV?.number,
-            vehicleModel: currentV?.model
-        };
+        const tripData = constructTripData(res);
 
         await onSaveTrip(tripData);
         return tripData;
