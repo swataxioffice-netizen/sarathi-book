@@ -193,7 +193,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
 
 
     return (
-        <div className="pb-24">
+        <div className="pb-24 -mt-4">
             <PDFPreviewModal
                 isOpen={showPreview}
                 onClose={() => setShowPreview(false)}
@@ -202,26 +202,32 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
             />
 
             {/* Filter & Summary Section */}
-            <div className="flex flex-col gap-1.5 sticky top-[-16px] md:top-[-32px] z-20 bg-[#F5F7FA]/95 backdrop-blur-md -mx-3 px-3 py-1.5 mb-2 border-b border-slate-200/50 shadow-sm">
+            <div className="flex flex-col gap-1.5 sticky top-[-1px] md:top-[-1px] z-20 bg-[#F5F7FA]/95 backdrop-blur-md -mx-3 px-3 py-1.5 mb-2 border-b border-slate-200/50 shadow-sm">
                 <div className="flex flex-col gap-2">
                     <div className="flex justify-between items-center px-0.5">
                         <div className="flex items-center gap-2">
                             {onBack && (
-                                <button onClick={onBack} className="lg:hidden p-1 -ml-2 text-slate-400 hover:text-slate-600 active:scale-95 transition-transform">
-                                    <ChevronLeft size={20} strokeWidth={2.5} />
+                                <button 
+                                    onClick={onBack} 
+                                    className="lg:hidden flex items-center gap-3 px-4 py-2 bg-white border border-slate-200 rounded-2xl text-slate-600 font-black uppercase tracking-widest shadow-md active:scale-95 transition-all mb-1"
+                                >
+                                    <span className="text-primary text-xl leading-none">←</span>
+                                    <span className="text-xs">BACK</span>
                                 </button>
                             )}
-                            <h3 className="text-[10px] font-black uppercase tracking-widest relative inline-block text-slate-800">
-                                {onBack ? 'BACK' : `${type === 'invoice' ? 'Invoice' : 'Quotation'} History`}
-                                <span className="absolute -bottom-1 left-0 w-6 h-0.5 rounded-full bg-primary"></span>
-                            </h3>
+                            {!onBack && (
+                                <h3 className="text-[10px] font-black uppercase tracking-widest relative inline-block text-slate-800">
+                                    {`${type === 'invoice' ? 'Invoice' : 'Quotation'} History`}
+                                    <span className="absolute -bottom-1 left-0 w-6 h-0.5 rounded-full bg-primary"></span>
+                                </h3>
+                            )}
                         </div>
 
                     </div>
 
                     {/* Month Navigator & Actions */}
                     {filter === 'month' && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-6">
                             <div className="flex-1 flex items-center justify-between bg-white rounded-lg p-1.5 border border-slate-200 shadow-sm">
                                 <button
                                     onClick={() => setSelectedMonth((prev: Date) => subMonths(prev, 1))}
@@ -258,7 +264,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
 
                     {/* GST Filter Toggle */}
                     {type === 'invoice' && (
-                        <div className="bg-slate-100/30 p-1 rounded-xl border border-slate-200/50 flex gap-1 mx-0.5 mt-1">
+                        <div className="bg-slate-100/30 p-1 rounded-xl border border-slate-200/50 flex gap-1 max-w-[280px] mx-auto mt-1 w-full">
                             {(['gst', 'non-gst'] as const).map((f) => (
                                 <button
                                     key={f}
@@ -316,7 +322,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
 
                                         {/* Main Content: Customer & Amount */}
                                         <div className="flex justify-between items-center mb-1.5">
-                                            <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight truncate leading-none">{item.customerName || 'Guest User'}</h4>
+                                            <h4 className="text-[13px] font-semibold text-slate-800 tracking-normal truncate leading-none capitalize">{item.customerName ? item.customerName.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : 'Guest User'}</h4>
                                             <p className="text-base font-black text-slate-900 tracking-tight tabular-nums leading-none">
                                                 ₹{Math.round(isInvoice ? (trip?.totalFare || 0) : ((quotation?.items || []).reduce((s: number, i: { amount: string }) => s + (parseFloat(i.amount) || 0), 0) * (quotation?.gstEnabled ? 1.05 : 1))).toLocaleString('en-IN')}
                                             </p>
@@ -337,36 +343,36 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                             </span>
                                         </div>
 
-                                        {/* Footer Actions - Compact */}
-                                        <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
-                                            <div className="flex gap-4">
+                                        {/* Footer Actions */}
+                                        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                                            <div className="flex gap-1">
                                                 <button
                                                     onClick={() => triggerAction(() => isInvoice ? handlePreviewInvoice(trip!) : handlePreviewQuotation(quotation!))}
-                                                    className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-primary transition-colors uppercase tracking-wide"
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold text-slate-500 hover:text-primary hover:bg-primary/5 active:scale-95 transition-all uppercase tracking-wide"
                                                 >
-                                                    <Eye size={12} strokeWidth={2.5} />
+                                                    <Eye size={14} strokeWidth={2} />
                                                     <span>View</span>
                                                 </button>
                                                 <button
                                                     onClick={() => triggerAction(() => isInvoice ? handleDownloadInvoice(trip!) : handleDownloadQuotation(quotation!))}
-                                                    className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-primary transition-colors uppercase tracking-wide"
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold text-slate-500 hover:text-primary hover:bg-primary/5 active:scale-95 transition-all uppercase tracking-wide"
                                                 >
-                                                    <Download size={12} strokeWidth={2.5} />
+                                                    <Download size={14} strokeWidth={2} />
                                                     <span>PDF</span>
                                                 </button>
                                                 <button
                                                     onClick={() => triggerAction(() => isInvoice ? shareReceipt(trip!, { ...settings, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A', userId: user?.id }) : handleShareQuotation(quotation!))}
-                                                    className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-primary transition-colors uppercase tracking-wide"
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold text-slate-500 hover:text-primary hover:bg-primary/5 active:scale-95 transition-all uppercase tracking-wide"
                                                 >
-                                                    <Share2 size={12} strokeWidth={2.5} />
+                                                    <Share2 size={14} strokeWidth={2} />
                                                     <span>Share</span>
                                                 </button>
                                                 {(isInvoice ? onEditTrip : onEditQuotation) && (
                                                     <button
                                                         onClick={() => triggerAction(() => isInvoice ? onEditTrip!(trip!) : onEditQuotation!(quotation!))}
-                                                        className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-primary transition-colors uppercase tracking-wide"
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold text-slate-500 hover:text-primary hover:bg-primary/5 active:scale-95 transition-all uppercase tracking-wide"
                                                     >
-                                                        <PenLine size={12} strokeWidth={2.5} />
+                                                        <PenLine size={14} strokeWidth={2} />
                                                         <span>Edit</span>
                                                     </button>
                                                 )}
@@ -375,9 +381,9 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                             {(isInvoice ? onDeleteTrip : onDeleteQuotation) && (
                                                 <button
                                                     onClick={() => isInvoice ? onDeleteTrip!(item.id) : onDeleteQuotation!(item.id)}
-                                                    className="p-1 rounded text-slate-300 hover:bg-red-50 hover:text-red-500 transition-colors"
+                                                    className="p-2 rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-500 active:scale-95 transition-all"
                                                 >
-                                                    <Trash2 size={12} strokeWidth={2.5} />
+                                                    <Trash2 size={14} strokeWidth={2} />
                                                 </button>
                                             )}
                                         </div>
