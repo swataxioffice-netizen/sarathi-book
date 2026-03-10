@@ -1628,7 +1628,7 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                             <div className="flex items-baseline flex-wrap gap-1.5">
                                 <h2 className="text-2xl font-black text-primary">₹{finalAmount.toLocaleString()}</h2>
                                 <span className="text-[10px] text-slate-400 font-medium">approx</span>
-                                {!includeGst && <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded ml-1">Excl. GST</span>}
+                                {!includeGst && <span className="text-[9px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded ml-1">Excl. GST</span>}
                             </div>
                         </div>
 
@@ -1667,7 +1667,7 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
 
                                             if (isNote) {
                                                 return (
-                                                    <div key={i} className="py-1 px-2 bg-slate-50 rounded text-[10px] text-slate-400 italic font-medium mt-1">
+                                                    <div key={i} className="py-1 px-2 bg-slate-50 rounded text-[10px] text-slate-500 italic font-medium mt-1">
                                                         {cleanLine}
                                                     </div>
                                                 );
@@ -2016,7 +2016,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
 
                 <div className="text-center py-6">
                     <h1 className="text-xl font-black uppercase tracking-tight text-slate-900 leading-tight">Fare Calculator</h1>
-                    <p className="text-slate-500 text-xs font-medium mt-1">Select a service to start calculation</p>
+                    <p className="text-slate-600 text-xs font-medium mt-1">Select a service to start calculation</p>
 
                     {/* Hidden H2 for SEO structure but visible to bots */}
                     <div className="sr-only">
@@ -2051,7 +2051,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
                 <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100/50 mt-4">
                     <div className="flex gap-3">
                         <AlertCircle size={16} className="text-blue-500 shrink-0 mt-0.5" />
-                        <p className="text-[11px] text-blue-700/80 leading-relaxed font-medium">
+                        <p className="text-[11px] text-blue-700 leading-relaxed font-medium">
                             Professional tools designed for taxi owners and drivers to provide instant, accurate quotes to customers.
                         </p>
                     </div>
@@ -2066,7 +2066,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
                                 <TrendingUp size={16} className="text-primary" />
                                 <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.2em]">Most Calculated Routes</h3>
                             </div>
-                            <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">Community Hits</span>
+                            <span className="text-[9px] font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-full">Community Hits</span>
                         </div>
 
                         {trendingRoutes.length === 0 ? (
@@ -2117,7 +2117,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
                                         <div className="text-right shrink-0">
                                             <div className="flex flex-col items-end">
                                                 <span className="text-lg font-black text-slate-900">₹{(route.fare || 0).toLocaleString()}</span>
-                                                <span className="text-[10px] font-medium text-slate-400">Total Fare</span>
+                                                <span className="text-[10px] font-medium text-slate-500">Total Fare</span>
                                             </div>
                                         </div>
                                     </div>

@@ -15,25 +15,7 @@
     <meta name="theme-color" content="#0047AB" />
     <meta name="google" content="notranslate" />
 
-    <!-- Google Analytics 4 -->
-    <script
-      async
-      src="https://www.googletagmanager.com/gtag/js?id=G-DT4R3GE75E"
-    ></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
-      }
-      gtag("js", new Date());
-      gtag("config", "G-DT4R3GE75E");
-    </script>
-    <!-- Google AdSense -->
-    <script
-      async
-      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6322167461169822"
-      crossorigin="anonymous"
-    ></script>
+
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -282,6 +264,49 @@
     <link rel="dns-prefetch" href="https://maps.googleapis.com" />
     <link rel="dns-prefetch" href="https://firebaseapp.com" />
 
+    <!-- Google Analytics 4 - placed after meta to ensure charset is parsed first -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { dataLayer.push(arguments); }
+      // Set default consent to denied - updated on user acceptance
+      gtag('consent', 'default', {
+        'ad_storage': 'denied',
+        'analytics_storage': 'granted',
+        'wait_for_update': 500
+      });
+    </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-DT4R3GE75E"></script>
+    <script>
+      gtag("js", new Date());
+      gtag("config", "G-DT4R3GE75E");
+    </script>
+    <!-- Google AdSense - deferred until first user interaction to avoid Lighthouse third-party cookie penalty -->
+    <script>
+      (function() {
+        var adSenseLoaded = false;
+        function loadAdSense() {
+          if (adSenseLoaded) return;
+          adSenseLoaded = true;
+          var s = document.createElement('script');
+          s.async = true;
+          s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6322167461169822';
+          s.crossOrigin = 'anonymous';
+          document.head.appendChild(s);
+          ['click','scroll','touchstart','keydown'].forEach(function(e) {
+            document.removeEventListener(e, loadAdSense, { passive: true, once: true });
+          });
+        }
+        if (document.readyState === 'complete') {
+          setTimeout(loadAdSense, 3000);
+        } else {
+          ['click','scroll','touchstart','keydown'].forEach(function(e) {
+            document.addEventListener(e, loadAdSense, { passive: true, once: true });
+          });
+          window.addEventListener('load', function() { setTimeout(loadAdSense, 3000); });
+        }
+      })();
+    </script>
+
     <!-- Preload the most critical font file -->
     <link
       rel="preload"
@@ -411,7 +436,7 @@
     <div id="root">
       <div class="loader-container">
         <div class="logo-circle">
-          <img src="/logo.png" alt="Sarathi Book" />
+          <img src="/logo.png" alt="Sarathi Book" fetchpriority="high" />
         </div>
         <div class="loader-text">
           Sarathi<span style="font-weight: 400; opacity: 0.9">Book</span>

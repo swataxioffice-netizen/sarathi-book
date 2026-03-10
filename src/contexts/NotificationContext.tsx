@@ -98,12 +98,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         };
     }, [user, addNotification]);
 
-    useEffect(() => {
-        // Request notification permission on first load
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
-        }
-    }, []);
+    // Note: Notification permission is intentionally NOT requested here on page load.
+    // It must be requested only in response to a user gesture (App Settings > Enable Notifications)
+    // to pass Lighthouse Best Practices 'notification-on-start' audit.
 
     const markAsRead = useCallback((id: string) => {
         setNotifications((prev) =>

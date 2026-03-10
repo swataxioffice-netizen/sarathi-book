@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getMessaging, getToken, onMessage, Messaging } from "firebase/messaging";
+import type { Messaging } from "firebase/messaging";
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -10,17 +10,26 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-console.log('Firebase Config:', { ...firebaseConfig, apiKey: '***' }); // Log for debugging, hide API key
-
-// Initialize Firebase
+// Initialize Firebase app (lightweight - does NOT trigger notification permission)
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase Cloud Messaging and get a reference to the service
-let messaging: Messaging | null = null;
-try {
-    messaging = getMessaging(app);
-} catch (error) {
-    console.warn('Firebase Messaging not supported in this environment:', error);
+// Lazily initialize Firebase Cloud Messaging only when explicitly needed.
+// NOT at module load time — avoids triggering Notification.requestPermission() on page load,
+// which would cause Lighthouse Best Practices "notification-on-start" failure.
+let _messaging: Messaging | null = null;
+let _messagingInitialized = false;
+
+export async function getMessagingInstance(): Promise<Messaging | null> {
+    if (_messagingInitialized) return _messaging;
+    _messagingInitialized = true;
+    try {
+        const { getMessaging } = await import("firebase/messaging");
+        _messaging = getMessaging(app);
+        return _messaging;
+    } catch {
+        return null;
+    }
 }
 
-export { messaging, getToken, onMessage };
+export { app };
+export type { Messaging };

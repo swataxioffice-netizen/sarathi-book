@@ -18,7 +18,7 @@ import { validateVehicleNumber } from '../utils/validation';
 // Sub-components (Lazy Loaded)
 const DocumentVault = React.lazy(() => import('./DocumentVault'));
 const SalaryManager = React.lazy(() => import('./SalaryManager'));
-import { subscribeToPush } from '../utils/push';
+
 import GoogleSignInButton from './GoogleSignInButton';
 
 // ----------------------------------------------------------------------
@@ -30,9 +30,13 @@ const Profile: React.FC = () => {
     const { user, loading: authLoading } = useAuth();
     const { settings, updateSettings, saveSettings, docStats } = useSettings();
 
+    // Centralised plan checks used throughout this component
+    const isSuper = settings.plan === 'super';
+    const isPremiumOrPro = settings.isPremium || settings.plan === 'pro' || settings.plan === 'super';
+
     // Local State
     const [activeTab, setActiveTab] = useState<'business' | 'payments' | 'vehicles' | 'docs'>('business');
-    const [activeModal, setActiveModal] = useState<string | null>(null);
+
     const [savingSection, setSavingSection] = useState<string | null>(null);
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [showStudio, setShowStudio] = useState(false);
@@ -168,7 +172,7 @@ const Profile: React.FC = () => {
     const handleAddVehicle = () => {
         if (!newVehicleNumber || !selectedCategoryId) return;
 
-        if (!settings.isPremium && settings.vehicles.length >= 4) {
+        if (!isPremiumOrPro && settings.vehicles.length >= 4) {
             window.dispatchEvent(new CustomEvent('open-pricing-modal'));
             return;
         }
@@ -280,11 +284,11 @@ const Profile: React.FC = () => {
                             <RefreshCw size={12} />
                         </button>
 
-                        {settings.plan === 'super' ? (
+                        {isSuper ? (
                             <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border border-amber-600 shadow-sm flex items-center gap-0.5">
                                 <Crown size={8} className="fill-current" /> S
                             </div>
-                        ) : settings.plan === 'pro' || settings.isPremium ? (
+                        ) : isPremiumOrPro ? (
                             <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border border-blue-700 shadow-sm">
                                 PRO
                             </div>
@@ -303,8 +307,8 @@ const Profile: React.FC = () => {
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                             ID: <span className="text-blue-600">{user?.id?.slice(0, 6).toUpperCase() || 'GUEST'}</span>
                             <span className="mx-1.5 opacity-30">|</span>
-                            <span className={settings.plan === 'super' ? "text-amber-500 font-extrabold" : (settings.plan === 'pro' || settings.isPremium) ? "text-blue-600 font-extrabold" : "text-slate-500 font-bold"}>
-                                {settings.plan === 'super' ? "SUPER PRO" : (settings.plan === 'pro' || settings.isPremium) ? "PRO MEMBER" : "FREE PLAN"}
+                            <span className={isSuper ? "text-amber-500 font-extrabold" : isPremiumOrPro ? "text-blue-600 font-extrabold" : "text-slate-500 font-bold"}>
+                                {isSuper ? "SUPER PRO" : isPremiumOrPro ? "PRO MEMBER" : "FREE PLAN"}
                             </span>
                         </p>
                     </div>
@@ -338,7 +342,7 @@ const Profile: React.FC = () => {
             )}
 
             {/* 2. Upgrade Section - Only shown for free users */}
-            {user && !settings.isPremium && (
+            {user && !isPremiumOrPro && (
                 <div className="mb-6 animate-fade-in">
                     <button
                         onClick={() => window.dispatchEvent(new CustomEvent('open-pricing-modal'))}
@@ -549,7 +553,7 @@ const Profile: React.FC = () => {
                                 </select>
                                 <button onClick={handleAddVehicle} className="h-10 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-800">Add</button>
                             </div>
-                            {!settings.isPremium && <p className="text-[9px] text-center font-bold text-slate-400">Unlimited vehicles in <span className="text-pink-600 font-black">PRO</span></p>}
+                            {!isPremiumOrPro && <p className="text-[9px] text-center font-bold text-slate-400">Unlimited vehicles in <span className="text-pink-600 font-black">PRO</span></p>}
                         </div>
                     </div>
                 )}
@@ -567,10 +571,7 @@ const Profile: React.FC = () => {
                 )}
             </div>
 
-            {/* 4. Footer & Modals */}
-            <div className="mt-12 text-center">
-                <button onClick={() => setActiveModal('settings')} className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600">App Settings</button>
-            </div>
+            {/* removed app settings button - moved to side menu */}
 
             {/* Pro Studio Modal */}
             {showStudio && (
@@ -699,17 +700,6 @@ const Profile: React.FC = () => {
                 </div>
             )}
 
-            {/* App Settings Modal */}
-            {activeModal === 'settings' && (
-                <div className="fixed inset-0 z-120 bg-black/60 flex items-center justify-center p-4 animate-fade-in" onClick={() => setActiveModal(null)}>
-                    <div className="bg-white w-full max-w-xs rounded-3xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
-                        <h3 className="font-black uppercase text-sm mb-4">Settings</h3>
-                        <button onClick={() => subscribeToPush().then(() => alert('Subscribed'))} className="w-full py-4 bg-orange-50 text-orange-600 rounded-xl font-black uppercase text-[10px]">Enable Notifications</button>
-                        <button onClick={() => window.location.reload()} className="w-full py-4 border rounded-xl font-black uppercase text-[10px]">Refresh Application</button>
-                        <button onClick={() => setActiveModal(null)} className="w-full py-4 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px]">Close</button>
-                    </div>
-                </div>
-            )}
 
         </div>
     );

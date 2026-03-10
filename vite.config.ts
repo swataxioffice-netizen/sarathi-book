@@ -123,7 +123,7 @@ export default defineConfig(({ mode }) => ({
             output: {
                 manualChunks: {
                     'vendor-react':    ['react', 'react-dom'],
-                    'vendor-firebase': ['firebase'],
+                    'vendor-firebase': ['firebase/app', 'firebase/messaging'],
                     'vendor-supabase': ['@supabase/supabase-js'],
                     'vendor-pdf':      ['jspdf', 'html2canvas', 'react-pdf'],
                     'vendor-maps':     ['@googlemaps/js-api-loader'],

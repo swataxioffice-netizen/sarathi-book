@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
@@ -9,10 +9,10 @@ interface GoogleSignInButtonProps {
 }
 
 /**
- * 🚀 Rebuilt Pure Modern Google Sign-In
+ * 🚀 Pure Modern Google Sign-In Button
  * - NO External Google Scripts (Prevents AbortError/GSI Warnings)
  * - Pure Supabase OAuth Flow
- * - High-end Glassmorphism Design
+ * - Auto-resets loading state after 15s timeout (handles blocked redirects)
  */
 const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
     className = '',
@@ -22,11 +22,34 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
     const { signInWithGoogle } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
 
+    // Safety: reset loading state after 15s in case redirect is blocked/slow
+    useEffect(() => {
+        if (!isLoading) return;
+        const timer = setTimeout(() => {
+            setIsLoading(false);
+        }, 15000);
+        return () => clearTimeout(timer);
+    }, [isLoading]);
+
+    // Also reset loading if the page regains focus (user cancelled Google popup)
+    useEffect(() => {
+        const handleFocus = () => {
+            if (isLoading) {
+                setTimeout(() => setIsLoading(false), 800);
+            }
+        };
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, [isLoading]);
+
     const handleLogin = async () => {
+        if (isLoading) return;
         setIsLoading(true);
         try {
-            console.log('Starting Google Sign-In...');
+            if (onClick) onClick();
             await signInWithGoogle();
+            // signInWithGoogle triggers a redirect; if it returns without
+            // throwing, the redirect is in progress — keep loading state.
         } catch (err: unknown) {
             const error = err as Error;
             console.error('Login failed:', error);
@@ -38,14 +61,10 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
     return (
         <button
             type="button"
-            onClick={(e) => {
-                e.preventDefault();
-                console.log('Google Sign-In Clicked');
-                if (onClick) onClick();
-                handleLogin();
-            }}
+            id="google-sign-in-btn"
+            onClick={handleLogin}
             disabled={isLoading}
-            className={`group relative flex items-center justify-center gap-3 w-full py-4 px-6 bg-white text-slate-800 border border-slate-200 rounded-2xl shadow-lg hover:shadow-blue-500/10 hover:border-blue-400 active:scale-[0.98] transition-all duration-300 disabled:opacity-70 ${className}`}
+            className={`group relative flex items-center justify-center gap-3 w-full py-4 px-6 bg-white text-slate-800 border border-slate-200 rounded-2xl shadow-lg hover:shadow-blue-500/10 hover:border-blue-400 active:scale-[0.98] transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed ${className}`}
         >
             {isLoading ? (
                 <Loader2 className="w-5 h-5 text-blue-600 animate-spin relative z-10" />

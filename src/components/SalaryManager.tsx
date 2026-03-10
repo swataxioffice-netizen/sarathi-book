@@ -40,6 +40,8 @@ const SalaryManager: React.FC = () => {
     const { settings, updateSettings } = useSettings();
     const { user } = useAuth();
 
+    const isPremium = settings.isPremium || settings.plan === 'pro' || settings.plan === 'super';
+
 
 
     const [showAddModal, setShowAddModal] = useState(false);
@@ -183,6 +185,10 @@ const SalaryManager: React.FC = () => {
     };
 
     const handleAddStaff = async () => {
+        if (!isPremium) {
+            window.dispatchEvent(new Event('open-pricing-modal'));
+            return;
+        }
         if (!newName) return;
 
         const newStaff: Staff = {
@@ -1063,10 +1069,24 @@ const SalaryManager: React.FC = () => {
                         </button>
                     </div>
                     <button
-                        onClick={() => setShowAddModal(true)}
-                        className="bg-blue-600 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-1 shadow-md shadow-blue-200 hover:bg-blue-700 transition-all"
+                        onClick={() => {
+                            if (!isPremium) {
+                                window.dispatchEvent(new Event('open-pricing-modal'));
+                            } else {
+                                setShowAddModal(true);
+                            }
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-1 shadow-md transition-all ${
+                            isPremium
+                                ? 'bg-blue-600 text-white shadow-blue-200 hover:bg-blue-700'
+                                : 'bg-amber-500 text-white shadow-amber-200 hover:bg-amber-600'
+                        }`}
                     >
-                        <Plus size={12} strokeWidth={3} /> Add Staff
+                        {isPremium ? (
+                            <><Plus size={12} strokeWidth={3} /> Add Staff</>
+                        ) : (
+                            <><span className="text-[10px]">🔒</span> Pro Feature</>
+                        )}
                     </button>
                 </div>
 

@@ -20,7 +20,7 @@ const Dashboard = lazy(() => import('./components/Dashboard'));
 import { NotificationProvider, useNotifications } from './contexts/NotificationContext';
 import Notifications from './components/Notifications';
 import { Analytics } from './utils/monitoring';
-import { subscribeToPush, onMessageListener } from './utils/push';
+import { subscribeToPush, setupForegroundMessages } from './utils/push';
 import type { Trip } from './utils/fare';
 import type { SavedQuotation } from './utils/pdf';
 
@@ -202,11 +202,12 @@ function AppContent() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Guest Login Nudge Logic
-  // Guest Login Nudge Logic
   useEffect(() => {
     if (user?.id) {
       setShowLoginNudge(false);
-      subscribeToPush();
+      // Note: subscribeToPush() is intentionally NOT called automatically here.
+      // Push notifications must be requested via user gesture (App Settings > Enable Notifications)
+      // to comply with Lighthouse Best Practices and browser permission UX guidelines.
     } else if (!authLoading) {
       const lastClosed = localStorage.getItem('login_nudge_closed_at');
       const COOLDOWN = 24 * 60 * 60 * 1000; // 24 Hours
@@ -214,7 +215,7 @@ function AppContent() {
       const shouldShow = !lastClosed || (Date.now() - parseInt(lastClosed) > COOLDOWN);
 
       if (shouldShow) {
-        const timer = setTimeout(() => setShowLoginNudge(true), 15000); // Increased initial delay to 15s to be less intrusive
+        const timer = setTimeout(() => setShowLoginNudge(true), 15000);
         return () => clearTimeout(timer);
       }
     }
@@ -243,14 +244,20 @@ function AppContent() {
     };
   }, []);
 
-  // Handle foreground notifications
+  // Handle foreground notifications — set up only once, does NOT trigger permission prompt
   useEffect(() => {
-    onMessageListener().then((payload: MessagePayload) => {
-      // console.log('Push received in foreground:', payload);
+    let unsubscribe: (() => void) | null = null;
+    let isMounted = true;
+    setupForegroundMessages((payload: MessagePayload) => {
+      if (!isMounted) return;
       if (payload.notification) {
         addNotification(payload.notification.title || 'New Message', payload.notification.body || '', 'info');
       }
-    });
+    }).then(fn => { if (isMounted) unsubscribe = fn; }).catch(() => {/* ignore */});
+    return () => {
+      isMounted = false;
+      unsubscribe?.();
+    };
   }, [addNotification]);
 
   // Load Data from IndexedDB (with Migration Fallback)
@@ -804,7 +811,9 @@ function AppContent() {
       case 'calculator':
       case 'taxi-fare-calculator':
         return (
-          <Calculator />
+          <Suspense fallback={<LoadingFallback />}>
+            <Calculator />
+          </Suspense>
         );
       case 'trending':
         return settings.plan === 'super' ? (
@@ -843,7 +852,7 @@ function AppContent() {
           </Suspense>
         );
       case 'staff':
-        return settings.isPremium ? (
+        return (settings.isPremium || settings.plan === 'pro' || settings.plan === 'super') ? (
           <Suspense fallback={<LoadingFallback />}>
             <SalaryManager />
           </Suspense>
@@ -940,7 +949,7 @@ function AppContent() {
               <Notifications />
               <div className="text-right hidden lg:block">
                 <p className="text-sm font-bold text-slate-900">{user?.user_metadata?.full_name || 'Guest User'}</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Driver Account</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Driver Account</p>
               </div>
               {!user ? (
                 <GoogleSignInButton

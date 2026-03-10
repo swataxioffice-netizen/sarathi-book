@@ -30,8 +30,8 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
     const { user, signOut, isAdmin } = useAuth();
     const { settings } = useSettings();
 
-    const isPro = settings.plan === 'pro' || settings.isPremium;
     const isSuper = settings.plan === 'super';
+    const isPro = settings.plan === 'pro' || settings.plan === 'super' || settings.isPremium;
 
     const [collapsedSections, setCollapsedSections] = React.useState<Record<string, boolean>>({});
 
@@ -82,12 +82,7 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
                  { id: 'finance', icon: Landmark, label: 'Loan Center', subtitle: 'Get loans for your business' },
             ]
         },
-        {
-            title: 'App',
-            items: [
-                { id: 'app-settings', icon: Settings, label: 'App Settings', subtitle: 'Notifications & preferences' },
-            ]
-        },
+
         {
             title: 'Support & Legal',
             items: [
@@ -95,6 +90,12 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
                 { id: 'contact', icon: Contact, label: 'Contact Us', subtitle: 'Get in touch' },
                 { id: 'privacy', icon: ShieldCheck, label: 'Privacy Policy', subtitle: 'Your data safety' },
                 { id: 'terms', icon: FileText, label: 'Terms of Service', subtitle: 'Usage conditions' },
+            ]
+        },
+        {
+            title: 'App',
+            items: [
+                { id: 'app-settings', icon: Settings, label: 'App Settings', subtitle: 'Notifications & preferences' },
             ]
         }
     ];

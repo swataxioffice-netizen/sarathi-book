@@ -25,8 +25,8 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
     const { user, signOut, isAdmin } = useAuth();
     const { settings } = useSettings();
 
-    const isPro = settings.plan === 'pro' || settings.isPremium;
     const isSuper = settings.plan === 'super';
+    const isPro = settings.plan === 'pro' || settings.plan === 'super' || settings.isPremium;
 
     const [collapsedSections, setCollapsedSections] = React.useState<Record<string, boolean>>({});
 
@@ -108,12 +108,7 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                  { id: 'finance', icon: Landmark, label: 'Loan Center' },
             ]
         },
-        {
-            title: 'App',
-            items: [
-                { id: 'app-settings', icon: Settings, label: 'App Settings' },
-            ]
-        },
+
         {
             title: 'Support & Legal',
             items: [
@@ -121,6 +116,12 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                 { id: 'contact', icon: Contact, label: 'Contact Us' },
                 { id: 'privacy', icon: ShieldCheck, label: 'Privacy Policy' },
                 { id: 'terms', icon: FileText, label: 'Terms of Service' },
+            ]
+        },
+        {
+            title: 'App',
+            items: [
+                { id: 'app-settings', icon: Settings, label: 'App Settings' },
             ]
         }
     ];
@@ -148,9 +149,9 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                         <h1 className="text-lg font-black text-primary leading-none tracking-tight uppercase">
                             SARATHI BOOK
                         </h1>
-                        <div className={`mt-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isSuper ? 'bg-amber-500/10 border-amber-500/20 text-amber-600' :
+                        <div className={`mt-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isSuper ? 'bg-amber-500/10 border-amber-500/20 text-amber-700' :
                             isPro ? 'bg-primary/10 border-primary/20 text-primary' :
-                                'bg-slate-100 border-slate-200 text-slate-400'
+                                'bg-slate-100 border-slate-200 text-slate-600'
                             }`}>
                             {isSuper ? 'Super Pro' : isPro ? 'Pro Active' : 'Free Edition'}
                         </div>
@@ -235,9 +236,9 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                                     onClick={() => toggleSection(section.title)}
                                     className="w-full flex items-center justify-between px-4 mb-2 group cursor-pointer hover:bg-slate-50 py-1 rounded-lg transition-colors"
                                 >
-                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-slate-600 transition-colors">
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover:text-slate-700 transition-colors">
                                         {section.title}
-                                    </h4>
+                                    </p>
                                     <ChevronDown 
                                         size={14} 
                                         className={`text-slate-300 group-hover:text-slate-500 transition-all duration-200 ${isCollapsed ? '-rotate-90' : ''}`} 
@@ -262,7 +263,7 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                                                         <span className="bg-primary/10 text-primary text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">Pro</span>
                                                     )}
                                                     {item.isSuper && !isSuper && (
-                                                        <span className="bg-amber-100 text-amber-600 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">Super</span>
+                                                        <span className="bg-amber-100 text-amber-700 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">Super</span>
                                                     )}
                                                 </div>
                                             </div>
@@ -314,7 +315,7 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                 )}
 
                 <div className="pt-2 text-center border-t border-slate-50 mt-2">
-                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">v2.5.0 Gold Edition</p>
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">v2.5.0 Gold Edition</p>
                 </div>
             </div>
         </aside>
