@@ -17,7 +17,7 @@ import {
     RotateCcw, Trash2, PenLine,
     StickyNote, Check, Settings
 } from 'lucide-react';
-import { shareQuotation, generateQuotationPDF, QuotationData, SavedQuotation } from '../utils/pdf';
+import type { QuotationData, SavedQuotation } from '../utils/pdf';
 import PDFPreviewModal from './PDFPreviewModal';
 import { calculateDistance, geocodeAddress } from '../utils/googleMaps';
 import { calculateAdvancedRoute } from '../utils/routesApi';
@@ -591,6 +591,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
 
         qData.items = items;
 
+        const { generateQuotationPDF } = await import('../utils/pdf');
         const doc = await generateQuotationPDF(qData, { ...settings, vehicleNumber: 'N/A' });
         setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
         setShowPreview(true);
@@ -687,6 +688,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                     terms,
                     items
                 };
+                const { shareQuotation } = await import('../utils/pdf');
                 await shareQuotation(qData, { ...settings, vehicleNumber: 'N/A' });
 
                 if (onSaveQuotation) {

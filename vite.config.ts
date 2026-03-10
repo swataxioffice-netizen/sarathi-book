@@ -115,7 +115,17 @@ export default defineConfig(({ mode }) => ({
             devOptions: {
                 enabled: true
             }
-        })
+        }),
+        {
+            name: 'defer-css',
+            enforce: 'post',
+            transformIndexHtml(html) {
+                return html.replace(
+                    /<link rel="stylesheet"(.*?)href="(.*?\.css)"(.*?)>/g,
+                    '<link rel="preload" as="style"$1href="$2"$3 onload="this.onload=null;this.rel=\'stylesheet\'"><noscript><link rel="stylesheet"$1href="$2"$3></noscript>'
+                );
+            }
+        }
     ],
     build: {
         chunkSizeWarningLimit: 1000,

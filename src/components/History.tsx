@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import type { Trip } from '../utils/fare';
-import { shareReceipt, shareQuotation, generateQuotationPDF, generateReceiptPDF, generateBulkReceiptsPDF, type SavedQuotation } from '../utils/pdf';
+import type { SavedQuotation } from '../utils/pdf';
 import { format, subMonths, addMonths, isSameMonth } from 'date-fns';
 import { FileText, Share2, Eye, Trash2, Download, ChevronLeft, ChevronRight, Calendar, PenLine } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -92,6 +92,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
             customerAddress: q.customerAddress,
             customerGstin: q.customerGstin
         };
+        const { generateQuotationPDF } = await import('../utils/pdf');
         const doc = await generateQuotationPDF(quoteData, {
             ...settings,
             vehicleNumber: 'N/A' // Quotations are generic
@@ -101,6 +102,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
     };
 
     const handlePreviewInvoice = async (trip: Trip) => {
+        const { generateReceiptPDF } = await import('../utils/pdf');
         const doc = await generateReceiptPDF(trip, {
             ...settings,
             vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A'
@@ -121,6 +123,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
             customerAddress: q.customerAddress,
             customerGstin: q.customerGstin
         };
+        const { generateQuotationPDF } = await import('../utils/pdf');
         const doc = await generateQuotationPDF(quoteData, {
             ...settings,
             vehicleNumber: 'N/A'
@@ -129,6 +132,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
     };
 
     const handleDownloadInvoice = async (trip: Trip) => {
+        const { generateReceiptPDF } = await import('../utils/pdf');
         const doc = await generateReceiptPDF(trip, {
             ...settings,
             vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A'
@@ -148,6 +152,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
             customerAddress: q.customerAddress,
             customerGstin: q.customerGstin
         };
+        const { shareQuotation } = await import('../utils/pdf');
         await shareQuotation(quoteData, {
             ...settings,
             vehicleNumber: 'N/A', // Quotations are generic usually
@@ -176,6 +181,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
         }
 
         try {
+            const { generateBulkReceiptsPDF } = await import('../utils/pdf');
             const doc = await generateBulkReceiptsPDF(itemsToPrint, {
                 ...settings,
                 vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A'
@@ -361,7 +367,14 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                                     <span>PDF</span>
                                                 </button>
                                                 <button
-                                                    onClick={() => triggerAction(() => isInvoice ? shareReceipt(trip!, { ...settings, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A', userId: user?.id }) : handleShareQuotation(quotation!))}
+                                                    onClick={() => triggerAction(async () => { 
+                                                        if (isInvoice) {
+                                                            const { shareReceipt } = await import('../utils/pdf'); 
+                                                            shareReceipt(trip!, { ...settings, vehicleNumber: settings.vehicles.find(v => v.id === settings.currentVehicleId)?.number || 'N/A', userId: user?.id });
+                                                        } else {
+                                                            handleShareQuotation(quotation!);
+                                                        }
+                                                    })}
                                                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold text-slate-500 hover:text-primary hover:bg-primary/5 active:scale-95 transition-all uppercase tracking-wide"
                                                 >
                                                     <Share2 size={14} strokeWidth={2} />

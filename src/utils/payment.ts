@@ -57,7 +57,7 @@ export const initializePayment = async (options: Partial<RazorpayOptions>) => {
         currency: 'INR',
         name: 'Sarathi Book Pro',
         description: options.description || 'Yearly Subscription',
-        image: '/logo.png',
+        image: '/logo.webp',
         handler: options.handler || ((res: RazorpayResponse) => console.log(res)),
         prefill: {
             name: options.prefill?.name || '',

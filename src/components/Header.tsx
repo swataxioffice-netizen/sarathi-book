@@ -29,7 +29,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2.5">
                     <div className="w-9 h-9 shrink-0 bg-white rounded-xl flex items-center justify-center border border-slate-50">
                         <img
-                            src="/logo.png"
+                            src="/logo.webp"
                             alt="Sarathi Book"
                             width="36"
                             height="36"

@@ -54,7 +54,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if ('Notification' in window && Notification.permission === 'granted') {
             new window.Notification(title, {
                 body: message,
-                icon: '/logo.png'
+                icon: '/logo.webp'
             });
         }
     }, []);

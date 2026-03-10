@@ -18,7 +18,7 @@ import {
     Camera, Eye, Settings
 } from 'lucide-react';
 import { generateId } from '../utils/uuid';
-import { generateReceiptPDF, SavedQuotation, shareReceipt } from '../utils/pdf';
+import type { SavedQuotation } from '../utils/pdf';
 import { saveToHistory } from '../utils/history';
 import { useAuth } from '../contexts/AuthContext';
 import PDFPreviewModal from './PDFPreviewModal';
@@ -795,6 +795,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         const res = await performCalculation();
         if (!res) return;
         const tripData = constructTripData(res, true);
+        const { generateReceiptPDF } = await import('../utils/pdf');
         const doc = await generateReceiptPDF(tripData, { ...settings, gstEnabled: includeGst, rcmEnabled, userId: user?.id, vehicleNumber: tripData.vehicleNumber || '' });
         setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
         setShowPreview(true);
@@ -807,6 +808,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         const tripData = constructTripData(res);
 
         try {
+            const { shareReceipt } = await import('../utils/pdf');
             await shareReceipt(tripData, { ...settings, gstEnabled: includeGst, rcmEnabled, userId: user?.id, vehicleNumber: tripData.vehicleNumber || '' });
         } catch (err) {
             console.error('Sharing failed, falling back to preview', err);

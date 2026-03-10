@@ -140,7 +140,7 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 shrink-0 bg-white rounded-xl shadow-sm border border-slate-100 p-1.5 flex items-center justify-center relative overflow-hidden">
                         <img
-                            src="/logo.png"
+                            src="/logo.webp"
                             alt="Sarathi Book"
                             className="w-full h-full object-contain"
                         />
