@@ -202,7 +202,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
             />
 
             {/* Filter & Summary Section */}
-            <div className="flex flex-col gap-1.5 sticky top-[-1px] md:top-[-1px] z-20 bg-[#F5F7FA]/95 backdrop-blur-md -mx-3 px-3 py-1.5 mb-2 border-b border-slate-200/50 shadow-sm">
+            <div className="flex flex-col gap-1.5 sticky -top-px md:-top-px z-20 bg-[#F5F7FA]/95 backdrop-blur-md -mx-3 px-3 py-1.5 mb-2 border-b border-slate-200/50 shadow-sm">
                 <div className="flex flex-col gap-2">
                     <div className="flex justify-between items-center px-0.5">
                         <div className="flex items-center gap-2">

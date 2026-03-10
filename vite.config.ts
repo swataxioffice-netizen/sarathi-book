@@ -3,7 +3,11 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+    esbuild: {
+        // Drop console.log and debugger in production builds (improves Best Practices score)
+        drop: mode === 'production' ? ['console', 'debugger'] : [],
+    },
     plugins: [
         react(),
         VitePWA({
@@ -104,7 +108,6 @@ export default defineConfig({
                         handler: 'StaleWhileRevalidate',
                         options: {
                             cacheName: 'static-resources',
-                            /* formulas removed as it is not a valid property for StaleWhileRevalidate options */
                         },
                     }
                 ]
@@ -114,5 +117,20 @@ export default defineConfig({
             }
         })
     ],
-    // Removed manualChunks causing build failure
-})
+    build: {
+        chunkSizeWarningLimit: 1000,
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'vendor-react':    ['react', 'react-dom'],
+                    'vendor-firebase': ['firebase'],
+                    'vendor-supabase': ['@supabase/supabase-js'],
+                    'vendor-pdf':      ['jspdf', 'html2canvas', 'react-pdf'],
+                    'vendor-maps':     ['@googlemaps/js-api-loader'],
+                    'vendor-ui':       ['lucide-react', 'qrcode', 'qrcode.react', 'date-fns'],
+                    'vendor-ai':       ['@google/generative-ai'],
+                }
+            }
+        }
+    }
+}))

@@ -12,10 +12,10 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useUpdate, UpdateProvider } from './contexts/UpdateContext';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
-import Dashboard from './components/Dashboard';
 import GoogleSignInButton from './components/GoogleSignInButton';
 import SideNav from './components/SideNav';
 import Footer from './components/Footer';
+const Dashboard = lazy(() => import('./components/Dashboard'));
 
 import { NotificationProvider, useNotifications } from './contexts/NotificationContext';
 import Notifications from './components/Notifications';
@@ -25,7 +25,7 @@ import type { Trip } from './utils/fare';
 import type { SavedQuotation } from './utils/pdf';
 
 // Lazy load heavy components to reduce initial bundle size
-import Calculator from './components/Calculator';
+const Calculator = lazy(() => import('./components/Calculator'));
 const TripForm = lazy(() => import('./components/TripForm'));
 const History = lazy(() => import('./components/History'));
 const Profile = lazy(() => import('./components/Profile'));
@@ -40,7 +40,7 @@ const SalaryManager = lazy(() => import('./components/SalaryManager'));
 const TrendingRoutes = lazy(() => import('./components/TrendingRoutes'));
 const RoutesDirectory = lazy(() => import('./components/RoutesDirectory'));
 const TariffPage = lazy(() => import('./components/TariffPage'));
-import MobileMenu from './components/MobileMenuContainer';
+const MobileMenu = lazy(() => import('./components/MobileMenuContainer'));
 const Finance = lazy(() => import('./components/Finance'));
 const RouteLandingPage = lazy(() => import('./components/RouteLandingPage'));
 const BusinessCard = lazy(() => import('./components/BusinessCard'));
@@ -1001,12 +1001,14 @@ function AppContent() {
           setActiveTab={setActiveTab}
         />
 
-        <MobileMenu
-          isOpen={isMobileMenuOpen}
-          onClose={() => setIsMobileMenuOpen(false)}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-        />
+        <Suspense fallback={null}>
+          <MobileMenu
+            isOpen={isMobileMenuOpen}
+            onClose={() => setIsMobileMenuOpen(false)}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+          />
+        </Suspense>
       </div>
 
       {/* App Settings Modal */}
