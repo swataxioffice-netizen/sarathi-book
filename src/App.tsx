@@ -692,27 +692,15 @@ function AppContent() {
             {/* Content Container - Removed Blur/Lock */}
             <div className="space-y-4 transition-all duration-700">
 
-              {/* Optimized Profile Nudge */}
+              {/* Profile Nudge */}
               {completion < 100 && (
                 <div
                   onClick={() => setActiveTab('profile')}
-                  className="bg-slate-900 text-white rounded-2xl p-3 flex items-center gap-3 animate-fade-in relative overflow-hidden cursor-pointer"
+                  className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2 flex items-center gap-3 cursor-pointer active:bg-orange-100 transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-full bg-white/10 text-orange-400 flex items-center justify-center shrink-0">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center mb-1">
-                      <h4 className="text-[10px] font-black uppercase tracking-widest text-white/90">Setup Profile</h4>
-                      <span className="text-[10px] font-black text-white/50">{completion}%</span>
-                    </div>
-                    <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-                      <div className="h-full bg-orange-500" style={{ width: `${completion}%` }}></div>
-                    </div>
-                  </div>
-                  <div className="shrink-0 flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-orange-400">
-                    Fix <MoveRight size={12} />
-                  </div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
+                  <p className="flex-1 text-[11px] font-bold text-orange-700">Complete your profile to generate bills</p>
+                  <span className="text-[11px] font-black text-orange-500">{completion}% →</span>
                 </div>
               )}
 

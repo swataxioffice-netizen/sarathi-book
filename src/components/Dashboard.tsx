@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { safeJSONParse } from '../utils/storage';
 import { Trip, Expense } from '../utils/fare'; // Use named imports if they are exported as such, or adjust if they are types
-import { IndianRupee, TrendingUp, CheckCircle2, FileText, MoveRight, Users } from 'lucide-react';
+import { IndianRupee, TrendingUp } from 'lucide-react';
 import type { SavedQuotation } from '../utils/pdf';
-import { useSettings } from '../contexts/SettingsContext';
 
 interface DashboardProps {
     trips: Trip[];
@@ -13,7 +12,6 @@ interface DashboardProps {
 type TimeRange = 'today' | 'week' | 'month' | 'year';
 
 const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
-    const { settings } = useSettings();
     const [range, setRange] = useState<TimeRange>('today');
 
     const now = new Date();
@@ -45,22 +43,22 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
             case 'today':
                 income = trips.filter(t => t.date.startsWith(today)).reduce((sum, t) => sum + t.totalFare, 0);
                 spending = expenses.filter(e => e.date.startsWith(today)).reduce((sum, e) => sum + e.amount, 0);
-                label = 'CASH FLOW TODAY';
+                label = 'Aaj Ki Kamai';
                 break;
             case 'week':
                 income = trips.filter(t => isThisWeek(t.date)).reduce((sum, t) => sum + t.totalFare, 0);
                 spending = expenses.filter(e => isThisWeek(e.date)).reduce((sum, e) => sum + e.amount, 0);
-                label = 'CASH FLOW THIS WEEK';
+                label = 'This Week';
                 break;
             case 'month':
                 income = trips.filter(t => isThisMonth(t.date)).reduce((sum, t) => sum + t.totalFare, 0);
                 spending = expenses.filter(e => isThisMonth(e.date)).reduce((sum, e) => sum + e.amount, 0);
-                label = 'CASH FLOW THIS MONTH';
+                label = 'This Month';
                 break;
             case 'year':
                 income = trips.filter(t => isThisYear(t.date)).reduce((sum, t) => sum + t.totalFare, 0);
                 spending = expenses.filter(e => isThisYear(e.date)).reduce((sum, e) => sum + e.amount, 0);
-                label = 'CASH FLOW THIS YEAR';
+                label = 'This Year';
                 break;
         }
         return { income, spending, profit: income - spending, label };
@@ -101,7 +99,7 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                                 Let's get started! 🚀
                             </h2>
                         ) : (
-                            <h2 className={`text-xl font-bold mt-0.5 tabular-nums tracking-tight ${stats.profit >= 0 ? 'text-slate-900' : 'text-error'}`}>
+                            <h2 className={`text-3xl font-black mt-0.5 tabular-nums tracking-tight ${stats.profit >= 0 ? 'text-slate-900' : 'text-error'}`}>
                                 ₹{stats.profit.toLocaleString()}
                             </h2>
                         )}
@@ -155,99 +153,12 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                 </div>
             </div>
 
-            {/* Quick Actions Grid */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-                <button
-                    onClick={() => {
-                        window.dispatchEvent(new Event('nav-tab-invoice'));
-                    }}
-                    className="flex flex-col items-center justify-center bg-white border border-slate-200 text-slate-700 p-4 rounded-2xl shadow-sm hover:bg-slate-50 min-h-[110px] active:scale-95 transition-all"
-                >
-                    <FileText size={36} className="mb-3 text-primary" />
-                    <span className="font-bold uppercase tracking-wider text-[11px]">New Invoice</span>
-                </button>
-                <button 
-                    onClick={() => {
-                        window.dispatchEvent(new Event('nav-tab-invoice-history'));
-                    }}
-                    className="flex flex-col items-center justify-center bg-white border border-slate-200 text-slate-700 p-4 rounded-2xl shadow-sm hover:bg-slate-50 min-h-[110px] active:scale-95 transition-all"
-                >
-                    <FileText size={36} className="mb-3 text-primary/80" />
-                    <span className="font-bold uppercase tracking-wider text-[11px]">Invoice History</span>
-                </button>
-                <button
-                    onClick={() => {
-                        window.dispatchEvent(new Event('nav-tab-quotation'));
-                    }}
-                    className="flex flex-col items-center justify-center bg-white border border-slate-200 text-slate-700 p-4 rounded-2xl shadow-sm hover:bg-slate-50 min-h-[110px] active:scale-95 transition-all"
-                >
-                    <FileText size={36} className="mb-3 text-primary" />
-                    <span className="font-bold uppercase tracking-wider text-[11px]">New Quotation</span>
-                </button>
-                <button 
-                    onClick={() => {
-                        window.dispatchEvent(new Event('nav-tab-quotation-history'));
-                    }}
-                    className="flex flex-col items-center justify-center bg-white border border-slate-200 text-slate-700 p-4 rounded-2xl shadow-sm hover:bg-slate-50 min-h-[110px] active:scale-95 transition-all"
-                >
-                    <FileText size={36} className="mb-3 text-primary/80" />
-                    <span className="font-bold uppercase tracking-wider text-[11px]">Quotation History</span>
-                </button>
-            </div>
-
-            {/* Super Pro - Market Insights */}
-            {settings.plan === 'super' && (
-                <div className="bg-white border-2 border-amber-200 rounded-2xl p-4 shadow-xl shadow-amber-50 relative overflow-hidden group hover:border-amber-400 transition-all cursor-pointer" onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'trending' }))}>
-                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-100/50 rounded-full blur-2xl group-hover:scale-125 transition-transform" />
-                    <div className="relative z-10 flex items-center gap-4">
-                        <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-amber-200 rotate-3 group-hover:rotate-0 transition-transform">
-                            <TrendingUp size={24} strokeWidth={3} />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="text-amber-600 font-black text-[10px] uppercase tracking-[0.2em] mb-1 flex items-center gap-2">
-                                <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" /> Super Pro Market Insights
-                            </h3>
-                            <p className="text-slate-900 font-black text-xs uppercase tracking-tight">Access Real-time Fleet Trends</p>
-                            <p className="text-slate-400 text-[9px] font-bold mt-0.5">Optimize your business with route-search analytics</p>
-                        </div>
-                        <div className="bg-amber-50 p-2 rounded-full text-amber-600 group-hover:translate-x-1 transition-transform">
-                            <MoveRight size={16} />
-                        </div>
-                    </div>
-                </div>
-            )}
 
 
 
 
 
-            {/* Management & Operations block */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-                <div
-                    onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'expenses' }))}
-                    className="flex flex-col p-3 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer hover:bg-slate-50 transition-all active:scale-95"
-                >
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="p-2 bg-success/5 rounded-lg text-success">
-                            <CheckCircle2 size={16} />
-                        </div>
-                        <span className="text-[11px] font-bold uppercase tracking-wide text-slate-900 leading-tight">Daily Summary</span>
-                    </div>
-                    <p className="text-[9px] font-bold text-slate-500 tracking-tight leading-relaxed">Verify today's accounts</p>
-                </div>
-                <div
-                    onClick={() => window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'staff' }))}
-                    className="flex flex-col p-3 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer hover:bg-slate-50 transition-all active:scale-95"
-                >
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="p-2 bg-primary/5 rounded-lg text-primary">
-                            <Users size={16} />
-                        </div>
-                        <span className="text-[11px] font-bold uppercase tracking-wide text-slate-900 leading-tight">Attendance</span>
-                    </div>
-                    <p className="text-[9px] font-bold text-slate-500 tracking-tight leading-relaxed">Manage driver salary</p>
-                </div>
-            </div>
+
 
             {/* Recent Activity Feed - Compact */}
             <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">

@@ -912,7 +912,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 Create Invoice
             </h2>
             <div className="flex flex-col gap-3 px-0.5">
-                {(['custom', 'local', 'drop', 'outstation'] as const).map((m) => (
+                {(['drop', 'local', 'outstation', 'custom'] as const).map((m) => (
                     <button 
                         key={m} 
                         onClick={() => {
@@ -942,13 +942,13 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                         </div>
                         <div className="flex-1 min-w-0">
                             <h3 className={`text-[13px] font-black uppercase tracking-wider leading-tight ${mode === m ? 'text-white' : 'text-slate-800'}`}>
-                                {m === 'drop' ? 'One Way' : m === 'outstation' ? 'Outstation' : m === 'local' ? 'Local' : 'Manual Entry'}
+                                {m === 'drop' ? 'One Way' : m === 'outstation' ? 'Outstation' : m === 'local' ? 'Local' : 'Custom Bill'}
                             </h3>
                             <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${mode === m ? 'text-white/70' : 'text-slate-400'}`}>
                                 {m === 'drop' && 'Point to Point Drop'}
                                 {m === 'outstation' && 'Round Trip Journey'}
                                 {m === 'local' && 'Hourly Rental Package'}
-                                {m === 'custom' && 'Advanced Manual Editor'}
+                                {m === 'custom' && 'Add your own charges'}
                             </p>
                         </div>
                         <div className={`shrink-0 transition-transform group-hover:translate-x-1 ${mode === m ? 'text-white/50' : 'text-slate-300'}`}>

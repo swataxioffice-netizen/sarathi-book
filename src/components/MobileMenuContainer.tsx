@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import {
-    X, User, History, FileText, Contact, 
-    Landmark, Share2, LogOut, Zap, ChevronDown, 
+    X, User, History, FileText, Contact,
+    Share2, LogOut, Zap,
     ShieldCheck, Palette, Settings
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -33,15 +33,6 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
     const isSuper = settings.plan === 'super';
     const isPro = settings.plan === 'pro' || settings.plan === 'super' || settings.isPremium;
 
-    const [collapsedSections, setCollapsedSections] = React.useState<Record<string, boolean>>({});
-
-    const toggleSection = (title: string) => {
-        setCollapsedSections(prev => ({
-            ...prev,
-            [title]: !prev[title]
-        }));
-    };
-
     // Prevent body scroll when menu is open
     useEffect(() => {
         if (isOpen) {
@@ -61,30 +52,23 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
 
     const navSections: { title: string, items: NavItem[] }[] = [
         {
-            title: 'Account & Overview',
+            title: 'Quick Access',
             items: [
-                { id: 'profile', icon: User, label: 'My Profile', subtitle: 'Company details & bank info' },
                 { id: 'tariff', icon: History, label: 'Tariff Cards', subtitle: 'Preset rate lists for customers' },
+                { id: 'app-settings', icon: Settings, label: 'App Settings', subtitle: 'Notifications & preferences' },
             ]
         },
         {
-             title: 'Your Brand',
-             items: [
+            title: 'Branding',
+            items: [
                 { id: 'visiting-card', icon: Contact, label: 'Visiting Card', subtitle: 'Share your digital card', isPro: true },
                 { id: 'letterhead', icon: FileText, label: 'Letterhead', subtitle: 'Download PDF format', isPro: true },
                 { id: 'watermark', icon: ShieldCheck, label: 'Remove Watermark', subtitle: 'Clean professional invoices', isPro: true },
                 { id: 'branding', icon: Palette, label: 'Custom PDF Colour', subtitle: 'Change invoice theme & colors', isPro: true },
-             ]
-        },
-        {
-            title: 'Business Management',
-            items: [
-                 { id: 'finance', icon: Landmark, label: 'Loan Center', subtitle: 'Get loans for your business' },
             ]
         },
-
         {
-            title: 'Support & Legal',
+            title: 'Help',
             items: [
                 { id: 'about', icon: User, label: 'About Us', subtitle: 'Who we are' },
                 { id: 'contact', icon: Contact, label: 'Contact Us', subtitle: 'Get in touch' },
@@ -92,12 +76,6 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
                 { id: 'terms', icon: FileText, label: 'Terms of Service', subtitle: 'Usage conditions' },
             ]
         },
-        {
-            title: 'App',
-            items: [
-                { id: 'app-settings', icon: Settings, label: 'App Settings', subtitle: 'Notifications & preferences' },
-            ]
-        }
     ];
 
     if (isAdmin) {
@@ -239,61 +217,45 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
                 {/* Nav Items */}
                 <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 custom-scrollbar">
                     
-                    {/* Main Actions Group */}
                     <div className="space-y-6">
-                        {navSections.map((section, index) => {
-                            const isCollapsed = collapsedSections[section.title];
-                            
-                            return (
-                                <div key={index}>
-                                    <button 
-                                        onClick={() => toggleSection(section.title)}
-                                        className="w-full flex items-center justify-between px-2 mb-2 group"
-                                    >
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider group-hover:text-slate-700 transition-colors">
-                                            {section.title}
-                                        </h4>
-                                        <ChevronDown 
-                                            size={16} 
-                                            className={`text-slate-400 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : ''}`}
-                                        />
-                                    </button>
-                                    
-                                    <div className={`space-y-1 overflow-hidden transition-all duration-300 ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
-                                        {section.items.map((item) => (
-                                            <button
-                                                key={item.id}
-                                                onClick={() => handleNav(item.id)}
-                                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${
-                                                    activeTab === item.id ? 'bg-primary/10 text-primary' : 'hover:bg-slate-50 text-slate-500'
-                                                }`}
-                                            >
-                                                <item.icon size={18} className={`transition-colors ${
-                                                    activeTab === item.id ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600'
-                                                }`} />
-                                                
-                                                <div className="flex-1 text-left">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`text-sm font-semibold tracking-tight ${
-                                                            activeTab === item.id ? 'text-primary' : 'text-slate-700'
-                                                        }`}>
-                                                            {item.label}
-                                                        </span>
-                                                        {item.isPro && !isPro && !isSuper && (
-                                                            <span className="bg-primary/10 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded">Pro</span>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-xs text-slate-500 truncate mt-0.5">
-                                                        {item.subtitle}
-                                                    </p>
+                        {navSections.map((section, index) => (
+                            <div key={index}>
+                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2 mb-2">
+                                    {section.title}
+                                </h4>
+                                <div className="space-y-1">
+                                    {section.items.map((item) => (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => handleNav(item.id)}
+                                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${
+                                                activeTab === item.id ? 'bg-primary/10 text-primary' : 'hover:bg-slate-50 text-slate-500'
+                                            }`}
+                                        >
+                                            <item.icon size={18} className={`transition-colors ${
+                                                activeTab === item.id ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600'
+                                            }`} />
+                                            <div className="flex-1 text-left">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-sm font-semibold tracking-tight ${
+                                                        activeTab === item.id ? 'text-primary' : 'text-slate-700'
+                                                    }`}>
+                                                        {item.label}
+                                                    </span>
+                                                    {item.isPro && !isPro && !isSuper && (
+                                                        <span className="bg-primary/10 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded">Pro</span>
+                                                    )}
                                                 </div>
-                                                {activeTab === item.id && <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-sm ml-2" />}
-                                            </button>
-                                        ))}
-                                    </div>
+                                                <p className="text-xs text-slate-500 truncate mt-0.5">
+                                                    {item.subtitle}
+                                                </p>
+                                            </div>
+                                            {activeTab === item.id && <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-sm ml-2" />}
+                                        </button>
+                                    ))}
                                 </div>
-                            );
-                        })}
+                            </div>
+                        ))}
                     </div>
                 </div>
 

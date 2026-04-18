@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, FileText, StickyNote, Calculator, ShieldCheck, Users } from 'lucide-react';
+import { LayoutDashboard, FileText, Calculator, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface BottomNavProps {
@@ -20,7 +20,6 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
         };
 
         const handleFocusOut = () => {
-            // Small delay to check if focus moved to another input
             setTimeout(() => {
                 const active = document.activeElement as HTMLElement;
                 if (!active || !['INPUT', 'TEXTAREA'].includes(active.tagName)) {
@@ -38,20 +37,14 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
         };
     }, []);
 
-    const navItems = [
-        { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'DASHBOARD' },
-        { id: 'trips', icon: <FileText size={20} />, label: 'INVOICES' },
-        // Center Space is reserved
-        { id: 'staff', icon: <Users size={20} />, label: 'STAFF' },
-        { id: 'notes', icon: <StickyNote size={20} />, label: '+ NOTES' },
+    const firstHalf = [
+        { id: 'dashboard', icon: <LayoutDashboard size={24} />, label: 'KAMAI' },
     ];
 
-    if (isAdmin) {
-        navItems.push({ id: 'admin', icon: <ShieldCheck size={20} />, label: 'ADMIN' });
-    }
-
-    const firstHalf = navItems.slice(0, 2);
-    const secondHalf = navItems.slice(2);
+    const secondHalf = [
+        { id: 'trips', icon: <FileText size={24} />, label: 'BILL' },
+        ...(isAdmin ? [{ id: 'admin', icon: <ShieldCheck size={24} />, label: 'ADMIN' }] : []),
+    ];
 
     return (
         <div className={`fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ${isVisible ? 'translate-y-0' : 'translate-y-[110%]'}`}>
@@ -64,10 +57,10 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
                         <button
                             key={item.id}
                             onClick={() => setActiveTab(item.id)}
-                            className={`flex flex-col items-center justify-center w-16 p-1 transition-all active:scale-95 ${activeTab === item.id ? 'text-primary' : 'text-slate-600'}`}
+                            className={`flex flex-col items-center justify-center w-16 p-2 transition-all active:scale-95 ${activeTab === item.id ? 'text-primary' : 'text-slate-600'}`}
                         >
                             <div className={`${activeTab === item.id ? 'scale-110' : ''}`}>{item.icon}</div>
-                            <span className="text-[10px] font-medium uppercase mt-1 tracking-wide">{item.label}</span>
+                            <span className="text-[10px] font-bold uppercase mt-1 tracking-wide">{item.label}</span>
                         </button>
                     ))}
                 </div>
@@ -86,8 +79,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
                         <Calculator size={20} strokeWidth={2.5} />
                     </button>
                     <span className={`text-[10px] font-bold uppercase mt-1 tracking-wide transition-colors ${activeTab === 'taxi-fare-calculator' || activeTab === 'calculator' ? 'text-primary' : 'text-slate-600'}`}>
-                        <span className="sm:hidden">CALC</span>
-                        <span className="hidden sm:inline">CALCULATOR</span>
+                        FARE
                     </span>
                 </div>
 
@@ -97,10 +89,10 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
                         <button
                             key={item.id}
                             onClick={() => setActiveTab(item.id)}
-                            className={`flex flex-col items-center justify-center w-16 p-1 transition-all active:scale-95 ${activeTab === item.id ? 'text-primary' : 'text-slate-600'}`}
+                            className={`flex flex-col items-center justify-center w-16 p-2 transition-all active:scale-95 ${activeTab === item.id ? 'text-primary' : 'text-slate-600'}`}
                         >
                             <div className={`${activeTab === item.id ? 'scale-110' : ''}`}>{item.icon}</div>
-                            <span className="text-[10px] font-medium uppercase mt-1 tracking-wide">{item.label}</span>
+                            <span className="text-[10px] font-bold uppercase mt-1 tracking-wide">{item.label}</span>
                         </button>
                     ))}
                 </div>
