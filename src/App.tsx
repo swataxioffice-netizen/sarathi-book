@@ -7,7 +7,7 @@ import { supabase } from './utils/supabase';
 import UpdateWatcher from './components/UpdateWatcher';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 // Staging Environment Trigger
-import { X, RefreshCw, MoveRight, TrendingUp, Bell, Settings } from 'lucide-react';
+import { X, RefreshCw, TrendingUp, Bell, Settings } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useUpdate, UpdateProvider } from './contexts/UpdateContext';
 import Header from './components/Header';
