@@ -5,12 +5,12 @@ import { calculateFare } from './fare';
 describe('Chennai Fare Business Logic 2025', () => {
 
     it('should calculate Local Drop correctly for Hatchback (< 40km)', () => {
-        // Hatchback: One Way 14.5 (or config dependent).
+        // Hatchback: One Way 15 (as per TARIFFS).
         // 25km distance.
         // Base KM: 10. Base Fare: 250.
-        // Extra KM: 15. Rate: 14.5.
-        // 15 * 14.5 = 217.5.
-        // Total: 467.5 -> 468.
+        // Extra KM: 15. Rate: 15.
+        // 15 * 15 = 225.
+        // Total: 250 + 225 = 475.
 
         const result = calculateFare(
             'one_way',
@@ -19,17 +19,17 @@ describe('Chennai Fare Business Logic 2025', () => {
         );
 
         // Check against config dynamically or hardcoded if 2025 standard is fixed
-        // Base 250. Extra 15 * 14.5 = 217.5. Total = 467.5.
-        expect(result.totalFare).toBe(468);
+        // Base 250. Extra 15 * 15 = 225. Total = 475.
+        expect(result.totalFare).toBe(475);
     });
 
     it('should calculate Outstation Drop correctly for Sedan (> 40km)', () => {
-        // Sedan One Way: 15.5.
+        // Sedan One Way: 16 (as per TARIFFS).
         // Distance: 150km.
         // Min Drop: 130km (Satisfied).
-        // Fare: 150 * 15.5 = 2325.
+        // Fare: 150 * 16 = 2400.
         // Bata: 300.
-        // Total: 2625.
+        // Total: 2700.
 
         const result = calculateFare(
             'one_way',
@@ -37,7 +37,7 @@ describe('Chennai Fare Business Logic 2025', () => {
             150
         );
 
-        expect(result.totalFare).toBe(2625);
+        expect(result.totalFare).toBe(2700);
     });
 
     it('should apply higher Minimum KM for SUV Round Trip (250km/day)', () => {
