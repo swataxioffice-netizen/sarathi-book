@@ -122,7 +122,7 @@ module.exports = async function handler(req, res) {
     }
 
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_KEY;
 
     if (!webhookSecret || !supabaseUrl || !serviceKey) {
