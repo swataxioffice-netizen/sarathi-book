@@ -112,10 +112,8 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
 
     const handleDelete = (id: string, e?: React.MouseEvent) => {
         e?.stopPropagation();
-        if (window.confirm('Delete this note?')) {
-            setNotes(prev => prev.filter(note => note.id !== id));
-            if (selectedNote?.id === id) handleClose();
-        }
+        setNotes(prev => prev.filter(note => note.id !== id));
+        if (selectedNote?.id === id) handleClose();
     };
 
     const handleClose = () => {
@@ -126,7 +124,9 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
     // Voice Handler
     const toggleRecording = () => {
         if (!('webkitSpeechRecognition' in window)) {
-            alert('Voice input is not supported in this browser. Try Chrome.');
+            window.dispatchEvent(new CustomEvent('auth-error', {
+                detail: { title: 'Voice Unavailable', message: 'Voice input is not supported. Try Chrome.', type: 'warning' }
+            }));
             return;
         }
 
@@ -137,7 +137,9 @@ const QuickNotes: React.FC<QuickNotesProps> = ({ onCreateNew }) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
         if (!SpeechRecognition) {
-            alert('Voice input is not supported in this browser.');
+            window.dispatchEvent(new CustomEvent('auth-error', {
+                detail: { title: 'Voice Unavailable', message: 'Voice input is not supported in this browser.', type: 'warning' }
+            }));
             return;
         }
         const recognition = new SpeechRecognition();

@@ -605,7 +605,9 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
         if (!editingQuotation && !canCreateQuotation(settings, quotations || [])) {
             const limit = quotationLimitForPlan(settings);
             const next = isPro(settings) && !isSuper(settings) ? 'Super Pro' : 'Pro';
-            alert(`Quotation limit reached (${limit}/month). Upgrade to ${next} for more.`);
+            window.dispatchEvent(new CustomEvent('auth-error', {
+                detail: { title: 'Limit Reached', message: `${limit} quotations/month. Upgrade to ${next} for more.`, type: 'warning' }
+            }));
             openUpgradeModal();
             return;
         }
@@ -725,7 +727,9 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                 if (onStepChange) onStepChange(1);
             } catch (err) {
                 console.error('Quotation share operation failed:', err);
-                alert('An error occurred while sharing the quotation.');
+                window.dispatchEvent(new CustomEvent('auth-error', {
+                    detail: { title: 'Share Failed', message: 'An error occurred while sharing the quotation.', type: 'error' }
+                }));
             } finally {
                 setIsSubmitting(false);
             }
@@ -1314,7 +1318,9 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                             <div><p className="text-[10px] font-bold uppercase">GST Tax (Forward Charge)</p></div>
                             <button onClick={() => {
                                 if (!settings.gstin) {
-                                    alert('Please add your GSTIN in Settings to enable Forward Charge GST.');
+                                    window.dispatchEvent(new CustomEvent('auth-error', {
+                                        detail: { title: 'GSTIN Required', message: 'Add your GSTIN in Settings to enable Forward Charge GST.', type: 'warning' }
+                                    }));
                                     return;
                                 }
                                 const newState = !includeGst;
@@ -1335,7 +1341,9 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                         <div><p className="text-[10px] font-bold uppercase">RCM (Reverse Charge)</p></div>
                         <button onClick={() => {
                             if (!settings.gstin) {
-                                alert('Please add your GSTIN in Settings to enable RCM.');
+                                window.dispatchEvent(new CustomEvent('auth-error', {
+                                    detail: { title: 'GSTIN Required', message: 'Add your GSTIN in Settings to enable RCM.', type: 'warning' }
+                                }));
                                 return;
                             }
                             const newState = !rcmEnabled;

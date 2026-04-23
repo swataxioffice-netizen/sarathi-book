@@ -47,7 +47,9 @@ export const initializePayment = async (options: Partial<RazorpayOptions>) => {
     const res = await loadRazorpay();
 
     if (!res) {
-        alert('Razorpay SDK failed to load. Are you online?');
+        window.dispatchEvent(new CustomEvent('auth-error', {
+            detail: { title: 'Payment SDK Error', message: 'Razorpay failed to load. Are you online?', type: 'error' }
+        }));
         return;
     }
 

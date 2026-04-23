@@ -32,7 +32,9 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
             if (!isPro && !isSuper) { handlePricing(); return; }
             if (tab === 'visiting-card') { window.dispatchEvent(new CustomEvent('open-visiting-card')); return; }
             if (tab === 'letterhead') {
-                import('../utils/pdf').then(m => m.downloadLetterhead({ ...settings, vehicleNumber: '' })).catch(() => alert('Could not generate letterhead.'));
+                import('../utils/pdf').then(m => m.downloadLetterhead({ ...settings, vehicleNumber: '' })).catch(() => {
+                    window.dispatchEvent(new CustomEvent('auth-error', { detail: { title: 'Download Failed', message: 'Could not generate letterhead.', type: 'error' } }));
+                });
                 return;
             }
             setActiveTab('profile');
@@ -158,7 +160,11 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                         if (navigator.share) {
                             try { await navigator.share({ title: 'Sarathi Book', text: 'Driver Anna! Stop writing bills by hand. Use Sarathi Book app for professional invoices & fare calculation. Free app!', url: 'https://sarathibook.com' }); }
                             catch { /* cancelled */ }
-                        } else { alert('Share not supported on this device/browser'); }
+                        } else { 
+                            window.dispatchEvent(new CustomEvent('auth-error', { 
+                                detail: { title: 'Share Failed', message: 'Not supported on this browser.', type: 'warning' } 
+                            }));
+                        }
                     }}
                     className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-primary hover:bg-primary/5 transition-colors"
                 >

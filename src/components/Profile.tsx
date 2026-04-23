@@ -130,7 +130,9 @@ const Profile: React.FC = () => {
             if (section === 'business' && settings.gstin) {
                 // 1. Format Check
                 if (!GSTService.isValidFormat(settings.gstin)) {
-                    alert('Invalid GSTIN Format. Example: 33ABCDE1234F1Z5');
+                    window.dispatchEvent(new CustomEvent('auth-error', { 
+                        detail: { title: 'Invalid GSTIN', message: 'Format should be like: 33ABCDE1234F1Z5', type: 'warning' } 
+                    }));
                     return;
                 }
 
@@ -138,7 +140,9 @@ const Profile: React.FC = () => {
                 if (user?.id) {
                     const isUnique = await GSTService.isUnique(settings.gstin, user.id);
                     if (!isUnique) {
-                        alert('This GSTIN is already linked to another account.\n\nGSTIN must be unique per account.');
+                        window.dispatchEvent(new CustomEvent('auth-error', { 
+                            detail: { title: 'GSTIN Taken', message: 'This GSTIN is already linked to another account.', type: 'error' } 
+                        }));
                         return;
                     }
                 }
@@ -148,11 +152,19 @@ const Profile: React.FC = () => {
             await new Promise(r => setTimeout(r, 400));
             
             if (!isSuccess) {
-                alert('Cloud save failed. Please check your connection and try again.');
+                window.dispatchEvent(new CustomEvent('auth-error', { 
+                    detail: { title: 'Sync Error', message: 'Cloud save failed. Please check your connection.', type: 'error' } 
+                }));
+            } else {
+                window.dispatchEvent(new CustomEvent('auth-error', { 
+                    detail: { title: 'Saved!', message: 'Your profile settings have been updated.', type: 'success' } 
+                }));
             }
         } catch (error) {
             console.error('Error in handleSave:', error);
-            alert('Failed to save settings. Please try again.');
+            window.dispatchEvent(new CustomEvent('auth-error', { 
+                detail: { title: 'Save Failed', message: 'Failed to save settings. Please try again.', type: 'error' } 
+            }));
         } finally {
             setSavingSection(null);
         }
@@ -164,7 +176,9 @@ const Profile: React.FC = () => {
             await refreshProfile();
         } catch (err) {
             console.error('Manual profile refresh failed:', err);
-            alert('Failed to sync profile with Google. Please try again.');
+            window.dispatchEvent(new CustomEvent('auth-error', { 
+                detail: { title: 'Sync Failed', message: 'Failed to sync profile with Google.', type: 'error' } 
+            }));
         } finally {
             setTimeout(() => setRefreshing(false), 1000); // Visual feedback
         }
@@ -179,7 +193,9 @@ const Profile: React.FC = () => {
         }
 
         if (!validateVehicleNumber(newVehicleNumber)) {
-            alert('Invalid Vehicle Number');
+            window.dispatchEvent(new CustomEvent('auth-error', { 
+                detail: { title: 'Invalid Number', message: 'Please enter a valid vehicle number (e.g. MH01AB1234)', type: 'warning' } 
+            }));
             return;
         }
 
@@ -204,15 +220,18 @@ const Profile: React.FC = () => {
         if (!file || !user) return;
 
         // 1. Type Validation (Strict for PDF compatibility)
-        // We avoid WEBP/SVG as they often break in PDF generation libraries
         const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
         if (!validTypes.includes(file.type)) {
-            alert('Invalid file format. Please upload a PNG or JPG image for proper invoice branding.');
+            window.dispatchEvent(new CustomEvent('auth-error', { 
+                detail: { title: 'Invalid Format', message: 'Please upload PNG or JPG for PDF compatibility.', type: 'error' } 
+            }));
             return;
         }
 
         if (file.size > 2 * 1024 * 1024) {
-             alert('File too large. Please upload a logo under 2MB.');
+             window.dispatchEvent(new CustomEvent('auth-error', { 
+                detail: { title: 'File Too Large', message: 'Logo must be under 2MB.', type: 'warning' } 
+            }));
              return;
         }
 
@@ -236,8 +255,10 @@ const Profile: React.FC = () => {
             await saveSettings();
         } catch (err: unknown) {
             console.error('Logo upload failed:', err);
-            const errorMessage = err instanceof Error ? err.message : 'Please try again';
-            alert(`Upload failed: ${errorMessage}`);
+            const errorMessage = err instanceof Error ? err.message : 'Check your connection';
+            window.dispatchEvent(new CustomEvent('auth-error', { 
+                detail: { title: 'Upload Failed', message: errorMessage, type: 'error' } 
+            }));
         } finally {
             setUploadingLogo(false);
         }

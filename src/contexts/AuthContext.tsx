@@ -2,6 +2,11 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabase';
 
+const ADMIN_EMAILS = [
+    'swa.taxioffice@gmail.com',
+    'customercare@swataxioffice.com'
+];
+
 interface AuthContextType {
     user: User | null;
     loading: boolean;
@@ -83,8 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // Recover impersonation on INITIAL_SESSION (page refresh while impersonating)
                 if (event === 'INITIAL_SESSION' && current) {
                     const impersonatedId = localStorage.getItem('impersonated_user_id');
-                    const isAdminUser = current.email &&
-                        ['swa.taxioffice@gmail.com', 'customercare@swataxioffice.com'].includes(current.email);
+                    const isAdminUser = current.email && ADMIN_EMAILS.includes(current.email);
 
                     if (impersonatedId && isAdminUser) {
                         console.log('Auth: Recovering impersonation for user:', impersonatedId);
@@ -156,11 +160,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (err: unknown) {
             const error = err as Error;
             console.error('Auth: Google Sign-In failed:', err);
+            
+            let message = 'Google Sign-In failed';
             if (error.message?.includes('redirect_uri')) {
-                alert(`Auth Error: This URL (${window.location.origin}) might not be whitelisted in your Supabase Auth settings.`);
+                message = 'URL not whitelisted in Supabase settings.';
             } else {
-                alert('Google Sign-In failed: ' + (error.message || 'Unknown error'));
+                message = error.message || 'Unknown error';
             }
+            
+            window.dispatchEvent(new CustomEvent('auth-error', { 
+                detail: { title: 'Sign-In Failed', message, type: 'error' } 
+            }));
+            
             throw err;
         }
     };
@@ -213,8 +224,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const impersonateUser = async (userId: string) => {
         const currentUser = originalUser || user;
-        const currentIsAdmin = !!(currentUser?.email &&
-            ['swa.taxioffice@gmail.com', 'customercare@swataxioffice.com'].includes(currentUser.email));
+        const currentIsAdmin = !!(currentUser?.email && ADMIN_EMAILS.includes(currentUser.email));
 
         if (!currentIsAdmin) {
             console.error('Unauthorized impersonation attempt');
@@ -262,7 +272,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (err: unknown) {
             const error = err as Error;
             console.error('Impersonation failed:', err);
-            alert('Failed to impersonate user: ' + error.message);
+            window.dispatchEvent(new CustomEvent('auth-error', { 
+                detail: { title: 'Impersonation Failed', message: error.message, type: 'error' } 
+            }));
         }
     };
 
@@ -280,8 +292,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Admin check looks at ORIGINAL user if impersonating
     const checkUser = originalUser || user;
-    const isAdmin = !!(checkUser?.email &&
-        ['swa.taxioffice@gmail.com', 'customercare@swataxioffice.com'].includes(checkUser.email));
+    const isAdmin = !!(checkUser?.email && ADMIN_EMAILS.includes(checkUser.email));
 
     const value = {
         user,

@@ -603,10 +603,9 @@ const AdminPanel: React.FC = () => {
                                             addNotification('Success', `Notification sent to ${notifyingUser.name}`, 'success');
                                             setNotifyingUser(null);
                                             setNotificationText('');
-                                        } catch (err: unknown) {
-                                            const error = err as Error;
-                                            console.error('Failed to send notification:', error);
-                                            alert('Failed to send notification: ' + error.message);
+                                        } catch (error: any) {
+                                            console.error('Notification Error:', error);
+                                            addNotification('Delivery Failed', error.message, 'error');
                                         } finally {
                                             setIsSending(false);
                                         }

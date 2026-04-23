@@ -54,7 +54,9 @@ const BusinessCard: React.FC = () => {
             link.click();
         } catch (error) {
             console.error('Error downloading card:', error);
-            alert(`Could not download image: ${(error as Error).message}`);
+            window.dispatchEvent(new CustomEvent('auth-error', {
+                detail: { title: 'Download Failed', message: (error as Error).message || 'Could not download image.', type: 'error' }
+            }));
         } finally {
             setGenerating(false);
         }

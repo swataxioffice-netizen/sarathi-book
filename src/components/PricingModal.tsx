@@ -67,7 +67,9 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
     const handleUpgrade = async (tier: typeof tiers[0]) => {
         if (tier.id === 'free') return;
         if (!user) {
-            alert('Please sign in to upgrade');
+            window.dispatchEvent(new CustomEvent('auth-error', {
+                detail: { title: 'Sign In Required', message: 'Please sign in to upgrade your plan.', type: 'warning' }
+            }));
             return;
         }
 
@@ -98,13 +100,17 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                     updateSettings(newSettings);
                     await saveSettings(newSettings);
                     
-                    alert(`Congratulations! You are now a ${tier.name} member.`);
+                    window.dispatchEvent(new CustomEvent('auth-error', {
+                        detail: { title: `Welcome to ${tier.name}!`, message: 'Your plan has been upgraded. Enjoy!', type: 'success' }
+                    }));
                     onClose();
                 }
             });
         } catch (error) {
             console.error('Payment initialization failed:', error);
-            alert('Payment failed. Please try again.');
+            window.dispatchEvent(new CustomEvent('auth-error', {
+                detail: { title: 'Payment Failed', message: 'Please try again or contact support.', type: 'error' }
+            }));
         } finally {
             setLoading(false);
         }

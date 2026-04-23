@@ -176,7 +176,9 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
         });
 
         if (itemsToPrint.length === 0) {
-            alert('No GST invoices found to download for this month.');
+            window.dispatchEvent(new CustomEvent('auth-error', {
+                detail: { title: 'No GST Invoices', message: 'No GST invoices found for this month.', type: 'warning' }
+            }));
             return;
         }
 
@@ -190,7 +192,9 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
             doc.save(`${monthStr}-GST-Invoices.pdf`);
         } catch (error) {
             console.error('Bulk download failed:', error);
-            alert('Failed to generate monthly report.');
+            window.dispatchEvent(new CustomEvent('auth-error', {
+                detail: { title: 'Download Failed', message: 'Failed to generate monthly report.', type: 'error' }
+            }));
         }
     };
 

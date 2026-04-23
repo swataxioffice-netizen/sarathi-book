@@ -31,6 +31,11 @@ const tests = [
         command: 'npx lighthouse http://localhost:4173 --only-categories=performance,accessibility,best-practices,seo --output=json --output-path=./test-report.json --chrome-flags="--headless"',
         critical: false,
         requiresServer: true
+    },
+    {
+        name: '5. E2E Functional Test (Playwright)',
+        command: 'npm run test:e2e',
+        critical: true
     }
 ];
 

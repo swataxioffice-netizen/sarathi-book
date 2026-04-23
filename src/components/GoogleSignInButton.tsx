@@ -53,7 +53,9 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         } catch (err: unknown) {
             const error = err as Error;
             console.error('Login failed:', error);
-            alert(`Login Error: ${error.message || 'Unknown error'}`);
+            window.dispatchEvent(new CustomEvent('auth-error', {
+                detail: { title: 'Login Error', message: error.message || 'An unknown error occurred.', type: 'error' }
+            }));
             setIsLoading(false);
         }
     };

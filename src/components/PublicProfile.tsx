@@ -123,7 +123,9 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId }) => {
 
     const handleBookNow = () => {
         if (!phone) {
-            alert('Contact number not available.');
+            window.dispatchEvent(new CustomEvent('auth-error', {
+                detail: { title: 'No Number', message: 'Contact number is not available for this driver.', type: 'warning' }
+            }));
             return;
         }
         const message = `Hi, I saw your profile on SarathiBook. I would like to enquire about a trip.`;
@@ -172,7 +174,7 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ userId }) => {
                     {/* Action Card */}
                     <div className="bg-white rounded-2xl p-4 shadow-lg border border-slate-100 flex gap-3">
                         <button
-                            onClick={() => phone ? window.open(`tel:${phone}`) : alert('Phone number not available')}
+                            onClick={() => phone ? window.open(`tel:${phone}`) : window.dispatchEvent(new CustomEvent('auth-error', { detail: { title: 'No Number', message: 'Phone number not available.', type: 'warning' } }))}
                             disabled={!phone}
                             className={`flex-1 flex items-center justify-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-900 py-3.5 rounded-xl font-black text-[11px] uppercase tracking-widest border border-slate-200 transition-colors ${!phone ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >

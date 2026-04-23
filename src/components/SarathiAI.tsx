@@ -103,7 +103,9 @@ const SarathiAI: React.FC<SarathiAIProps> = ({ onNavigate }) => {
 
     const toggleVoiceInput = () => {
         if (!('webkitSpeechRecognition' in window)) {
-            alert('Voice not supported in this browser. Please use Chrome.');
+            window.dispatchEvent(new CustomEvent('auth-error', {
+                detail: { title: 'Voice Unavailable', message: 'Voice not supported. Please use Chrome.', type: 'warning' }
+            }));
             return;
         }
 

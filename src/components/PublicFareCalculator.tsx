@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Car, ArrowRight, RotateCcw, CheckCircle2, Loader2, ChevronRight, TrendingUp, Warehouse } from 'lucide-react';
+import { MapPin, Car, ArrowRight, RotateCcw, CheckCircle2, Loader2, ChevronRight, TrendingUp, Warehouse, AlertCircle } from 'lucide-react';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import AdditionalChargesDrawer from './AdditionalChargesDrawer';
 import MapPicker from './MapPicker';
@@ -513,7 +513,7 @@ const PublicFareCalculator: React.FC = () => {
 
                         <div className="p-5 space-y-2.5">
                             {result.breakdown.map((line, i) => {
-                                const clean = line.replace(/[*_⚠️]/g, '').trim();
+                                const clean = line.replace(/[*_]/g, '').replace(/⚠️/g, '').trim();
                                 if (!clean || clean.toLowerCase().startsWith('note:')) return null;
                                 const parts = clean.split(/[:=]\s*₹(?=\d)/);
                                 if (parts.length < 2) return <p key={i} className="text-xs text-slate-400">{clean}</p>;
@@ -528,9 +528,12 @@ const PublicFareCalculator: React.FC = () => {
                                 <span className="text-sm font-black text-slate-800 uppercase tracking-wider">Total Estimated</span>
                                 <span className="text-3xl font-black text-primary">₹{result.totalFare.toLocaleString()}</span>
                             </div>
-                            <p className="text-[10px] text-slate-400 text-center pt-1">
-                                Estimate only · Excl. GST · Toll &amp; parking are approximate
-                            </p>
+                            <div className="mt-2 p-3 bg-red-50/30 rounded-xl border border-red-100/50 flex gap-2 items-start">
+                                <AlertCircle size={12} className="text-red-500 shrink-0 mt-0.5" />
+                                <p className="text-[9px] text-red-700/80 leading-relaxed font-bold uppercase tracking-wider text-left">
+                                    NHAI Estimates Only. Toll, Parking & State Taxes are extra and payable by the customer as per actuals.
+                                </p>
+                            </div>
                         </div>
 
                         {/* Driver CTA */}

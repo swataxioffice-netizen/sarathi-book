@@ -16,6 +16,7 @@ import BottomNav from './components/BottomNav';
 import GoogleSignInButton from './components/GoogleSignInButton';
 import SideNav from './components/SideNav';
 import Footer from './components/Footer';
+import ConfirmDialog from './components/ConfirmDialog';
 const Dashboard = lazy(() => import('./components/Dashboard'));
 
 import { NotificationProvider, useNotifications } from './contexts/NotificationContext';
@@ -97,7 +98,7 @@ function AppContent() {
     // Priority: 1. URL Path, 2. URL Hash (Legacy/Auth), 3. Local Storage, 4. Default 'calculator'
     const pathname = window.location.pathname.slice(1).split('/')[0];
     const hash = window.location.hash.slice(1).split('/')[0];
-    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'profile', 'admin', 'notes', 'staff', 'routes', 'tariff', 'finance', 'about', 'contact', 'privacy', 'terms', 'fare-calculator'];
+    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'profile', 'admin', 'notes', 'staff', 'routes', 'tariff', 'finance', 'about', 'contact', 'privacy', 'terms', 'fare-calculator', 'pricing', 'business-card', 'public-profile', 'route-landing'];
 
     // Migration: specific check to force old defaults (dashboard) to new default (calculator) one time
     const storedTab = localStorage.getItem('nav-active-tab');
@@ -120,7 +121,7 @@ function AppContent() {
   useEffect(() => {
     const handlePopState = () => {
       const pathname = window.location.pathname.slice(1).split('/')[0];
-      const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'fare-calculator', 'profile', 'admin', 'notes', 'routes', 'tariff', 'finance', 'staff', 'about', 'contact', 'privacy', 'terms'];
+      const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'fare-calculator', 'profile', 'admin', 'notes', 'routes', 'tariff', 'finance', 'staff', 'about', 'contact', 'privacy', 'terms', 'pricing', 'business-card', 'public-profile', 'route-landing'];
       if (pathname && validTabs.includes(pathname)) {
         setActiveTab(pathname);
       } else if (pathname && (pathname.includes('-to-') || pathname.endsWith('-taxi') || pathname.endsWith('-rental'))) {
@@ -156,17 +157,24 @@ function AppContent() {
       setTripsSubTab('history');
     };
 
+    const handleAuthError = (e: Event) => {
+      const { title, message, type } = (e as CustomEvent).detail;
+      addNotification(title, message, type);
+    };
+
     window.addEventListener('nav-tab-change', handleNav);
     window.addEventListener('nav-tab-quotation', handleQuoteNav);
     window.addEventListener('nav-tab-invoice', handleInvoiceNav);
     window.addEventListener('nav-tab-quotation-history', handleQuoteHistoryNav);
     window.addEventListener('nav-tab-invoice-history', handleInvoiceHistoryNav);
+    window.addEventListener('auth-error', handleAuthError);
     return () => {
       window.removeEventListener('nav-tab-change', handleNav);
       window.removeEventListener('nav-tab-quotation', handleQuoteNav);
       window.removeEventListener('nav-tab-invoice', handleInvoiceNav);
       window.removeEventListener('nav-tab-quotation-history', handleQuoteHistoryNav);
       window.removeEventListener('nav-tab-invoice-history', handleInvoiceHistoryNav);
+      window.removeEventListener('auth-error', handleAuthError);
     };
   }, []);
 
@@ -229,6 +237,20 @@ function AppContent() {
   const [editingQuotation, setEditingQuotation] = useState<SavedQuotation | null>(null);
   const [showLoginNudge, setShowLoginNudge] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // ConfirmDialog State
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   // Guest Login Nudge Logic
   useEffect(() => {
@@ -629,19 +651,28 @@ function AppContent() {
   };
 
   const handleDeleteTrip = async (tripId: string) => {
-    if (!window.confirm("Are you sure you want to delete this invoice? This cannot be undone.")) return;
-    setTrips(prev => prev.filter(t => t.id !== tripId));
+    setConfirmState({
+      isOpen: true,
+      title: 'Delete Invoice',
+      message: 'Are you sure you want to delete this invoice? This cannot be undone.',
+      type: 'danger',
+      onConfirm: async () => {
+        setTrips(prev => prev.filter(t => t.id !== tripId));
 
-    // IDB
-    try {
-      await dbRequest.delete('trips', tripId);
-    } catch (err) { console.error('IDB delete failed', err); }
+        // IDB
+        try {
+          await dbRequest.delete('trips', tripId);
+        } catch (err) { console.error('IDB delete failed', err); }
 
-    if (user) {
-      try {
-        await supabase.from('trips').delete().eq('id', tripId);
-      } catch (err) { console.error('Cloud delete failed', err); }
-    }
+        if (user) {
+          try {
+            await supabase.from('trips').delete().eq('id', tripId);
+          } catch (err) { console.error('Cloud delete failed', err); }
+        }
+        setConfirmState(prev => ({ ...prev, isOpen: false }));
+        addNotification('Invoice Deleted', 'The trip record has been removed successfully.', 'success');
+      }
+    });
   };
 
   const handleSaveQuotation = async (q: SavedQuotation) => {
@@ -676,15 +707,24 @@ function AppContent() {
   };
 
   const handleDeleteQuotation = async (id: string) => {
-    if (!window.confirm("Delete this quotation?")) return;
-    setQuotations(prev => prev.filter(q => q.id !== id));
-    await dbRequest.delete('quotations', id);
+    setConfirmState({
+      isOpen: true,
+      title: 'Delete Quotation',
+      message: 'Are you sure you want to remove this quotation template?',
+      type: 'danger',
+      onConfirm: async () => {
+        setQuotations(prev => prev.filter(q => q.id !== id));
+        await dbRequest.delete('quotations', id);
 
-    if (user) {
-      try {
-        await supabase.from('quotations').delete().eq('id', id);
-      } catch (err) { console.error('Cloud quote delete failed', err); }
-    }
+        if (user) {
+          try {
+            await supabase.from('quotations').delete().eq('id', id);
+          } catch (err) { console.error('Cloud quote delete failed', err); }
+        }
+        setConfirmState(prev => ({ ...prev, isOpen: false }));
+        addNotification('Quotation Deleted', 'The template has been removed.', 'success');
+      }
+    });
   };
 
   const handleConvertQuotation = (q: SavedQuotation) => {
@@ -964,6 +1004,14 @@ function AppContent() {
                 </button>
               )}
               <Notifications />
+              <ConfirmDialog 
+                isOpen={confirmState.isOpen}
+                title={confirmState.title}
+                message={confirmState.message}
+                onConfirm={confirmState.onConfirm}
+                onCancel={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+                type={confirmState.type}
+              />
               <div className="text-right hidden lg:block">
                 <p className="text-sm font-bold text-slate-900">{user?.user_metadata?.full_name || 'Guest User'}</p>
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Driver Account</p>
@@ -1060,7 +1108,7 @@ function AppContent() {
             </div>
             <div className="p-5 space-y-3">
               <button
-                onClick={() => subscribeToPush().then(() => { alert('Push notifications enabled!'); setShowAppSettings(false); })}
+                onClick={() => subscribeToPush().then(() => { addNotification('Notifications Active', 'Push notifications have been enabled!', 'success'); setShowAppSettings(false); })}
                 className="w-full py-4 flex items-center gap-3 bg-orange-50 text-orange-600 rounded-2xl font-black uppercase text-[10px] tracking-widest px-4 hover:bg-orange-100 transition-colors"
               >
                 <Bell size={16} />

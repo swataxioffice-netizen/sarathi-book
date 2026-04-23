@@ -113,7 +113,9 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
             if (tab === 'letterhead') {
                 import('../utils/pdf').then(m => m.downloadLetterhead({ ...settings, vehicleNumber: '' })).catch(err => {
                     console.error('Error downloading letterhead:', err);
-                    alert('Could not generate letterhead. Please try again.');
+                    window.dispatchEvent(new CustomEvent('auth-error', {
+                        detail: { title: 'Download Failed', message: 'Could not generate letterhead. Please try again.', type: 'error' }
+                    }));
                 });
                 onClose();
                 return;
@@ -284,7 +286,11 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
                                         url: 'https://sarathibook.com'
                                     });
                                 } catch (error) { console.log('Error sharing:', error); }
-                            } else { alert('Share not supported'); }
+                            } else { 
+                                window.dispatchEvent(new CustomEvent('auth-error', {
+                                    detail: { title: 'Share Failed', message: 'Not supported on this browser.', type: 'warning' }
+                                }));
+                            }
                         }}
                         className="w-full h-11 flex items-center justify-center gap-3 px-4 rounded-xl font-bold text-sm text-primary bg-primary/5 hover:bg-primary/10 border border-primary/20 border-dashed transition-all"
                     >

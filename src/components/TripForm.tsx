@@ -22,11 +22,12 @@ import type { SavedQuotation } from '../utils/pdf';
 import { saveToHistory } from '../utils/history';
 import { useAuth } from '../contexts/AuthContext';
 import PDFPreviewModal from './PDFPreviewModal';
+import { useNotifications } from '../contexts/NotificationContext';
 import { calculateDistance } from '../utils/googleMaps';
 import { calculateAdvancedRoute } from '../utils/routesApi';
 import { performOcr, parseOdometer } from '../utils/visionApi';
 import { calculateGST, GSTRate, GSTBreakdown, getFinancialYear } from '../utils/gstUtils';
-import { canCreateTrip, tripLimitForPlan, isPro, isSuper, openUpgradeModal } from '../utils/planGate';
+import { canCreateTrip, tripLimitForPlan, isPro, openUpgradeModal } from '../utils/planGate';
 
 // --- Types ---
 
@@ -88,6 +89,7 @@ const DEFAULT_TERMS = [
 const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTemplate, trips, onViewHistory, editingTrip }) => {
     const { settings } = useSettings();
     const { user } = useAuth();
+    const { addNotification } = useNotifications();
     // const { triggerAction } = useAdProtection();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -483,11 +485,11 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                     if (isScanning === 'end') setEndKm(mileage);
                     setIsOdometerMode(true);
                 } else {
-                    alert('Could not detect odometer reading. Please enter manually.');
+                    addNotification('Scan Failed', 'Could not detect odometer reading. Please enter manually.', 'warning');
                 }
             } catch (err) {
                 console.error('OCR Error:', err);
-                alert('Scan failed. Please type manually.');
+                addNotification('Camera Error', 'Scan failed. Please type manually.', 'error');
             } finally {
                 setIsScanning(null);
             }
@@ -827,8 +829,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         // Enforce monthly invoice limit (skip when editing an existing trip)
         if (!editingTrip && !canCreateTrip(settings, trips || [])) {
             const limit = tripLimitForPlan(settings);
-            const next = isPro(settings) && !isSuper(settings) ? 'Super Pro' : 'Pro';
-            alert(`Invoice limit reached (${limit}/month). Upgrade to ${next} for more.`);
+            const next = isPro(settings) ? 'Super Pro' : 'Pro';
+            addNotification('Limit Reached', `Monthly limit reached (${limit}). Upgrade to ${next} for more.`, 'info');
             openUpgradeModal();
             return null;
         }
@@ -891,8 +893,9 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 setMode(null);
                 if (onStepChange) onStepChange(0);
             } catch (error) {
-                console.error('Save & Share operation failed:', error);
-                alert('An error occurred while saving or sharing. Please check your connection.');
+                console.error('Save/Share Error:', error);
+                setIsSubmitting(false);
+                addNotification('Connection Error', 'An error occurred while saving or sharing.', 'error');
             } finally {
                 setIsSubmitting(false);
             }
@@ -996,7 +999,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                 </span>
                                 <button onClick={() => {
                                     if (!settings.gstin) {
-                                        alert('Please add your GSTIN in Settings to enable Forward Charge GST.');
+                                        addNotification('GST Required', 'Please add your GSTIN in Settings to enable GST.', 'info');
                                         return;
                                     }
                                     const newState = !includeGst;

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { generateId } from '../utils/uuid';
 
@@ -74,7 +75,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     filter: `user_id=eq.${user.id}`,
                 },
                 (payload) => {
-                    const newNotif = payload.new as any;
+                    const newNotif = payload.new as { title: string; message: string; type: Notification['type'] };
                     addNotification(newNotif.title, newNotif.message, newNotif.type);
                 }
             )
@@ -87,7 +88,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     filter: 'user_id=is.null',
                 },
                 (payload) => {
-                    const newNotif = payload.new as any;
+                    const newNotif = payload.new as { title: string; message: string; type: Notification['type'] };
                     addNotification(newNotif.title, newNotif.message, newNotif.type);
                 }
             )

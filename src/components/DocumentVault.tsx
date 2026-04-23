@@ -13,6 +13,11 @@ import {
     Plus
 } from 'lucide-react';
 import { generateId } from '../utils/uuid';
+import { 
+    differenceInDays, 
+    parseISO, 
+    startOfDay,
+} from 'date-fns';
 
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../utils/supabase';
@@ -111,10 +116,20 @@ const DocumentVault: React.FC<{ onStatsUpdate?: (stats: { hasFullVehicle: boolea
 
     // OPTIMISTIC SAVE
     const handleSave = async (docType: string, category: 'vehicle' | 'driver') => {
-        if (!formDate) { alert('Please select an expiry date first.'); return; }
+        if (!formDate) {
+            window.dispatchEvent(new CustomEvent('auth-error', { 
+                detail: { title: 'Date Required', message: 'Please select an expiry date first.', type: 'warning' } 
+            }));
+            return;
+        }
 
         const docName = category === 'vehicle' ? (currentVehicle?.number || '') : (settings.holderName || 'Driver');
-        if (!docName) { alert('Missing vehicle or driver information.'); return; }
+        if (!docName) {
+            window.dispatchEvent(new CustomEvent('auth-error', { 
+                detail: { title: 'Missing Info', message: 'Missing vehicle or driver information.', type: 'error' } 
+            }));
+            return;
+        }
 
         const newDocData: VaultDoc = {
             id: generateId(), name: docName, type: docType, expiryDate: formDate
@@ -186,7 +201,9 @@ const DocumentVault: React.FC<{ onStatsUpdate?: (stats: { hasFullVehicle: boolea
                     const error = err as { message?: string };
                     console.error('Background Save Failed:', error);
                     setAllDocs(previousDocs); // Revert
-                    alert(`Save failed: ${error.message || 'Network error'}`);
+                    window.dispatchEvent(new CustomEvent('auth-error', { 
+                        detail: { title: 'Sync Failed', message: error.message || 'Check your connection', type: 'error' } 
+                    }));
                 }
             };
             syncToDb();
@@ -195,7 +212,6 @@ const DocumentVault: React.FC<{ onStatsUpdate?: (stats: { hasFullVehicle: boolea
 
     // OPTIMISTIC DELETE
     const handleDelete = async (doc: VaultDoc) => {
-        if (!confirm('Delete this date?')) return;
         const previousDocs = [...allDocs];
 
         setAllDocs(prev => {
@@ -217,7 +233,9 @@ const DocumentVault: React.FC<{ onStatsUpdate?: (stats: { hasFullVehicle: boolea
                 } catch (err) {
                     console.error('Delete Failed:', err);
                     setAllDocs(previousDocs); // Revert
-                    alert('Delete failed. Please check connection.');
+                    window.dispatchEvent(new CustomEvent('auth-error', { 
+                        detail: { title: 'Delete Failed', message: 'Check your connection', type: 'error' } 
+                    }));
                 }
             };
             syncDelete();
@@ -236,12 +254,14 @@ const DocumentVault: React.FC<{ onStatsUpdate?: (stats: { hasFullVehicle: boolea
     };
 
     const getExpiryStatus = (dateStr: string) => {
-        const today = new Date();
-        const exp = new Date(dateStr);
-        const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        if (diffDays < 0) return { label: 'EXPIRED', color: 'text-red-500', bg: 'bg-red-50', badge: 'bg-red-500' };
-        if (diffDays <= 30) return { label: `${diffDays} DAYS LEFT`, color: 'text-orange-500', bg: 'bg-orange-50', badge: 'bg-orange-500' };
-        return { label: 'ACTIVE', color: 'text-green-600', bg: 'bg-green-50', badge: 'bg-green-100 text-green-700' };
+        const today = startOfDay(new Date());
+        const exp = startOfDay(parseISO(dateStr));
+        const diffDays = differenceInDays(exp, today);
+
+        if (diffDays < 0) return { label: 'EXPIRED', color: 'text-red-500', bg: 'bg-red-50', badge: 'bg-red-500 px-3' };
+        if (diffDays <= 7) return { label: `${diffDays}D LEFT`, color: 'text-red-600', bg: 'bg-red-50/50', badge: 'bg-red-600 px-3 animate-pulse' };
+        if (diffDays <= 30) return { label: `${diffDays}D LEFT`, color: 'text-orange-500', bg: 'bg-orange-50', badge: 'bg-orange-500 px-3' };
+        return { label: 'ACTIVE', color: 'text-green-600', bg: 'bg-green-50', badge: 'bg-emerald-500 px-3 text-white' };
     };
 
     const renderCard = (def: { id: string, label: string, desc: string }, category: 'vehicle' | 'driver') => {

@@ -172,6 +172,12 @@ const SeoFareDisplay = ({ result, tripData, onEdit }: { result: SeoFareResult, t
                             <span className="text-sm font-black text-slate-800 uppercase tracking-widest">Total Estimated</span>
                             <span className="text-xl font-black text-primary">₹{(fare || 0).toLocaleString()}</span>
                         </div>
+                        <div className="mt-2 p-3 bg-red-50/30 rounded-xl border border-red-100/50 flex gap-2 items-start">
+                            <AlertCircle size={12} className="text-red-500 shrink-0 mt-0.5" />
+                            <p className="text-[9px] text-red-700/80 leading-relaxed font-bold uppercase tracking-wider text-left">
+                                NHAI Estimates Only. Toll, Parking & State Taxes are extra and payable by the customer as per actuals.
+                            </p>
+                        </div>
                         <p className="text-[10px] text-slate-400 text-right font-medium">Click customize to add options like GST</p>
                     </div>
                 </div>
@@ -1029,7 +1035,9 @@ const ActingDriverCalculator: React.FC = () => {
 
     const handleCalculate = () => {
         if (!canCalculateFare(settings)) {
-            alert(`Calculation limit reached (${calcLimitForPlan(settings)}/month). Upgrade for more.`);
+            window.dispatchEvent(new CustomEvent('auth-error', {
+                detail: { title: 'Limit Reached', message: `${calcLimitForPlan(settings)} calculations/month used. Upgrade for more.`, type: 'warning' }
+            }));
             openUpgradeModal();
             return;
         }
@@ -1249,7 +1257,9 @@ const RelocationCalculator: React.FC = () => {
 
     const handleCalculate = () => {
         if (!canCalculateFare(settings)) {
-            alert(`Calculation limit reached (${calcLimitForPlan(settings)}/month). Upgrade for more.`);
+            window.dispatchEvent(new CustomEvent('auth-error', {
+                detail: { title: 'Limit Reached', message: `${calcLimitForPlan(settings)} calculations/month used. Upgrade for more.`, type: 'warning' }
+            }));
             openUpgradeModal();
             return;
         }
@@ -1602,7 +1612,7 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                     </div>
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => { expanded ? setExpanded(false) : triggerAction(() => setExpanded(true)); }}
+                            onClick={() => expanded ? setExpanded(false) : triggerAction(() => setExpanded(true))}
                             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-slate-200 bg-slate-50 text-slate-600 active:scale-95 transition-all"
                         >
                             {expanded ? 'Hide Details' : 'View Details'}
@@ -1638,6 +1648,7 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                                     })}
 
                                     {/* GST */}
+                                    {/* GST */}
                                     <div className="flex justify-between items-center py-2 border-b border-slate-100 cursor-pointer" onClick={() => setIncludeGst(!includeGst)}>
                                         <div className="flex items-center gap-2">
                                             <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${includeGst ? 'bg-primary border-primary' : 'bg-white border-slate-300'}`}>
@@ -1646,6 +1657,14 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                                             <span className="text-[11px] font-bold text-slate-700 select-none">Add GST (5%)</span>
                                         </div>
                                         {includeGst && <span className="text-[11px] font-black text-primary">₹{gstAmount.toLocaleString()}</span>}
+                                    </div>
+                                    
+                                    {/* Legal Disclaimer */}
+                                    <div className="mt-4 p-3 bg-red-50/50 rounded-xl border border-red-100 flex gap-2.5 items-start">
+                                        <AlertCircle size={14} className="text-red-500 shrink-0 mt-0.5" />
+                                        <p className="text-[9px] text-red-700 leading-relaxed font-medium uppercase tracking-wider">
+                                            <strong>Disclaimer:</strong> Toll, Parking & Inter-state permit charges are approximate NHAI estimates. Actual costs are extra and must be paid by the customer directly as per actuals.
+                                        </p>
                                     </div>
 
                                     {/* Total */}

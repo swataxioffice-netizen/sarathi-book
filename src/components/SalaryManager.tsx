@@ -334,7 +334,13 @@ const SalaryManager: React.FC = () => {
                 });
             }
 
-            alert(`Payslip generated and saved to expenses for ${selectedStaff.name}`);
+            window.dispatchEvent(new CustomEvent('auth-error', { 
+                detail: { 
+                    title: 'Payslip Generated', 
+                    message: `Payslip for ${selectedStaff.name} saved to expenses.`, 
+                    type: 'success' 
+                } 
+            }));
 
             await Analytics.logActivity('payslip_generated', {
                 staffId: selectedStaff.id,
@@ -344,7 +350,13 @@ const SalaryManager: React.FC = () => {
             });
         } catch (error) {
             console.error('Error generating payslip:', error);
-            alert('Failed to generate payslip. Please try again.');
+            window.dispatchEvent(new CustomEvent('auth-error', { 
+                detail: { 
+                    title: 'Generation Failed', 
+                    message: 'Failed to generate payslip. Please try again.', 
+                    type: 'error' 
+                } 
+            }));
         }
     };
 

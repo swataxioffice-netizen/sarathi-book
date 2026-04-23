@@ -34,7 +34,9 @@ const TariffPage = () => {
         try {
             const saved = localStorage.getItem('sarathi_custom_rates');
             if (saved) return JSON.parse(saved);
-        } catch {}
+        } catch {
+            // Ignore storage errors or invalid JSON
+        }
         const rates: Record<string, { drop: number; round: number; bata: number; pkg4hr: number; pkg8hr: number; pkg12hr: number; extraHr: number }> = {};
         VEHICLES.forEach(v => {
             const t = TARIFFS.vehicles[v.id as keyof typeof TARIFFS.vehicles];
@@ -49,7 +51,9 @@ const TariffPage = () => {
         const numValue = parseFloat(value) || 0;
         setCustomRates(prev => {
             const updated = { ...prev, [vehicleId]: { ...prev[vehicleId], [type]: numValue } };
-            try { localStorage.setItem('sarathi_custom_rates', JSON.stringify(updated)); } catch {}
+            try { localStorage.setItem('sarathi_custom_rates', JSON.stringify(updated)); } catch {
+                // Ignore storage errors
+            }
             return updated;
         });
     };
@@ -61,7 +65,9 @@ const TariffPage = () => {
             defaults[v.id] = { drop: v.dropRate, round: v.roundRate, bata: v.batta, pkg4hr: t?.local_4hr_pkg ?? 0, pkg8hr: t?.local_8hr_pkg ?? 0, pkg12hr: t?.local_12hr_pkg ?? 0, extraHr: t?.extra_hr_rate ?? 0 };
         });
         setCustomRates(defaults);
-        try { localStorage.removeItem('sarathi_custom_rates'); } catch {}
+        try { localStorage.removeItem('sarathi_custom_rates'); } catch {
+            // Ignore storage errors
+        }
     };
 
     const isRateModified = (vehicleId: string) => {
