@@ -1,13 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, X, Bot, User, Loader2, Sparkles, MoveHorizontal, Mic } from 'lucide-react';
+import { Send, X, Bot, User, Loader2, Sparkles, MoveHorizontal, Mic, Lock } from 'lucide-react';
 import { chatWithSarathi } from '../utils/geminiApi';
 import { Analytics } from '../utils/monitoring';
+import { useSettings } from '../contexts/SettingsContext';
+import { isSuper, openUpgradeModal } from '../utils/planGate';
 
 interface SarathiAIProps {
     onNavigate?: (page: string) => void;
 }
 
 const SarathiAI: React.FC<SarathiAIProps> = ({ onNavigate }) => {
+    const { settings } = useSettings();
     const [isOpen, setIsOpen] = useState(false);
     const [message, setMessage] = useState('');
     const [chatHistory, setChatHistory] = useState<{ role: "user" | "model", text: string }[]>([]);
@@ -155,11 +158,21 @@ const SarathiAI: React.FC<SarathiAIProps> = ({ onNavigate }) => {
             {/* Floating Bubble */}
             {!isOpen && (
                 <button
-                    onClick={() => setIsOpen(true)}
+                    onClick={() => {
+                        if (!isSuper(settings)) {
+                            openUpgradeModal();
+                            return;
+                        }
+                        setIsOpen(true);
+                    }}
                     className="fixed bottom-24 right-5 md:bottom-10 md:right-10 w-16 h-16 bg-linear-to-tr from-primary to-[#4F46E5] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50 group"
                 >
                     <div className="absolute inset-0 bg-white/20 rounded-full animate-ping group-hover:block hidden"></div>
-                    <Bot size={28} className="relative z-10" />
+                    {isSuper(settings) ? (
+                        <Bot size={28} className="relative z-10" />
+                    ) : (
+                        <Lock size={22} className="relative z-10" />
+                    )}
                     <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 border-2 border-white rounded-full flex items-center justify-center">
                         <span className="text-[10px] font-bold">AI</span>
                     </div>
@@ -269,7 +282,7 @@ const SarathiAI: React.FC<SarathiAIProps> = ({ onNavigate }) => {
                                 value={message}
                                 onChange={(e) => setMessage(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                placeholder="Speak or Type in Tamil/English..."
+                                placeholder="Speak or Type in English..."
                                 className="flex-1 bg-transparent border-none outline-none text-white text-sm py-2 placeholder:text-slate-500 font-bold"
                             />
                             <div className="flex items-center gap-2">

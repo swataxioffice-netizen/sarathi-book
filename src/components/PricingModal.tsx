@@ -22,9 +22,9 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
             id: 'free',
             name: 'Free Forever',
             price: { monthly: 0, yearly: 0 },
-            description: 'Basic tools for manual drivers',
+            description: 'Try the calculator & basic invoicing',
             icon: <Zap size={24} className="text-slate-400" />,
-            features: ['Single Vehicle', 'Ad-supported', 'Standard Invoices', '10 Invoices / Month'],
+            features: ['1 Vehicle', 'Watermark on PDFs', 'Ad-supported', '10 Invoices / Month', '50 Calculations / Month'],
             buttonText: 'Current Plan',
             popular: false
         },
@@ -32,33 +32,36 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
             id: 'pro',
             name: 'Pro',
             price: { monthly: 49, yearly: 499 },
-            description: 'Powerful automated fleet management',
+            description: 'For active drivers who share PDFs with customers',
             icon: <Star size={24} className="text-blue-600" />,
-            features: ['Unlimited Vehicles', 'No Ads (Instant)', 'Remove App Watermark', 'Custom Business Logo', 'Staff Management'],
+            features: ['No Watermark on PDFs', 'Custom Business Logo', 'No Ads', 'Unlimited Invoices & Quotations', 'Unlimited Calculations', 'Up to 4 Vehicles', 'Quick Notes'],
             buttonText: 'Upgrade to Pro',
             popular: true
         },
         {
             id: 'super-pro',
-            name: 'Super Pro',
-            price: { monthly: 99, yearly: 999 },
-            description: 'The ultimate business command center',
+            name: 'Fleet Pro',
+            price: { monthly: 149, yearly: 1499 },
+            description: 'For fleet owners managing drivers & vehicles',
             icon: <Crown size={24} className="text-amber-500" />,
-            features: ['Everything in Pro', 'Advanced Analytics', 'Priority 24/7 Support'],
-            buttonText: 'Get Super Pro',
+            features: ['Everything in Pro', 'Unlimited Vehicles', 'Staff & Salary Management', 'AI Assistant (Sarathi)', 'Finance & Loan Center', '24/7 Dedicated Support'],
+            buttonText: 'Get Fleet Pro',
             popular: false
         }
     ];
 
     const comparisonFeatures = [
-        { name: 'Vehicle Management', free: '1 Vehicle', pro: 'Unlimited', super: 'Unlimited' },
-        { name: 'Invoices / Month', free: '10', pro: 'Unlimited', super: 'Unlimited' },
-        { name: 'Ad-free Experience', free: false, pro: true, super: true },
-        { name: 'Remove App Watermark', free: false, pro: true, super: true },
+        { name: 'Monthly Invoices', free: '10', pro: 'Unlimited', super: 'Unlimited' },
+        { name: 'Monthly Calculations', free: '50', pro: 'Unlimited', super: 'Unlimited' },
+        { name: 'Vehicles', free: '1', pro: 'Up to 4', super: 'Unlimited' },
+        { name: 'No Watermark on PDFs', free: false, pro: true, super: true },
         { name: 'Custom Business Logo', free: false, pro: true, super: true },
-        { name: 'Staff & Salary Management', free: false, pro: true, super: true },
-        { name: 'Analytics Dashboard', free: false, pro: false, super: true },
-        { name: 'Support Level', free: 'Standard', pro: 'Priority', super: '24/7 Dedicated' },
+        { name: 'No Ads', free: false, pro: true, super: true },
+        { name: 'Quick Notes', free: false, pro: true, super: true },
+        { name: 'Staff & Salary Management', free: false, pro: false, super: true },
+        { name: 'AI Assistant (Sarathi)', free: false, pro: false, super: true },
+        { name: 'Finance & Loan Center', free: false, pro: false, super: true },
+        { name: 'Support', free: 'Community', pro: 'Priority', super: '24/7 Dedicated' },
     ];
 
     const handleUpgrade = async (tier: typeof tiers[0]) => {
@@ -125,10 +128,10 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                         {/* Header */}
                         <div className="text-center mb-6 md:mb-10">
                             <h2 className="text-2xl md:text-5xl font-black text-slate-900 leading-tight mb-2 md:mb-3">
-                                Choose Your <span className="text-blue-600">Success Plan</span>
+                                Simple Pricing, <span className="text-blue-600">Real Value</span>
                             </h2>
                             <p className="text-slate-500 font-bold mb-4 md:mb-6 max-w-md mx-auto text-[11px] md:text-sm leading-relaxed">
-                                Transparent pricing for businesses of all sizes. Professionalize your cab business today.
+                                Pro is for active drivers. Fleet Pro is for owners managing multiple vehicles and staff.
                             </p>
 
                             {/* Billing Switch */}
@@ -209,7 +212,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                         <div className="hidden md:block">
                             <div className="text-center mb-10">
                                 <h3 className="text-xl font-black text-slate-900 uppercase tracking-widest">Deep Comparison</h3>
-                                <p className="text-slate-400 font-bold text-xs mt-2 uppercase tracking-wider underline decoration-blue-500/30">See why Super Pro is our best value</p>
+                                <p className="text-slate-400 font-bold text-xs mt-2 uppercase tracking-wider underline decoration-blue-500/30">See what each plan unlocks</p>
                             </div>
 
                             <div className="overflow-hidden rounded-3xl border border-slate-100 shadow-sm">

@@ -7,7 +7,8 @@ import { supabase } from './utils/supabase';
 import UpdateWatcher from './components/UpdateWatcher';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 // Staging Environment Trigger
-import { X, RefreshCw, TrendingUp, Bell, Settings } from 'lucide-react';
+import { X, RefreshCw, TrendingUp, Bell, Settings, Lock } from 'lucide-react';
+import { isPro, isSuper } from './utils/planGate';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useUpdate, UpdateProvider } from './contexts/UpdateContext';
 import Header from './components/Header';
@@ -37,9 +38,9 @@ const PublicProfile = lazy(() => import('./components/PublicProfile'));
 const QuickNotes = lazy(() => import('./components/QuickNotes'));
 const PricingModal = lazy(() => import('./components/PricingModal'));
 const SalaryManager = lazy(() => import('./components/SalaryManager'));
-const TrendingRoutes = lazy(() => import('./components/TrendingRoutes'));
 const RoutesDirectory = lazy(() => import('./components/RoutesDirectory'));
 const TariffPage = lazy(() => import('./components/TariffPage'));
+const PublicFareCalculator = lazy(() => import('./components/PublicFareCalculator'));
 const MobileMenu = lazy(() => import('./components/MobileMenuContainer'));
 const Finance = lazy(() => import('./components/Finance'));
 const RouteLandingPage = lazy(() => import('./components/RouteLandingPage'));
@@ -57,6 +58,35 @@ const LoadingFallback = () => (
   </div>
 );
 
+// Paywall screen shown when a free user tries to access a Pro/Super feature
+const PaywallScreen: React.FC<{ feature: string; tier?: 'pro' | 'super' }> = ({ feature, tier = 'pro' }) => (
+  <div className="flex flex-col items-center justify-center min-h-[65vh] p-8 text-center gap-5">
+    <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center shadow-inner">
+      <Lock size={36} className="text-blue-600" />
+    </div>
+    <div className="space-y-2">
+      <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">{feature}</h2>
+      <p className="text-slate-500 text-sm font-medium max-w-xs mx-auto leading-relaxed">
+        This feature is available on the{' '}
+        <span className={tier === 'super' ? 'text-amber-600 font-bold' : 'text-blue-600 font-bold'}>
+          {tier === 'super' ? 'Super Pro' : 'Pro'}
+        </span>{' '}
+        plan.
+      </p>
+    </div>
+    <button
+      onClick={() => window.dispatchEvent(new CustomEvent('open-pricing-modal'))}
+      className={`px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg active:scale-95 transition-all ${
+        tier === 'super'
+          ? 'bg-slate-900 text-white border-2 border-amber-500/40 shadow-slate-900/20 hover:bg-black'
+          : 'bg-blue-600 text-white shadow-blue-500/30 hover:bg-blue-700'
+      }`}
+    >
+      {tier === 'super' ? 'Upgrade to Super Pro — ₹99/mo' : 'Upgrade to Pro — ₹49/mo'}
+    </button>
+  </div>
+);
+
 function AppContent() {
   /* Guest Roaming Logic */
   const { user, isAdmin, loading: authLoading, originalUser, stopImpersonation } = useAuth();
@@ -67,13 +97,12 @@ function AppContent() {
     // Priority: 1. URL Path, 2. URL Hash (Legacy/Auth), 3. Local Storage, 4. Default 'calculator'
     const pathname = window.location.pathname.slice(1).split('/')[0];
     const hash = window.location.hash.slice(1).split('/')[0];
-    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'profile', 'admin', 'notes', 'staff', 'trending', 'routes', 'tariff', 'finance', 'about', 'contact', 'privacy', 'terms'];
+    const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'profile', 'admin', 'notes', 'staff', 'routes', 'tariff', 'finance', 'about', 'contact', 'privacy', 'terms', 'fare-calculator'];
 
     // Migration: specific check to force old defaults (dashboard) to new default (calculator) one time
     const storedTab = localStorage.getItem('nav-active-tab');
     if (storedTab === 'dashboard' && !pathname && !hash) {
-      // If user was on dashboard and just opened app (no specific path), force calculator
-      return 'taxi-fare-calculator';
+      return 'trips';
     }
 
     if (pathname && validTabs.includes(pathname)) return pathname;
@@ -84,14 +113,14 @@ function AppContent() {
     }
 
     if (hash && validTabs.includes(hash)) return hash;
-    return storedTab || 'taxi-fare-calculator';
+    return storedTab || 'trips';
   });
 
   // Support for Browser Back/Forward buttons
   useEffect(() => {
     const handlePopState = () => {
       const pathname = window.location.pathname.slice(1).split('/')[0];
-      const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'profile', 'admin', 'notes', 'trending', 'routes', 'tariff', 'finance', 'staff', 'about', 'contact', 'privacy', 'terms'];
+      const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'fare-calculator', 'profile', 'admin', 'notes', 'routes', 'tariff', 'finance', 'staff', 'about', 'contact', 'privacy', 'terms'];
       if (pathname && validTabs.includes(pathname)) {
         setActiveTab(pathname);
       } else if (pathname && (pathname.includes('-to-') || pathname.endsWith('-taxi') || pathname.endsWith('-rental'))) {
@@ -797,18 +826,18 @@ function AppContent() {
           </Suspense>
         );
       case 'calculator':
-      case 'taxi-fare-calculator':
         return (
           <Suspense fallback={<LoadingFallback />}>
             <Calculator />
           </Suspense>
         );
-      case 'trending':
-        return settings.plan === 'super' ? (
+      case 'taxi-fare-calculator':
+      case 'fare-calculator':
+        return (
           <Suspense fallback={<LoadingFallback />}>
-            <TrendingRoutes />
+            <PublicFareCalculator />
           </Suspense>
-        ) : <Dashboard trips={trips} quotations={quotations} />;
+        );
       case 'routes':
         return (
           <Suspense fallback={<LoadingFallback />}>
@@ -822,17 +851,17 @@ function AppContent() {
           </Suspense>
         );
       case 'finance':
-        return (
+        return isSuper(settings) ? (
           <Suspense fallback={<LoadingFallback />}>
             <Finance />
           </Suspense>
-        );
+        ) : <PaywallScreen feature="Finance & Loan Center" tier="super" />;
       case 'notes':
-        return (
+        return isPro(settings) ? (
           <Suspense fallback={<LoadingFallback />}>
             <QuickNotes />
           </Suspense>
-        );
+        ) : <PaywallScreen feature="Quick Notes" />;
       case 'profile':
         return (
           <Suspense fallback={<LoadingFallback />}>
@@ -840,11 +869,11 @@ function AppContent() {
           </Suspense>
         );
       case 'staff':
-        return (settings.isPremium || settings.plan === 'pro' || settings.plan === 'super') ? (
+        return isSuper(settings) ? (
           <Suspense fallback={<LoadingFallback />}>
             <SalaryManager />
           </Suspense>
-        ) : <Dashboard trips={trips} quotations={quotations} />;
+        ) : <PaywallScreen feature="Staff & Salary Management" tier="super" />;
       case 'admin':
         return isAdmin ? (
           <Suspense fallback={<LoadingFallback />}>
@@ -969,7 +998,7 @@ function AppContent() {
               {renderContent()}
             </div>
             {/* Show Footer only on Public/SEO/Legal Pages */}
-            {(['about', 'contact', 'privacy', 'terms', 'routes', 'tariff', 'trending'].includes(activeTab) || 
+            {(['about', 'contact', 'privacy', 'terms', 'routes', 'tariff', 'trending', 'taxi-fare-calculator', 'fare-calculator'].includes(activeTab) ||
                activeTab.includes('-to-') || activeTab.endsWith('-taxi') || activeTab.endsWith('-rental')) && (
               <Footer setActiveTab={setActiveTab} />
             )}
@@ -987,7 +1016,7 @@ function AppContent() {
         <main className="flex-1 overflow-y-auto scrollbar-hide px-3 py-4 pb-24 bg-[#F5F7FA] relative">
           {renderContent()}
           {/* Show Footer only on Public/SEO/Legal Pages for Mobile */}
-          {(['about', 'contact', 'privacy', 'terms', 'routes', 'tariff', 'trending'].includes(activeTab) || 
+          {(['about', 'contact', 'privacy', 'terms', 'routes', 'tariff', 'trending', 'taxi-fare-calculator', 'fare-calculator'].includes(activeTab) ||
              activeTab.includes('-to-') || activeTab.includes('-taxi') || activeTab.includes('-rental')) && (
             <Footer setActiveTab={setActiveTab} />
           )}

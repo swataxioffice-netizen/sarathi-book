@@ -1,12 +1,13 @@
 import React from 'react';
 import {
-    User, LogOut, ShieldCheck, Share2, Landmark,
-    Zap, History, Palette,
-    FileText, Contact, Settings, TrendingUp
+    User, LogOut, ShieldCheck, Share2,
+    Zap, BadgeIndianRupee, Palette,
+    FileText, Contact, Settings, Users
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { Analytics } from '../utils/monitoring';
+import { isPro as checkIsPro, isSuper as checkIsSuper } from '../utils/planGate';
 
 interface SideNavProps {
     activeTab: string;
@@ -17,8 +18,8 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
     const { user, signOut, isAdmin } = useAuth();
     const { settings } = useSettings();
 
-    const isSuper = settings.plan === 'super';
-    const isPro = settings.plan === 'pro' || settings.plan === 'super' || settings.isPremium;
+    const isSuper = checkIsSuper(settings);
+    const isPro = checkIsPro(settings);
 
     const handlePricing = () => window.dispatchEvent(new CustomEvent('open-pricing-modal'));
 
@@ -38,14 +39,13 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
             window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'branding' }));
             return;
         }
-        if (tab === 'trending') {
+        if (tab === 'finance') {
             if (!isSuper) { handlePricing(); return; }
-            setActiveTab('trending');
+            setActiveTab('finance');
             return;
         }
         if (tab === 'staff') {
-            setActiveTab('profile');
-            window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'staff' }));
+            setActiveTab('staff');
             return;
         }
         setActiveTab(tab);
@@ -119,7 +119,9 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                 <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">Account</p>
                     {navItem('profile', User, 'My Profile')}
-                    {navItem('tariff', History, 'Tariff Cards')}
+                    {navItem('tariff', BadgeIndianRupee, 'Rate Lists')}
+                    {navItem('staff', Users, 'Staff & Salary', !isSuper ? 'Super' : undefined)}
+                    {navItem('app-settings', Settings, 'App Settings')}
                 </div>
 
                 {/* Branding */}
@@ -128,14 +130,7 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                     {navItem('visiting-card', Contact, 'Visiting Card', !isPro ? 'Pro' : undefined)}
                     {navItem('letterhead', FileText, 'Letterhead', !isPro ? 'Pro' : undefined)}
                     {navItem('watermark', ShieldCheck, 'Remove Watermark', !isPro ? 'Pro' : undefined)}
-                    {navItem('branding', Palette, 'PDF Colour', !isPro ? 'Pro' : undefined)}
-                </div>
-
-                {/* Business */}
-                <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">Business</p>
-                    {navItem('trending', TrendingUp, 'Market Trends', !isSuper ? 'Super' : undefined)}
-                    {navItem('finance', Landmark, 'Loan Center')}
+                    {navItem('branding', Palette, 'Bill Theme Colour', !isPro ? 'Pro' : undefined)}
                 </div>
 
                 {/* Help */}
@@ -145,7 +140,6 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                     {navItem('contact', Contact, 'Contact Us')}
                     {navItem('privacy', ShieldCheck, 'Privacy Policy')}
                     {navItem('terms', FileText, 'Terms')}
-                    {navItem('app-settings', Settings, 'App Settings')}
                 </div>
 
                 {isAdmin && (

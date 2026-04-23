@@ -1,12 +1,13 @@
 import React, { useEffect } from 'react';
 import {
-    X, User, History, FileText, Contact,
+    X, User, BadgeIndianRupee, FileText, Contact,
     Share2, LogOut, Zap,
-    ShieldCheck, Palette, Settings
+    ShieldCheck, Palette, Settings, Users
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { Analytics } from '../utils/monitoring';
+import { isPro as checkIsPro, isSuper as checkIsSuper } from '../utils/planGate';
 import GoogleSignInButton from './GoogleSignInButton';
 
 
@@ -30,8 +31,8 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
     const { user, signOut, isAdmin } = useAuth();
     const { settings } = useSettings();
 
-    const isSuper = settings.plan === 'super';
-    const isPro = settings.plan === 'pro' || settings.plan === 'super' || settings.isPremium;
+    const isSuper = checkIsSuper(settings);
+    const isPro = checkIsPro(settings);
 
     // Prevent body scroll when menu is open
     useEffect(() => {
@@ -52,9 +53,11 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
 
     const navSections: { title: string, items: NavItem[] }[] = [
         {
-            title: 'Quick Access',
+            title: 'Account',
             items: [
-                { id: 'tariff', icon: History, label: 'Tariff Cards', subtitle: 'Preset rate lists for customers' },
+                { id: 'profile', icon: User, label: 'My Profile', subtitle: 'View and edit your profile' },
+                { id: 'tariff', icon: BadgeIndianRupee, label: 'Rate Lists', subtitle: 'Preset rate lists for customers' },
+                { id: 'staff', icon: Users, label: 'Staff & Salary', subtitle: 'Driver attendance & payroll', isSuper: true },
                 { id: 'app-settings', icon: Settings, label: 'App Settings', subtitle: 'Notifications & preferences' },
             ]
         },
@@ -64,7 +67,7 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
                 { id: 'visiting-card', icon: Contact, label: 'Visiting Card', subtitle: 'Share your digital card', isPro: true },
                 { id: 'letterhead', icon: FileText, label: 'Letterhead', subtitle: 'Download PDF format', isPro: true },
                 { id: 'watermark', icon: ShieldCheck, label: 'Remove Watermark', subtitle: 'Clean professional invoices', isPro: true },
-                { id: 'branding', icon: Palette, label: 'Custom PDF Colour', subtitle: 'Change invoice theme & colors', isPro: true },
+                { id: 'branding', icon: Palette, label: 'Bill Theme Colour', subtitle: 'Change invoice theme & colors', isPro: true },
             ]
         },
         {
@@ -91,6 +94,12 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
             onClose();
             return;
         }
+        if (tab === 'finance') {
+            if (!isSuper) { handlePricing(); return; }
+            setActiveTab('finance');
+            onClose();
+            return;
+        }
         if (tab === 'watermark' || tab === 'branding' || tab === 'visiting-card' || tab === 'letterhead') {
             if (!isPro && !isSuper) {
                 handlePricing();
@@ -113,9 +122,9 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
             // Trigger Branding tab in Profile
             window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'branding' }));
         } else if (tab === 'staff') {
-            setActiveTab('profile');
-            // Trigger Staff tab in Profile
-            window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'staff' }));
+            setActiveTab('staff');
+            onClose();
+            return;
         } else {
             setActiveTab(tab);
         }
@@ -244,6 +253,9 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
                                                     </span>
                                                     {item.isPro && !isPro && !isSuper && (
                                                         <span className="bg-primary/10 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded">Pro</span>
+                                                    )}
+                                                    {item.isSuper && !isSuper && (
+                                                        <span className="bg-amber-500/10 text-amber-600 text-[10px] font-bold px-1.5 py-0.5 rounded">Super</span>
                                                     )}
                                                 </div>
                                                 <p className="text-xs text-slate-500 truncate mt-0.5">

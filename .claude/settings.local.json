@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(tsx|ts|jsx|js\\)$\")",
+      "WebSearch",
+      "WebFetch(domain:www.imarcgroup.com)",
+      "WebFetch(domain:mybillbook.in)",
+      "WebFetch(domain:cleartax.in)",
+      "Bash(npx tsc *)",
+      "Bash(xargs grep *)"
+    ]
+  }
+}

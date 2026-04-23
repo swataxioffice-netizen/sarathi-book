@@ -1,4 +1,4 @@
-export type Language = 'en' | 'ta' | 'kn' | 'hi';
+export type Language = 'en';
 
 export interface Vehicle {
     id: string;

@@ -23,6 +23,7 @@ import { calculateDistance, geocodeAddress } from '../utils/googleMaps';
 import { calculateAdvancedRoute } from '../utils/routesApi';
 import { isHillStationLocation } from '../utils/locationUtils';
 import { calculateGST, determineGSTType, GSTRate, GSTBreakdown } from '../utils/gstUtils';
+import { canCreateQuotation, quotationLimitForPlan, isPro, isSuper, openUpgradeModal } from '../utils/planGate';
 // import { useAdProtection } from '../hooks/useAdProtection';
 import { Suspense } from 'react';
 
@@ -599,6 +600,16 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
 
     const handleShare = async () => {
         if (isSubmitting) return;
+
+        // Enforce monthly quotation limit (skip when editing an existing quotation)
+        if (!editingQuotation && !canCreateQuotation(settings, quotations || [])) {
+            const limit = quotationLimitForPlan(settings);
+            const next = isPro(settings) && !isSuper(settings) ? 'Super Pro' : 'Pro';
+            alert(`Quotation limit reached (${limit}/month). Upgrade to ${next} for more.`);
+            openUpgradeModal();
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const res = await performCalculation();

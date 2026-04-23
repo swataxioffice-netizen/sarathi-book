@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, FileText, Calculator, ShieldCheck } from 'lucide-react';
+import { TrendingUp, FileText, Calculator, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface BottomNavProps {
@@ -38,17 +38,16 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
     }, []);
 
     const firstHalf = [
-        { id: 'dashboard', icon: <LayoutDashboard size={24} />, label: 'KAMAI' },
+        { id: 'trips', icon: <FileText size={24} />, label: 'BILL' },
     ];
 
     const secondHalf = [
-        { id: 'trips', icon: <FileText size={24} />, label: 'BILL' },
+        { id: 'dashboard', icon: <TrendingUp size={24} />, label: 'EARNINGS' },
         ...(isAdmin ? [{ id: 'admin', icon: <ShieldCheck size={24} />, label: 'ADMIN' }] : []),
     ];
 
     return (
         <div className={`fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ${isVisible ? 'translate-y-0' : 'translate-y-[110%]'}`}>
-            {/* SVG Curve Effect for the center button (Optional, but gives the 'merged' look) */}
             <div className="relative bg-white border-t border-slate-200 h-[72px] flex items-center justify-between shadow-[0_-5px_20px_rgba(0,0,0,0.05)] pb-safe">
 
                 {/* Left Side */}
@@ -68,11 +67,11 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
                 {/* Center Space Holder */}
                 <div className="w-16 shrink-0"></div>
 
-                {/* Center Button (Calculator) - Absolute Positioned */}
+                {/* Center Button (FARE - primary action) */}
                 <div className="absolute left-1/2 -translate-x-1/2 -top-6 flex flex-col items-center">
                     <button
                         onClick={() => setActiveTab('taxi-fare-calculator')}
-                        aria-label="Calculator"
+                        aria-label="Fare Calculator"
                         className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-4 border-white transform transition-all duration-300 ${activeTab === 'taxi-fare-calculator' || activeTab === 'calculator' ? 'scale-110 bg-primary text-white shadow-primary/30' : 'bg-slate-50 text-slate-600 hover:bg-white hover:text-slate-800 border-slate-50'
                             }`}
                     >

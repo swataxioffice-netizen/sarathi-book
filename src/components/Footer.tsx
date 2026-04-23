@@ -15,7 +15,7 @@ const Footer: React.FC<FooterProps> = ({ setActiveTab }) => {
                             <span className="text-xl font-black text-white uppercase tracking-tighter">Sarathi<span className="text-blue-500">Book</span></span>
                         </div>
                         <p className="text-slate-400 text-sm leading-relaxed mb-6 font-medium">
-                            Empowering taxi owners and drivers with professional tools for accurate fare calculation, invoicing, and business management.
+                            Fare calculator + GST invoice in 60 seconds. Built for cab drivers and owners across India.
                         </p>
                     </div>
 
@@ -45,7 +45,7 @@ const Footer: React.FC<FooterProps> = ({ setActiveTab }) => {
                     <div>
                         <h4 className="text-white font-black text-xs uppercase tracking-widest mb-6 border-l-2 border-orange-500 pl-3">Newsletter</h4>
                         <p className="text-slate-400 text-xs leading-relaxed mb-4 font-medium">
-                            Get latest updates on taxi rates and business tools.
+                            Get latest updates on cab rates and business tools.
                         </p>
                         <div className="flex gap-2">
                             <input type="email" placeholder="Email" className="bg-slate-800 border-none rounded-lg px-3 py-2 text-xs text-white focus:ring-1 focus:ring-blue-500 flex-1" />

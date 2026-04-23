@@ -6,7 +6,7 @@ const ContactUs = () => {
         <div className="bg-white min-h-screen">
             <SEOHead
                 title="Contact Us | Sarathi Book - Support & Feedback"
-                description="Get in touch with the Sarathi Book team. We are here to help you with any questions about our taxi management tools."
+                description="Get in touch with the Sarathi Book team. We are here to help you with any questions about our cab management tools."
             />
 
             <div className="bg-primary text-white py-20 px-6 text-center">

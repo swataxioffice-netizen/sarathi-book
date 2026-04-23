@@ -26,6 +26,7 @@ import { calculateDistance } from '../utils/googleMaps';
 import { calculateAdvancedRoute } from '../utils/routesApi';
 import { performOcr, parseOdometer } from '../utils/visionApi';
 import { calculateGST, GSTRate, GSTBreakdown, getFinancialYear } from '../utils/gstUtils';
+import { canCreateTrip, tripLimitForPlan, isPro, isSuper, openUpgradeModal } from '../utils/planGate';
 
 // --- Types ---
 
@@ -822,6 +823,16 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     const handleSave = async (calcRes?: CalculationResult) => {
         const res = calcRes || await performCalculation();
         if (!res) return null;
+
+        // Enforce monthly invoice limit (skip when editing an existing trip)
+        if (!editingTrip && !canCreateTrip(settings, trips || [])) {
+            const limit = tripLimitForPlan(settings);
+            const next = isPro(settings) && !isSuper(settings) ? 'Super Pro' : 'Pro';
+            alert(`Invoice limit reached (${limit}/month). Upgrade to ${next} for more.`);
+            openUpgradeModal();
+            return null;
+        }
+
         if (customerName) saveToHistory('customer_name', customerName);
         if (customerPhone) saveToHistory('customer_phone', customerPhone);
         if (fromLoc) saveToHistory('location', fromLoc);

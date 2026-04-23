@@ -6,7 +6,7 @@ const AboutUs = () => {
         <div className="bg-white min-h-screen">
             <SEOHead
                 title="About Us | Sarathi Book - Professional Cab Management Tools"
-                description="Learn more about Sarathi Book, our mission to empower taxi drivers and owners with advanced business tools, and our commitment to fair pricing and transparency."
+                description="Learn more about Sarathi Book, our mission to empower cab drivers and owners with advanced business tools, and our commitment to fair pricing and transparency."
             />
 
             {/* Hero Section */}
@@ -14,10 +14,10 @@ const AboutUs = () => {
                 <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl -mr-48 -mt-48"></div>
                 <div className="max-w-4xl mx-auto relative z-10 text-center">
                     <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-6 leading-none">
-                        Empowering the <span className="text-blue-500">Taxi Community</span>
+                        Empowering the <span className="text-blue-500">Cab Community</span>
                     </h1>
                     <p className="text-slate-400 text-lg md:text-xl font-medium max-w-2xl mx-auto leading-relaxed">
-                        Sarathi Book is the ultimate business companion for taxi owners and acting drivers across India, providing professional estimation and invoicing tools.
+                        Sarathi Book lets cab drivers generate a fare estimate and GST-ready invoice in under 60 seconds — no paperwork, no disputes.
                     </p>
                 </div>
             </div>
@@ -28,10 +28,10 @@ const AboutUs = () => {
                     <div>
                         <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight mb-6 leading-tight">Our Mission</h2>
                         <p className="text-slate-600 leading-relaxed mb-6 font-medium">
-                            The taxi industry in India is massive but often lacks the professional tools needed for growth. Drivers frequently struggle with manual calculations, paper-based invoices, and price disputes with customers.
+                            The cab industry in India is massive but often lacks the professional tools needed for growth. Drivers frequently struggle with manual calculations, paper-based invoices, and price disputes with customers.
                         </p>
                         <p className="text-slate-600 leading-relaxed font-medium">
-                            Our mission is to digitalize the taxi business by providing easy-to-use, accurate, and professional tools that help drivers win customer trust and manage their finances better.
+                            Our mission is simple: a driver should be able to share an accurate fare estimate and a proper GST invoice with their customer in under 60 seconds — from any phone.
                         </p>
                     </div>
                     <div className="grid grid-cols-2 gap-4">

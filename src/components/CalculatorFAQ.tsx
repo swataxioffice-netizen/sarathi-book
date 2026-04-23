@@ -19,8 +19,8 @@ const FAQ_ITEMS = [
         answer: "One-way trips are often higher per km because the driver has to return empty, while round trips offer a more economical per-km rate as the return distance is also paid for."
     },
     {
-        question: "Is GST included in the taxi fare?",
-        answer: "Usually, taxi fares attract a 5% GST if booked through a registered aggregator. Our calculator has a toggle to add GST to your final estimate for professional invoicing."
+        question: "Is GST included in the cab fare?",
+        answer: "Usually, cab fares attract a 5% GST if booked through a registered aggregator. Our calculator has a toggle to add GST to your final estimate for professional invoicing."
     }
 ];
 
@@ -28,15 +28,15 @@ const CalculatorFAQ = () => {
     const [openIndex, setOpenIndex] = useState<number | null>(null);
 
     return (
-        <div className="mt-12 bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-            <div className="bg-slate-50 px-6 py-6 border-b border-slate-200">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                        <HelpCircle size={20} />
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+            <div className="bg-slate-50 px-4 py-3 border-b border-slate-200">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                        <HelpCircle size={14} />
                     </div>
                     <div>
-                        <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight leading-none">Frequently Asked Questions</h3>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Common queries about taxi pricing</p>
+                        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide leading-none">Frequently Asked Questions</h3>
+                        <p className="text-[9px] text-slate-400 font-medium uppercase tracking-widest mt-0.5">Common queries about cab pricing</p>
                     </div>
                 </div>
             </div>
@@ -46,14 +46,14 @@ const CalculatorFAQ = () => {
                     <div key={index} className="group">
                         <button
                             onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                            className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-slate-50 transition-colors"
+                            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-slate-50 transition-colors"
                         >
-                            <span className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{item.question}</span>
-                            {openIndex === index ? <ChevronUp size={16} className="text-blue-600" /> : <ChevronDown size={16} className="text-slate-300" />}
+                            <span className="text-[11px] font-semibold text-slate-600 group-hover:text-blue-600 transition-colors pr-3">{item.question}</span>
+                            {openIndex === index ? <ChevronUp size={13} className="text-blue-500 shrink-0" /> : <ChevronDown size={13} className="text-slate-300 shrink-0" />}
                         </button>
                         {openIndex === index && (
-                            <div className="px-6 pb-6 animate-in fade-in slide-in-from-top-2 duration-200">
-                                <p className="text-sm text-slate-500 leading-relaxed font-medium">
+                            <div className="px-4 pb-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                                <p className="text-[11px] text-slate-500 leading-relaxed">
                                     {item.answer}
                                 </p>
                             </div>

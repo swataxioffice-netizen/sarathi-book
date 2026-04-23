@@ -15,10 +15,10 @@ import {
     RotateCcw,
     ArrowLeft,
     X,
-    FileText,
     Check,
     TrendingUp,
-    FilePlus,
+    Copy,
+    MessageSquare,
 } from 'lucide-react';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import MapPicker from './MapPicker';
@@ -30,7 +30,6 @@ import { calculateFare } from '../utils/fare';
 import { calculateFareAsync } from '../utils/fareWorkerWrapper';
 import { VEHICLES } from '../config/vehicleRates';
 import { TRIP_LIMITS } from '../config/tariff_config';
-import { supabase } from '../utils/supabase';
 import { Analytics } from '../utils/monitoring';
 import { isHillStationLocation } from '../utils/locationUtils';
 import AdditionalChargesDrawer from './AdditionalChargesDrawer';
@@ -42,6 +41,7 @@ import CalculatorFAQ from './CalculatorFAQ';
 type FareResult = ReturnType<typeof calculateFare>;
 
 import { useAdProtection } from '../hooks/useAdProtection';
+import { canCalculateFare, incrementCalcCount, calcLimitForPlan, openUpgradeModal } from '../utils/planGate';
 
 import { generateTripSchema } from '../utils/seoSchema';
 
@@ -61,19 +61,6 @@ interface SeoTripData {
     hourlyPackage?: string;
 }
 
-interface TrendingRoute {
-    rank: number;
-    searches: string;
-    trend: string;
-    from: string;
-    to: string;
-    type: string;
-    mode: string;
-    dist: number;
-    fare: number;
-    veh: string;
-    count: number;
-}
 
 const SeoFareDisplay = ({ result, tripData, onEdit }: { result: SeoFareResult, tripData: SeoTripData, onEdit: () => void }) => {
     if (!result) return null;
@@ -214,7 +201,8 @@ interface CabProps {
 }
 
 const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initialTripType, initialResult, initialDistance, initialVehicle }) => {
-    useSettings();
+    const { settings } = useSettings();
+    const [calcLimitHit, setCalcLimitHit] = useState(false);
     const [tripType, setTripType] = useState<'oneway' | 'roundtrip' | 'local' | 'airport'>('oneway');
     const [pickup, setPickup] = useState(initialPickup || '');
     const [drop, setDrop] = useState(initialDrop || '');
@@ -562,9 +550,9 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                 if (item.amount > 0) fullBreakdown.push(`${item.description}: ₹${(item.amount || 0).toLocaleString()}`);
             });
 
-            // Pass full context to Analytics for "Real" Trending Routes
             Analytics.calculateFare(serviceType, selectedVehicle, dist, pickup, drop, Math.round(finalTotal));
 
+            incrementCalcCount();
             setResult({
                 fare: Math.round(finalTotal),
                 details: fullBreakdown,
@@ -586,7 +574,13 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
             // Do nothing, let initial result persist
         } else {
             if (distance || tripType === 'local') {
-                calculate();
+                if (!canCalculateFare(settings)) {
+                    setCalcLimitHit(true);
+                    setResult(null);
+                } else {
+                    setCalcLimitHit(false);
+                    calculate();
+                }
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -640,11 +634,27 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
 
     return (
         <div className="space-y-4">
+            {/* Calc limit banner */}
+            {calcLimitHit && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center space-y-2">
+                    <p className="text-sm font-black text-blue-900 uppercase tracking-tight">
+                        Monthly Limit Reached ({calcLimitForPlan(settings)}/month)
+                    </p>
+                    <p className="text-xs text-blue-600 font-medium">Upgrade to Pro for 80 calculations or Super for unlimited.</p>
+                    <button
+                        onClick={openUpgradeModal}
+                        className="mt-1 bg-blue-600 text-white text-xs font-black uppercase tracking-widest px-6 py-2 rounded-xl hover:bg-blue-700 active:scale-95 transition-all"
+                    >
+                        Upgrade Now
+                    </button>
+                </div>
+            )}
+
             {/* Default SEO for Calculator Page */}
             {!isLandingView && (
                 <SEOHead
-                    title="Taxi Fare Calculator India - Estimate Cab Rates Online"
-                    description="Calculate accurate taxi fares in India for Drop Trips, Round Trips, and Local Hourly Rentals. Get price estimates with driver batta, tolls, and permit charges included."
+                    title="Cab Fare Calculator India - Estimate Cab Rates Online"
+                    description="Calculate accurate cab fares in India for Drop Trips, Round Trips, and Local Hourly Rentals. Get price estimates with driver batta, tolls, and permit charges included."
                 />
             )}
 
@@ -673,15 +683,17 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                 <button
                                     key={t}
                                     onClick={() => {
-                                        if (tripType === 'local' && t !== 'local') {
-                                            setPickup('');
-                                            setDrop('');
-                                            setPickupCoords(null);
-                                            setDropCoords(null);
-                                            setDistance('');
+                                        if (t !== tripType) {
                                             setResult(null);
+                                            if (tripType === 'local' || t === 'local') {
+                                                setPickup('');
+                                                setDrop('');
+                                                setPickupCoords(null);
+                                                setDropCoords(null);
+                                                setDistance('');
+                                            }
+                                            setTripType(t);
                                         }
-                                        setTripType(t);
                                     }}
                                     aria-pressed={tripType === t}
                                     aria-label={t === 'oneway' ? 'Drop Trip' : (t === 'local' ? 'Local Package' : 'Outstation')}
@@ -877,7 +889,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                     {pickup && drop && (
                         <div className="sr-only">
                             <h4>0% Service Commission</h4>
-                            <p>Sarathi Book estimates are derived directly from taxi associations, ensuring you pay one fair, direct price.</p>
+                            <p>Sarathi Book estimates are derived directly from cab associations, ensuring you pay one fair, direct price.</p>
                         </div>
                     )}
 
@@ -965,7 +977,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
 
 // --- 2. Acting Driver Calculator ---
 const ActingDriverCalculator: React.FC = () => {
-    useSettings();
+    const { settings } = useSettings();
     const { triggerAction } = useAdProtection();
 
     const [serviceType, setServiceType] = useState<'local8' | 'local12' | 'outstation'>('local8');
@@ -1016,6 +1028,12 @@ const ActingDriverCalculator: React.FC = () => {
     };
 
     const handleCalculate = () => {
+        if (!canCalculateFare(settings)) {
+            alert(`Calculation limit reached (${calcLimitForPlan(settings)}/month). Upgrade for more.`);
+            openUpgradeModal();
+            return;
+        }
+        incrementCalcCount();
         triggerAction(calculate);
     };
 
@@ -1115,7 +1133,7 @@ const ActingDriverCalculator: React.FC = () => {
 
 // --- 3. Relocation Calculator ---
 const RelocationCalculator: React.FC = () => {
-    useSettings();
+    const { settings } = useSettings();
     const [vehicleType, setVehicleType] = useState<'car' | 'van' | 'bus'>('car');
     const [pickup, setPickup] = useState('');
     const [drop, setDrop] = useState('');
@@ -1230,6 +1248,12 @@ const RelocationCalculator: React.FC = () => {
     };
 
     const handleCalculate = () => {
+        if (!canCalculateFare(settings)) {
+            alert(`Calculation limit reached (${calcLimitForPlan(settings)}/month). Upgrade for more.`);
+            openUpgradeModal();
+            return;
+        }
+        incrementCalcCount();
         triggerAction(calculate);
     };
 
@@ -1458,6 +1482,8 @@ interface ResultCardProps {
 const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) => {
     const [expanded, setExpanded] = useState(false);
     const [includeGst, setIncludeGst] = useState(false);
+    const [showShareSheet, setShowShareSheet] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     // Ad Logic
     const { triggerAction } = useAdProtection();
@@ -1466,89 +1492,39 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
     const gstAmount = Math.round(amount * 0.05);
     const finalAmount = includeGst ? amount + gstAmount : amount;
 
-    const shareToWhatsApp = () => {
+    const buildShareText = () => {
         const cleanDetails = Array.isArray(details)
             ? details.map(line => line.replace(/[*_]/g, '').replace(/⚠️/g, '').trim()).join('\n')
             : details;
-
-        let text = `*${title}*\n\n${cleanDetails}`;
-        if (includeGst) {
-            text += `\nGST (5%): ₹${gstAmount.toLocaleString()}`;
-        }
-        text += `\n\nNote: ${sub}\n\n*Total Estimate: ₹${finalAmount.toLocaleString()}*`;
-
-        const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-        window.open(url, '_blank');
+        let text = `${title}\n\n${cleanDetails}`;
+        if (includeGst) text += `\nGST (5%): ₹${gstAmount.toLocaleString()}`;
+        text += `\n\nNote: ${sub}\n\nTotal: ₹${finalAmount.toLocaleString()}\n\n— SarathiBook App`;
+        return text;
     };
 
-    const handleCreateQuote = () => {
-        if (!tripData) return;
-
-        // 1. Prepare items from details
-        const items = Array.isArray(details) ? details
-            .filter(line => !line.toLowerCase().startsWith('note:'))
-            .map(line => {
-                const parts = line.split(': ₹');
-                // Force break before parentheses to ensure proper wrapping in PDF
-                // Also remove '₹' symbol as it breaks PDF font encoding (shows as ¹)
-                const desc = parts[0].trim().replace(' (', '\n(').replace(/₹/g, '');
-                const amt = parts[1] ? parts[1].replace(/,/g, '') : '';
-
-                return {
-                    description: desc,
-                    rate: amt,
-                    quantity: 1,
-                    amount: amt,
-                    package: '',
-                    vehicleType: tripData.vehicle,
-                    taxable: true
-                };
-            }) : [];
-
-        // 2. Set localStorage drafts for QuotationForm
-        // Shorten locations (City only) to prevent PDF overflow
-        const shortPickup = tripData.pickup.split(',')[0].trim();
-        const shortDrop = tripData.drop.split(',')[0].trim();
-        // Use Pipe Separator for multi-line formatting in PDF
-        localStorage.setItem('draft-q-subject', JSON.stringify(`Quotation for Cab Services - ${tripData.vehicle} | Pickup: ${shortPickup} | Drop: ${shortDrop}`));
-        localStorage.setItem('draft-q-vehicle', JSON.stringify(tripData.vehicle));
-        localStorage.setItem('draft-q-items', JSON.stringify(items));
-        if (includeGst) {
-            localStorage.setItem('draft-q-gst', 'true');
+    const handleShare = async () => {
+        const text = buildShareText();
+        if (navigator.share) {
+            try {
+                await navigator.share({ title, text });
+                return;
+            } catch {
+                // user cancelled or not supported, fall through to sheet
+            }
         }
-
-        // 3. Dispatch navigation event
-        window.dispatchEvent(new CustomEvent('nav-tab-quotation'));
+        setShowShareSheet(true);
     };
 
-    const handleCreateInvoice = () => {
-        if (!tripData) return;
+    const shareToWhatsApp = () => {
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(buildShareText())}`, '_blank');
+        setShowShareSheet(false);
+    };
 
-        const draftData = {
-            pickup: tripData.pickup,
-            drop: tripData.drop,
-            distance: tripData.distance,
-            vehicle: tripData.vehicle,
-            mode: tripData.type,
-            days: tripData.days,
-            // Charges from props
-            toll: tripData.charges?.toll,
-            parking: tripData.charges?.parking,
-            permit: tripData.charges?.permit,
-            driverBatta: tripData.charges?.driverBatta,
-            nightBata: tripData.charges?.nightBata,
-            hillStation: tripData.charges?.hillStation,
-            petCharge: tripData.charges?.petCharge,
-            extraItems: tripData.charges?.extraItems,
-            // Pass Hourly Details
-            durationHours: tripData.durationHours,
-            hourlyPackage: tripData.hourlyPackage,
-            includeGst: includeGst,
-            timestamp: Date.now()
-        };
-
-        localStorage.setItem('draft-invoice-data', JSON.stringify(draftData));
-        window.dispatchEvent(new CustomEvent('nav-tab-invoice'));
+    const copyToClipboard = () => {
+        navigator.clipboard.writeText(buildShareText()).then(() => {
+            setCopied(true);
+            setTimeout(() => { setCopied(false); setShowShareSheet(false); }, 1500);
+        });
     };
 
     if (!amount) return null;
@@ -1584,6 +1560,7 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
         };
     })() : null;
 
+
     return (
         <>
             {seoData && (
@@ -1593,162 +1570,155 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
                     schema={seoData.schema}
                 />
             )}
-            {/* Ad Overlay */}
-            <React.Suspense fallback={null}>
-            </React.Suspense>
+            <React.Suspense fallback={null} />
 
-
-            {/* Overlay for Expanded State */}
+            {/* Backdrop when expanded */}
             {expanded && (
                 <div
-                    className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-90 transition-opacity duration-300"
+                    className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-90"
                     onClick={() => setExpanded(false)}
-                    aria-hidden="true"
                 />
             )}
 
             {/* Sticky Floating Card */}
-            <div className={`fixed bottom-[90px] left-3 right-3 md:left-auto md:right-6 md:w-96 bg-white text-slate-800 z-100 transition-all duration-300 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.15)] border border-slate-200 flex flex-col overflow-hidden ${expanded ? 'max-h-[85vh]' : 'h-auto'}`}>
+            <div className={`fixed bottom-[90px] left-3 right-3 md:left-auto md:right-6 md:w-96 bg-white z-100 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.15)] border border-slate-200 flex flex-col overflow-hidden transition-all duration-300 ${expanded ? 'max-h-[85vh]' : 'h-auto'}`}>
 
-                {/* Visual Drag Handle (only visible when expanded) */}
+                {/* Drag handle — only when expanded */}
                 {expanded && (
-                    <div
-                        className="flex flex-col items-center pt-2 pb-1 cursor-pointer bg-slate-50 border-b border-slate-100"
-                        onClick={() => setExpanded(false)}
-                    >
-                        <div className="w-10 h-1 bg-slate-300 rounded-full" />
+                    <div className="flex justify-center pt-2 pb-1 cursor-pointer" onClick={() => setExpanded(false)}>
+                        <div className="w-8 h-1 bg-slate-300 rounded-full" />
                     </div>
                 )}
 
-                <div className="p-4 flex-1 flex flex-col">
-                    {/* Header: Amount & Actions */}
-                    <div className="flex justify-between items-center gap-3">
-                        <div className="flex-1">
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">{title}</p>
-                            <div className="flex items-baseline flex-wrap gap-1.5">
-                                <h2 className="text-2xl font-black text-primary">₹{finalAmount.toLocaleString()}</h2>
-                                <span className="text-[10px] text-slate-400 font-medium">approx</span>
-                                {!includeGst && <span className="text-[9px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded ml-1">Excl. GST</span>}
+                {/* Header — always visible */}
+                <div className="px-4 py-3 flex flex-col items-center gap-2">
+                    <div className="text-center">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">{title}</p>
+                        <div className="flex items-baseline justify-center gap-1.5 flex-wrap">
+                            <span className="text-2xl font-black text-primary">₹{finalAmount.toLocaleString()}</span>
+                            <span className="text-[10px] text-slate-400 font-medium">approx</span>
+                            {!includeGst && <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">Excl. GST</span>}
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => { expanded ? setExpanded(false) : triggerAction(() => setExpanded(true)); }}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-slate-200 bg-slate-50 text-slate-600 active:scale-95 transition-all"
+                        >
+                            {expanded ? 'Hide Details' : 'View Details'}
+                            {expanded ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+                        </button>
+                        <button
+                            onClick={handleShare}
+                            className="flex items-center justify-center w-9 h-9 rounded-lg bg-[#25D366] text-white active:scale-95 transition-all shadow-sm"
+                            title="Share"
+                        >
+                            <Share2 size={16} />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Expanded breakdown */}
+                {expanded && (
+                    <div className="flex-1 flex flex-col min-h-0">
+                        <div className="h-px bg-slate-100 mx-4" />
+                        <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pt-3 pb-1">
+                            {Array.isArray(details) ? (
+                                <>
+                                    {details.map((line: string, i: number) => {
+                                        const cleanLine = line.replace(/[*_]/g, '').replace(/⚠️/g, '').trim();
+                                        if (!cleanLine || cleanLine.toLowerCase().startsWith('note:')) return null;
+                                        const parts = cleanLine.split(/[:=]\s+₹(?=\d)/);
+                                        return (
+                                            <div key={i} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+                                                <span className="text-[11px] font-bold text-slate-600">{parts[0]}</span>
+                                                {parts.length === 2 && <span className="text-[11px] font-black text-slate-900">₹{parts[1]}</span>}
+                                            </div>
+                                        );
+                                    })}
+
+                                    {/* GST */}
+                                    <div className="flex justify-between items-center py-2 border-b border-slate-100 cursor-pointer" onClick={() => setIncludeGst(!includeGst)}>
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${includeGst ? 'bg-primary border-primary' : 'bg-white border-slate-300'}`}>
+                                                {includeGst && <Check size={10} className="text-white" />}
+                                            </div>
+                                            <span className="text-[11px] font-bold text-slate-700 select-none">Add GST (5%)</span>
+                                        </div>
+                                        {includeGst && <span className="text-[11px] font-black text-primary">₹{gstAmount.toLocaleString()}</span>}
+                                    </div>
+
+                                    {/* Total */}
+                                    <div className="flex justify-between items-center pt-3 pb-2 border-t-2 border-slate-100 mt-2">
+                                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Amount</span>
+                                        <span className="text-xl font-black text-primary">₹{finalAmount.toLocaleString()}</span>
+                                    </div>
+                                </>
+                            ) : (
+                                <p className="text-xs text-slate-600 font-medium leading-relaxed py-2">{details}</p>
+                            )}
+
+                            {/* Note */}
+                            <div className="bg-blue-50 border border-blue-100 px-3 py-2 rounded-lg flex gap-2 mb-3">
+                                <AlertCircle size={13} className="text-blue-500 shrink-0 mt-0.5" />
+                                <p className="text-[10px] text-blue-600 font-medium leading-relaxed">{sub}</p>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3 shrink-0 mr-1">
+                        {/* Share */}
+                        <div className="px-4 pb-4 pt-2 border-t border-slate-100">
                             <button
-                                onClick={() => {
-                                    if (!expanded) {
-                                        triggerAction(() => setExpanded(true));
-                                    } else {
-                                        setExpanded(false);
-                                    }
-                                }}
-                                className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border whitespace-nowrap flex items-center gap-2 ${expanded ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-slate-50 text-primary border-slate-200 hover:bg-slate-100'}`}
+                                onClick={handleShare}
+                                className="w-full bg-[#25D366] text-white font-black py-3.5 rounded-xl flex items-center justify-center gap-2 text-sm uppercase tracking-widest shadow active:scale-95 transition-all"
                             >
-                                {expanded ? 'Hide Details' : 'View Detail'}
-                                {expanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                                <Share2 size={18} />
+                                Share to Customer
                             </button>
                         </div>
                     </div>
-
-                    {/* Expanded Content */}
-                    {expanded && (
-                        <div className="mt-4 flex-1 flex flex-col min-h-0 animate-in slide-in-from-bottom-2 fade-in duration-200">
-                            <div className="h-px bg-slate-100 w-full mb-3" />
-
-                            {/* Scrollable Details */}
-                            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-2">
-                                {Array.isArray(details) ? (
-                                    <div className="space-y-1">
-                                        {details.map((line: string, i: number) => {
-                                            const cleanLine = line.replace(/[*_]/g, '').replace(/⚠️/g, '').trim();
-                                            if (!cleanLine) return null;
-
-                                            const parts = cleanLine.split(/[:=]\s+₹(?=\d)/);
-                                            const isNote = cleanLine.toLowerCase().startsWith('note:');
-
-                                            if (isNote) {
-                                                return (
-                                                    <div key={i} className="py-1 px-2 bg-slate-50 rounded text-[10px] text-slate-500 italic font-medium mt-1">
-                                                        {cleanLine}
-                                                    </div>
-                                                );
-                                            }
-
-                                            return (
-                                                <div
-                                                    key={i}
-                                                    className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0"
-                                                >
-                                                    <span className="text-[11px] font-bold text-slate-600">
-                                                        {parts[0]}
-                                                    </span>
-                                                    {parts.length === 2 && (
-                                                        <span className="text-[11px] font-black text-slate-900">
-                                                            ₹{parts[1]}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-
-                                        {/* GST Toggle Section */}
-                                        <div className="flex justify-between items-center py-2 border-b border-blue-100/50">
-                                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setIncludeGst(!includeGst)}>
-                                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${includeGst ? 'bg-primary border-primary' : 'bg-white border-slate-300'}`}>
-                                                    {includeGst && <Check size={12} className="text-white" />}
-                                                </div>
-                                                <span className="text-[11px] font-bold text-slate-700 select-none">Add GST (5%)</span>
-                                            </div>
-                                            {includeGst && <span className="text-[11px] font-black text-primary">₹{gstAmount.toLocaleString()}</span>}
-                                        </div>
-                                        {/* Final Sum Line */}
-                                        <div className="mt-4 pt-4 border-t-2 border-slate-100 flex justify-between items-center">
-                                            <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Total Amount</span>
-                                            <span className="text-xl font-black text-primary">₹{finalAmount.toLocaleString()}</span>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <p className="text-xs text-slate-600 font-medium leading-relaxed">{details}</p>
-                                )}
-
-                                {/* Notes Box */}
-                                <div className="mt-3 bg-blue-50 border border-blue-100 p-3 rounded-lg flex gap-2">
-                                    <AlertCircle size={14} className="text-blue-600 shrink-0 mt-0.5" />
-                                    <div className="space-y-0.5">
-                                        <p className="text-[9px] font-bold text-blue-700 uppercase tracking-wider">Note</p>
-                                        <p className="text-[10px] text-blue-600/80 leading-relaxed font-medium">{sub}</p>
-                                    </div>
-                                </div>
-
-                                {/* Bottom Actions Area */}
-                                <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-100">
-                                    <button
-                                        onClick={() => triggerAction(handleCreateInvoice)}
-                                        className="bg-primary text-white font-black py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-[9px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
-                                    >
-                                        <FilePlus size={16} />
-                                        Invoice
-                                    </button>
-                                    <button
-                                        onClick={() => triggerAction(handleCreateQuote)}
-                                        className="bg-[#6366F1] text-white font-black py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-[9px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
-                                    >
-                                        <FileText size={16} />
-                                        Quotation
-                                    </button>
-                                    <button
-                                        onClick={() => shareToWhatsApp()}
-                                        className="bg-[#25D366] text-white font-black py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-[9px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
-                                    >
-                                        <Share2 size={16} />
-                                        Share
-                                    </button>
-
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                )}
             </div>
+
+            {/* Share Sheet */}
+            {showShareSheet && (
+                <div
+                    className="fixed inset-0 z-50 flex items-end justify-center bg-black/60"
+                    onClick={() => setShowShareSheet(false)}
+                >
+                    <div
+                        className="w-full max-w-md bg-white rounded-t-3xl p-6 pb-10 shadow-2xl"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-5" />
+                        <p className="text-center text-xs font-black text-slate-400 uppercase tracking-widest mb-5">Send Estimate To Customer</p>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                onClick={shareToWhatsApp}
+                                className="flex flex-col items-center justify-center gap-2 bg-[#25D366] text-white rounded-2xl py-6 active:scale-95 transition-all shadow"
+                            >
+                                <MessageSquare size={32} />
+                                <span className="text-base font-black">WhatsApp</span>
+                            </button>
+
+                            <button
+                                onClick={copyToClipboard}
+                                className="flex flex-col items-center justify-center gap-2 bg-slate-700 text-white rounded-2xl py-6 active:scale-95 transition-all shadow"
+                            >
+                                {copied ? <Check size={32} /> : <Copy size={32} />}
+                                <span className="text-base font-black">{copied ? 'Copied!' : 'Copy'}</span>
+                            </button>
+                        </div>
+
+                        <button
+                            onClick={() => setShowShareSheet(false)}
+                            className="w-full mt-4 py-3 text-sm font-black text-slate-400 uppercase tracking-widest"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
         </>
     );
 };
@@ -1847,76 +1817,6 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
     // New State for explicit params (Fixes auto-landing view issue)
     const [dynamicParams, setDynamicParams] = useState<{ dist?: string, veh?: string } | null>(null);
     const [dynamicResult, setDynamicResult] = useState<{ fare: number; details: string[]; breakdown: FareResult & { total: number }; distance: number; vehicle: string; totalFare: number; } | null>(null);
-    const [trendingRoutes, setTrendingRoutes] = useState<TrendingRoute[]>([]);
-
-    // Fetch Real Trending Data
-    const [fetchError, setFetchError] = useState<string | null>(null);
-
-    // Fetch Real Trending Data
-    useEffect(() => {
-        const fetchTrends = async () => {
-            // Try to fetch real stats from Supabase
-            try {
-                setFetchError(null);
-                const { data, error } = await supabase
-                    .from('route_searches')
-                    .select('*')
-                    .order('created_at', { ascending: false })
-                    .limit(50); // Fetch last 50 searches
-
-                if (error) throw error;
-
-                if (data && data.length > 0) {
-                    // Aggregate by Route (Pickup-Drop)
-                    const counts: Record<string, { from: string; to: string; type: string; mode: string; dist: number; fare: number; veh: string; count: number }> = {};
-
-                    data.forEach(row => {
-                        // Normalize key
-                        const key = `${row.pickup_location?.trim()}-${row.drop_location?.trim()}`;
-                        if (!row.pickup_location || !row.drop_location) return;
-
-                        if (!counts[key]) {
-                            counts[key] = {
-                                from: row.pickup_location,
-                                to: row.drop_location,
-                                type: row.trip_type === 'roundtrip' ? 'Round Trip' : 'One Way',
-                                mode: row.trip_type,
-                                dist: row.distance_km,
-                                fare: row.estimated_fare,
-                                veh: row.vehicle_type,
-                                count: 0
-                            };
-                        }
-                        counts[key].count++;
-                    });
-
-                    // Sort by popularity
-                    const sorted = Object.values(counts)
-                        .sort((a, b) => b.count - a.count)
-                        .slice(0, 5) // Top 5
-                        .map((item, index) => ({
-                            ...item,
-                            rank: index + 1,
-                            searches: `${item.count} calc`,
-                            trend: item.count > 2 ? 'up' : 'stable'
-                        }));
-
-                    setTrendingRoutes(sorted);
-                } else {
-                    setTrendingRoutes([]); // No data yet
-                }
-            } catch (err: unknown) {
-                console.error("Failed to fetch trending routes", err);
-                setTrendingRoutes([]);
-                setFetchError((err as Error).message || "Unknown Supabase Error");
-            }
-        };
-
-        if (!mode) {
-            fetchTrends();
-        }
-    }, [mode]);
-
     // Listen for route changes within calculators
     useEffect(() => {
         const handleRouteUpdate = (e: Event) => {
@@ -2020,9 +1920,9 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
 
                     {/* Hidden H2 for SEO structure but visible to bots */}
                     <div className="sr-only">
-                        <h2>Calculate Taxi Rates for Outstation and Local Trips</h2>
+                        <h2>Calculate Cab Rates for Outstation and Local Trips</h2>
                         <p>
-                            Use our advanced cab fare calculator to check taxi rates for One Way Drops, Round Trips, and Local Hourly Rentals.
+                            Use our advanced cab fare calculator to check cab rates for One Way Drops, Round Trips, and Local Hourly Rentals.
                             We provide detailed fare breakdowns including Driver Bata, Tolls, Permits, and Night Charges for all vehicle types
                             like Sedan, SUV, Innova, and Tempo Traveller.
                         </p>
@@ -2052,100 +1952,19 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
                     <div className="flex gap-3">
                         <AlertCircle size={16} className="text-blue-500 shrink-0 mt-0.5" />
                         <p className="text-[11px] text-blue-700 leading-relaxed font-medium">
-                            Professional tools designed for taxi owners and drivers to provide instant, accurate quotes to customers.
+                            Fare calculator + GST invoice in 60 seconds. Share a professional quote with your customer before they ask.
                         </p>
                     </div>
                 </div>
 
                 {/* Popular Routes Section for SEO/AEO */}
                 <div className="pt-4 space-y-4">
-                    {/* Trending Routes Section (Real User Data) */}
-                    <div className="pt-6 space-y-4">
-                        <div className="flex items-center justify-between px-1">
-                            <div className="flex items-center gap-2">
-                                <TrendingUp size={16} className="text-primary" />
-                                <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.2em]">Most Calculated Routes</h3>
-                            </div>
-                            <span className="text-[9px] font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-full">Community Hits</span>
-                        </div>
-
-                        {trendingRoutes.length === 0 ? (
-                            <div className="text-center py-12 bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
-                                <p className="text-sm text-slate-400 font-medium">
-                                    {fetchError ? `Unable to load routes: ${fetchError}` : "No trending routes yet. Be the first to calculate!"}
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 gap-3">
-                                {trendingRoutes.slice(0, 5).map((route, i) => (
-                                    <div
-                                        key={i}
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            setDynamicRoute({ pickup: route.from, drop: route.to });
-                                            setDynamicTripType(route.mode as 'oneway' | 'roundtrip' | 'local' | 'airport');
-                                            setDynamicParams({ dist: route.dist.toString(), veh: route.veh });
-
-                                            setDynamicResult(null);
-                                            setMode('cab');
-
-                                            const newUrl = `/taxi-fare-calculator?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}&dist=${route.dist}&veh=${route.veh}&type=${route.mode === 'roundtrip' ? 'roundtrip' : 'oneway'}`;
-                                            window.history.pushState({}, '', newUrl);
-                                        }}
-                                        className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer active:scale-[0.99]"
-                                    >
-                                        <div className="flex-1 min-w-0 pr-4">
-                                            <div className="flex items-center gap-2 mb-1.5">
-                                                <h4 className="font-bold text-slate-800 text-sm sm:text-base truncate">
-                                                    {route.from.split(',')[0]} <span className="text-slate-400 mx-1">➜</span> {route.to.split(',')[0]}
-                                                </h4>
-                                            </div>
-                                            <div className="flex items-center flex-wrap gap-2">
-                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">
-                                                    <Car size={10} />
-                                                    {route.veh}
-                                                </span>
-                                                <span className={`inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${route.mode === 'roundtrip'
-                                                    ? 'bg-purple-50 text-purple-700'
-                                                    : 'bg-blue-50 text-blue-700'
-                                                    }`}>
-                                                    {route.mode === 'roundtrip' ? 'Round Trip' : 'Drop Trip'}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="text-right shrink-0">
-                                            <div className="flex flex-col items-end">
-                                                <span className="text-lg font-black text-slate-900">₹{(route.fare || 0).toLocaleString()}</span>
-                                                <span className="text-[10px] font-medium text-slate-500">Total Fare</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                        )}
-
-                        {trendingRoutes.length > 0 && (
-                            <div className="flex justify-center pt-2">
-                                <button
-                                    onClick={() => {
-                                        window.history.pushState(null, '', '/trending');
-                                        window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'trending' }));
-                                    }}
-                                    className="px-4 py-2 bg-slate-50 text-slate-600 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-colors"
-                                >
-                                    View All Routes
-                                </button>
-                            </div>
-                        )}
-
                         {/* Informational SEO Content Section */}
                         <div className="pt-12 space-y-8">
                             <section>
                                 <h3 className="text-xl font-black text-slate-800 uppercase tracking-tighter mb-4 leading-none border-l-4 border-primary pl-4">Why use Sarathi Book Calculator?</h3>
                                 <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                                    Our platform provides the most accurate taxi fare estimates in India by integrating real-time Google Maps data with localized union tariff rates. Whether you are planning a local city trip, an outstation drop trip, or a multi-day round trip, we provide a complete breakdown of costs including base fare, driver bata, tolls, and state permit charges.
+                                    Our platform provides the most accurate cab fare estimates in India by integrating real-time Google Maps data with localized union tariff rates. Whether you are planning a local city trip, an outstation drop trip, or a multi-day round trip, we provide a complete breakdown of costs including base fare, driver bata, tolls, and state permit charges.
                                 </p>
                             </section>
 
@@ -2163,9 +1982,8 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
                             {/* FAQ Section */}
                             <CalculatorFAQ />
                         </div>
-                    </div>
                 </div>
-            </div >
+            </div>
         );
     }
 

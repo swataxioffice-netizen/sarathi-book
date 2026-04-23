@@ -27,7 +27,7 @@ const TermsOfService = () => {
                     <section>
                         <h2 className="text-xl font-bold text-slate-900 mb-4">2. Use License</h2>
                         <p className="text-slate-600 leading-relaxed font-medium">
-                            Permission is granted to temporarily use the tools on Sarathi Book for personal, non-commercial business use (such as generating invoices for your taxi business). This is the grant of a license, not a transfer of title.
+                            Permission is granted to temporarily use the tools on Sarathi Book for personal, non-commercial business use (such as generating invoices for your cab business). This is the grant of a license, not a transfer of title.
                         </p>
                     </section>
 
