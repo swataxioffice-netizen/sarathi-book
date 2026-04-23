@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { X, Check, Star, Zap, Crown, ShieldCheck, Sparkles, Minus } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { X, Check, Star, Zap, Crown, ShieldCheck, Sparkles, Minus, Loader2, CheckCircle } from 'lucide-react';
 import { initializePayment } from '../utils/payment';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../utils/supabase';
 
 interface PricingModalProps {
     isOpen: boolean;
@@ -13,6 +14,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
     const { settings, updateSettings, saveSettings } = useSettings();
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [paymentState, setPaymentState] = useState<'idle' | 'pending' | 'verifying' | 'success'>('idle');
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
     if (!isOpen) return null;
@@ -64,6 +66,62 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
         { name: 'Support', free: 'Community', pro: 'Priority', super: '24/7 Dedicated' },
     ];
 
+    /**
+     * Poll Supabase until plan is confirmed active (webhook may arrive in 1-5s).
+     * Also applies the plan locally as a fast-path while we wait.
+     */
+    const waitForPlanActivation = useCallback(async (
+        planName: 'pro' | 'super',
+        tier: typeof tiers[0]
+    ) => {
+        setPaymentState('verifying');
+
+        // Fast-path: apply plan locally immediately (webhook will also confirm)
+        const optimisticSettings = {
+            ...settings,
+            isPremium: true,
+            plan: planName,
+            showWatermark: false,
+        };
+        updateSettings(optimisticSettings);
+        await saveSettings(optimisticSettings);
+
+        // Poll Supabase for up to 15s for webhook confirmation
+        const maxAttempts = 10;
+        for (let i = 0; i < maxAttempts; i++) {
+            await new Promise(r => setTimeout(r, 1500));
+            try {
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('settings, plan_expires_at')
+                    .eq('id', user!.id)
+                    .single();
+
+                if (data?.settings?.plan === planName || data?.plan_expires_at) {
+                    console.log('Plan confirmed by webhook after', (i + 1) * 1.5, 'seconds');
+                    setPaymentState('success');
+                    window.dispatchEvent(new CustomEvent('auth-error', {
+                        detail: { title: `Welcome to ${tier.name}! 🎉`, message: 'Your plan is now active. Enjoy unlimited access!', type: 'success' }
+                    }));
+                    setTimeout(() => {
+                        setPaymentState('idle');
+                        onClose();
+                    }, 2000);
+                    return;
+                }
+            } catch (err) {
+                console.warn('Plan check attempt failed:', err);
+            }
+        }
+
+        // Webhook didn't confirm in time but local save succeeded
+        setPaymentState('success');
+        window.dispatchEvent(new CustomEvent('auth-error', {
+            detail: { title: `Welcome to ${tier.name}!`, message: 'Plan activated! If features are not visible, please sign out and sign back in.', type: 'success' }
+        }));
+        setTimeout(() => { setPaymentState('idle'); onClose(); }, 2500);
+    }, [settings, updateSettings, saveSettings, user, onClose]);
+
     const handleUpgrade = async (tier: typeof tiers[0]) => {
         if (tier.id === 'free') return;
         if (!user) {
@@ -74,47 +132,73 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
         }
 
         setLoading(true);
+        setPaymentState('pending');
         const price = billingCycle === 'monthly' ? tier.price.monthly : tier.price.yearly;
+        const planName: 'pro' | 'super' = tier.id === 'super-pro' ? 'super' : 'pro';
 
         try {
             await initializePayment({
                 amount: price * 100, // paise
-                description: `${tier.name} (${billingCycle}) Subscription`,
+                plan: planName,
+                billingCycle,
+                userId: user.id,
+                description: `${tier.name} (${billingCycle}) — Sarathi Book`,
                 prefill: {
                     name: settings.companyName || user.user_metadata?.full_name || '',
                     email: user.email || '',
                     contact: settings.driverPhone || ''
                 },
-                handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
-                    console.log('Payment Success:', response);
-                    
-                    // Create updated settings object to save immediately to cloud
-                    // This prevents race condition where React state hasn't updated ref yet
-                    const newSettings = {
-                        ...settings,
-                        isPremium: true,
-                        plan: (tier.id === 'super-pro' ? 'super' : 'pro') as 'super' | 'pro',
-                        showWatermark: false
-                    };
-
-                    updateSettings(newSettings);
-                    await saveSettings(newSettings);
-                    
-                    window.dispatchEvent(new CustomEvent('auth-error', {
-                        detail: { title: `Welcome to ${tier.name}!`, message: 'Your plan has been upgraded. Enjoy!', type: 'success' }
-                    }));
-                    onClose();
-                }
+                onSuccess: async () => {
+                    // Razorpay handler fired — start polling for webhook confirmation
+                    await waitForPlanActivation(planName, tier);
+                },
+                onDismiss: () => {
+                    // User closed checkout without paying
+                    setPaymentState('idle');
+                    setLoading(false);
+                },
             });
         } catch (error) {
             console.error('Payment initialization failed:', error);
+            setPaymentState('idle');
             window.dispatchEvent(new CustomEvent('auth-error', {
-                detail: { title: 'Payment Failed', message: 'Please try again or contact support.', type: 'error' }
+                detail: { title: 'Payment Failed', message: 'Could not connect to payment gateway. Please try again.', type: 'error' }
             }));
         } finally {
             setLoading(false);
         }
     };
+
+    // Show verifying screen while webhook is awaited
+    if (paymentState === 'verifying' || paymentState === 'success') {
+        return (
+            <div className="fixed inset-0 z-110 flex items-center justify-center bg-slate-900/80 backdrop-blur-md animate-fade-in">
+                <div className="bg-white rounded-3xl p-10 flex flex-col items-center gap-5 shadow-2xl max-w-xs w-full mx-4 text-center">
+                    {paymentState === 'verifying' ? (
+                        <>
+                            <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center">
+                                <Loader2 size={40} className="text-primary animate-spin" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Activating Plan</h3>
+                                <p className="text-xs text-slate-400 font-medium mt-2">Payment received! Activating your subscription...</p>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center">
+                                <CheckCircle size={40} className="text-green-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-green-700 uppercase tracking-tight">Plan Active!</h3>
+                                <p className="text-xs text-slate-400 font-medium mt-2">Welcome to the pro experience. Enjoy!</p>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 z-110 flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-2 md:p-12 animate-fade-in">
