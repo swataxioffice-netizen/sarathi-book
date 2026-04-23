@@ -6,7 +6,7 @@ import { dbRequest } from './utils/db'; // IndexedDB
 import { supabase } from './utils/supabase';
 import UpdateWatcher from './components/UpdateWatcher';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
-// Staging Environment Trigger - Last Updated: 2026-04-23 20:49
+// Staging Environment Trigger - Last Updated: 2026-04-23 21:11
 import { X, RefreshCw, TrendingUp, Bell, Settings, Lock } from 'lucide-react';
 import { isPro, isSuper } from './utils/planGate';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
