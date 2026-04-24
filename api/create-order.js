@@ -8,10 +8,8 @@
 
 const https = require('https');
 
-function razorpayRequest(path, body) {
+function razorpayRequest(path, body, keyId, keySecret) {
     return new Promise((resolve, reject) => {
-        const keyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID;
-        const keySecret = process.env.RAZORPAY_KEY_SECRET;
         const auth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
         const data = JSON.stringify(body);
 
@@ -59,6 +57,13 @@ module.exports = async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
+    const keyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keyId || !keySecret) {
+        console.error('Missing Razorpay env vars — RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be set in Vercel');
+        return res.status(500).json({ error: 'Payment gateway not configured. Contact support.' });
+    }
+
     const { amount, plan, billingCycle, userId } = req.body || {};
 
     // Validate inputs
@@ -85,7 +90,7 @@ module.exports = async function handler(req, res) {
                 expiry_days: String(expiryDays),
                 app: 'SarathiBook',
             },
-        });
+        }, keyId, keySecret);
 
         if (order.error) {
             console.error('Razorpay order error:', order.error);
@@ -97,7 +102,7 @@ module.exports = async function handler(req, res) {
             order_id: order.id,
             amount: order.amount,
             currency: order.currency,
-            key_id: process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID,
+            key_id: keyId,
         });
     } catch (err) {
         console.error('create-order error:', err);

@@ -83,7 +83,7 @@ const PaywallScreen: React.FC<{ feature: string; tier?: 'pro' | 'super' }> = ({ 
           : 'bg-blue-600 text-white shadow-blue-500/30 hover:bg-blue-700'
       }`}
     >
-      {tier === 'super' ? 'Upgrade to Super Pro — ₹99/mo' : 'Upgrade to Pro — ₹49/mo'}
+      {tier === 'super' ? 'Upgrade to Fleet Pro — ₹149/mo' : 'Upgrade to Pro — ₹49/mo'}
     </button>
   </div>
 );
