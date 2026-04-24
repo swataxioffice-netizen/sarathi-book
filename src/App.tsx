@@ -261,12 +261,12 @@ function AppContent() {
       // to comply with Lighthouse Best Practices and browser permission UX guidelines.
     } else if (!authLoading) {
       const lastClosed = localStorage.getItem('login_nudge_closed_at');
-      const COOLDOWN = 24 * 60 * 60 * 1000; // 24 Hours
+      const COOLDOWN = 3 * 24 * 60 * 60 * 1000; // 3 Days
 
       const shouldShow = !lastClosed || (Date.now() - parseInt(lastClosed) > COOLDOWN);
 
       if (shouldShow) {
-        const timer = setTimeout(() => setShowLoginNudge(true), 15000);
+        const timer = setTimeout(() => setShowLoginNudge(true), 60000);
         return () => clearTimeout(timer);
       }
     }
@@ -789,13 +789,14 @@ function AppContent() {
                     {/* Inline Quick Jump to History for Mobile */}
                     {/* Inline Quick Jump to History for Mobile - MOVED INTO TRIP FORM */}
                     <Suspense fallback={<LoadingFallback />}>
-                      <TripForm 
-                        onSaveTrip={handleSaveTrip} 
-                        onStepChange={setInvoiceStep} 
-                        invoiceTemplate={selectedQuotation} 
-                        trips={trips} 
-                        onViewHistory={() => setTripsSubTab('history')} 
+                      <TripForm
+                        onSaveTrip={handleSaveTrip}
+                        onStepChange={setInvoiceStep}
+                        invoiceTemplate={selectedQuotation}
+                        trips={trips}
+                        onViewHistory={() => setTripsSubTab('history')}
                         editingTrip={editingTrip}
+                        onGoToProfile={() => setActiveTab('profile')}
                       />
                     </Suspense>
                   </div>

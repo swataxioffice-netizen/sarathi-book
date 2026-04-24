@@ -10,7 +10,7 @@ const https = require('https');
 
 function razorpayRequest(path, body) {
     return new Promise((resolve, reject) => {
-        const keyId = process.env.RAZORPAY_KEY_ID;
+        const keyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID;
         const keySecret = process.env.RAZORPAY_KEY_SECRET;
         const auth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
         const data = JSON.stringify(body);
@@ -97,7 +97,7 @@ module.exports = async function handler(req, res) {
             order_id: order.id,
             amount: order.amount,
             currency: order.currency,
-            key_id: process.env.RAZORPAY_KEY_ID,
+            key_id: process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID,
         });
     } catch (err) {
         console.error('create-order error:', err);

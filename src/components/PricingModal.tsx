@@ -17,8 +17,6 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
     const [paymentState, setPaymentState] = useState<'idle' | 'pending' | 'verifying' | 'success'>('idle');
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
-    if (!isOpen) return null;
-
     const tiers = [
         {
             id: 'free',
@@ -66,10 +64,6 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
         { name: 'Support', free: 'Community', pro: 'Priority', super: '24/7 Dedicated' },
     ];
 
-    /**
-     * Poll Supabase until plan is confirmed active (webhook may arrive in 1-5s).
-     * Also applies the plan locally as a fast-path while we wait.
-     */
     const waitForPlanActivation = useCallback(async (
         planName: 'pro' | 'super',
         tier: typeof tiers[0]
@@ -121,6 +115,8 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
         }));
         setTimeout(() => { setPaymentState('idle'); onClose(); }, 2500);
     }, [settings, updateSettings, saveSettings, user, onClose]);
+
+    if (!isOpen) return null;
 
     const handleUpgrade = async (tier: typeof tiers[0]) => {
         if (tier.id === 'free') return;

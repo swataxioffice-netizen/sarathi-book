@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Car, ArrowRight, RotateCcw, CheckCircle2, Loader2, ChevronRight, TrendingUp, Warehouse, AlertCircle } from 'lucide-react';
+import { MapPin, Car, ArrowRight, RotateCcw, CheckCircle2, Loader2, ChevronRight, TrendingUp, Warehouse, Share2 } from 'lucide-react';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import AdditionalChargesDrawer from './AdditionalChargesDrawer';
 import MapPicker from './MapPicker';
@@ -85,6 +85,7 @@ const PublicFareCalculator: React.FC = () => {
     const [result,   setResult]   = useState<{ totalFare: number; breakdown: string[] } | null>(null);
     const [error,    setError]    = useState('');
     const [showMap,  setShowMap]  = useState(false);
+    const [copied,   setCopied]   = useState(false);
 
     // ── Auto-populate rate when vehicle or tripType changes ─────────────────
     useEffect(() => {
@@ -260,6 +261,38 @@ const PublicFareCalculator: React.FC = () => {
             setError('Calculation failed. Please try again.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    // ── Share estimate ───────────────────────────────────────────────────────
+    const handleShareEstimate = async () => {
+        if (!result) return;
+        const vehicleName = VEHICLES.find(v => v.id === vehicle)?.name || '';
+        const lines = [
+            '🚕 Fare Estimate',
+            pickup && drop ? `${pickup.split(',')[0].trim()} → ${drop.split(',')[0].trim()}` : '',
+            distanceKm ? `Distance: ${distanceKm} km${vehicleName ? ` • ${vehicleName}` : ''}` : '',
+            '',
+            ...result.breakdown.filter(l => {
+                const c = l.replace(/[*_]/g, '').trim();
+                return c && !c.toLowerCase().startsWith('note:');
+            }),
+            '',
+            `Total: ₹${result.totalFare.toLocaleString()}`,
+            '',
+            '(Estimate only. Actuals may vary.)',
+        ];
+        const text = lines.join('\n');
+        try {
+            if (navigator.share) {
+                await navigator.share({ text, title: 'Fare Estimate' });
+            } else {
+                await navigator.clipboard.writeText(text);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            }
+        } catch {
+            // user cancelled
         }
     };
 
@@ -498,54 +531,69 @@ const PublicFareCalculator: React.FC = () => {
                 </div>
 
                 {/* Result Card */}
-                {result && (
-                    <div id="pfc-result" className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-fade-in">
-                        <div className="bg-slate-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <CheckCircle2 size={14} className="text-green-500" />
-                                <h2 className="text-xs font-black text-slate-700 uppercase tracking-widest">Fare Estimate</h2>
-                            </div>
-                            <button onClick={() => setResult(null)}
-                                className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-700 transition-colors">
-                                <RotateCcw size={11} /> Recalculate
-                            </button>
-                        </div>
-
-                        <div className="p-5 space-y-2.5">
-                            {result.breakdown.map((line, i) => {
-                                const clean = line.replace(/[*_]/g, '').replace(/⚠️/g, '').trim();
-                                if (!clean || clean.toLowerCase().startsWith('note:')) return null;
-                                const parts = clean.split(/[:=]\s*₹(?=\d)/);
-                                if (parts.length < 2) return <p key={i} className="text-xs text-slate-400">{clean}</p>;
-                                return (
-                                    <div key={i} className="flex justify-between items-center text-sm">
-                                        <span className="text-slate-600">{parts[0].trim()}</span>
-                                        <span className="font-bold text-slate-800">₹{parts[1].trim()}</span>
+                {result && (() => {
+                    const validLines = result.breakdown.filter(line => {
+                        const c = line.replace(/[*_]/g, '').replace(/⚠️/g, '').trim();
+                        return c && !c.toLowerCase().startsWith('note:') && c.split(/[:=]\s*₹(?=\d)/).length >= 2;
+                    });
+                    return (
+                        <div id="pfc-result" className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-fade-in">
+                            {/* Header */}
+                            <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-100">
+                                <div className="flex items-center gap-1.5">
+                                    <CheckCircle2 size={12} className="text-green-500" />
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none">Fare Estimate</p>
+                                        {pickup && drop && (
+                                            <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{pickup.split(',')[0].trim()} → {drop.split(',')[0].trim()}</p>
+                                        )}
                                     </div>
-                                );
-                            })}
-                            <div className="pt-3 mt-1 border-t-2 border-slate-200 flex justify-between items-center">
-                                <span className="text-sm font-black text-slate-800 uppercase tracking-wider">Total Estimated</span>
-                                <span className="text-3xl font-black text-primary">₹{result.totalFare.toLocaleString()}</span>
+                                </div>
+                                <button onClick={() => setResult(null)} className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-slate-700 transition-colors">
+                                    <RotateCcw size={10} /> Recalculate
+                                </button>
                             </div>
-                            <div className="mt-2 p-3 bg-red-50/30 rounded-xl border border-red-100/50 flex gap-2 items-start">
-                                <AlertCircle size={12} className="text-red-500 shrink-0 mt-0.5" />
-                                <p className="text-[9px] text-red-700/80 leading-relaxed font-bold uppercase tracking-wider text-left">
-                                    NHAI Estimates Only. Toll, Parking & State Taxes are extra and payable by the customer as per actuals.
-                                </p>
-                            </div>
-                        </div>
 
-                        {/* Driver CTA */}
-                        <div className="bg-slate-900 p-5 space-y-3 text-center">
-                            <p className="text-white text-sm font-black">Are you a cab driver?</p>
-                            <p className="text-slate-400 text-xs leading-relaxed max-w-xs mx-auto">
-                                Generate GST invoices, track trips &amp; manage earnings — free with Sarathi Book.
-                            </p>
-                            <GoogleSignInButton text="Start Free with Google" className="w-full justify-center" />
+                            {/* Line items */}
+                            <div className="px-3 pt-2 space-y-0">
+                                {validLines.map((line, i) => {
+                                    const clean = line.replace(/[*_]/g, '').replace(/⚠️/g, '').trim();
+                                    const parts = clean.split(/[:=]\s*₹(?=\d)/);
+                                    return (
+                                        <div key={i} className={`flex justify-between items-center py-2 ${i < validLines.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                                            <span className="text-[11px] text-slate-600">{parts[0].trim()}</span>
+                                            <span className="text-[11px] font-bold text-slate-800">₹{parts[1].trim()}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Total */}
+                            <div className="mx-3 mt-2 pt-2 border-t-2 border-slate-200 flex justify-between items-center pb-3">
+                                <span className="text-[11px] font-black text-slate-800 uppercase tracking-wider">Total Estimated</span>
+                                <span className="text-xl font-black text-primary">₹{result.totalFare.toLocaleString()}</span>
+                            </div>
+
+                            {/* Share */}
+                            <div className="px-3 pb-3">
+                                <button onClick={handleShareEstimate}
+                                    className="w-full h-9 bg-primary text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
+                                    <Share2 size={12} strokeWidth={2.5} />
+                                    {copied ? 'Copied!' : 'Share Estimate'}
+                                </button>
+                            </div>
+
+                            {/* Driver CTA */}
+                            <div className="bg-slate-900 p-4 space-y-2.5 text-center">
+                                <p className="text-white text-xs font-black">Are you a cab driver?</p>
+                                <p className="text-slate-400 text-[10px] leading-relaxed max-w-xs mx-auto">
+                                    Generate GST invoices, track trips &amp; manage earnings — free with Sarathi Book.
+                                </p>
+                                <GoogleSignInButton text="Start Free with Google" className="w-full justify-center" />
+                            </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
 
                 <CalculatorFAQ />
 

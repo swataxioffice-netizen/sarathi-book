@@ -22,6 +22,7 @@ import type { SavedQuotation } from '../utils/pdf';
 import { saveToHistory } from '../utils/history';
 import { useAuth } from '../contexts/AuthContext';
 import PDFPreviewModal from './PDFPreviewModal';
+import ConfirmDialog from './ConfirmDialog';
 import { useNotifications } from '../contexts/NotificationContext';
 import { calculateDistance } from '../utils/googleMaps';
 import { calculateAdvancedRoute } from '../utils/routesApi';
@@ -75,6 +76,7 @@ interface TripFormProps {
     trips?: Trip[];
     onViewHistory?: () => void;
     editingTrip?: Trip | null;
+    onGoToProfile?: () => void;
 }
 
 const DEFAULT_TERMS = [
@@ -86,7 +88,7 @@ const DEFAULT_TERMS = [
     "This is a computer-generated invoice and requires no physical signature."
 ];
 
-const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTemplate, trips, onViewHistory, editingTrip }) => {
+const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTemplate, trips, onViewHistory, editingTrip, onGoToProfile }) => {
     const { settings } = useSettings();
     const { user } = useAuth();
     const { addNotification } = useNotifications();
@@ -113,6 +115,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
     // --- Form State ---
     const [mode, setMode] = useState<TripMode>(null);
+    const [showProfileNudge, setShowProfileNudge] = useState(false);
+    const [pendingMode, setPendingMode] = useState<TripMode>(null);
     const [selectedVehicleId, setSelectedVehicleId] = useState('');
 
     // Journey
@@ -163,6 +167,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     const [selectedChargeType, setSelectedChargeType] = useState('');
     const [customChargeName, setCustomChargeName] = useState('');
     const [customChargeAmount, setCustomChargeAmount] = useState('');
+    const [liveCalc, setLiveCalc] = useState<CalculationResult | null>(null);
 
     // Customer
     const [customerName, setCustomerName] = useState('');
@@ -608,9 +613,12 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 waitingCharges: 0, waitingHours: mode === 'local' ? localPackageHours : 0,
                 hillStationCharges: res.details.hillStation, petCharges: res.details.petCharge, driverBatta: res.details.driverBatta, nightStay: 0
             };
+            setLiveCalc(calcRes);
             return calcRes;
         } catch (err) {
-            console.error(err); return null;
+            console.error(err);
+            setLiveCalc(null);
+            return null;
         }
     };
 
@@ -820,7 +828,43 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
     };
 
 
-    // ... (existing helper imports) ...
+    const handleShareEstimate = async () => {
+        if (!liveCalc) return;
+        const vehicleName = vehicleCategory ? ((TARIFFS.vehicles as Record<string, TariffVehicle>)[vehicleCategory]?.name || '') : '';
+        const dist = liveCalc.effectiveDistance || liveCalc.distance;
+        const tollAmt = parseFloat(toll) || 0;
+        const parkingAmt = parseFloat(parking) || 0;
+        const permitAmt = parseFloat(permit) || 0;
+
+        const parts: string[] = [
+            '🚕 Fare Estimate',
+            fromLoc && toLoc ? `${fromLoc.split(',')[0].trim()} → ${toLoc.split(',')[0].trim()}` : '',
+            `Distance: ${dist} km${vehicleName ? ` • ${vehicleName}` : ''}`,
+            '',
+        ];
+        if (liveCalc.distanceCharge > 0) parts.push(`Trip Charge: ₹${liveCalc.distanceCharge.toLocaleString()}`);
+        if (liveCalc.driverBatta > 0) parts.push(`Driver Bata: ₹${liveCalc.driverBatta.toLocaleString()}`);
+        if (tollAmt > 0) parts.push(`Toll Charges: ₹${tollAmt.toLocaleString()}`);
+        if (parkingAmt > 0) parts.push(`Parking: ₹${parkingAmt.toLocaleString()}`);
+        if (permitAmt > 0) parts.push(`Permit: ₹${permitAmt.toLocaleString()}`);
+        if (liveCalc.hillStationCharges > 0) parts.push(`Hill Station: ₹${liveCalc.hillStationCharges.toLocaleString()}`);
+        if (liveCalc.petCharges > 0) parts.push(`Pet Charges: ₹${liveCalc.petCharges.toLocaleString()}`);
+        extraItems.forEach(item => parts.push(`${item.description}: ₹${item.amount.toLocaleString()}`));
+        if (liveCalc.gst > 0) parts.push(`GST: ₹${liveCalc.gst.toLocaleString()}`);
+        parts.push('', `Total: ₹${liveCalc.total.toLocaleString()}`, '', '(Estimate only. Actuals may vary.)');
+
+        const text = parts.filter(p => p !== undefined).join('\n');
+        try {
+            if (navigator.share) {
+                await navigator.share({ text, title: 'Fare Estimate' });
+            } else {
+                await navigator.clipboard.writeText(text);
+                addNotification('Copied!', 'Estimate copied to clipboard.', 'success');
+            }
+        } catch {
+            // user cancelled
+        }
+    };
 
     const handleSave = async (calcRes?: CalculationResult) => {
         const res = calcRes || await performCalculation();
@@ -908,6 +952,32 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
 
     // --- Helper Functions ---
+    const getMissingEssentials = (): string[] => {
+        const missing: string[] = [];
+        if (!settings.companyName || !settings.driverPhone) missing.push('Business name & phone number');
+        const hasPayment = (settings.bankName && settings.accountNumber && settings.ifscCode && settings.holderName) || settings.upiId;
+        if (!hasPayment) missing.push('Payment details (UPI ID or bank account)');
+        if (settings.vehicles.length === 0) missing.push('At least one vehicle');
+        return missing;
+    };
+
+    const applyModeChange = (m: TripMode) => {
+        if (mode !== m) {
+            setMode(m);
+            setFromLoc(''); setToLoc('');
+            setStartKm(0); setEndKm(0); setDistanceOverride('');
+            setDays(1); setLocalPackageHours(8);
+            setExtraItems([]);
+            setToll('0'); setParking('0'); setPermit('0'); setDriverBatta('0');
+            setNightCharge('0'); setHillStationCharge('0'); setPetCharge('0');
+            setCustomLineItems([{ description: 'Service Charge', sac: '9966', qty: 1, rate: 0, amount: 0 }]);
+            setIsOdometerMode(false);
+            setManualDriverBatta(false); setManualToll(false); setManualParking(false);
+            setManualPermit(false); setManualHillStation(false);
+        }
+        setStep(1);
+    };
+
     const handleAddCharge = () => {
         const desc = selectedChargeType === 'Custom' ? customChargeName : selectedChargeType;
         const amount = parseFloat(customChargeAmount);
@@ -930,21 +1000,13 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                     <button 
                         key={m} 
                         onClick={() => {
-                            if (mode !== m) {
-                                setMode(m);
-                                // Reset Data on Mode Switch
-                                setFromLoc(''); setToLoc('');
-                                setStartKm(0); setEndKm(0); setDistanceOverride('');
-                                setDays(1); setLocalPackageHours(8);
-                                setExtraItems([]);
-                                setToll('0'); setParking('0'); setPermit('0'); setDriverBatta('0');
-                                setNightCharge('0'); setHillStationCharge('0'); setPetCharge('0');
-                                setCustomLineItems([{ description: 'Service Charge', sac: '9966', qty: 1, rate: 0, amount: 0 }]);
-                                setIsOdometerMode(false);
-                                setManualDriverBatta(false); setManualToll(false); setManualParking(false);
-                                setManualPermit(false); setManualHillStation(false);
+                            const missing = getMissingEssentials();
+                            if (missing.length > 0) {
+                                setPendingMode(m);
+                                setShowProfileNudge(true);
+                            } else {
+                                applyModeChange(m);
                             }
-                            setStep(1);
                         }} 
                         className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left group ${mode === m ? 'bg-primary border-primary shadow-lg shadow-primary/20 ring-2 ring-primary/10' : 'bg-white border-slate-200 hover:border-primary/40 shadow-sm active:scale-[0.98]'}`}
                     >
@@ -979,6 +1041,35 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                     View Invoice History
                 </button>
             )}
+            <ConfirmDialog
+                isOpen={showProfileNudge}
+                type="warning"
+                title="Your bills will be incomplete"
+                message={
+                    <div>
+                        <p className="text-sm text-slate-500 font-medium mb-3">Missing from your bills:</p>
+                        <ul className="space-y-1.5">
+                            {getMissingEssentials().map(item => (
+                                <li key={item} className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                    <span className="text-amber-500 text-base">•</span> {item}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                }
+                confirmLabel="Complete Profile"
+                cancelLabel="Skip for Now"
+                onConfirm={() => {
+                    setShowProfileNudge(false);
+                    setPendingMode(null);
+                    onGoToProfile?.();
+                }}
+                onCancel={() => {
+                    setShowProfileNudge(false);
+                    if (pendingMode) applyModeChange(pendingMode);
+                    setPendingMode(null);
+                }}
+            />
         </div >
     );
 
@@ -1460,6 +1551,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                 </div>
             </div >
 
+            {mode !== 'custom' && renderFareEstimateCard()}
+
             <div className="flex gap-2">
                 <button onClick={handleBack} className="flex-1 h-11 border border-slate-200 text-slate-500 font-black rounded-xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-1.5 active:bg-slate-50 transition-colors"><ChevronLeft size={14} /> Back</button>
                 <div className="flex-[2.5] flex gap-2">
@@ -1473,6 +1566,79 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             </div>
         </div >
     );
+
+    const renderFareEstimateCard = () => {
+        if (!liveCalc || liveCalc.total <= 0) return null;
+        const vehicleName = vehicleCategory ? ((TARIFFS.vehicles as Record<string, TariffVehicle>)[vehicleCategory]?.name || '') : '';
+        const dist = liveCalc.effectiveDistance || liveCalc.distance;
+        const tollAmt = parseFloat(toll) || 0;
+        const parkingAmt = parseFloat(parking) || 0;
+        const permitAmt = parseFloat(permit) || 0;
+
+        const lineItems = [
+            liveCalc.distanceCharge > 0 && { label: 'Trip Charge', sub: dist > 0 && liveCalc.rateUsed > 0 ? `${dist} km × ₹${liveCalc.rateUsed}` : '', amount: liveCalc.distanceCharge, color: 'bg-blue-500' },
+            liveCalc.driverBatta > 0 && { label: 'Driver Bata', sub: '', amount: liveCalc.driverBatta, color: 'bg-amber-400' },
+            tollAmt > 0 && { label: 'Toll Charges', sub: '', amount: tollAmt, color: 'bg-emerald-400' },
+            parkingAmt > 0 && { label: 'Parking', sub: '', amount: parkingAmt, color: 'bg-violet-400' },
+            permitAmt > 0 && { label: 'Permit', sub: '', amount: permitAmt, color: 'bg-orange-400' },
+            liveCalc.hillStationCharges > 0 && { label: 'Hill Station', sub: '', amount: liveCalc.hillStationCharges, color: 'bg-teal-400' },
+            liveCalc.petCharges > 0 && { label: 'Pet Charges', sub: '', amount: liveCalc.petCharges, color: 'bg-pink-400' },
+            ...extraItems.map(item => ({ label: item.description, sub: '', amount: item.amount, color: 'bg-slate-400' })),
+        ].filter(Boolean) as { label: string; sub: string; amount: number; color: string }[];
+
+        return (
+            <div className="rounded-2xl overflow-hidden shadow-xl border border-blue-900/20 animate-in slide-in-from-bottom-4 fade-in duration-500">
+                {/* Gradient header */}
+                <div className="bg-linear-to-br from-[#0047AB] to-blue-600 px-4 pt-4 pb-5 text-white">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                            <span className="text-[9px] font-black uppercase tracking-widest text-white/70">Live Estimate</span>
+                        </div>
+                        {vehicleName && <span className="text-[9px] text-white/40 uppercase tracking-wider">{vehicleName}</span>}
+                    </div>
+                    {fromLoc && toLoc && (
+                        <p className="text-[11px] text-white/60 font-semibold mb-2 truncate">
+                            {fromLoc.split(',')[0].trim()} → {toLoc.split(',')[0].trim()}
+                        </p>
+                    )}
+                    <div className="text-[38px] font-black tracking-tight leading-none">₹{liveCalc.total.toLocaleString()}</div>
+                    {liveCalc.gst > 0 && (
+                        <div className="text-[10px] text-white/50 mt-1">incl. GST ₹{liveCalc.gst.toLocaleString()}</div>
+                    )}
+                </div>
+
+                {/* White body */}
+                <div className="bg-white px-3 pt-3 pb-2">
+                    <div className="space-y-0">
+                        {lineItems.map((item, i) => (
+                            <div key={i} className={`flex items-center justify-between py-2 ${i < lineItems.length - 1 ? 'border-b border-dashed border-slate-100' : ''}`}>
+                                <div className="flex items-center gap-2.5">
+                                    <div className={`w-1 h-6 rounded-full shrink-0 ${item.color}`} />
+                                    <div>
+                                        <div className="text-[11px] font-bold text-slate-700">{item.label}</div>
+                                        {item.sub && <div className="text-[9px] text-slate-400 mt-0.5">{item.sub}</div>}
+                                    </div>
+                                </div>
+                                <span className="text-[12px] font-black text-slate-800">₹{item.amount.toLocaleString()}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="h-px bg-slate-100 my-2.5" />
+
+                    <button
+                        onClick={handleShareEstimate}
+                        className="w-full h-11 bg-linear-to-r from-[#0047AB] to-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all hover:brightness-110 shadow-md shadow-blue-200 mb-1.5"
+                    >
+                        <Share2 size={14} strokeWidth={2.5} />
+                        Share Estimate
+                    </button>
+                    <p className="text-center text-[8px] text-slate-400 pb-0.5">Estimate only · actuals vary by route conditions</p>
+                </div>
+            </div>
+        );
+    };
 
     const renderStep3 = () => (
         <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -1587,6 +1753,8 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                     </div>
                 )}
             </div>
+
+            {renderFareEstimateCard()}
 
             <div className="flex gap-2">
                 <button onClick={handleBack} className="flex-1 h-11 border border-slate-200 text-slate-500 font-black rounded-xl uppercase text-[9px] tracking-widest flex items-center justify-center gap-1.5 active:bg-slate-50"><ChevronLeft size={14} /> Back</button>
