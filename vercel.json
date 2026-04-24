@@ -70,11 +70,6 @@
             ]
         }
     ],
-    "functions": {
-        "api/*.js": {
-            "runtime": "nodejs20.x"
-        }
-    },
     "rewrites": [
         {
             "source": "/sitemap.xml",
