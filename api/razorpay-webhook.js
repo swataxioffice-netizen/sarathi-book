@@ -1,15 +1,6 @@
-/**
- * Vercel Serverless Function: POST /api/razorpay-webhook
- * Receives payment events from Razorpay and activates plans in Supabase.
- * 
- * This is the SOURCE OF TRUTH for plan activation — NOT the frontend handler.
- * Signature verification ensures only real Razorpay events are processed.
- */
+import crypto from 'crypto';
+import https from 'https';
 
-const crypto = require('crypto');
-const https = require('https');
-
-// Supabase REST API call (no SDK needed in a server function)
 function supabaseRequest(path, method, body, supabaseUrl, serviceKey) {
     return new Promise((resolve, reject) => {
         const url = new URL(supabaseUrl + path);
@@ -47,18 +38,13 @@ function supabaseRequest(path, method, body, supabaseUrl, serviceKey) {
     });
 }
 
-// Activate or update a user's plan in Supabase
 async function activatePlan(userId, plan, paymentId, expiryDays, supabaseUrl, serviceKey) {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + (expiryDays || 31));
 
-    // 1. Fetch current settings
     const profileRes = await supabaseRequest(
         `/rest/v1/profiles?id=eq.${userId}&select=settings`,
-        'GET',
-        null,
-        supabaseUrl,
-        serviceKey
+        'GET', null, supabaseUrl, serviceKey
     );
 
     const profiles = profileRes.data;
@@ -67,17 +53,13 @@ async function activatePlan(userId, plan, paymentId, expiryDays, supabaseUrl, se
         return false;
     }
 
-    const currentSettings = profiles[0].settings || {};
-
-    // 2. Merge plan into settings
     const updatedSettings = {
-        ...currentSettings,
+        ...profiles[0].settings || {},
         isPremium: true,
-        plan: plan, // 'pro' or 'super'
-        showWatermark: false
+        plan,
+        showWatermark: false,
     };
 
-    // 3. Update profile with plan info
     const updateRes = await supabaseRequest(
         `/rest/v1/profiles?id=eq.${userId}`,
         'PATCH',
@@ -87,26 +69,17 @@ async function activatePlan(userId, plan, paymentId, expiryDays, supabaseUrl, se
             payment_id: paymentId,
             updated_at: new Date().toISOString(),
         },
-        supabaseUrl,
-        serviceKey
+        supabaseUrl, serviceKey
     );
 
-    console.log(`Plan activated for ${userId}:`, plan, 'expires:', expiresAt.toISOString(), 'update status:', updateRes.status);
+    console.log(`Plan activated for ${userId}:`, plan, 'expires:', expiresAt.toISOString(), 'status:', updateRes.status);
     return updateRes.status < 300;
 }
 
-// Log payment to payments table
 async function logPayment(data, supabaseUrl, serviceKey) {
-    await supabaseRequest(
-        '/rest/v1/payments',
-        'POST',
-        data,
-        supabaseUrl,
-        serviceKey
-    );
+    await supabaseRequest('/rest/v1/payments', 'POST', data, supabaseUrl, serviceKey);
 }
 
-// Raw body parsing needed for HMAC verification
 async function getRawBody(req) {
     return new Promise((resolve, reject) => {
         let data = '';
@@ -116,7 +89,7 @@ async function getRawBody(req) {
     });
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -130,18 +103,16 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ error: 'Server misconfigured' });
     }
 
-    // Read raw body for signature verification
     const rawBody = await getRawBody(req);
     const signature = req.headers['x-razorpay-signature'];
 
-    // Verify HMAC-SHA256 signature
     const expectedSignature = crypto
         .createHmac('sha256', webhookSecret)
         .update(rawBody)
         .digest('hex');
 
     if (signature !== expectedSignature) {
-        console.warn('Webhook signature mismatch — possible fake request');
+        console.warn('Webhook signature mismatch');
         return res.status(401).json({ error: 'Invalid signature' });
     }
 
@@ -155,7 +126,6 @@ module.exports = async function handler(req, res) {
     console.log('Razorpay webhook event:', event.event);
 
     const payment = event.payload?.payment?.entity;
-
     if (!payment) {
         return res.status(200).json({ status: 'ignored' });
     }
@@ -167,14 +137,12 @@ module.exports = async function handler(req, res) {
     const paymentId = payment.id;
     const amountPaise = payment.amount;
 
-    // --- Handle payment.captured (SUCCESS) ---
     if (event.event === 'payment.captured') {
         console.log(`Payment captured: ${paymentId} for user ${userId}, plan: ${plan}`);
 
         if (userId && userId !== 'unknown') {
             const activated = await activatePlan(userId, plan, paymentId, expiryDays, supabaseUrl, serviceKey);
 
-            // Log to payments table
             await logPayment({
                 user_id: userId,
                 payment_id: paymentId,
@@ -186,13 +154,12 @@ module.exports = async function handler(req, res) {
                 captured_at: new Date().toISOString(),
             }, supabaseUrl, serviceKey).catch(err => console.error('Payment log failed:', err));
         } else {
-            console.warn('payment.captured missing user_id in notes — cannot activate plan');
+            console.warn('payment.captured missing user_id in notes');
         }
 
         return res.status(200).json({ status: 'ok' });
     }
 
-    // --- Handle payment.failed ---
     if (event.event === 'payment.failed') {
         console.log(`Payment failed: ${paymentId} for user ${userId}`);
 
@@ -210,6 +177,5 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ status: 'ok' });
     }
 
-    // All other events — acknowledge but ignore
     return res.status(200).json({ status: 'ignored' });
-};
+}

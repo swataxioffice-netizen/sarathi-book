@@ -1,12 +1,4 @@
-/**
- * Vercel Serverless Function: POST /api/create-order
- * Creates a Razorpay order server-side (keeps secret key secure).
- * 
- * Body: { amount: number (paise), plan: 'pro'|'super', billingCycle: 'monthly'|'yearly', userId: string }
- * Returns: { order_id, amount, currency, key_id }
- */
-
-const https = require('https');
+import https from 'https';
 
 function razorpayRequest(path, body, keyId, keySecret) {
     return new Promise((resolve, reject) => {
@@ -43,8 +35,7 @@ function razorpayRequest(path, body, keyId, keySecret) {
     });
 }
 
-module.exports = async function handler(req, res) {
-    // CORS headers
+export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -60,13 +51,12 @@ module.exports = async function handler(req, res) {
     const keyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
     if (!keyId || !keySecret) {
-        console.error('Missing Razorpay env vars — RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be set in Vercel');
+        console.error('Missing Razorpay env vars');
         return res.status(500).json({ error: 'Payment gateway not configured. Contact support.' });
     }
 
     const { amount, plan, billingCycle, userId } = req.body || {};
 
-    // Validate inputs
     if (!amount || amount < 100) {
         return res.status(400).json({ error: 'Invalid amount' });
     }
@@ -74,13 +64,11 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid plan' });
     }
 
-    // Derive expiry in days
     const expiryDays = billingCycle === 'yearly' ? 366 : 31;
 
     try {
-        // Create Razorpay Order (server-side — secret never leaves server)
         const order = await razorpayRequest('/v1/orders', {
-            amount: Math.round(amount), // in paise
+            amount: Math.round(amount),
             currency: 'INR',
             receipt: `sarathi_${plan}_${Date.now()}`,
             notes: {
@@ -97,7 +85,6 @@ module.exports = async function handler(req, res) {
             return res.status(502).json({ error: order.error.description || 'Failed to create order' });
         }
 
-        // Return order details + public key (safe to return)
         return res.status(200).json({
             order_id: order.id,
             amount: order.amount,
@@ -108,4 +95,4 @@ module.exports = async function handler(req, res) {
         console.error('create-order error:', err);
         return res.status(500).json({ error: 'Internal server error' });
     }
-};
+}
