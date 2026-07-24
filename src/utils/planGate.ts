@@ -2,10 +2,10 @@ import type { Settings } from '../types/settings';
 import type { Trip } from './fare';
 import type { SavedQuotation } from './pdf';
 
-// --- Monthly limits (Free tier only — Pro & Fleet are unlimited) ---
-export const FREE_TRIP_LIMIT = 10;
-export const FREE_QUOTATION_LIMIT = 10;
-export const FREE_CALC_LIMIT = 50;
+// --- Monthly limits (All tiers are now free and unlimited) ---
+export const FREE_TRIP_LIMIT = Infinity;
+export const FREE_QUOTATION_LIMIT = Infinity;
+export const FREE_CALC_LIMIT = Infinity;
 
 // Kept for reference / any legacy code that imports these
 export const PRO_TRIP_LIMIT = Infinity;
@@ -13,16 +13,16 @@ export const PRO_QUOTATION_LIMIT = Infinity;
 export const PRO_CALC_LIMIT = Infinity;
 
 // --- Tier checks ---
-export function isPro(settings: Settings): boolean {
-    return settings.isPremium === true || settings.plan === 'pro' || settings.plan === 'super';
+export function isPro(_settings: Settings): boolean {
+    return true; // Site is 100% free with premium features enabled
 }
 
-export function isSuper(settings: Settings): boolean {
-    return settings.plan === 'super';
+export function isSuper(_settings: Settings): boolean {
+    return true; // Enable all features including staff/finance
 }
 
-export function isFree(settings: Settings): boolean {
-    return !isPro(settings);
+export function isFree(_settings: Settings): boolean {
+    return false;
 }
 
 // --- Monthly window ---
@@ -43,14 +43,12 @@ export function getMonthlyQuotationCount(quotations: SavedQuotation[]): number {
 }
 
 // --- Can create? ---
-export function canCreateTrip(settings: Settings, trips: Trip[]): boolean {
-    if (isPro(settings)) return true;
-    return getMonthlyTripCount(trips) < FREE_TRIP_LIMIT;
+export function canCreateTrip(_settings: Settings, _trips: Trip[]): boolean {
+    return true;
 }
 
-export function canCreateQuotation(settings: Settings, quotations: SavedQuotation[]): boolean {
-    if (isPro(settings)) return true;
-    return getMonthlyQuotationCount(quotations) < FREE_QUOTATION_LIMIT;
+export function canCreateQuotation(_settings: Settings, _quotations: SavedQuotation[]): boolean {
+    return true;
 }
 
 // --- Calculator count (localStorage, auto-resets monthly via month-keyed key) ---
@@ -59,6 +57,7 @@ function calcMonthKey(): string {
     return `calc_count_${now.getFullYear()}-${now.getMonth() + 1}`;
 }
 
+// Keep tracking count for statistics but allow unlimited calculations
 export function getMonthlyCalcCount(): number {
     return parseInt(localStorage.getItem(calcMonthKey()) || '0', 10);
 }
@@ -69,27 +68,23 @@ export function incrementCalcCount(): void {
     localStorage.setItem(key, String(count + 1));
 }
 
-export function canCalculateFare(settings: Settings): boolean {
-    if (isPro(settings)) return true;
-    return getMonthlyCalcCount() < FREE_CALC_LIMIT;
+export function canCalculateFare(_settings: Settings): boolean {
+    return true;
 }
 
 // --- Human-readable limit helpers for alert messages ---
-export function tripLimitForPlan(settings: Settings): number {
-    if (isPro(settings)) return Infinity;
-    return FREE_TRIP_LIMIT;
+export function tripLimitForPlan(_settings: Settings): number {
+    return Infinity;
 }
 
-export function quotationLimitForPlan(settings: Settings): number {
-    if (isPro(settings)) return Infinity;
-    return FREE_QUOTATION_LIMIT;
+export function quotationLimitForPlan(_settings: Settings): number {
+    return Infinity;
 }
 
-export function calcLimitForPlan(settings: Settings): number {
-    if (isPro(settings)) return Infinity;
-    return FREE_CALC_LIMIT;
+export function calcLimitForPlan(_settings: Settings): number {
+    return Infinity;
 }
 
 export function openUpgradeModal(): void {
-    window.dispatchEvent(new CustomEvent('open-pricing-modal'));
+    // No-op: all subscriptions removed and site is free
 }

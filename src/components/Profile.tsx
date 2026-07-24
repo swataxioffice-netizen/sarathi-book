@@ -329,8 +329,8 @@ const Profile: React.FC = () => {
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                             ID: <span className="text-blue-600">{user?.id?.slice(0, 6).toUpperCase() || 'GUEST'}</span>
                             <span className="mx-1.5 opacity-30">|</span>
-                            <span className={isSuper ? "text-amber-500 font-extrabold" : isPremiumOrPro ? "text-blue-600 font-extrabold" : "text-slate-500 font-bold"}>
-                                {isSuper ? "FLEET PRO" : isPremiumOrPro ? "PRO MEMBER" : "FREE PLAN"}
+                            <span className="text-emerald-600 font-extrabold uppercase tracking-wider">
+                                UNLIMITED FREE PLAN
                             </span>
                         </p>
                     </div>
@@ -412,7 +412,7 @@ const Profile: React.FC = () => {
                                 <div className="flex-1 min-w-0">
                                     <p className="text-[10px] font-black text-emerald-900 uppercase tracking-widest">Refer a Driver Friend</p>
                                     <p className="text-[9px] font-semibold text-emerald-700 mt-0.5 leading-relaxed">
-                                        They get <span className="font-black">7 days Pro free</span> — you earn Pro credit.
+                                        Help them manage their business with unlimited free tools!
                                     </p>
                                 </div>
                             </div>

@@ -73,12 +73,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             if (parsed.showUpiOnPdf === undefined) parsed.showUpiOnPdf = true;
             if (parsed.showBankOnPdf === undefined) parsed.showBankOnPdf = false;
 
-            // Sync isPremium with plan (Legacy support)
-            if (parsed.plan && parsed.plan !== 'free') {
-                parsed.isPremium = true;
-            } else if (parsed.isPremium && !parsed.plan) {
-                parsed.plan = 'pro';
-            }
+            // Force free premium settings for everyone
+            parsed.plan = 'super';
+            parsed.isPremium = true;
 
             return parsed;
         }
@@ -108,8 +105,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             appColor: '#0047AB',
             secondaryColor: '#6366F1',
             showWatermark: true,
-            isPremium: false,
-            plan: 'free',
+            isPremium: true,
+            plan: 'super',
             services: ['Local', 'Outstation', 'Tours'], // Default Services
             staff: [],
             defaultSalaryConfig: {
@@ -144,12 +141,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     } else if (data) {
                         if (data.settings) {
                             const cloudSettings = data.settings;
-                            // Dual-direction sync for legacy support
-                            if (cloudSettings.plan && cloudSettings.plan !== 'free') {
-                                cloudSettings.isPremium = true;
-                            } else if (cloudSettings.isPremium && (!cloudSettings.plan || cloudSettings.plan === 'free')) {
-                                cloudSettings.plan = 'pro';
-                            }
+                            // Force free premium settings
+                            cloudSettings.plan = 'super';
+                            cloudSettings.isPremium = true;
                             setSettings(prev => ({ ...prev, ...cloudSettings }));
                         }
                         if (data.driver_code) setDriverCode(data.driver_code);
@@ -193,9 +187,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     } else if (data) {
                         if (data.settings) {
                             const cloudSettings = data.settings;
-                            if (cloudSettings.plan && cloudSettings.plan !== 'free') {
-                                cloudSettings.isPremium = true;
-                            }
+                            cloudSettings.plan = 'super';
+                            cloudSettings.isPremium = true;
                             setSettings(prev => ({ ...prev, ...cloudSettings }));
                         }
                         if (data.driver_code) setDriverCode(data.driver_code);
@@ -240,6 +233,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                         console.log('Real-time settings sync:', payload);
                         if (payload.new && payload.new.settings) {
                             const newCloudSettings = payload.new.settings;
+                            newCloudSettings.plan = 'super';
+                            newCloudSettings.isPremium = true;
                             setSettings(prev => {
                                 // Prevent infinite loops if local state is same as cloud
                                 // Using a deep equal function instead of JSON.stringify to handle Postgres jsonb key reordering
