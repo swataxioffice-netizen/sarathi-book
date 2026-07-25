@@ -29,7 +29,7 @@ const ToggleButton: React.FC<{ enabled: boolean; onChange: () => void }> = ({ en
     >
         <span
             className={`${
-                enabled ? 'translate-x-[18px]' : 'translate-x-[2px]'
+                enabled ? 'translate-x-4.5' : 'translate-x-0.5'
             } inline-block h-3 w-3 transform rounded-full bg-white transition-transform shadow-sm`}
         />
     </button>
@@ -63,6 +63,7 @@ const SalaryManager: React.FC = () => {
     const [newUan, setNewUan] = useState('');
     const [newEsiNumber, setNewEsiNumber] = useState('');
     const [showEditStaffModal, setShowEditStaffModal] = useState(false);
+    const [showMoreAddDetails, setShowMoreAddDetails] = useState(false);
 
     // Payroll State
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -199,6 +200,14 @@ const SalaryManager: React.FC = () => {
             joinDate: new Date().toISOString(),
             status: 'active',
             balance: 0,
+            designation: newDesignation || 'Driver',
+            employeeId: newEmployeeId || undefined,
+            panNumber: newPanNumber || undefined,
+            bankName: newBankName || undefined,
+            accountNumber: newAccountNumber || undefined,
+            ifscCode: newIfscCode || undefined,
+            uan: newUan || undefined,
+            esiNumber: newEsiNumber || undefined,
             salaryConfig: {
                 ...settings.defaultSalaryConfig,
                 dutyPay: parseInt(newDutyPay) || settings.defaultSalaryConfig.dutyPay,
@@ -212,8 +221,19 @@ const SalaryManager: React.FC = () => {
 
         updateSettings({ staff: [...settings.staff, newStaff] });
         setShowAddModal(false);
+        
+        // Reset form inputs
         setNewName('');
         setNewPhone('');
+        setNewDesignation('');
+        setNewEmployeeId('');
+        setNewPanNumber('');
+        setNewBankName('');
+        setNewAccountNumber('');
+        setNewIfscCode('');
+        setNewUan('');
+        setNewEsiNumber('');
+        setShowMoreAddDetails(false);
 
         await Analytics.logActivity('staff_added', {
             name: newStaff.name,
@@ -475,7 +495,7 @@ const SalaryManager: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2 bg-slate-50 rounded-lg p-1">
                             <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1 hover:bg-white rounded shadow-sm transition-all"><ChevronLeft size={14} /></button>
-                            <span className="text-[10px] font-bold min-w-[80px] text-center">{format(currentMonth, 'MMMM yyyy')}</span>
+                            <span className="text-[10px] font-bold min-w-20 text-center">{format(currentMonth, 'MMMM yyyy')}</span>
                             <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1 hover:bg-white rounded shadow-sm transition-all rotate-180"><ChevronLeft size={14} /></button>
                         </div>
                     </div>
@@ -583,7 +603,7 @@ const SalaryManager: React.FC = () => {
 
                                     {/* Inline Choice Popup */}
                                     {isEditing && (
-                                        <div className="absolute left-1/2 -bottom-2 translate-y-full -translate-x-1/2 z-100 bg-white border border-slate-200 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] p-1 flex flex-col gap-1 min-w-[80px] animate-slide-up">
+                                        <div className="absolute left-1/2 -bottom-2 translate-y-full -translate-x-1/2 z-100 bg-white border border-slate-200 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] p-1 flex flex-col gap-1 min-w-20 animate-slide-up">
                                             <button 
                                                 onClick={() => { updateAttendance(day, 'duty'); setActiveDatePicker(null); }}
                                                 className="h-8 px-3 rounded-lg flex items-center gap-2 hover:bg-emerald-50 transition-all text-left"
@@ -772,7 +792,7 @@ const SalaryManager: React.FC = () => {
                 {/* Edit Staff Modal */}
                 {showEditStaffModal && (
                 <div className="fixed inset-0 z-100 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 pb-24 sm:pb-4 animate-fade-in" onClick={() => setShowEditStaffModal(false)}>
-                        <div className="bg-white w-full max-w-sm rounded-[24px] p-5 space-y-4 animate-slide-up" onClick={e => e.stopPropagation()}>
+                        <div className="bg-white w-full max-w-sm rounded-3xl p-5 space-y-4 animate-slide-up" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                                 <div>
                                     <h3 className="text-sm font-black uppercase tracking-tight">Edit Staff Settings</h3>
@@ -969,7 +989,7 @@ const SalaryManager: React.FC = () => {
                 {/* Deduction Modal */}
                 {showDeductionModal && (
                     <div className="fixed inset-0 z-100 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 pb-24 sm:pb-4 animate-fade-in" onClick={() => setShowDeductionModal(false)}>
-                        <div className="bg-white w-full max-w-sm rounded-[24px] p-5 space-y-4 animate-slide-up" onClick={e => e.stopPropagation()}>
+                        <div className="bg-white w-full max-w-sm rounded-3xl p-5 space-y-4 animate-slide-up" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                                 <div>
                                     <h3 className="text-sm font-black uppercase tracking-tight">Add Adjustment</h3>
@@ -1085,6 +1105,22 @@ const SalaryManager: React.FC = () => {
                             if (!isPremium) {
                                 window.dispatchEvent(new Event('open-pricing-modal'));
                             } else {
+                                // Reset fields to defaults when opening Add modal
+                                setNewName('');
+                                setNewPhone('');
+                                setNewDutyPay(settings.defaultSalaryConfig.dutyPay.toString());
+                                setNewStandbyPay(settings.defaultSalaryConfig.standbyPay.toString());
+                                setNewIsPfEnabled(settings.defaultSalaryConfig.isPfEnabled ?? true);
+                                setNewIsEsiEnabled(settings.defaultSalaryConfig.isEsiEnabled ?? false);
+                                setNewDesignation('');
+                                setNewEmployeeId('');
+                                setNewPanNumber('');
+                                setNewBankName('');
+                                setNewAccountNumber('');
+                                setNewIfscCode('');
+                                setNewUan('');
+                                setNewEsiNumber('');
+                                setShowMoreAddDetails(false);
                                 setShowAddModal(true);
                             }
                         }}
@@ -1253,8 +1289,8 @@ const SalaryManager: React.FC = () => {
             {/* Add Staff Modal */}
             {showAddModal && (
                 <div className="fixed inset-0 z-100 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 pb-24 sm:pb-4 animate-fade-in" onClick={() => setShowAddModal(false)}>
-                    <div className="bg-white w-full max-w-sm rounded-[24px] p-5 space-y-4 animate-slide-up" onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div className="bg-white w-full max-w-sm rounded-3xl p-5 space-y-4 animate-slide-up max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center border-b border-slate-100 pb-3 shrink-0">
                             <div>
                                 <h3 className="text-sm font-black uppercase tracking-tight">Add New Staff</h3>
                                 <p className="text-[9px] text-slate-400 font-bold">Enter staff details below</p>
@@ -1262,7 +1298,7 @@ const SalaryManager: React.FC = () => {
                             <button onClick={() => setShowAddModal(false)} className="bg-slate-50 p-2 rounded-full text-slate-400 hover:text-slate-900"><User size={20} /></button>
                         </div>
 
-                        <div className="space-y-3">
+                        <div className="space-y-3 flex-1 overflow-y-auto px-1 pr-2 custom-scrollbar">
                             <div>
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-1 block">Full Name</label>
                                 <input
@@ -1324,12 +1360,112 @@ const SalaryManager: React.FC = () => {
                                 </div>
                             </div>
 
+                            {/* Toggle Collapsible Details */}
+                            <div className="pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowMoreAddDetails(!showMoreAddDetails)}
+                                    className="w-full h-9 bg-slate-100 hover:bg-slate-200/80 text-slate-700 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
+                                >
+                                    {showMoreAddDetails ? 'Hide Additional Details' : 'Show Additional Details (Bank, PAN, UAN...)'}
+                                </button>
+                            </div>
+
+                            {/* Additional Optional Details */}
+                            {showMoreAddDetails && (
+                                <div className="space-y-3 pt-2 animate-fade-in">
+                                    <div>
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-1 block">Designation</label>
+                                        <input
+                                            value={newDesignation}
+                                            onChange={e => setNewDesignation(e.target.value)}
+                                            placeholder="e.g. Driver"
+                                            className="tn-input w-full h-10 bg-slate-50 rounded-xl px-3 font-bold text-sm border-2 border-transparent focus:border-blue-500 outline-none transition-all"
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-1 block">Employee ID</label>
+                                            <input
+                                                value={newEmployeeId}
+                                                onChange={e => setNewEmployeeId(e.target.value)}
+                                                placeholder="Leave empty for Temp/NA"
+                                                className="tn-input w-full h-10 bg-slate-50 rounded-xl px-3 font-bold text-sm border-2 border-transparent focus:border-blue-500 outline-none transition-all"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-1 block">PAN Number</label>
+                                            <input
+                                                value={newPanNumber}
+                                                onChange={e => setNewPanNumber(e.target.value)}
+                                                placeholder="ABCDE1234F"
+                                                className="tn-input w-full h-10 bg-slate-50 rounded-xl px-3 font-bold text-sm border-2 border-transparent focus:border-blue-500 outline-none transition-all"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="p-3 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-3">
+                                        <p className="text-[8px] font-black text-blue-600 uppercase tracking-widest">Bank Details</p>
+                                        <div>
+                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-1 block">Bank Name</label>
+                                            <input
+                                                value={newBankName}
+                                                onChange={e => setNewBankName(e.target.value)}
+                                                placeholder="e.g. SBI, HDFC"
+                                                className="tn-input w-full h-10 bg-white rounded-xl px-3 font-bold text-sm border-2 border-transparent focus:border-blue-500 outline-none transition-all"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-1 block">Account No</label>
+                                                <input
+                                                    value={newAccountNumber}
+                                                    onChange={e => setNewAccountNumber(e.target.value)}
+                                                    className="tn-input w-full h-10 bg-white rounded-xl px-3 font-bold text-sm border-2 border-transparent focus:border-blue-500 outline-none transition-all"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-1 block">IFSC Code</label>
+                                                <input
+                                                    value={newIfscCode}
+                                                    onChange={e => setNewIfscCode(e.target.value)}
+                                                    className="tn-input w-full h-10 bg-white rounded-xl px-3 font-bold text-sm border-2 border-transparent focus:border-blue-500 outline-none transition-all"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-3 bg-emerald-50/50 rounded-2xl border border-emerald-100 space-y-3">
+                                        <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Compliance (EPF/ESI)</p>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-1 block">UAN Number</label>
+                                                <input
+                                                    value={newUan}
+                                                    onChange={e => setNewUan(e.target.value)}
+                                                    className="tn-input w-full h-10 bg-white rounded-xl px-3 font-bold text-sm border-2 border-transparent focus:border-blue-500 outline-none transition-all"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-1 block">ESI IP Number</label>
+                                                <input
+                                                    value={newEsiNumber}
+                                                    onChange={e => setNewEsiNumber(e.target.value)}
+                                                    className="tn-input w-full h-10 bg-white rounded-xl px-3 font-bold text-sm border-2 border-transparent focus:border-blue-500 outline-none transition-all"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                         </div>
 
                         <button
                             onClick={handleAddStaff}
                             disabled={!newName}
-                            className="w-full h-11 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-[0.98] active:scale-95 transition-all shadow-lg disabled:opacity-50 disabled:scale-100"
+                            className="w-full h-11 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-[0.98] active:scale-95 transition-all shadow-lg disabled:opacity-50 disabled:scale-100 shrink-0"
                         >
                             Create Profile
                         </button>

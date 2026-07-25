@@ -74,7 +74,7 @@ const PrivacyPolicy = () => {
                     <section>
                         <h2 className="text-xl font-bold text-slate-900 mb-4">7. Contact Us</h2>
                         <p className="text-slate-600 leading-relaxed font-medium">
-                            If you have any questions or suggestions about our Privacy Policy, do not hesitate to contact us at support@sarathibook.com.
+                            If you have any questions or suggestions about our Privacy Policy, do not hesitate to contact us at saravn.web@gmail.com.
                         </p>
                     </section>
                 </div>

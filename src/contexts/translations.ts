@@ -16,7 +16,7 @@ export const translations = {
         toll: 'Toll',
         parking: 'Parking',
         nightBata: 'Driver Batta',
-        calculate: 'Calculate Fare',
+        calculate: 'Calculate Estimate',
         saveTrip: 'Save Invoice',
         total: 'Total',
         receipt: 'Receipt',

@@ -87,7 +87,7 @@ const DEFAULT_TERMS = [
     "Tolls, Parking, State Permits, and Entry fees are extra at actuals.",
     "Driver Batta/Allowance is for driver food and stay per calendar day.",
     "Night driving charges (10:00 PM - 06:00 AM) are applicable extra.",
-    "GST 5% is applicable on the total bill amount."
+    "GST 5% is applicable on the total invoice amount."
 ];
 
 const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepChange, quotations, onViewHistory, editingQuotation }) => {
@@ -1102,7 +1102,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                                                                 setLocalPackageHours(2); setLocalPackageKm(20); setDistanceOverride('20');
                                                             }
                                                         }}
-                                                        className={`min-w-[70px] shrink-0 flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all snap-start
+                                                        className={`min-w-17.5 shrink-0 flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all snap-start
                                                         ${hourlyPackage === pkg.id
                                                                 ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200 ring-1 ring-indigo-600 ring-offset-1'
                                                                 : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600'}

@@ -772,7 +772,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
                                                 <button
                                                     key={pkg.id}
                                                     onClick={() => setHourlyPackage(pkg.id)}
-                                                    className={`min-w-[70px] shrink-0 flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all snap-start
+                                                    className={`min-w-17.5 shrink-0 flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all snap-start
                                                         ${hourlyPackage === pkg.id
                                                             ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200 ring-1 ring-blue-600 ring-offset-1'
                                                             : 'bg-white border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600'}
@@ -950,7 +950,7 @@ const CabCalculator: React.FC<CabProps> = ({ initialPickup, initialDrop, initial
             {(result || initialResult) && !isLandingView && (
                 <div id="result-card-container">
                     <ResultCard
-                        title="Cab Fare"
+                        title="Cab Estimate"
                         amount={result ? result.fare : initialResult!.totalFare}
                         details={result ? result.details : initialResult!.details}
                         sub="Tolls & Permits Included (Approx)"
@@ -1121,7 +1121,7 @@ const ActingDriverCalculator: React.FC = () => {
 
             {result && (
                 <ResultCard
-                    title="Estimated Fare"
+                    title="Estimated Cost"
                     amount={result.fare}
                     details={result.details}
                     sub={serviceType === 'outstation' ? 'Driver Bata/Night charges extra' : 'Extra Hr/Km charges apply'}
@@ -1564,8 +1564,8 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
         });
 
         return {
-            title: `${amount} INR - Cab from ${pCity} to ${dCity} Fare Estimate (${vehicleName})`,
-            description: `Get exact cab fare from ${pCity} to ${dCity}. ${vehicleName} Taxi price is ₹${amount} approx for ${tripData.distance} km. ${extras} Best rates for Outstation & Local trips with Sarathi Book.`,
+            title: `${amount} INR - Cab from ${pCity} to ${dCity} Estimate (${vehicleName})`,
+            description: `Get cab estimate from ${pCity} to ${dCity}. ${vehicleName} Taxi price is ₹${amount} approx for ${tripData.distance} km. ${extras} Best rates for Outstation & Local trips with Sarathi Book.`,
             schema: schema
         };
     })() : null;
@@ -1591,7 +1591,7 @@ const ResultCard = ({ title, amount, details, sub, tripData }: ResultCardProps) 
             )}
 
             {/* Sticky Floating Card */}
-            <div className={`fixed bottom-[90px] left-3 right-3 md:left-auto md:right-6 md:w-96 bg-white z-100 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.15)] border border-slate-200 flex flex-col overflow-hidden transition-all duration-300 ${expanded ? 'max-h-[85vh]' : 'h-auto'}`}>
+            <div className={`fixed bottom-22.5 left-3 right-3 md:left-auto md:right-6 md:w-96 bg-white z-100 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.15)] border border-slate-200 flex flex-col overflow-hidden transition-all duration-300 ${expanded ? 'max-h-[85vh]' : 'h-auto'}`}>
 
                 {/* Drag handle — only when expanded */}
                 {expanded && (
@@ -1756,8 +1756,8 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
             sub: 'Calculations for distance, drops & outstation',
             icon: Car,
             color: 'bg-blue-600',
-            seoTitle: 'Cab Rental Fare Calculator | Best Rates for Outstation & Local',
-            seoDesc: 'Calculate accurate cab fares for outstation drop trips, round trips, and local hourly rentals. Includes tolls, permits, and driver allowance.'
+            seoTitle: 'Cab Rental Estimate Calculator | Best Rates for Outstation & Local',
+            seoDesc: 'Calculate accurate cab estimates for outstation drop trips, round trips, and local hourly rentals. Includes tolls, permits, and driver allowance.'
         },
         {
             id: 'driver',
@@ -1911,8 +1911,8 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
         return (
             <div className="max-w-3xl mx-auto pb-24 px-4 space-y-6">
                 <SEOHead
-                    title="Cab Fare Calculator India | Estimate Taxi Price & Driver Bata"
-                    description="Calculate accurate cab fares for local, outstation, and round trips in India. Get instant price estimates for Hatchback, Sedan, SUV, and Tempo Traveller including tolls, permits, and driver bata."
+                    title="Estimate Calculator India | Taxi Cost & Driver Bata"
+                    description="Calculate accurate cab estimates for local, outstation, and round trips in India. Get instant price estimates for Hatchback, Sedan, SUV, and Tempo Traveller including tolls, permits, and driver bata."
                     schema={{
                         "@context": "https://schema.org",
                         "@type": "SoftwareApplication",
@@ -1929,20 +1929,20 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
                             "ratingValue": "4.8",
                             "ratingCount": "1250"
                         },
-                        "description": "Calculate taxi and cab fares for local and outstation trips in India."
+                        "description": "Calculate taxi and cab costs for local and outstation trips in India."
                     }}
                 />
 
                 <div className="text-center py-6">
-                    <h1 className="text-xl font-black uppercase tracking-tight text-slate-900 leading-tight">Fare Calculator</h1>
+                    <h1 className="text-xl font-black uppercase tracking-tight text-slate-900 leading-tight">Estimate Calculator</h1>
                     <p className="text-slate-600 text-xs font-medium mt-1">Select a service to start calculation</p>
 
                     {/* Hidden H2 for SEO structure but visible to bots */}
                     <div className="sr-only">
-                        <h2>Calculate Cab Rates for Outstation and Local Trips</h2>
+                        <h2>Calculate Cab Costs for Outstation and Local Trips</h2>
                         <p>
-                            Use our advanced cab fare calculator to check cab rates for One Way Drops, Round Trips, and Local Hourly Rentals.
-                            We provide detailed fare breakdowns including Driver Bata, Tolls, Permits, and Night Charges for all vehicle types
+                            Use our advanced cab estimate calculator to check cab costs for One Way Drops, Round Trips, and Local Hourly Rentals.
+                            We provide detailed cost breakdowns including Driver Bata, Tolls, Permits, and Night Charges for all vehicle types
                             like Sedan, SUV, Innova, and Tempo Traveller.
                         </p>
                     </div>
@@ -1971,7 +1971,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
                     <div className="flex gap-3">
                         <AlertCircle size={16} className="text-blue-500 shrink-0 mt-0.5" />
                         <p className="text-[11px] text-blue-700 leading-relaxed font-medium">
-                            Fare calculator + GST invoice in 60 seconds. Share a professional quote with your customer before they ask.
+                            Estimate calculator + GST invoice in 60 seconds. Share a professional quote with your customer before they ask.
                         </p>
                     </div>
                 </div>
@@ -1983,14 +1983,14 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
                             <section>
                                 <h3 className="text-xl font-black text-slate-800 uppercase tracking-tighter mb-4 leading-none border-l-4 border-primary pl-4">Why use Sarathi Book Calculator?</h3>
                                 <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                                    Our platform provides the most accurate cab fare estimates in India by integrating real-time Google Maps data with localized union tariff rates. Whether you are planning a local city trip, an outstation drop trip, or a multi-day round trip, we provide a complete breakdown of costs including base fare, driver bata, tolls, and state permit charges.
+                                    Our platform provides the most accurate cab cost estimates in India by integrating real-time Google Maps data with localized union tariff rates. Whether you are planning a local city trip, an outstation drop trip, or a multi-day round trip, we provide a complete breakdown of costs including base cost, driver bata, tolls, and state permit charges.
                                 </p>
                             </section>
 
                             <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
                                     <h4 className="font-black text-slate-800 text-xs uppercase tracking-widest mb-3">Professional Estimates</h4>
-                                    <p className="text-xs text-slate-500 leading-relaxed font-medium">Generate professional-grade fare estimates that you can share directly with customers via WhatsApp or PDF.</p>
+                                    <p className="text-xs text-slate-500 leading-relaxed font-medium">Generate professional-grade cost estimates that you can share directly with customers via WhatsApp or PDF.</p>
                                 </div>
                                 <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
                                     <h4 className="font-black text-slate-800 text-xs uppercase tracking-widest mb-3">Route Transparency</h4>
@@ -2035,18 +2035,18 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
 
             <SEOHead
                 title={dynamicRoute
-                    ? `${dynamicRoute.pickup} to ${dynamicRoute.drop} Cab Fare & Price`
-                    : (currentService?.seoTitle || 'Fare Calculator')
+                    ? `${dynamicRoute.pickup} to ${dynamicRoute.drop} Cab Cost Estimate`
+                    : (currentService?.seoTitle || 'Estimate Calculator')
                 }
                 description={dynamicRoute
-                    ? `Calculate exact cab fare from ${dynamicRoute.pickup} to ${dynamicRoute.drop}. Get estimates for Sedan, SUV and Tempo Traveller with tolls and permits.`
+                    ? `Calculate exact cab estimate from ${dynamicRoute.pickup} to ${dynamicRoute.drop}. Get estimates for Sedan, SUV and Tempo Traveller with tolls and permits.`
                     : currentService?.seoDesc
                 }
                 schema={dynamicRoute ? {
                     "@context": "https://schema.org",
                     "@type": "Service",
                     "name": `Cab from ${dynamicRoute.pickup} to ${dynamicRoute.drop}`,
-                    "description": `Professional taxi service and fare estimate for ${dynamicRoute.pickup} to ${dynamicRoute.drop} route.`,
+                    "description": `Professional taxi service and cost estimate for ${dynamicRoute.pickup} to ${dynamicRoute.drop} route.`,
                     "provider": {
                         "@type": "LocalBusiness",
                         "name": "Sarathi Book"
@@ -2057,7 +2057,7 @@ const Calculator: React.FC<CalculatorProps> = ({ initialPickup, initialDrop }) =
                     ],
                     "offers": {
                         "@type": "Offer",
-                        "description": "Starting price for Hatchback one-way",
+                        "description": "Starting cost for Hatchback one-way",
                         "priceCurrency": "INR",
                         "price": "2500"
                     }

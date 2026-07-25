@@ -837,13 +837,13 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
         const permitAmt = parseFloat(permit) || 0;
 
         const parts: string[] = [
-            '🚕 Fare Estimate',
+            '🚕 Trip Estimate',
             fromLoc && toLoc ? `${fromLoc.split(',')[0].trim()} → ${toLoc.split(',')[0].trim()}` : '',
             `Distance: ${dist} km${vehicleName ? ` • ${vehicleName}` : ''}`,
             '',
         ];
         if (liveCalc.distanceCharge > 0) parts.push(`Trip Charge: ₹${liveCalc.distanceCharge.toLocaleString()}`);
-        if (liveCalc.driverBatta > 0) parts.push(`Driver Bata: ₹${liveCalc.driverBatta.toLocaleString()}`);
+        if (liveCalc.driverBatta > 0) parts.push(`Driver Batta: ₹${liveCalc.driverBatta.toLocaleString()}`);
         if (tollAmt > 0) parts.push(`Toll Charges: ₹${tollAmt.toLocaleString()}`);
         if (parkingAmt > 0) parts.push(`Parking: ₹${parkingAmt.toLocaleString()}`);
         if (permitAmt > 0) parts.push(`Permit: ₹${permitAmt.toLocaleString()}`);
@@ -1018,7 +1018,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                         </div>
                         <div className="flex-1 min-w-0">
                             <h3 className={`text-[13px] font-black uppercase tracking-wider leading-tight ${mode === m ? 'text-white' : 'text-slate-800'}`}>
-                                {m === 'drop' ? 'One Way' : m === 'outstation' ? 'Outstation' : m === 'local' ? 'Local' : 'Custom Bill'}
+                                {m === 'drop' ? 'One Way' : m === 'outstation' ? 'Outstation' : m === 'local' ? 'Local' : 'Custom Invoice'}
                             </h3>
                             <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${mode === m ? 'text-white/70' : 'text-slate-400'}`}>
                                 {m === 'drop' && 'Point to Point Drop'}
@@ -1044,10 +1044,10 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
             <ConfirmDialog
                 isOpen={showProfileNudge}
                 type="warning"
-                title="Your bills will be incomplete"
+                title="Your invoices will be incomplete"
                 message={
                     <div>
-                        <p className="text-sm text-slate-500 font-medium mb-3">Missing from your bills:</p>
+                        <p className="text-sm text-slate-500 font-medium mb-3">Missing from your invoices:</p>
                         <ul className="space-y-1.5">
                             {getMissingEssentials().map(item => (
                                 <li key={item} className="flex items-center gap-2 text-sm font-semibold text-slate-700">
@@ -1086,7 +1086,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                             </h3>
                             <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-all ${includeGst ? 'bg-primary/10 border-primary/20 shadow-sm' : 'bg-slate-50 border-slate-200'}`}>
                                 <span className={`text-[9px] font-black uppercase tracking-wider ${includeGst ? 'text-primary' : 'text-slate-400'}`}>
-                                    {includeGst ? 'GST Invoice' : 'Non-GST Bill'}
+                                    {includeGst ? 'GST Invoice' : 'Non-GST Invoice'}
                                 </span>
                                 <button onClick={() => {
                                     if (!settings.gstin) {
@@ -1235,7 +1235,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
                                         <div className="h-4 w-px bg-slate-300 mx-1 shrink-0" />
 
-                                        <div className="flex-1 min-w-[50px] text-right font-black text-slate-900 text-sm">
+                                        <div className="flex-1 min-w-12.5 text-right font-black text-slate-900 text-sm">
                                             ₹{item.amount.toLocaleString()}
                                         </div>
 
@@ -1508,7 +1508,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
                                                         setLocalPackageHours(2); setLocalPackageKm(20); setDistanceOverride('20');
                                                     }
                                                 }}
-                                                className={`min-w-[64px] shrink-0 flex flex-col items-center justify-center py-1.5 px-1 rounded-lg border transition-all snap-start
+                                                className={`min-w-16 shrink-0 flex flex-col items-center justify-center py-1.5 px-1 rounded-lg border transition-all snap-start
                                                         ${hourlyPackage === pkg.id
                                                         ? 'bg-primary border-primary text-white shadow-md shadow-primary/20'
                                                         : 'bg-white border-slate-100 text-slate-500 hover:border-primary/20 active:bg-slate-50'}
@@ -1577,7 +1577,7 @@ const TripForm: React.FC<TripFormProps> = ({ onSaveTrip, onStepChange, invoiceTe
 
         const lineItems = [
             liveCalc.distanceCharge > 0 && { label: 'Trip Charge', sub: dist > 0 && liveCalc.rateUsed > 0 ? `${dist} km × ₹${liveCalc.rateUsed}` : '', amount: liveCalc.distanceCharge, color: 'bg-blue-500' },
-            liveCalc.driverBatta > 0 && { label: 'Driver Bata', sub: '', amount: liveCalc.driverBatta, color: 'bg-amber-400' },
+            liveCalc.driverBatta > 0 && { label: 'Driver Batta', sub: '', amount: liveCalc.driverBatta, color: 'bg-amber-400' },
             tollAmt > 0 && { label: 'Toll Charges', sub: '', amount: tollAmt, color: 'bg-emerald-400' },
             parkingAmt > 0 && { label: 'Parking', sub: '', amount: parkingAmt, color: 'bg-violet-400' },
             permitAmt > 0 && { label: 'Permit', sub: '', amount: permitAmt, color: 'bg-orange-400' },

@@ -63,7 +63,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete, onClo
 
     return (
         <div className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="relative w-full max-w-md bg-white rounded-[32px] shadow-2xl overflow-hidden border border-white/20">
+            <div className="relative w-full max-w-md bg-white rounded-4xl shadow-2xl overflow-hidden border border-white/20">
 
                 {/* Header */}
                 <div className="p-6 border-b border-slate-100 flex items-center justify-between">
@@ -163,7 +163,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete, onClo
                 {/* Footer hint */}
                 <div className="px-6 py-4 bg-slate-50 border-t border-slate-100">
                     <p className="text-[9px] text-slate-400 font-bold text-center uppercase tracking-widest leading-relaxed">
-                        RC Books, Licenses, and Fuel Bills are automatically recognized.
+                        RC Books, Licenses, and Fuel Receipts are automatically recognized.
                     </p>
                 </div>
             </div>

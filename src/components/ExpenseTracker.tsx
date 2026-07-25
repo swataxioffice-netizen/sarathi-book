@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-    Plus, Fuel, Settings, Trash2, PieChart, ShoppingBag, Coffee, Calculator, Wallet, MapPin, Shield, CreditCard, Scan
+    Plus, Fuel, Settings, Trash2, PieChart, ShoppingBag, Coffee, Calculator, MapPin, Shield, CreditCard, Scan
 } from 'lucide-react';
 import { generateId } from '../utils/uuid';
 
@@ -306,7 +306,7 @@ const ExpenseTracker: React.FC = () => {
                         className="flex items-center gap-1.5 px-2.5 py-1.5 bg-primary/10 text-primary rounded-xl border border-primary/20 hover:bg-primary/20 transition-all active:scale-95 group"
                     >
                         <Scan size={12} className="group-hover:rotate-12 transition-transform" />
-                        <span className="text-[9px] font-black uppercase tracking-widest">Scan Bill</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest">Scan Receipt</span>
                     </button>
                 </div>
 
@@ -318,37 +318,74 @@ const ExpenseTracker: React.FC = () => {
                     />
                 )}
 
-                <div className="grid grid-cols-[1fr,1.5fr] gap-2.5">
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-tight ml-1">AMOUNT</label>
-                        <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
-                            <input
-                                type="number"
-                                value={amount}
-                                onChange={(_) => setAmount(_.target.value)}
-                                className="tn-input h-9 pl-7 bg-slate-50 border-slate-200 font-black text-sm w-full"
-                                placeholder="0"
-                            />
+                {/* 1. Category Chips */}
+                <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Category</label>
+                    <div className="flex flex-wrap gap-1.5">
+                        {[
+                            { id: 'fuel', label: 'Fuel', icon: <Fuel size={13} /> },
+                            { id: 'toll', label: 'Toll', icon: <MapPin size={13} /> },
+                            { id: 'food', label: 'Food', icon: <Coffee size={13} /> },
+                            { id: 'maintenance', label: 'Repair', icon: <Settings size={13} /> },
+                            { id: 'parking', label: 'Parking', icon: <CreditCard size={13} /> },
+                            { id: 'permit', label: 'Permit', icon: <Shield size={13} /> },
+                            { id: 'other', label: 'Other', icon: <ShoppingBag size={13} /> },
+                        ].map((c) => {
+                            const isSelected = category === c.id;
+                            return (
+                                <button
+                                    key={c.id}
+                                    type="button"
+                                    onClick={() => setCategory(c.id as Expense['category'])}
+                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all active:scale-95 ${
+                                        isSelected
+                                            ? 'bg-slate-900 text-white shadow-sm ring-2 ring-slate-900/20'
+                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                    }`}
+                                >
+                                    {c.icon}
+                                    <span>{c.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* 2. Amount Input + Quick Addition Chips */}
+                <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Amount (₹)</label>
+                        <div className="flex gap-1">
+                            {[50, 100, 200, 500, 1000].map((preset) => (
+                                <button
+                                    key={preset}
+                                    type="button"
+                                    onClick={() => setAmount(prev => (Number(prev || 0) + preset).toString())}
+                                    className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[9px] font-black rounded-md border border-slate-200/60 active:scale-95 transition-all"
+                                >
+                                    +{preset}
+                                </button>
+                            ))}
                         </div>
                     </div>
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-tight ml-1">CATEGORY</label>
-                        <select
-                            value={category}
-                            onChange={(_) => setCategory(_.target.value as Expense['category'])}
-                            className="tn-input h-9 bg-slate-50 border-slate-200 font-bold text-[10px] uppercase w-full"
-                        >
-                            {['fuel', 'maintenance', 'food', 'toll', 'permit', 'parking', 'other'].map(c => <option key={c} value={c}>{t(c)}</option>)}
-                        </select>
+                    <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">₹</span>
+                        <input
+                            type="number"
+                            value={amount}
+                            onChange={(_) => setAmount(_.target.value)}
+                            className="tn-input h-10 pl-8 bg-slate-50 border-slate-200 font-black text-base w-full focus:bg-white focus:border-primary transition-colors"
+                            placeholder="0"
+                        />
                     </div>
                 </div>
 
                 <button
                     onClick={addExpense}
-                    className="w-full bg-primary text-white h-10 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                    disabled={!amount || Number(amount) <= 0}
+                    className="w-full bg-primary text-white h-10 rounded-xl font-black text-xs uppercase tracking-[0.15em] shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    <Wallet size={14} /> REGISTER EXPENSE
+                    <Plus size={16} strokeWidth={3} /> Register Expense
                 </button>
             </div>
 

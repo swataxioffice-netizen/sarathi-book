@@ -443,7 +443,7 @@ const Profile: React.FC = () => {
             })()}
 
             {/* 2. Tabs Navigation - Sticky with no gap */}
-            <div className="flex bg-white p-2 border-b border-slate-200 mb-6 sticky top-[-17px] z-30 gap-1 -mx-4 px-4 shadow-sm overflow-x-auto scrollbar-hide">
+            <div className="flex bg-white p-2 border-b border-slate-200 mb-6 sticky -top-4.25 z-30 gap-1 -mx-4 px-4 shadow-sm overflow-x-auto scrollbar-hide">
                 {(['business', 'payments', 'vehicles', 'docs'] as const).map(tab => {
                     const isActive = activeTab === tab;
                     const icons = { 
@@ -466,7 +466,7 @@ const Profile: React.FC = () => {
             </div>
 
             {/* 3. Main Content Area */}
-            <div className="min-h-[400px]">
+            <div className="min-h-100">
                 {activeTab === 'business' && (
                     <div className="space-y-4 animate-scale-in">
                         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import {
     X, User, BadgeIndianRupee, FileText, Contact,
     Share2, LogOut, Zap,
-    ShieldCheck, Palette, Settings, Users
+    ShieldCheck, Settings, Users
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
@@ -53,25 +53,15 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
 
     const navSections: { title: string, items: NavItem[] }[] = [
         {
-            title: 'Account',
+            title: 'Tools',
             items: [
-                { id: 'profile', icon: User, label: 'My Profile', subtitle: 'View and edit your profile' },
                 { id: 'tariff', icon: BadgeIndianRupee, label: 'Rate Lists', subtitle: 'Preset rate lists for customers' },
                 { id: 'staff', icon: Users, label: 'Staff & Salary', subtitle: 'Driver attendance & payroll', isSuper: true },
                 { id: 'app-settings', icon: Settings, label: 'App Settings', subtitle: 'Notifications & preferences' },
             ]
         },
         {
-            title: 'Branding',
-            items: [
-                { id: 'visiting-card', icon: Contact, label: 'Visiting Card', subtitle: 'Share your digital card', isPro: true },
-                { id: 'letterhead', icon: FileText, label: 'Letterhead', subtitle: 'Download PDF format', isPro: true },
-                { id: 'watermark', icon: ShieldCheck, label: 'Remove Watermark', subtitle: 'Clean professional invoices', isPro: true },
-                { id: 'branding', icon: Palette, label: 'Bill Theme Colour', subtitle: 'Change invoice theme & colors', isPro: true },
-            ]
-        },
-        {
-            title: 'Help',
+            title: 'Help & Info',
             items: [
                 { id: 'about', icon: User, label: 'About Us', subtitle: 'Who we are' },
                 { id: 'contact', icon: Contact, label: 'Contact Us', subtitle: 'Get in touch' },
@@ -182,7 +172,7 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
                                 <h2 className="text-sm font-bold text-white tracking-tight mb-0.5">
                                     {user.user_metadata?.full_name || 'Welcome Driver'}
                                 </h2>
-                                <p className="text-xs font-medium text-blue-200 mb-3 truncate w-full max-w-[200px]">
+                                <p className="text-xs font-medium text-blue-200 mb-3 truncate w-full max-w-50">
                                     {user.email}
                                 </p>
                                 
@@ -282,7 +272,7 @@ const MobileMenuContainer: React.FC<MobileMenuProps> = ({ isOpen, onClose, activ
                                 try {
                                     await navigator.share({
                                         title: 'Sarathi Book',
-                                        text: 'Driver Anna! Stop writing bills by hand. Use Sarathi Book app for professional invoices & fare calculation. Free app!',
+                                        text: 'Stop writing taxi bills by hand. Use the Sarathi Book app to generate professional invoices and trip estimates instantly! Free app!',
                                         url: 'https://sarathibook.com'
                                     });
                                 } catch (error) { console.log('Error sharing:', error); }

@@ -1,6 +1,8 @@
 import { type Trip } from './fare';
 import { numberToWords } from './numberToWords';
 import { toTitleCase, formatAddress } from './stringUtils';
+import { VEHICLES } from '../config/vehicleRates';
+import { TARIFFS } from '../config/tariff_config';
 
 import { getFinancialYear } from './gstUtils';
 import type { Staff, Vehicle } from '../types/settings';
@@ -1156,7 +1158,7 @@ export const generatePayslipPDF = async (staff: Staff, payroll: PayrollSummary, 
     drawCell(margin, y, colW, rowH, 'Employee Name', 'left', true);
     drawCell(margin + colW, y, colW, rowH, staff.name);
     drawCell(margin + (colW * 2), y, colW, rowH, 'Employee ID', 'left', true);
-    drawCell(margin + (colW * 3), y, colW, rowH, staff.employeeId || 'SB-' + staff.id.slice(0, 4).toUpperCase());
+    drawCell(margin + (colW * 3), y, colW, rowH, staff.employeeId || 'N/A');
     
     y += rowH;
     // Row 2
@@ -1401,5 +1403,269 @@ export const generateLetterheadPDF = async (settings: PDFSettings) => {
 export const downloadLetterhead = async (settings: PDFSettings) => {
     const doc = await generateLetterheadPDF(settings);
     const filename = `Letterhead_${(settings.companyName || 'Company').replace(/[^a-z0-9]/gi, '_')}.pdf`;
+    doc.save(filename);
+};
+
+export interface TariffPDFData {
+    companyName: string;
+    driverPhone: string;
+    secondaryPhone?: string;
+    upiId?: string;
+    companyAddress?: string;
+    appColor?: string;
+    logoUrl?: string;
+    showWatermark?: boolean;
+    rates: Record<string, { drop: number; round: number; bata: number; pkg4hr: number; pkg8hr: number; pkg12hr: number; extraHr: number }>;
+    activeVehicles?: string[];
+    inclusions?: string[];
+    exclusions?: string[];
+}
+
+export const generateTariffPDF = async (data: TariffPDFData) => {
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+
+    const margin = 15;
+    const themeColor = data?.appColor || '#0047AB';
+    const rgb = hexToRgb(themeColor);
+    
+    const setThemeColor = () => doc.setTextColor(rgb.r, rgb.g, rgb.b);
+    const setDrawThemeColor = () => doc.setDrawColor(rgb.r, rgb.g, rgb.b);
+    const setFillThemeColor = () => doc.setFillColor(rgb.r, rgb.g, rgb.b);
+
+    const activeVehicles = data.activeVehicles && data.activeVehicles.length > 0 
+        ? VEHICLES.filter(v => data.activeVehicles!.includes(v.id)) 
+        : VEHICLES;
+
+    const inclusions = data.inclusions && data.inclusions.length > 0 
+        ? data.inclusions 
+        : ["Fuel charges", "Driver service & bata", "GST charges"];
+
+    const exclusions = data.exclusions && data.exclusions.length > 0 
+        ? data.exclusions 
+        : ["Toll charges (as per actual)", "Parking fees", "Interstate permit (if applicable)"];
+
+    let y = 15;
+
+    // --- LOGO & HEADER ---
+    if (data?.logoUrl) {
+        try {
+            doc.addImage(data.logoUrl, 'PNG', margin, y - 3, 18, 18, undefined, 'FAST');
+            setThemeColor();
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(22);
+            doc.text((data.companyName || 'CAB SERVICES').toUpperCase(), margin + 22, y + 5);
+            doc.setTextColor(0, 0, 0);
+        } catch {
+            setThemeColor();
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(24);
+            doc.text((data.companyName || 'CAB SERVICES').toUpperCase(), margin, y + 5);
+            doc.setTextColor(0, 0, 0);
+        }
+    } else {
+        setThemeColor();
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(24);
+        doc.text((data.companyName || 'CAB SERVICES').toUpperCase(), margin, y + 5);
+        doc.setTextColor(0, 0, 0);
+    }
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    const companyAddress = data?.companyAddress || '';
+    const addressLines = doc.splitTextToSize(companyAddress, 100);
+    doc.text(addressLines, margin, y + 12);
+
+    // Contact info on top right
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.text('CONTACT DETAILS:', 195, y + 2, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    let contactY = y + 7;
+    doc.text(`Primary Phone: ${data.driverPhone}`, 195, contactY, { align: 'right' });
+    contactY += 4.5;
+    if (data.secondaryPhone) {
+        doc.text(`Secondary: ${data.secondaryPhone}`, 195, contactY, { align: 'right' });
+        contactY += 4.5;
+    }
+    if (data.upiId) {
+        doc.text(`UPI Payment: ${data.upiId}`, 195, contactY, { align: 'right' });
+    }
+
+    // Y position calculation
+    const addressEnd = y + 12 + (addressLines.length * 4.5);
+    y = Math.max(addressEnd, contactY + 5) + 3;
+
+    // Divider
+    setDrawThemeColor();
+    doc.setLineWidth(0.6);
+    doc.line(margin, y, 195, y);
+    y += 6;
+
+    // Center Title Banner
+    setFillThemeColor();
+    doc.rect(margin, y, 180, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.text('OUTSTATION & ONE-WAY DROP FARES', 105, y + 5.5, { align: 'center' });
+    doc.setTextColor(0, 0, 0); // reset
+    y += 12;
+
+    // Table 1: Outstation / Drop Rates
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setFillColor(240, 246, 255);
+    doc.rect(margin, y - 5, 180, 6.5, 'F'); // draw header bg
+    
+    doc.text('VEHICLE TYPE', margin + 2, y - 0.5);
+    doc.text('MODELS', margin + 40, y - 0.5);
+    doc.text('DROP FARE', margin + 85, y - 0.5, { align: 'right' });
+    doc.text('ROUND TRIP', margin + 115, y - 0.5, { align: 'right' });
+    doc.text('DRIVER BATA', margin + 150, y - 0.5, { align: 'right' });
+    doc.text('MIN KM', margin + 178, y - 0.5, { align: 'right' });
+
+    doc.setLineWidth(0.1);
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, y + 1.5, 195, y + 1.5); // header border bottom
+    y += 6.5;
+
+    // Draw rows for outstation
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+
+    activeVehicles.forEach((v, index) => {
+        const rate = data.rates[v.id] || { drop: v.dropRate, round: v.roundRate, bata: v.batta };
+        
+        // Alternate row colors
+        if (index % 2 === 1) {
+            doc.setFillColor(252, 252, 253);
+            doc.rect(margin, y - 4.5, 180, 6, 'F');
+        }
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(v.name, margin + 2, y - 0.5);
+        doc.setFont('helvetica', 'normal');
+        doc.text(v.popularModels, margin + 40, y - 0.5);
+        
+        doc.text(`Rs. ${rate.drop}/km`, margin + 85, y - 0.5, { align: 'right' });
+        doc.text(`Rs. ${rate.round}/km`, margin + 115, y - 0.5, { align: 'right' });
+        doc.text(`Rs. ${rate.bata}/day`, margin + 150, y - 0.5, { align: 'right' });
+        doc.text(`${v.minKm} km/day`, margin + 178, y - 0.5, { align: 'right' });
+
+        doc.line(margin, y + 1.5, 195, y + 1.5);
+        y += 6;
+    });
+
+    y += 3;
+
+    // Section 2: Local Rental Packages
+    setFillThemeColor();
+    doc.rect(margin, y, 180, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.text('LOCAL CITY HOURLY PACKAGES', 105, y + 5.5, { align: 'center' });
+    doc.setTextColor(0, 0, 0); // reset
+    y += 12;
+
+    // Table 2 Headers: Vehicle, 4 Hr / 40 Km, 8 Hr / 80 Km, 12 Hr / 120 Km, Extra Hr
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setFillColor(240, 246, 255);
+    doc.rect(margin, y - 5, 180, 6.5, 'F');
+
+    doc.text('VEHICLE TYPE', margin + 2, y - 0.5);
+    doc.text('4 HR / 40 KM', margin + 70, y - 0.5, { align: 'right' });
+    doc.text('8 HR / 80 KM', margin + 105, y - 0.5, { align: 'right' });
+    doc.text('12 HR / 120 KM', margin + 145, y - 0.5, { align: 'right' });
+    doc.text('EXTRA HOUR', margin + 178, y - 0.5, { align: 'right' });
+
+    doc.line(margin, y + 1.5, 195, y + 1.5);
+    y += 6.5;
+
+    // Draw rows for hourly rental
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+
+    activeVehicles.forEach((v, index) => {
+        const t = TARIFFS.vehicles[v.id as keyof typeof TARIFFS.vehicles];
+        const rate = data.rates[v.id] || { pkg4hr: t?.local_4hr_pkg ?? 0, pkg8hr: t?.local_8hr_pkg ?? 0, pkg12hr: t?.local_12hr_pkg ?? 0, extraHr: t?.extra_hr_rate ?? 0 };
+
+        if (index % 2 === 1) {
+            doc.setFillColor(252, 252, 253);
+            doc.rect(margin, y - 4.5, 180, 6, 'F');
+        }
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(v.name, margin + 2, y - 0.5);
+        doc.setFont('helvetica', 'normal');
+        
+        doc.text(rate.pkg4hr > 0 ? `Rs. ${rate.pkg4hr}` : 'N/A', margin + 70, y - 0.5, { align: 'right' });
+        doc.text(rate.pkg8hr > 0 ? `Rs. ${rate.pkg8hr}` : 'N/A', margin + 105, y - 0.5, { align: 'right' });
+        doc.text(rate.pkg12hr > 0 ? `Rs. ${rate.pkg12hr}` : 'N/A', margin + 145, y - 0.5, { align: 'right' });
+        doc.text(`Rs. ${rate.extraHr}/hr`, margin + 178, y - 0.5, { align: 'right' });
+
+        doc.line(margin, y + 1.5, 195, y + 1.5);
+        y += 6;
+    });
+
+    y += 4;
+
+    // Section 3: Inclusions / Exclusions Box (Side-by-Side Dual Column)
+    const boxHeight = Math.max(inclusions.length, exclusions.length) * 4.5 + 10;
+    doc.setDrawColor(220, 225, 230);
+    doc.setFillColor(250, 250, 250);
+    doc.rect(margin, y, 180, boxHeight, 'FD'); // draw border box for policies
+
+    // Left Column: Inclusions
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    setThemeColor();
+    doc.text('INCLUSIONS / RATES COVER:', margin + 6, y + 5);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(0, 0, 0);
+    inclusions.forEach((item, index) => {
+        doc.text(`* ${item}`, margin + 8, y + 10 + (index * 4.5));
+    });
+
+    // Right Column: Exclusions
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    setThemeColor();
+    doc.text('EXCLUSIONS / ADDITIONAL CHARGES:', margin + 95, y + 5);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(0, 0, 0);
+    exclusions.forEach((item, index) => {
+        doc.text(`* ${item}`, margin + 97, y + 10 + (index * 4.5));
+    });
+
+    // Footer
+    y = 280;
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('Thank you for choosing our professional cab services! Safe Journeys!', 105, y, { align: 'center' });
+    
+    if (data.showWatermark !== false) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        setThemeColor();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        doc.text('Generated via Sarathi Book - Your Digital Fleet Office', 105, y + 4.5, { align: 'center', url: 'https://sarathibook.com' } as any);
+    }
+
+    return doc;
+};
+
+export const downloadTariffPDF = async (data: TariffPDFData) => {
+    const doc = await generateTariffPDF(data);
+    const filename = `TariffCard_${(data.companyName || 'Driver').replace(/[^a-z0-9]/gi, '_')}.pdf`;
     doc.save(filename);
 };

@@ -512,7 +512,7 @@ const PublicFareCalculator: React.FC = () => {
                                         </span>
                                     )}
                                 </span>
-                                <span className="text-[9px] text-slate-400 text-left truncate max-w-[260px]">
+                                <span className="text-[9px] text-slate-400 text-left truncate max-w-65">
                                     {extraChargesSummary()}
                                 </span>
                             </div>
@@ -587,7 +587,7 @@ const PublicFareCalculator: React.FC = () => {
                             <div className="bg-slate-900 p-4 space-y-2.5 text-center">
                                 <p className="text-white text-xs font-black">Are you a cab driver?</p>
                                 <p className="text-slate-400 text-[10px] leading-relaxed max-w-xs mx-auto">
-                                    Generate GST invoices, track trips &amp; manage earnings — free with Sarathi Book.
+                                    Generate GST invoices, track trips &amp; manage finance — free with Sarathi Book.
                                 </p>
                                 <GoogleSignInButton text="Start Free with Google" className="w-full justify-center" />
                             </div>

@@ -37,8 +37,6 @@ const UpdateWatcher: React.FC = () => {
                         <button
                             onClick={() => {
                                 updateServiceWorker(true);
-                                // Fallback: Force reload after 500ms if SW update hangs due to errors
-                                setTimeout(() => window.location.reload(), 500);
                             }}
                             className="w-full py-4 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                         >

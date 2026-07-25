@@ -164,7 +164,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
         if (type !== 'invoice') return;
         
         // Sort items by Invoice Number for the report
-        // Filter: Only include GST Invoices (INV prefix), skip Non-GST Bills (BILL prefix)
+        // Filter: Only include GST Invoices (INV prefix), skip Non-GST Invoices (BILL prefix)
         const itemsToPrint = ([...filteredItems] as Trip[]).filter(trip => 
             trip.invoiceNo?.startsWith('INV') || (trip.gst !== undefined && trip.gst > 0)
         );
@@ -274,7 +274,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
 
                     {/* GST Filter Toggle */}
                     {type === 'invoice' && (
-                        <div className="bg-slate-100/30 p-1 rounded-xl border border-slate-200/50 flex gap-1 max-w-[280px] mx-auto mt-1 w-full">
+                        <div className="bg-slate-100/30 p-1 rounded-xl border border-slate-200/50 flex gap-1 max-w-70 mx-auto mt-1 w-full">
                             {(['gst', 'non-gst'] as const).map((f) => (
                                 <button
                                     key={f}
@@ -283,7 +283,7 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
                                         ? 'bg-primary text-white shadow-md' 
                                         : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'}`}
                                 >
-                                    {f === 'gst' ? 'GST Invoice' : 'Non-GST Bill'}
+                                    {f === 'gst' ? 'GST Invoice' : 'Non-GST Invoice'}
                                 </button>
                             ))}
                         </div>
@@ -340,15 +340,15 @@ const History: React.FC<HistoryProps> = ({ trips = [], quotations = [], type, on
 
                                         {/* Route Details */}
                                         <div className="flex items-center gap-2 mb-2">
-                                            <span className="inline-flex items-center px-1 py-px rounded-[4px] text-[8px] font-black uppercase tracking-wider border bg-primary/5 text-primary border-primary/10">
+                                            <span className="inline-flex items-center px-1 py-px rounded-sm text-[8px] font-black uppercase tracking-wider border bg-primary/5 text-primary border-primary/10">
                                                 {isInvoice ? (trip?.mode || 'TRIP') : 'QUOTE'}
                                             </span>
                                             {isInvoice && (trip?.invoiceNo?.startsWith('INV') || (trip?.gst !== undefined && trip.gst > 0)) && (
-                                                <span className="inline-flex items-center px-1 py-px rounded-[4px] text-[8px] font-black uppercase tracking-wider border bg-primary/5 text-primary border-primary/10">
+                                                <span className="inline-flex items-center px-1 py-px rounded-sm text-[8px] font-black uppercase tracking-wider border bg-primary/5 text-primary border-primary/10">
                                                     GST
                                                 </span>
                                             )}
-                                            <span className="text-[10px] font-bold text-slate-500 truncate max-w-[200px]">
+                                            <span className="text-[10px] font-bold text-slate-500 truncate max-w-50">
                                                 {isInvoice ? `${trip?.from}${trip?.to ? ` ➔ ${trip.to}` : ''}` : quotation?.subject}
                                             </span>
                                         </div>

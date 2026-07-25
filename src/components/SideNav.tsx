@@ -1,7 +1,7 @@
 import React from 'react';
 import {
     User, LogOut, ShieldCheck, Share2,
-    Zap, BadgeIndianRupee, Palette,
+    Zap, BadgeIndianRupee,
     FileText, Contact, Settings, Users
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -117,27 +117,17 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                     </button>
                 )}
 
-                {/* Core */}
+                {/* Core Tools */}
                 <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">Account</p>
-                    {navItem('profile', User, 'My Profile')}
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">Tools</p>
                     {navItem('tariff', BadgeIndianRupee, 'Rate Lists')}
                     {navItem('staff', Users, 'Staff & Salary', !isSuper ? 'Super' : undefined)}
                     {navItem('app-settings', Settings, 'App Settings')}
                 </div>
 
-                {/* Branding */}
-                <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">Branding</p>
-                    {navItem('visiting-card', Contact, 'Visiting Card', !isPro ? 'Pro' : undefined)}
-                    {navItem('letterhead', FileText, 'Letterhead', !isPro ? 'Pro' : undefined)}
-                    {navItem('watermark', ShieldCheck, 'Remove Watermark', !isPro ? 'Pro' : undefined)}
-                    {navItem('branding', Palette, 'Bill Theme Colour', !isPro ? 'Pro' : undefined)}
-                </div>
-
                 {/* Help */}
                 <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">Help</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">Help & Info</p>
                     {navItem('about', User, 'About Us')}
                     {navItem('contact', Contact, 'Contact Us')}
                     {navItem('privacy', ShieldCheck, 'Privacy Policy')}
@@ -158,7 +148,7 @@ const SideNav: React.FC<SideNavProps> = ({ activeTab, setActiveTab }) => {
                     onClick={async () => {
                         Analytics.shareApp('sidenav');
                         if (navigator.share) {
-                            try { await navigator.share({ title: 'Sarathi Book', text: 'Driver Anna! Stop writing bills by hand. Use Sarathi Book app for professional invoices & fare calculation. Free app!', url: 'https://sarathibook.com' }); }
+                             try { await navigator.share({ title: 'Sarathi Book', text: 'Stop writing taxi bills by hand. Use the Sarathi Book app to generate professional invoices and trip estimates instantly! Free app!', url: 'https://sarathibook.com' }); }
                             catch { /* cancelled */ }
                         } else { 
                             window.dispatchEvent(new CustomEvent('auth-error', { 

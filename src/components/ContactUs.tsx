@@ -1,95 +1,88 @@
 import SEOHead from './SEOHead';
-import { Mail, Phone, MapPin, Send } from 'lucide-react';
+import { MessageCircle, Phone, ArrowRight, Mail } from 'lucide-react';
 
 const ContactUs = () => {
+    const whatsappNumber = '919952749408';
+
+    const openWhatsApp = () => {
+        window.open(`https://wa.me/${whatsappNumber}`, '_blank');
+    };
+
     return (
         <div className="bg-white min-h-screen">
             <SEOHead
                 title="Contact Us | Sarathi Book - Support & Feedback"
-                description="Get in touch with the Sarathi Book team. We are here to help you with any questions about our cab management tools."
+                description="Get in touch with the Sarathi Book team. We are here to help cab drivers and fleet owners across India."
             />
 
-            <div className="bg-primary text-white py-20 px-6 text-center">
-                <div className="max-w-3xl mx-auto">
-                    <h1 className="text-4xl font-black uppercase tracking-tighter mb-4">Get In Touch</h1>
-                    <p className="text-blue-100 font-medium">Have questions or feedback? We'd love to hear from you.</p>
+            {/* Header */}
+            <div className="bg-slate-900 text-white py-16 px-6 text-center">
+                <div className="max-w-3xl mx-auto space-y-3">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                        Support Channel
+                    </span>
+                    <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter">Get In Touch</h1>
+                    <p className="text-slate-400 text-sm font-medium">
+                        Have questions or need assistance? Connect with our support team instantly.
+                    </p>
                 </div>
             </div>
 
-            <div className="max-w-6xl mx-auto px-6 py-16">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
-                    {/* Contact Info */}
-                    <div className="space-y-12">
-                        <div>
-                            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight mb-8">Contact Information</h2>
-                            <div className="space-y-6">
-                                <div className="flex items-start gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                                        <Mail size={24} />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Email Us</p>
-                                        <p className="text-lg font-bold text-slate-800">support@sarathibook.com</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-start gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-                                        <Phone size={24} />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Call Us</p>
-                                        <p className="text-lg font-bold text-slate-800">+91 98765 43210</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-start gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-600 shrink-0">
-                                        <MapPin size={24} />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Office</p>
-                                        <p className="text-lg font-bold text-slate-800">Chennai, Tamil Nadu, India</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            {/* Contact Options */}
+            <div className="max-w-2xl mx-auto px-6 py-12 space-y-4">
 
-                        <div className="bg-slate-50 p-8 rounded-3xl border border-slate-100">
-                            <h3 className="font-black text-slate-900 uppercase tracking-tight mb-4">Support Hours</h3>
-                            <p className="text-sm text-slate-600 font-medium leading-relaxed">
-                                Our support team is available Monday to Friday, 9:00 AM to 6:00 PM (IST). We typically respond to emails within 24 hours.
-                            </p>
-                        </div>
+                {/* WhatsApp */}
+                <button
+                    onClick={openWhatsApp}
+                    className="w-full flex items-center gap-5 p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-100 active:scale-[0.98] transition-all group shadow-sm"
+                >
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/30">
+                        <MessageCircle size={24} />
                     </div>
+                    <div className="flex-1 text-left">
+                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Fastest Response</p>
+                        <p className="text-base font-black text-slate-900">Chat on WhatsApp</p>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">Instant support for drivers & fleet owners</p>
+                    </div>
+                    <ArrowRight size={18} className="text-emerald-500 group-hover:translate-x-1 transition-transform shrink-0" />
+                </button>
 
-                    {/* Contact Form */}
-                    <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-100">
-                        <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight mb-8">Send Message</h2>
-                        <form className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Full Name</label>
-                                    <input type="text" className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="John Doe" />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Email Address</label>
-                                    <input type="email" className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="john@example.com" />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Subject</label>
-                                <input type="text" className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="How can we help?" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Message</label>
-                                <textarea rows={4} className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Tell us more..."></textarea>
-                            </div>
-                            <button type="submit" className="w-full bg-primary text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 hover:bg-blue-800 transition-all active:scale-95 shadow-lg shadow-primary/20">
-                                <Send size={16} />
-                                Send Message
-                            </button>
-                        </form>
+                {/* Phone Call */}
+                <a
+                    href={`tel:+${whatsappNumber}`}
+                    className="w-full flex items-center gap-5 p-5 rounded-2xl bg-blue-50 border-2 border-blue-100 hover:border-blue-300 hover:bg-blue-100 active:scale-[0.98] transition-all group shadow-sm"
+                >
+                    <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-600/20">
+                        <Phone size={24} />
                     </div>
-                </div>
+                    <div className="flex-1 text-left">
+                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Call Us</p>
+                        <p className="text-base font-black text-slate-900">Direct Helpline</p>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">Available during business hours (IST)</p>
+                    </div>
+                    <ArrowRight size={18} className="text-blue-400 group-hover:translate-x-1 transition-transform shrink-0" />
+                </a>
+
+                {/* Email */}
+                <a
+                    href="mailto:saravn.web@gmail.com"
+                    className="w-full flex items-center gap-5 p-5 rounded-2xl bg-slate-50 border-2 border-slate-100 hover:border-slate-300 active:scale-[0.98] transition-all group shadow-sm"
+                >
+                    <div className="w-12 h-12 rounded-2xl bg-slate-700 text-white flex items-center justify-center shrink-0">
+                        <Mail size={24} />
+                    </div>
+                    <div className="flex-1 text-left">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Support</p>
+                        <p className="text-base font-black text-slate-900">saravn.web@gmail.com</p>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">We reply within 24 hours</p>
+                    </div>
+                    <ArrowRight size={18} className="text-slate-400 group-hover:translate-x-1 transition-transform shrink-0" />
+                </a>
+
+                {/* Info note */}
+                <p className="text-center text-[11px] text-slate-400 font-medium pt-4">
+                    WhatsApp is the fastest way to get help. Our team responds within minutes.
+                </p>
             </div>
         </div>
     );

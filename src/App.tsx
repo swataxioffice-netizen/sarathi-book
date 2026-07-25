@@ -7,7 +7,7 @@ import { supabase } from './utils/supabase';
 import UpdateWatcher from './components/UpdateWatcher';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 // Staging Environment Trigger - Last Updated: 2026-04-23 21:11
-import { X, RefreshCw, TrendingUp, Bell, Settings, Lock } from 'lucide-react';
+import { X, RefreshCw, Bell, Settings, Lock, Cloud } from 'lucide-react';
 import { isPro, isSuper } from './utils/planGate';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useUpdate, UpdateProvider } from './contexts/UpdateContext';
@@ -102,19 +102,21 @@ function AppContent() {
 
     // Migration: specific check to force old defaults (dashboard) to new default (calculator) one time
     const storedTab = localStorage.getItem('nav-active-tab');
-    if (storedTab === 'dashboard' && !pathname && !hash) {
-      return 'trips';
+    
+    let initialTab = storedTab || 'trips';
+    if (pathname && validTabs.includes(pathname)) {
+      initialTab = pathname;
+    } else if (pathname && (pathname.includes('-to-') || pathname.endsWith('-taxi'))) {
+      initialTab = pathname;
+    } else if (hash && validTabs.includes(hash)) {
+      initialTab = hash;
     }
 
-    if (pathname && validTabs.includes(pathname)) return pathname;
-
-    // SEO Route Detection (e.g. chennai-to-bangalore-taxi)
-    if (pathname && (pathname.includes('-to-') || pathname.endsWith('-taxi'))) {
-      return pathname;
+    if (initialTab === 'dashboard' && !pathname && !hash) {
+      initialTab = 'trips';
     }
 
-    if (hash && validTabs.includes(hash)) return hash;
-    return storedTab || 'trips';
+    return initialTab === 'expenses' ? 'dashboard' : initialTab;
   });
 
   // Support for Browser Back/Forward buttons
@@ -123,7 +125,7 @@ function AppContent() {
       const pathname = window.location.pathname.slice(1).split('/')[0];
       const validTabs = ['dashboard', 'trips', 'expenses', 'calculator', 'taxi-fare-calculator', 'fare-calculator', 'profile', 'admin', 'notes', 'routes', 'tariff', 'finance', 'staff', 'about', 'contact', 'privacy', 'terms', 'pricing', 'business-card', 'public-profile', 'route-landing'];
       if (pathname && validTabs.includes(pathname)) {
-        setActiveTab(pathname);
+        setActiveTab(pathname === 'expenses' ? 'dashboard' : pathname);
       } else if (pathname && (pathname.includes('-to-') || pathname.endsWith('-taxi') || pathname.endsWith('-rental'))) {
         setActiveTab(pathname);
       }
@@ -133,7 +135,10 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    const handleNav = (e: Event) => setActiveTab((e as CustomEvent<string>).detail);
+    const handleNav = (e: Event) => {
+      const tab = (e as CustomEvent<string>).detail;
+      setActiveTab(tab === 'expenses' ? 'dashboard' : tab);
+    };
     const handleQuoteNav = () => {
       setActiveTab('trips');
       setInvoiceQuotationToggle('quotation');
@@ -209,7 +214,7 @@ function AppContent() {
     // Update URL without reloading to support deep linking (Replace History)
     // We preserve the full URL if it already starts with the active tab to support sub-paths and search params
     const currentPath = window.location.pathname;
-    const currentTab = currentPath.slice(1).split('/')[0] || 'dashboard';
+    const currentTab = currentPath.slice(1).split('/')[0] || 'trips';
 
     // If the tab just changed, we go to the base path. 
     // If we are already on that tab, we do nothing to avoid stripping sub-paths/params.
@@ -219,7 +224,7 @@ function AppContent() {
       if (activeTab !== 'admin' || isAdmin) {
         window.history.replaceState(null, '', `/${activeTab}`);
       }
-    } else if (currentPath === '/' && activeTab !== 'dashboard') {
+    } else if (currentPath === '/' && activeTab !== 'trips') {
       window.history.replaceState(null, '', `/${activeTab}`);
     }
   }, [activeTab, isAdmin]);
@@ -254,7 +259,11 @@ function AppContent() {
 
   // Guest Login Nudge Logic
   useEffect(() => {
-    if (user?.id) {
+    // Check if the current view is a public/shared page to avoid prompting customers/visitors
+    const params = new URLSearchParams(window.location.search);
+    const isShared = params.has('s') || window.location.pathname.startsWith('/public') || window.location.pathname.startsWith('/shared');
+
+    if (user?.id || isShared) {
       setShowLoginNudge(false);
       // Note: subscribeToPush() is intentionally NOT called automatically here.
       // Push notifications must be requested via user gesture (App Settings > Enable Notifications)
@@ -757,7 +766,7 @@ function AppContent() {
         return <Dashboard trips={trips} quotations={quotations} />;
       case 'trips':
         return (
-          <div className="relative min-h-[500px]">
+          <div className="relative min-h-125">
             {/* Content Container - Removed Blur/Lock */}
             <div className="space-y-4 transition-all duration-700">
 
@@ -768,7 +777,7 @@ function AppContent() {
                   className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2 flex items-center gap-3 cursor-pointer active:bg-orange-100 transition-colors"
                 >
                   <div className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
-                  <p className="flex-1 text-[11px] font-bold text-orange-700">Complete your profile to generate bills</p>
+                  <p className="flex-1 text-[11px] font-bold text-orange-700">Complete your profile to generate invoices</p>
                   <span className="text-[11px] font-black text-orange-500">{completion}% →</span>
                 </div>
               )}
@@ -1056,13 +1065,13 @@ function AppContent() {
       </div>
 
       {/* Mobile Layout */}
-      <div className={`md:hidden h-dvh w-full bg-white flex flex-col relative overflow-hidden ${originalUser ? 'pt-10' : ''}`}>
+      <div className={`md:hidden h-dvh w-full bg-white flex flex-col relative ${originalUser ? 'pt-10' : ''}`}>
         <Header
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           onMenuClick={() => setIsMobileMenuOpen(true)}
         />
-        <main className="flex-1 overflow-y-auto scrollbar-hide px-3 py-4 pb-24 bg-[#F5F7FA] relative">
+        <main className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-3 py-4 pb-24 bg-[#F5F7FA] relative">
           {renderContent()}
           {/* Show Footer only on Public/SEO/Legal Pages for Mobile */}
           {(['about', 'contact', 'privacy', 'terms', 'routes', 'tariff', 'trending', 'taxi-fare-calculator', 'fare-calculator'].includes(activeTab) ||
@@ -1075,6 +1084,7 @@ function AppContent() {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
         />
+
 
         <Suspense fallback={null}>
           <MobileMenu
@@ -1163,9 +1173,9 @@ function AppContent() {
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 bg-blue-500/10 rounded-xl">
-                    <TrendingUp size={18} className="text-blue-400" />
+                    <Cloud size={18} className="text-blue-400" />
                   </div>
-                  <h3 className="font-black text-lg tracking-tight">Pro Features</h3>
+                  <h3 className="font-black text-lg tracking-tight">Cloud Backup</h3>
                 </div>
                 <button onClick={handleCloseNudge} className="text-slate-500 hover:text-white transition-colors p-1">
                   <X size={20} />
@@ -1173,10 +1183,10 @@ function AppContent() {
               </div>
               <div className="space-y-4 mb-6">
                 <p className="text-xs text-slate-300 font-bold leading-relaxed">
-                  Generate professional <strong>GST Invoices</strong>, <strong>Quotations</strong> & <strong>Pay Slips</strong>. Track <strong>Driver Attendance</strong> with <strong>Fare Calculator</strong>.
+                  Sign in with Google to enable automatic <strong>cloud sync</strong>. Back up your invoices, quotations, and settings so you never lose them.
                 </p>
                 <div className="flex flex-wrap gap-1.5">
-                  {['Calculator', 'Invoice', 'Quote', 'Attendance', 'Salary'].map(tag => (
+                  {['Cloud Sync', 'Secure Backup', 'Auto-Save'].map(tag => (
                     <div key={tag} className="bg-white/5 border border-white/5 px-2 py-0.5 rounded-lg flex items-center gap-1.5">
                       <div className="w-1 h-1 rounded-full bg-blue-500"></div>
                       <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{tag}</span>
