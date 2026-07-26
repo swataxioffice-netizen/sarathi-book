@@ -15,7 +15,7 @@ import {
     Repeat, Clock, UserCheck,
     Car, ChevronLeft, ChevronDown, ChevronUp,
     RotateCcw, Trash2, PenLine,
-    StickyNote, Check, Settings
+    StickyNote, Check, Settings, FileText
 } from 'lucide-react';
 import type { QuotationData, SavedQuotation } from '../utils/pdf';
 import PDFPreviewModal from './PDFPreviewModal';
@@ -90,6 +90,29 @@ const DEFAULT_TERMS = [
     "GST 5% is applicable on the total invoice amount."
 ];
 
+const DEFAULT_INCLUSIONS = [
+    "Fuel & Fuel Surcharges Included",
+    "Driver Allowance (Batta) Included",
+    "Vehicle Air Conditioning (AC) Included",
+    "Standard Maintenance & Breakdown Support Included"
+];
+
+const DEFAULT_EXCLUSIONS = [
+    "Toll Gate Fees Extra as per actuals",
+    "Parking Charges Extra as per actuals",
+    "Interstate Entry Tax & State Permits Extra",
+    "Driver Night Batta (10:00 PM - 06:00 AM) Extra"
+];
+
+const DEFAULT_RENTAL_POLICY = [
+    "Extra Km charge applicable beyond package limit",
+    "Extra Hour charge applicable beyond package limit",
+    "Duty starts from Pickup Time and ends at Drop Time / Garage return",
+    "Night driving allowance applicable between 10 PM and 6 AM",
+    "50% Advance payment required to confirm booking",
+    "Cancellation charges applicable if cancelled within 24 hours"
+];
+
 const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepChange, quotations, onViewHistory, editingQuotation }) => {
     const { settings } = useSettings();
     const { user } = useAuth();
@@ -162,9 +185,19 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
     // Fixed: Only 5% allowed for now
     const gstRate: GSTRate = 5;
 
-    // Terms
+    // Terms & Policies
     const [terms, setTerms] = useState<string[]>([]);
     const [newTerm, setNewTerm] = useState('');
+
+    const [inclusions, setInclusions] = useState<string[]>([]);
+    const [newInclusion, setNewInclusion] = useState('');
+
+    const [exclusions, setExclusions] = useState<string[]>([]);
+    const [newExclusion, setNewExclusion] = useState('');
+
+    const [rentalPolicy, setRentalPolicy] = useState<string[]>([]);
+    const [newRentalPolicy, setNewRentalPolicy] = useState('');
+
     const [quotationDate, setQuotationDate] = useState(new Date().toISOString().split('T')[0]);
 
     // Previews
@@ -261,6 +294,10 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             setIncludeGst(!!editingQuotation.gstEnabled);
             setRcmEnabled(!!editingQuotation.rcmEnabled);
             if (editingQuotation.terms) setTerms(editingQuotation.terms);
+            if (editingQuotation.inclusions) setInclusions(editingQuotation.inclusions);
+            if (editingQuotation.exclusions) setExclusions(editingQuotation.exclusions);
+            if (editingQuotation.rentalPolicy) setRentalPolicy(editingQuotation.rentalPolicy);
+            if (editingQuotation.tripType) setMode(editingQuotation.tripType);
             
             // Restore Custom Line Items or Manual Extra Items from items
             if (editingQuotation.items && editingQuotation.items.length > 0) {
@@ -494,11 +531,15 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
             pickup: fromLoc,
             drop: toLoc,
 
-            subject: `${mode === 'drop' ? 'One Way Drop' : mode === 'outstation' ? 'Outstation Trip' : 'Cab Service'} Quote`,
+            subject: `${mode === 'drop' ? 'One Way Drop' : mode === 'outstation' ? 'Outstation Trip' : mode === 'local' ? 'Local Rental' : 'Cab Service'} Quote`,
             date: quotationDate,
             quotationNo: nextQuotationNo,
             gstEnabled: includeGst,
             rcmEnabled,
+            tripType: mode || 'custom',
+            inclusions,
+            exclusions,
+            rentalPolicy,
             terms,
             items: [{
                 description: mode === 'drop' ? `Trip to ${toLoc}` : `Round Trip to ${toLoc}`,
@@ -691,13 +732,17 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                     customerAddress: billingAddress,
                     pickup: fromLoc,
                     drop: toLoc,
-                    subject: `${mode === 'drop' ? 'One Way Drop' : mode === 'outstation' ? 'Outstation Trip' : 'Cab Service'} Quote`,
+                    subject: `${mode === 'drop' ? 'One Way Drop' : mode === 'outstation' ? 'Outstation Trip' : mode === 'local' ? 'Local Rental' : 'Cab Service'} Quote`,
                     date: quotationDate,
                     quotationNo: nextQuotationNo,
                     gstEnabled: includeGst,
                     rcmEnabled,
                     gstRate: includeGst ? gstRate : undefined,
                     gstType: includeGst ? (res.gstBreakdown?.type || 'CGST_SGST') : undefined,
+                    tripType: mode || 'custom',
+                    inclusions,
+                    exclusions,
+                    rentalPolicy,
                     terms,
                     items
                 };
@@ -1351,6 +1396,180 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ onSaveQuotation, onStepCh
                             if (newState) setIncludeGst(false);
                         }} className={`w-8 h-4 rounded-full relative ${rcmEnabled ? 'bg-orange-600' : 'bg-slate-300'}`}><div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${rcmEnabled ? 'left-4.5' : 'left-0.5'}`} /></button>
                     </div>
+                </div>
+            </div>
+
+            {/* Inclusions Section */}
+            <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-3">
+                <div className="flex justify-between items-center">
+                    <h3 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest flex items-center gap-2"><Check size={14} className="text-emerald-600" /> TRIP INCLUSIONS</h3>
+                    <span className="text-[9px] font-black text-emerald-700 uppercase">{inclusions.length} Included</span>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Quick Add Inclusions</label>
+                    <div className="grid grid-cols-1 gap-2">
+                        {DEFAULT_INCLUSIONS.map((item, idx) => {
+                            const isSelected = inclusions.includes(item);
+                            return (
+                                <button
+                                    key={idx}
+                                    onClick={() => {
+                                        if (isSelected) setInclusions(i => i.filter(x => x !== item));
+                                        else setInclusions(i => [...i, item]);
+                                    }}
+                                    className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all text-left ${isSelected ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold' : 'bg-slate-50 border-slate-100 text-slate-600'}`}
+                                >
+                                    <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 ${isSelected ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-300'}`}>
+                                        {isSelected && <Check size={10} strokeWidth={4} />}
+                                    </div>
+                                    <span className="text-[11px]">{item}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+                {inclusions.length > 0 && (
+                    <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                        {inclusions.map((inc, idx) => (
+                            <div key={idx} className="flex items-center gap-2 bg-emerald-50/60 p-2 rounded-lg border border-emerald-100">
+                                <span className="text-xs text-emerald-800 flex-1 font-medium">✓ {inc}</span>
+                                <button onClick={() => setInclusions(i => i.filter((_, idx2) => idx2 !== idx))} className="text-emerald-400 hover:text-red-500">
+                                    <Trash2 size={12} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                <div className="flex gap-2 pt-1">
+                    <input
+                        placeholder="Add custom inclusion..."
+                        className="tn-input h-9 flex-1 text-xs"
+                        value={newInclusion}
+                        onChange={e => setNewInclusion(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && newInclusion) { setInclusions([...inclusions, newInclusion]); setNewInclusion(''); } }}
+                    />
+                    <button
+                        onClick={() => { if (newInclusion) { setInclusions([...inclusions, newInclusion]); setNewInclusion(''); } }}
+                        className="w-9 h-9 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-colors"
+                    >
+                        <Plus size={16} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Exclusions Section */}
+            <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-3">
+                <div className="flex justify-between items-center">
+                    <h3 className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><span>✗</span> TRIP EXCLUSIONS</h3>
+                    <span className="text-[9px] font-black text-amber-700 uppercase">{exclusions.length} Excluded</span>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Quick Add Exclusions</label>
+                    <div className="grid grid-cols-1 gap-2">
+                        {DEFAULT_EXCLUSIONS.map((item, idx) => {
+                            const isSelected = exclusions.includes(item);
+                            return (
+                                <button
+                                    key={idx}
+                                    onClick={() => {
+                                        if (isSelected) setExclusions(i => i.filter(x => x !== item));
+                                        else setExclusions(i => [...i, item]);
+                                    }}
+                                    className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all text-left ${isSelected ? 'bg-amber-50 border-amber-300 text-amber-900 font-bold' : 'bg-slate-50 border-slate-100 text-slate-600'}`}
+                                >
+                                    <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 ${isSelected ? 'bg-amber-600 border-amber-600 text-white' : 'bg-white border-slate-300'}`}>
+                                        {isSelected && <Check size={10} strokeWidth={4} />}
+                                    </div>
+                                    <span className="text-[11px]">{item}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+                {exclusions.length > 0 && (
+                    <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                        {exclusions.map((exc, idx) => (
+                            <div key={idx} className="flex items-center gap-2 bg-amber-50/60 p-2 rounded-lg border border-amber-100">
+                                <span className="text-xs text-amber-900 flex-1 font-medium">✗ {exc}</span>
+                                <button onClick={() => setExclusions(i => i.filter((_, idx2) => idx2 !== idx))} className="text-amber-400 hover:text-red-500">
+                                    <Trash2 size={12} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                <div className="flex gap-2 pt-1">
+                    <input
+                        placeholder="Add custom exclusion..."
+                        className="tn-input h-9 flex-1 text-xs"
+                        value={newExclusion}
+                        onChange={e => setNewExclusion(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && newExclusion) { setExclusions([...exclusions, newExclusion]); setNewExclusion(''); } }}
+                    />
+                    <button
+                        onClick={() => { if (newExclusion) { setExclusions([...exclusions, newExclusion]); setNewExclusion(''); } }}
+                        className="w-9 h-9 bg-amber-600 text-white rounded-xl flex items-center justify-center hover:bg-amber-700 transition-colors"
+                    >
+                        <Plus size={16} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Rental Policy Section */}
+            <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-3">
+                <div className="flex justify-between items-center">
+                    <h3 className="text-[10px] font-black text-indigo-700 uppercase tracking-widest flex items-center gap-2"><FileText size={14} className="text-indigo-600" /> RENTAL POLICY & RULES</h3>
+                    <span className="text-[9px] font-black text-indigo-700 uppercase">{rentalPolicy.length} Policies</span>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Quick Add Rental Rules</label>
+                    <div className="grid grid-cols-1 gap-2">
+                        {DEFAULT_RENTAL_POLICY.map((item, idx) => {
+                            const isSelected = rentalPolicy.includes(item);
+                            return (
+                                <button
+                                    key={idx}
+                                    onClick={() => {
+                                        if (isSelected) setRentalPolicy(r => r.filter(x => x !== item));
+                                        else setRentalPolicy(r => [...r, item]);
+                                    }}
+                                    className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all text-left ${isSelected ? 'bg-indigo-50 border-indigo-300 text-indigo-900 font-bold' : 'bg-slate-50 border-slate-100 text-slate-600'}`}
+                                >
+                                    <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-300'}`}>
+                                        {isSelected && <Check size={10} strokeWidth={4} />}
+                                    </div>
+                                    <span className="text-[11px]">{item}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+                {rentalPolicy.length > 0 && (
+                    <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                        {rentalPolicy.map((pol, idx) => (
+                            <div key={idx} className="flex items-center gap-2 bg-indigo-50/60 p-2 rounded-lg border border-indigo-100">
+                                <span className="text-xs text-indigo-900 flex-1 font-medium">• {pol}</span>
+                                <button onClick={() => setRentalPolicy(r => r.filter((_, idx2) => idx2 !== idx))} className="text-indigo-400 hover:text-red-500">
+                                    <Trash2 size={12} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                <div className="flex gap-2 pt-1">
+                    <input
+                        placeholder="Add custom policy rule..."
+                        className="tn-input h-9 flex-1 text-xs"
+                        value={newRentalPolicy}
+                        onChange={e => setNewRentalPolicy(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && newRentalPolicy) { setRentalPolicy([...rentalPolicy, newRentalPolicy]); setNewRentalPolicy(''); } }}
+                    />
+                    <button
+                        onClick={() => { if (newRentalPolicy) { setRentalPolicy([...rentalPolicy, newRentalPolicy]); setNewRentalPolicy(''); } }}
+                        className="w-9 h-9 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-colors"
+                    >
+                        <Plus size={16} />
+                    </button>
                 </div>
             </div>
 

@@ -8,7 +8,7 @@ import {
     User as UserIcon,
     Contact, Landmark, Car, FileText, ChevronRight,
     RefreshCw, X, Trash2, Crown, Cloud, Users,
-    Palette, Share2, Copy, Check
+    Palette, Share2, Copy, Check, PenLine
 } from 'lucide-react';
 
 import { supabase } from '../utils/supabase';
@@ -39,6 +39,7 @@ const Profile: React.FC = () => {
 
     const [savingSection, setSavingSection] = useState<string | null>(null);
     const [uploadingLogo, setUploadingLogo] = useState(false);
+    const [uploadingSignature, setUploadingSignature] = useState(false);
     const [showStudio, setShowStudio] = useState(false);
     const [proView, setProView] = useState<'menu' | 'branding' | 'staff'>('menu');
     const [refreshing, setRefreshing] = useState(false);
@@ -261,6 +262,54 @@ const Profile: React.FC = () => {
             }));
         } finally {
             setUploadingLogo(false);
+        }
+    };
+
+    const handleSignatureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !user) return;
+
+        const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        if (!validTypes.includes(file.type)) {
+            window.dispatchEvent(new CustomEvent('auth-error', { 
+                detail: { title: 'Invalid Format', message: 'Please upload PNG or JPG signature image.', type: 'error' } 
+            }));
+            return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) {
+             window.dispatchEvent(new CustomEvent('auth-error', { 
+                detail: { title: 'File Too Large', message: 'Signature must be under 2MB.', type: 'warning' } 
+            }));
+             return;
+        }
+
+        setUploadingSignature(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const filePath = `signatures/${user.id}/signature_${Date.now()}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage.from('public').upload(filePath, file, {
+                upsert: true
+            });
+
+            if (uploadError) {
+                console.error('Upload Error:', uploadError);
+                throw uploadError;
+            }
+
+            const { data: { publicUrl } } = supabase.storage.from('public').getPublicUrl(filePath);
+
+            updateSettings({ signatureUrl: publicUrl });
+            await saveSettings();
+        } catch (err: unknown) {
+            console.error('Signature upload failed:', err);
+            const errorMessage = err instanceof Error ? err.message : 'Check your connection';
+            window.dispatchEvent(new CustomEvent('auth-error', { 
+                detail: { title: 'Upload Failed', message: errorMessage, type: 'error' } 
+            }));
+        } finally {
+            setUploadingSignature(false);
         }
     };
 
@@ -719,6 +768,28 @@ const Profile: React.FC = () => {
                                                     <button onClick={() => document.getElementById('logoInput')?.click()} className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase w-full">Upload Logo</button>
                                                     <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider text-center">PNG/JPG Only</p>
                                                     <input type="file" id="logoInput" className="hidden" accept="image/png, image/jpeg, image/jpg" onChange={handleLogoUpload} />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 block mb-3 pl-1">Authorised Signature (For Invoices & Quotations)</label>
+                                            <div className="flex items-center gap-6">
+                                                <div className="w-32 h-20 rounded-2xl border-2 border-dashed flex items-center justify-center bg-slate-50 overflow-hidden relative">
+                                                    {settings.signatureUrl ? <img src={settings.signatureUrl} className="w-full h-full object-contain p-2" alt="Authorised Signature" /> : <PenLine className="text-slate-300" size={24} />}
+                                                    {uploadingSignature && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><RefreshCw className="animate-spin text-blue-600" /></div>}
+                                                </div>
+                                                <div className="space-y-2 flex-1">
+                                                    <button onClick={() => document.getElementById('signatureInput')?.click()} className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase w-full">
+                                                        {settings.signatureUrl ? 'Change Signature' : 'Upload Signature'}
+                                                    </button>
+                                                    {settings.signatureUrl && (
+                                                        <button onClick={() => updateSettings({ signatureUrl: '' })} className="text-red-500 font-bold text-[9px] uppercase w-full text-center hover:underline block">
+                                                            Remove Signature
+                                                        </button>
+                                                    )}
+                                                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider text-center">PNG/JPG (Transparent Recommended)</p>
+                                                    <input type="file" id="signatureInput" className="hidden" accept="image/png, image/jpeg, image/jpg" onChange={handleSignatureUpload} />
                                                 </div>
                                             </div>
                                         </div>

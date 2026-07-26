@@ -63,6 +63,10 @@ export interface QuotationData {
     gstType?: 'IGST' | 'CGST_SGST'; // Added
     rcmEnabled?: boolean;
     quotationNo?: string;
+    tripType?: 'local' | 'outstation' | 'drop' | 'custom';
+    inclusions?: string[];
+    exclusions?: string[];
+    rentalPolicy?: string[];
     terms?: string[];
 }
 
@@ -82,6 +86,10 @@ export interface SavedQuotation {
     gstRate?: number; // Added
     gstType?: 'IGST' | 'CGST_SGST'; // Added
     rcmEnabled?: boolean;
+    tripType?: 'local' | 'outstation' | 'drop' | 'custom';
+    inclusions?: string[];
+    exclusions?: string[];
+    rentalPolicy?: string[];
     terms?: string[];
 }
 
@@ -177,7 +185,13 @@ export const generateReceiptPDF = async (trip: Trip | SavedQuotation | any, sett
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     if (isQuotation) {
-        doc.text('QUOTATION / PROFORMA', 105, y, { align: 'center' });
+        const type = (q.tripType || (trip as any).tripType || (trip as any).mode);
+        let qTitle = 'QUOTATION / PROFORMA';
+        if (type === 'local') qTitle = 'LOCAL RENTAL QUOTATION';
+        else if (type === 'outstation') qTitle = 'OUTSTATION TRIP QUOTATION';
+        else if (type === 'drop') qTitle = 'ONE-WAY DROP QUOTATION';
+        else if (type === 'custom') qTitle = 'ESTIMATE / QUOTATION';
+        doc.text(qTitle, 105, y, { align: 'center' });
     } else {
         const isRegistered = !!gstin;
         const title = (isRegistered && gstEnabled) ? 'TAX INVOICE' : (trip.mode === 'custom' ? 'INVOICE' : 'TRIP RECEIPT');
@@ -641,24 +655,82 @@ export const generateReceiptPDF = async (trip: Trip | SavedQuotation | any, sett
     doc.text(`RUPEES IN WORDS: ${numberToWords(finalTotal).toUpperCase()}`, 105, y, { align: 'center', maxWidth: 180 });
     doc.setTextColor(0, 0, 0);
 
-    // --- TERMS & CONDITIONS ---
-    if ((isQuotation ? q.terms : t.terms) && ((isQuotation ? q.terms : t.terms) || []).length > 0) {
-        y += 10;
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text('TERMS & CONDITIONS:', margin, y);
-        y += 5;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
+    // --- INCLUSIONS, EXCLUSIONS, RENTAL POLICY & TERMS ---
+    const inclusions = (isQuotation ? q.inclusions : (trip as any).inclusions) || [];
+    const exclusions = (isQuotation ? q.exclusions : (trip as any).exclusions) || [];
+    const rentalPolicy = (isQuotation ? q.rentalPolicy : (trip as any).rentalPolicy) || [];
+    const terms = (isQuotation ? q.terms : t.terms) || [];
 
-        const terms = (isQuotation ? q.terms : t.terms) || [];
-        terms.forEach((term: string) => {
-            const bullet = '•';
-            const cleanTerm = term.replace(/^•\s*/, ''); // Remove existing bullet if any
-            const termLines = doc.splitTextToSize(`${bullet} ${cleanTerm}`, 180);
-            doc.text(termLines, margin + 2, y);
-            y += (termLines.length * 4) + 1;
-        });
+    if (inclusions.length > 0 || exclusions.length > 0 || rentalPolicy.length > 0 || terms.length > 0) {
+        y += 8;
+
+        if (inclusions.length > 0) {
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(16, 128, 67); // Soft Green
+            doc.text('INCLUSIONS:', margin, y);
+            y += 4.5;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(31, 41, 55);
+            inclusions.forEach((inc: string) => {
+                const termLines = doc.splitTextToSize(`[INCLUDED] ${inc}`, 180);
+                doc.text(termLines, margin + 2, y);
+                y += (termLines.length * 3.8) + 0.5;
+            });
+            y += 1.5;
+        }
+
+        if (exclusions.length > 0) {
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(180, 83, 9); // Amber
+            doc.text('EXCLUSIONS:', margin, y);
+            y += 4.5;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(31, 41, 55);
+            exclusions.forEach((exc: string) => {
+                const termLines = doc.splitTextToSize(`[EXTRA / EXCLUDED] ${exc}`, 180);
+                doc.text(termLines, margin + 2, y);
+                y += (termLines.length * 3.8) + 0.5;
+            });
+            y += 1.5;
+        }
+
+        if (rentalPolicy.length > 0) {
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 64, 175); // Indigo
+            doc.text('RENTAL POLICY & CHARGES:', margin, y);
+            y += 4.5;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(31, 41, 55);
+            rentalPolicy.forEach((pol: string) => {
+                const termLines = doc.splitTextToSize(`• ${pol}`, 180);
+                doc.text(termLines, margin + 2, y);
+                y += (termLines.length * 3.8) + 0.5;
+            });
+            y += 1.5;
+        }
+
+        if (terms.length > 0) {
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(31, 41, 55);
+            doc.text('TERMS & CONDITIONS:', margin, y);
+            y += 4.5;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(31, 41, 55);
+            terms.forEach((term: string) => {
+                const cleanTerm = term.replace(/^•\s*/, '');
+                const termLines = doc.splitTextToSize(`• ${cleanTerm}`, 180);
+                doc.text(termLines, margin + 2, y);
+                y += (termLines.length * 3.8) + 0.5;
+            });
+        }
     }
 
     y = 252;
@@ -797,6 +869,10 @@ export const generateQuotationPDF = async (data: QuotationData, settings: PDFSet
 
         // Pass specific Quotation fields
         vehicleType: data.items[0]?.vehicleType || 'Any',
+        tripType: data.tripType,
+        inclusions: data.inclusions,
+        exclusions: data.exclusions,
+        rentalPolicy: data.rentalPolicy,
         terms: data.terms,
         previewStep: 4 // Ensure full render
     };
@@ -1305,7 +1381,8 @@ export const generatePayslipPDF = async (staff: Staff, payroll: PayrollSummary, 
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
     doc.text('This is a highly confidential document. Any unauthorized reproduction is prohibited.', 105, y, { align: 'center' });
-    doc.text('Generated via Sarathi Book - Your Digital Fleet Office', 105, y + 4, { align: 'center' });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    doc.text('Generated via sarathibook.com', 105, y + 4, { align: 'center', url: 'https://sarathibook.com' } as any);
 
     return doc;
 };
@@ -1680,7 +1757,7 @@ export const generateTariffPDF = async (data: TariffPDFData) => {
         doc.setFontSize(7.5);
         setThemeColor();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        doc.text('Generated via Sarathi Book - Your Digital Fleet Office', 105, y + 4.5, { align: 'center', url: 'https://sarathibook.com' } as any);
+        doc.text('Generated via sarathibook.com', 105, y + 4.5, { align: 'center', url: 'https://sarathibook.com' } as any);
     }
 
     return doc;

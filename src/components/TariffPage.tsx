@@ -196,22 +196,25 @@ const TariffPage = () => {
         const savedOutstationVehicles = localStorage.getItem('tariff_active_outstation_vehicles');
         const legacySavedVehicles = localStorage.getItem('tariff_active_vehicles');
 
-        let local = ['hatchback', 'sedan', 'suv'];
-        let outstation = ['hatchback', 'sedan', 'suv'];
+        // Default comes from profile vehicles (not hardcoded)
+        const profileVehicleIds = (settings.vehicles && settings.vehicles.length > 0)
+            ? Array.from(new Set(settings.vehicles.map((v: { id: string }) => v.id)))
+            : ['hatchback', 'sedan', 'suv'];
+
+        let local = profileVehicleIds;
+        let outstation = profileVehicleIds;
 
         if (savedLocalVehicles) {
             const parsed = JSON.parse(savedLocalVehicles);
             if (parsed.length > 0) {
                 local = parsed;
             } else {
-                // Stale empty array — clear it so defaults are used
+                // Stale empty array — clear it so profile defaults are used
                 localStorage.removeItem('tariff_active_local_vehicles');
             }
         } else if (legacySavedVehicles) {
             const parsed = JSON.parse(legacySavedVehicles);
             if (parsed.length > 0) local = parsed;
-        } else if (settings.vehicles && settings.vehicles.length > 0) {
-            local = Array.from(new Set(settings.vehicles.map(v => v.id)));
         }
 
         if (savedOutstationVehicles) {
@@ -219,14 +222,12 @@ const TariffPage = () => {
             if (parsed.length > 0) {
                 outstation = parsed;
             } else {
-                // Stale empty array — clear it so defaults are used
+                // Stale empty array — clear it so profile defaults are used
                 localStorage.removeItem('tariff_active_outstation_vehicles');
             }
         } else if (legacySavedVehicles) {
             const parsed = JSON.parse(legacySavedVehicles);
             if (parsed.length > 0) outstation = parsed;
-        } else if (settings.vehicles && settings.vehicles.length > 0) {
-            outstation = Array.from(new Set(settings.vehicles.map(v => v.id)));
         }
 
         setActiveLocalVehicles(local);
@@ -280,6 +281,17 @@ const TariffPage = () => {
         });
         setCustomRates(defaults);
         try { localStorage.removeItem('sarathi_custom_rates'); } catch (e) { console.error(e); }
+    };
+
+    // Sync vehicle lists from profile — wipes tariff-specific overrides
+    const handleSyncFromProfile = () => {
+        if (!settings.vehicles || settings.vehicles.length === 0) return;
+        const ids = Array.from(new Set(settings.vehicles.map((v: { id: string }) => v.id)));
+        setActiveLocalVehicles(ids);
+        setActiveOutstationVehicles(ids);
+        localStorage.setItem('tariff_active_local_vehicles', JSON.stringify(ids));
+        localStorage.setItem('tariff_active_outstation_vehicles', JSON.stringify(ids));
+        localStorage.removeItem('tariff_active_vehicles'); // clear legacy key
     };
 
     // Inclusions List Handlers
@@ -548,16 +560,27 @@ const TariffPage = () => {
 
                 {/* LOCAL CITY HOURLY PACKAGES SECTION — First */}
                 <div className="space-y-4 mb-8 pt-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                         <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2">
                             <Clock size={18} className="text-slate-900" />
                             Local City Packages
                         </h2>
-                        {!isCustomerView && hasAnyModified && (
-                            <button onClick={handleResetRates} className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-slate-700 underline uppercase tracking-wider">
-                                <RotateCcw size={10} /> Reset Rates
-                            </button>
-                        )}
+                        <div className="flex items-center gap-2">
+                            {!isCustomerView && settings.vehicles && settings.vehicles.length > 0 && (
+                                <button
+                                    onClick={handleSyncFromProfile}
+                                    title="Reset vehicle list to match your Profile fleet"
+                                    className="flex items-center gap-1 text-[9px] font-bold text-indigo-500 border border-indigo-200 bg-indigo-50 px-2 py-1 rounded-lg hover:bg-indigo-100 uppercase tracking-wider transition-colors"
+                                >
+                                    <RotateCcw size={10} /> Sync from Profile
+                                </button>
+                            )}
+                            {!isCustomerView && hasAnyModified && (
+                                <button onClick={handleResetRates} className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-slate-700 underline uppercase tracking-wider">
+                                    <RotateCcw size={10} /> Reset Rates
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     {filteredLocalVehicles.length === 0 && isCustomerView ? (
