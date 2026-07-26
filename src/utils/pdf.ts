@@ -1417,8 +1417,12 @@ export interface TariffPDFData {
     showWatermark?: boolean;
     rates: Record<string, { drop: number; round: number; bata: number; pkg4hr: number; pkg8hr: number; pkg12hr: number; extraHr: number }>;
     activeVehicles?: string[];
+    activeLocalVehicles?: string[];
+    activeOutstationVehicles?: string[];
     inclusions?: string[];
     exclusions?: string[];
+    companyEmail?: string;
+    gstin?: string;
 }
 
 export const generateTariffPDF = async (data: TariffPDFData) => {
@@ -1433,9 +1437,17 @@ export const generateTariffPDF = async (data: TariffPDFData) => {
     const setDrawThemeColor = () => doc.setDrawColor(rgb.r, rgb.g, rgb.b);
     const setFillThemeColor = () => doc.setFillColor(rgb.r, rgb.g, rgb.b);
 
-    const activeVehicles = data.activeVehicles && data.activeVehicles.length > 0 
-        ? VEHICLES.filter(v => data.activeVehicles!.includes(v.id)) 
-        : VEHICLES;
+    const activeLocalVehicles = data.activeLocalVehicles && data.activeLocalVehicles.length > 0 
+        ? VEHICLES.filter(v => data.activeLocalVehicles!.includes(v.id)) 
+        : (data.activeVehicles && data.activeVehicles.length > 0 
+            ? VEHICLES.filter(v => data.activeVehicles!.includes(v.id)) 
+            : VEHICLES);
+
+    const activeOutstationVehicles = data.activeOutstationVehicles && data.activeOutstationVehicles.length > 0 
+        ? VEHICLES.filter(v => data.activeOutstationVehicles!.includes(v.id)) 
+        : (data.activeVehicles && data.activeVehicles.length > 0 
+            ? VEHICLES.filter(v => data.activeVehicles!.includes(v.id)) 
+            : VEHICLES);
 
     const inclusions = data.inclusions && data.inclusions.length > 0 
         ? data.inclusions 
@@ -1447,64 +1459,127 @@ export const generateTariffPDF = async (data: TariffPDFData) => {
 
     let y = 15;
 
-    // --- LOGO & HEADER ---
+    // --- LOGO & HEADER (Professional Letterhead Standard) ---
     if (data?.logoUrl) {
         try {
-            doc.addImage(data.logoUrl, 'PNG', margin, y - 3, 18, 18, undefined, 'FAST');
+            doc.addImage(data.logoUrl, 'PNG', margin, 12, 18, 18, undefined, 'FAST');
             setThemeColor();
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(22);
-            doc.text((data.companyName || 'CAB SERVICES').toUpperCase(), margin + 22, y + 5);
+            doc.text((data.companyName || 'CAB SERVICES').toUpperCase(), margin + 22, 22);
             doc.setTextColor(0, 0, 0);
         } catch {
             setThemeColor();
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(24);
-            doc.text((data.companyName || 'CAB SERVICES').toUpperCase(), margin, y + 5);
+            doc.text((data.companyName || 'CAB SERVICES').toUpperCase(), margin, 20);
             doc.setTextColor(0, 0, 0);
         }
     } else {
         setThemeColor();
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(24);
-        doc.text((data.companyName || 'CAB SERVICES').toUpperCase(), margin, y + 5);
+        doc.text((data.companyName || 'CAB SERVICES').toUpperCase(), margin, 20);
         doc.setTextColor(0, 0, 0);
     }
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     const companyAddress = data?.companyAddress || '';
+    const addressY = 28;
     const addressLines = doc.splitTextToSize(companyAddress, 100);
-    doc.text(addressLines, margin, y + 12);
+    doc.text(addressLines, margin, addressY);
 
-    // Contact info on top right
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.text('CONTACT DETAILS:', 195, y + 2, { align: 'right' });
-    doc.setFont('helvetica', 'normal');
+    // Contact Rendering below address
+    const contactY = addressY + (addressLines.length * 4.5) + 2;
     doc.setFontSize(9);
-    let contactY = y + 7;
-    doc.text(`Primary Phone: ${data.driverPhone}`, 195, contactY, { align: 'right' });
-    contactY += 4.5;
-    if (data.secondaryPhone) {
-        doc.text(`Secondary: ${data.secondaryPhone}`, 195, contactY, { align: 'right' });
-        contactY += 4.5;
+
+    // Line 1: Phones
+    const phoneText = `Phone: ${data.driverPhone}${data.secondaryPhone ? `, ${data.secondaryPhone}` : ''}`;
+    doc.text(phoneText, margin, contactY);
+
+    // Line 2: Email, GSTIN, UPI ID
+    const cEmail = data.companyEmail || '';
+    const cGst = data.gstin ? String(data.gstin).toUpperCase() : '';
+    const upi = data.upiId || '';
+    let line2 = '';
+    if (cEmail) line2 += `Email: ${cEmail}`;
+    if (cGst) {
+        if (line2) line2 += '  |  ';
+        line2 += `GSTIN: ${cGst}`;
     }
-    if (data.upiId) {
-        doc.text(`UPI Payment: ${data.upiId}`, 195, contactY, { align: 'right' });
+    if (upi) {
+        if (line2) line2 += '  |  ';
+        line2 += `UPI: ${upi}`;
     }
 
-    // Y position calculation
-    const addressEnd = y + 12 + (addressLines.length * 4.5);
-    y = Math.max(addressEnd, contactY + 5) + 3;
+    if (line2) {
+        doc.text(line2, margin, contactY + 5);
+    }
 
     // Divider
+    const dividerY = contactY + (line2 ? 9 : 4);
     setDrawThemeColor();
     doc.setLineWidth(0.6);
-    doc.line(margin, y, 195, y);
-    y += 6;
+    doc.line(margin, dividerY, 195, dividerY);
+    
+    // Set coordinate y for tables
+    y = dividerY + 6;
 
-    // Center Title Banner
+    // --- Section 1: Local Rental Packages (Local first as requested) ---
+    setFillThemeColor();
+    doc.rect(margin, y, 180, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.text('LOCAL CITY HOURLY PACKAGES', 105, y + 5.5, { align: 'center' });
+    doc.setTextColor(0, 0, 0); // reset
+    y += 12;
+
+    // Table Headers: Vehicle, 4 Hr / 40 Km, 8 Hr / 80 Km, 12 Hr / 120 Km, Extra Hr
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setFillColor(240, 246, 255);
+    doc.rect(margin, y - 5, 180, 6.5, 'F');
+
+    doc.text('VEHICLE TYPE', margin + 2, y - 0.5);
+    doc.text('4 HR / 40 KM', margin + 70, y - 0.5, { align: 'right' });
+    doc.text('8 HR / 80 KM', margin + 105, y - 0.5, { align: 'right' });
+    doc.text('12 HR / 120 KM', margin + 145, y - 0.5, { align: 'right' });
+    doc.text('EXTRA HOUR', margin + 178, y - 0.5, { align: 'right' });
+
+    doc.line(margin, y + 1.5, 195, y + 1.5);
+    y += 6.5;
+
+    // Draw rows for hourly rental
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+
+    activeLocalVehicles.forEach((v, index) => {
+        const t = TARIFFS.vehicles[v.id as keyof typeof TARIFFS.vehicles];
+        const rate = data.rates[v.id] || { pkg4hr: t?.local_4hr_pkg ?? 0, pkg8hr: t?.local_8hr_pkg ?? 0, pkg12hr: t?.local_12hr_pkg ?? 0, extraHr: t?.extra_hr_rate ?? 0 };
+
+        if (index % 2 === 1) {
+            doc.setFillColor(252, 252, 253);
+            doc.rect(margin, y - 4.5, 180, 6, 'F');
+        }
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(v.name, margin + 2, y - 0.5);
+        doc.setFont('helvetica', 'normal');
+        
+        doc.text(rate.pkg4hr > 0 ? `Rs. ${rate.pkg4hr}` : 'N/A', margin + 70, y - 0.5, { align: 'right' });
+        doc.text(rate.pkg8hr > 0 ? `Rs. ${rate.pkg8hr}` : 'N/A', margin + 105, y - 0.5, { align: 'right' });
+        doc.text(rate.pkg12hr > 0 ? `Rs. ${rate.pkg12hr}` : 'N/A', margin + 145, y - 0.5, { align: 'right' });
+        doc.text(`Rs. ${rate.extraHr}/hr`, margin + 178, y - 0.5, { align: 'right' });
+
+        doc.line(margin, y + 1.5, 195, y + 1.5);
+        y += 6;
+    });
+
+    y += 4;
+
+    // --- Section 2: Outstation & One-Way Drop Fares (Outstation second as requested) ---
     setFillThemeColor();
     doc.rect(margin, y, 180, 8, 'F');
     doc.setTextColor(255, 255, 255);
@@ -1514,7 +1589,7 @@ export const generateTariffPDF = async (data: TariffPDFData) => {
     doc.setTextColor(0, 0, 0); // reset
     y += 12;
 
-    // Table 1: Outstation / Drop Rates
+    // Table headers: Outstation / Drop Rates
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setFillColor(240, 246, 255);
@@ -1536,7 +1611,7 @@ export const generateTariffPDF = async (data: TariffPDFData) => {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
 
-    activeVehicles.forEach((v, index) => {
+    activeOutstationVehicles.forEach((v, index) => {
         const rate = data.rates[v.id] || { drop: v.dropRate, round: v.roundRate, bata: v.batta };
         
         // Alternate row colors
@@ -1554,59 +1629,6 @@ export const generateTariffPDF = async (data: TariffPDFData) => {
         doc.text(`Rs. ${rate.round}/km`, margin + 115, y - 0.5, { align: 'right' });
         doc.text(`Rs. ${rate.bata}/day`, margin + 150, y - 0.5, { align: 'right' });
         doc.text(`${v.minKm} km/day`, margin + 178, y - 0.5, { align: 'right' });
-
-        doc.line(margin, y + 1.5, 195, y + 1.5);
-        y += 6;
-    });
-
-    y += 3;
-
-    // Section 2: Local Rental Packages
-    setFillThemeColor();
-    doc.rect(margin, y, 180, 8, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10.5);
-    doc.text('LOCAL CITY HOURLY PACKAGES', 105, y + 5.5, { align: 'center' });
-    doc.setTextColor(0, 0, 0); // reset
-    y += 12;
-
-    // Table 2 Headers: Vehicle, 4 Hr / 40 Km, 8 Hr / 80 Km, 12 Hr / 120 Km, Extra Hr
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setFillColor(240, 246, 255);
-    doc.rect(margin, y - 5, 180, 6.5, 'F');
-
-    doc.text('VEHICLE TYPE', margin + 2, y - 0.5);
-    doc.text('4 HR / 40 KM', margin + 70, y - 0.5, { align: 'right' });
-    doc.text('8 HR / 80 KM', margin + 105, y - 0.5, { align: 'right' });
-    doc.text('12 HR / 120 KM', margin + 145, y - 0.5, { align: 'right' });
-    doc.text('EXTRA HOUR', margin + 178, y - 0.5, { align: 'right' });
-
-    doc.line(margin, y + 1.5, 195, y + 1.5);
-    y += 6.5;
-
-    // Draw rows for hourly rental
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-
-    activeVehicles.forEach((v, index) => {
-        const t = TARIFFS.vehicles[v.id as keyof typeof TARIFFS.vehicles];
-        const rate = data.rates[v.id] || { pkg4hr: t?.local_4hr_pkg ?? 0, pkg8hr: t?.local_8hr_pkg ?? 0, pkg12hr: t?.local_12hr_pkg ?? 0, extraHr: t?.extra_hr_rate ?? 0 };
-
-        if (index % 2 === 1) {
-            doc.setFillColor(252, 252, 253);
-            doc.rect(margin, y - 4.5, 180, 6, 'F');
-        }
-
-        doc.setFont('helvetica', 'bold');
-        doc.text(v.name, margin + 2, y - 0.5);
-        doc.setFont('helvetica', 'normal');
-        
-        doc.text(rate.pkg4hr > 0 ? `Rs. ${rate.pkg4hr}` : 'N/A', margin + 70, y - 0.5, { align: 'right' });
-        doc.text(rate.pkg8hr > 0 ? `Rs. ${rate.pkg8hr}` : 'N/A', margin + 105, y - 0.5, { align: 'right' });
-        doc.text(rate.pkg12hr > 0 ? `Rs. ${rate.pkg12hr}` : 'N/A', margin + 145, y - 0.5, { align: 'right' });
-        doc.text(`Rs. ${rate.extraHr}/hr`, margin + 178, y - 0.5, { align: 'right' });
 
         doc.line(margin, y + 1.5, 195, y + 1.5);
         y += 6;

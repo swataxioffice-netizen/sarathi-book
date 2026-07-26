@@ -555,11 +555,21 @@ const Dashboard: React.FC<DashboardProps> = ({ trips }) => {
                                     <span className={`text-[13px] font-bold tabular-nums tracking-tight ${item.type === 'trip' ? 'text-success' : 'text-slate-800'}`}>
                                         {item.type === 'trip' ? '+₹' : '₹'}{item.displayAmount?.toLocaleString()}
                                     </span>
-                                    {item.type === 'expense' && (
+                                    {item.type === 'expense' ? (
                                         <button
                                             onClick={() => deleteExpense(item.id)}
-                                            className="p-1 text-slate-300 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                            className="p-1 text-slate-300 hover:text-red-500 transition-all active:scale-95"
                                             aria-label="Delete expense"
+                                        >
+                                            <Trash2 size={13} />
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => {
+                                                window.dispatchEvent(new CustomEvent('show-invoice-delete-redirect'));
+                                            }}
+                                            className="p-1 text-slate-300 hover:text-red-500 transition-all active:scale-95"
+                                            aria-label="Delete invoice"
                                         >
                                             <Trash2 size={13} />
                                         </button>

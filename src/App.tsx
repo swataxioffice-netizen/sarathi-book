@@ -11,6 +11,7 @@ import { X, RefreshCw, Bell, Settings, Lock, Cloud } from 'lucide-react';
 import { isPro, isSuper } from './utils/planGate';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useUpdate, UpdateProvider } from './contexts/UpdateContext';
+import { useGoogleOneTap } from './hooks/useGoogleOneTap';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import GoogleSignInButton from './components/GoogleSignInButton';
@@ -91,6 +92,9 @@ const PaywallScreen: React.FC<{ feature: string; tier?: 'pro' | 'super' }> = ({ 
 function AppContent() {
   /* Guest Roaming Logic */
   const { user, isAdmin, loading: authLoading, originalUser, stopImpersonation } = useAuth();
+  
+  // Automatically prompt guests with Google One Tap
+  useGoogleOneTap();
   const { needRefresh, updateServiceWorker } = useUpdate();
   const { addNotification } = useNotifications();
 
@@ -167,11 +171,27 @@ function AppContent() {
       addNotification(title, message, type);
     };
 
+    const handleInvoiceDeleteRedirect = () => {
+      setConfirmState({
+        isOpen: true,
+        title: 'Delete Invoice',
+        message: 'Invoices must be deleted from the Invoice History page. Would you like to go there now?',
+        type: 'info',
+        confirmLabel: 'Go to Invoices',
+        cancelLabel: 'Cancel',
+        onConfirm: () => {
+          setConfirmState(prev => ({ ...prev, isOpen: false }));
+          handleInvoiceHistoryNav();
+        }
+      });
+    };
+
     window.addEventListener('nav-tab-change', handleNav);
     window.addEventListener('nav-tab-quotation', handleQuoteNav);
     window.addEventListener('nav-tab-invoice', handleInvoiceNav);
     window.addEventListener('nav-tab-quotation-history', handleQuoteHistoryNav);
     window.addEventListener('nav-tab-invoice-history', handleInvoiceHistoryNav);
+    window.addEventListener('show-invoice-delete-redirect', handleInvoiceDeleteRedirect);
     window.addEventListener('auth-error', handleAuthError);
     return () => {
       window.removeEventListener('nav-tab-change', handleNav);
@@ -179,6 +199,7 @@ function AppContent() {
       window.removeEventListener('nav-tab-invoice', handleInvoiceNav);
       window.removeEventListener('nav-tab-quotation-history', handleQuoteHistoryNav);
       window.removeEventListener('nav-tab-invoice-history', handleInvoiceHistoryNav);
+      window.removeEventListener('show-invoice-delete-redirect', handleInvoiceDeleteRedirect);
       window.removeEventListener('auth-error', handleAuthError);
     };
   }, []);
@@ -248,6 +269,8 @@ function AppContent() {
     isOpen: boolean;
     title: string;
     message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
     onConfirm: () => void;
     type?: 'danger' | 'warning' | 'info';
   }>({
@@ -1018,6 +1041,8 @@ function AppContent() {
                 isOpen={confirmState.isOpen}
                 title={confirmState.title}
                 message={confirmState.message}
+                confirmLabel={confirmState.confirmLabel}
+                cancelLabel={confirmState.cancelLabel}
                 onConfirm={confirmState.onConfirm}
                 onCancel={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
                 type={confirmState.type}

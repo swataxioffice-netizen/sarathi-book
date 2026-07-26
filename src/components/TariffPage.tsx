@@ -6,7 +6,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { downloadTariffPDF } from '../utils/pdf';
 import {
     ArrowRight, Check, ShieldCheck, Clock,
-    AlertTriangle, Moon, Car, Pencil, RotateCcw,
+    AlertTriangle, Moon, Car, RotateCcw,
     Share2, Copy, Phone, MessageSquare, Download, CheckCircle, ArrowLeft, Plus, Trash2
 } from 'lucide-react';
 
@@ -17,10 +17,15 @@ const encodeTariffData = (data: {
     secondaryPhone?: string;
     upiId?: string;
     companyAddress?: string;
-    activeVehicles: string[];
+    companyEmail?: string;
+    gstin?: string;
+    activeLocalVehicles: string[];
+    activeOutstationVehicles: string[];
     inclusions: string[];
     exclusions: string[];
     rates: Record<string, { drop: number; round: number; bata: number; pkg4hr: number; pkg8hr: number; pkg12hr: number; extraHr: number }>;
+    appColor?: string;
+    logoUrl?: string;
 }): string => {
     const compactRates: Record<string, [number, number, number, number, number, number, number]> = {};
     Object.entries(data.rates).forEach(([id, r]) => {
@@ -33,10 +38,15 @@ const encodeTariffData = (data: {
         s: data.secondaryPhone || undefined,
         u: data.upiId || undefined,
         a: data.companyAddress || undefined,
-        v: data.activeVehicles,
+        em: data.companyEmail || undefined,
+        gt: data.gstin || undefined,
+        vl: data.activeLocalVehicles,
+        vo: data.activeOutstationVehicles,
         i: data.inclusions,
         e: data.exclusions,
-        r: compactRates
+        r: compactRates,
+        ac: data.appColor || undefined,
+        lu: data.logoUrl || undefined
     };
 
     const jsonStr = JSON.stringify(shareObj);
@@ -74,10 +84,15 @@ const decodeTariffData = (str: string) => {
             secondaryPhone: shareObj.s || '',
             upiId: shareObj.u || '',
             companyAddress: shareObj.a || '',
-            activeVehicles: shareObj.v || [],
+            companyEmail: shareObj.em || '',
+            gstin: shareObj.gt || '',
+            activeLocalVehicles: shareObj.vl || shareObj.v || [],
+            activeOutstationVehicles: shareObj.vo || shareObj.v || [],
             inclusions: shareObj.i || ["Fuel charges", "Driver service & bata", "GST charges"],
             exclusions: shareObj.e || ["Toll charges (as per actual)", "Parking fees", "Interstate permit (if applicable)"],
-            rates
+            rates,
+            appColor: shareObj.ac || '',
+            logoUrl: shareObj.lu || ''
         };
     } catch (e) {
         console.error("Failed to decode shared tariff data:", e);
@@ -118,9 +133,14 @@ const TariffPage = () => {
     const [customerSecondaryPhone, setCustomerSecondaryPhone] = useState('');
     const [customerUpiId, setCustomerUpiId] = useState('');
     const [customerAddress, setCustomerAddress] = useState('');
+    const [customerEmail, setCustomerEmail] = useState('');
+    const [customerGstin, setCustomerGstin] = useState('');
+    const [customerAppColor, setCustomerAppColor] = useState('');
+    const [customerLogoUrl, setCustomerLogoUrl] = useState('');
 
     // Fleet selection & custom rates details
-    const [activeVehicles, setActiveVehicles] = useState<string[]>([]);
+    const [activeLocalVehicles, setActiveLocalVehicles] = useState<string[]>([]);
+    const [activeOutstationVehicles, setActiveOutstationVehicles] = useState<string[]>([]);
     const [inclusions, setInclusions] = useState<string[]>([]);
     const [exclusions, setExclusions] = useState<string[]>([]);
 
@@ -149,10 +169,22 @@ const TariffPage = () => {
                 setCustomerSecondaryPhone(decoded.secondaryPhone || '');
                 setCustomerUpiId(decoded.upiId || '');
                 setCustomerAddress(decoded.companyAddress || '');
+                setCustomerEmail(decoded.companyEmail || '');
+                setCustomerGstin(decoded.gstin || '');
+                setCustomerAppColor(decoded.appColor || '');
+                setCustomerLogoUrl(decoded.logoUrl || '');
                 setCustomRates(decoded.rates);
-                setActiveVehicles(decoded.activeVehicles);
+                setActiveLocalVehicles(decoded.activeLocalVehicles);
+                setActiveOutstationVehicles(decoded.activeOutstationVehicles);
                 setInclusions(decoded.inclusions);
                 setExclusions(decoded.exclusions);
+
+                // Dynamically update theme color for customer view
+                if (decoded.appColor) {
+                    document.documentElement.style.setProperty('--primary', decoded.appColor);
+                    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+                    if (metaThemeColor) metaThemeColor.setAttribute('content', decoded.appColor);
+                }
                 return;
             }
         }
@@ -161,17 +193,31 @@ const TariffPage = () => {
         setIsCustomerView(false);
 
         // Load active vehicles preference
-        const savedVehicles = localStorage.getItem('tariff_active_vehicles');
-        if (savedVehicles) {
-            setActiveVehicles(JSON.parse(savedVehicles));
+        const savedLocalVehicles = localStorage.getItem('tariff_active_local_vehicles');
+        const savedOutstationVehicles = localStorage.getItem('tariff_active_outstation_vehicles');
+        const legacySavedVehicles = localStorage.getItem('tariff_active_vehicles');
+
+        let local = ['hatchback', 'sedan', 'suv'];
+        let outstation = ['hatchback', 'sedan', 'suv'];
+
+        if (savedLocalVehicles) {
+            local = JSON.parse(savedLocalVehicles);
+        } else if (legacySavedVehicles) {
+            local = JSON.parse(legacySavedVehicles);
         } else if (settings.vehicles && settings.vehicles.length > 0) {
-            // Default to categories configured in settings
-            const profileVehIds = Array.from(new Set(settings.vehicles.map(v => v.id)));
-            setActiveVehicles(profileVehIds);
-        } else {
-            // Default check standard options
-            setActiveVehicles(['hatchback', 'sedan', 'suv']);
+            local = Array.from(new Set(settings.vehicles.map(v => v.id)));
         }
+
+        if (savedOutstationVehicles) {
+            outstation = JSON.parse(savedOutstationVehicles);
+        } else if (legacySavedVehicles) {
+            outstation = JSON.parse(legacySavedVehicles);
+        } else if (settings.vehicles && settings.vehicles.length > 0) {
+            outstation = Array.from(new Set(settings.vehicles.map(v => v.id)));
+        }
+
+        setActiveLocalVehicles(local);
+        setActiveOutstationVehicles(outstation);
 
         // Load Inclusions / Exclusions
         const savedInc = localStorage.getItem('tariff_inclusions');
@@ -209,15 +255,6 @@ const TariffPage = () => {
             const updated = { ...prev, [vehicleId]: { ...prev[vehicleId], [type]: numValue } };
             try { localStorage.setItem('sarathi_custom_rates', JSON.stringify(updated)); } catch (e) { console.error(e); }
             return updated;
-        });
-    };
-
-    const handleVehicleToggle = (id: string) => {
-        if (isCustomerView) return;
-        setActiveVehicles(prev => {
-            const next = prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id];
-            localStorage.setItem('tariff_active_vehicles', JSON.stringify(next));
-            return next;
         });
     };
 
@@ -291,10 +328,15 @@ const TariffPage = () => {
             secondaryPhone: settings.secondaryPhone || '',
             upiId: settings.upiId || '',
             companyAddress: settings.companyAddress || '',
-            activeVehicles,
+            companyEmail: settings.companyEmail || '',
+            gstin: settings.gstin || '',
+            activeLocalVehicles,
+            activeOutstationVehicles,
             inclusions,
             exclusions,
-            rates: customRates
+            rates: customRates,
+            appColor: settings.appColor,
+            logoUrl: settings.logoUrl
         });
         return `${window.location.origin}/tariff?s=${encoded}`;
     };
@@ -320,11 +362,15 @@ const TariffPage = () => {
             secondaryPhone: settings.secondaryPhone || '',
             upiId: settings.upiId || '',
             companyAddress: settings.companyAddress || '',
-            activeVehicles,
+            companyEmail: settings.companyEmail || '',
+            gstin: settings.gstin || '',
+            activeLocalVehicles,
+            activeOutstationVehicles,
             inclusions,
             exclusions,
             rates: customRates,
-            appColor: settings.appColor
+            appColor: settings.appColor,
+            logoUrl: settings.logoUrl
         });
     };
 
@@ -334,7 +380,44 @@ const TariffPage = () => {
         window.dispatchEvent(new CustomEvent('nav-tab-change', { detail: 'profile' }));
     };
 
-    const filteredVehicles = VEHICLES.filter(v => activeVehicles.includes(v.id));
+    const filteredLocalVehicles = VEHICLES.filter(v => activeLocalVehicles.includes(v.id));
+    const filteredOutstationVehicles = VEHICLES.filter(v => activeOutstationVehicles.includes(v.id));
+    const availableForLocal = VEHICLES.filter(v => !activeLocalVehicles.includes(v.id));
+    const availableForOutstation = VEHICLES.filter(v => !activeOutstationVehicles.includes(v.id));
+
+    const handleAddLocalVehicle = (id: string) => {
+        if (!id) return;
+        setActiveLocalVehicles(prev => {
+            const next = [...prev, id];
+            localStorage.setItem('tariff_active_local_vehicles', JSON.stringify(next));
+            return next;
+        });
+    };
+
+    const handleRemoveLocalVehicle = (id: string) => {
+        setActiveLocalVehicles(prev => {
+            const next = prev.filter(v => v !== id);
+            localStorage.setItem('tariff_active_local_vehicles', JSON.stringify(next));
+            return next;
+        });
+    };
+
+    const handleAddOutstationVehicle = (id: string) => {
+        if (!id) return;
+        setActiveOutstationVehicles(prev => {
+            const next = [...prev, id];
+            localStorage.setItem('tariff_active_outstation_vehicles', JSON.stringify(next));
+            return next;
+        });
+    };
+
+    const handleRemoveOutstationVehicle = (id: string) => {
+        setActiveOutstationVehicles(prev => {
+            const next = prev.filter(v => v !== id);
+            localStorage.setItem('tariff_active_outstation_vehicles', JSON.stringify(next));
+            return next;
+        });
+    };
 
     const isRateModified = (vehicleId: string) => {
         const v = VEHICLES.find(x => x.id === vehicleId);
@@ -390,265 +473,112 @@ const TariffPage = () => {
             {/* Main Content */}
             <main className="max-w-4xl mx-auto px-4 -mt-4">
 
-                {/* Profile Card / Header Details */}
-                <div className="bg-white rounded-2xl shadow-md border border-slate-200/80 p-5 md:p-6 mb-6">
-                    {isCustomerView ? (
-                        /* Customer View mode header */
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-                            <div className="space-y-2">
-                                <span className="inline-block bg-blue-50 text-blue-700 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md border border-blue-100">Official Rates Card</span>
-                                <h2 className="text-xl font-extrabold text-slate-800 uppercase leading-none tracking-tight">{customerName || 'Taxi Services'}</h2>
-                                {customerAddress && (
-                                    <p className="text-xs text-slate-500 font-bold leading-normal max-w-md">{customerAddress}</p>
-                                )}
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1.5 text-xs font-bold text-slate-600">
-                                    <div className="flex items-center gap-1.5">
-                                        <Phone size={13} className="text-slate-400" />
-                                        <span>{customerPhone}</span>
-                                    </div>
-                                    {customerSecondaryPhone && (
-                                        <div className="flex items-center gap-1.5 border-l border-slate-200 pl-4">
-                                            <Phone size={13} className="text-slate-400" />
-                                            <span>{customerSecondaryPhone}</span>
-                                        </div>
+                {/* Profile Card / Header Details — Customer View only */}
+                {isCustomerView && (
+                <div className="bg-white rounded-2xl shadow-md border border-slate-200/80 mb-6 overflow-hidden">
+                    {(
+                        /* Customer View — Premium Letterhead / Letterpad */
+                        <div>
+                            {/* Letterhead Top Bar */}
+                            <div
+                                className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                                style={{ backgroundColor: customerAppColor || '#0f172a' }}
+                            >
+                                <div className="flex items-center gap-3">
+                                    {customerLogoUrl && (
+                                        <img src={customerLogoUrl} alt="Logo" className="w-12 h-12 object-contain rounded-lg bg-white/10 p-1 shrink-0" />
                                     )}
+                                    <div>
+                                        <p className="text-white/70 text-[9px] font-black uppercase tracking-widest mb-0.5">Official Tariff Card</p>
+                                        <h2 className="text-white text-lg md:text-2xl font-extrabold uppercase leading-none tracking-tight">{customerName || 'Taxi Services'}</h2>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 shrink-0">
+                                    <a
+                                        href={`tel:${customerPhone}`}
+                                        className="flex items-center justify-center gap-2 bg-white/15 text-white border border-white/25 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-white/25 active:scale-[0.98] transition-all backdrop-blur-sm"
+                                    >
+                                        <Phone size={12} />
+                                        Call
+                                    </a>
+                                    <a
+                                        href={`https://wa.me/91${customerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent("Hi, I'm checking your cab rates card. I would like to book a ride.")}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex items-center justify-center gap-2 bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-emerald-400 active:scale-[0.98] transition-all"
+                                    >
+                                        <MessageSquare size={12} />
+                                        Book
+                                    </a>
+                                </div>
+                            </div>
+                            {/* Contact Details Row */}
+                            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    {customerAddress && (
+                                        <p className="text-[10px] text-slate-500 font-semibold leading-normal">{customerAddress}</p>
+                                    )}
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold text-slate-700">
+                                        <span className="flex items-center gap-1"><Phone size={10} className="text-slate-400" /> {customerPhone}</span>
+                                        {customerSecondaryPhone && <span className="flex items-center gap-1"><Phone size={10} className="text-slate-400" /> {customerSecondaryPhone}</span>}
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5 sm:text-right">
+                                    {customerEmail && <p className="text-[10px] font-bold text-slate-500">{customerEmail}</p>}
+                                    {customerGstin && <p className="text-[9px] font-black text-slate-500 uppercase tracking-wide">GSTIN: {customerGstin}</p>}
                                     {customerUpiId && (
-                                        <div className="flex items-center gap-1.5 border-l border-slate-200 pl-4">
-                                            <span className="text-[8px] font-black bg-slate-100 text-slate-500 px-1 py-0.5 rounded border border-slate-200">UPI</span>
-                                            <span>{customerUpiId}</span>
-                                        </div>
+                                        <p className="text-[10px] font-bold text-slate-500 flex items-center gap-1 sm:justify-end">
+                                            <span className="text-[7px] font-black bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded uppercase tracking-wide">UPI</span>
+                                            {customerUpiId}
+                                        </p>
                                     )}
                                 </div>
-                            </div>
-                            
-                            <div className="flex flex-wrap gap-2 shrink-0">
-                                <a 
-                                    href={`tel:${customerPhone}`}
-                                    className="flex items-center justify-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-sm text-xs font-black uppercase tracking-wider hover:bg-black active:scale-[0.98] transition-all"
-                                >
-                                    <Phone size={14} />
-                                    Call Operator
-                                </a>
-                                <a 
-                                    href={`https://wa.me/91${customerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi, I'm checking your cab rates card. I would like to book a ride.`)}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-sm text-xs font-black uppercase tracking-wider hover:bg-emerald-700 active:scale-[0.98] transition-all"
-                                >
-                                    <MessageSquare size={14} />
-                                    Book on WhatsApp
-                                </a>
-                            </div>
-                        </div>
-                    ) : (
-                        /* Driver Editor mode Business details summary (Settings read-only) */
-                        <div className="space-y-5">
-                            <div className="bg-slate-50 rounded-xl p-4.5 border border-slate-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div className="space-y-1">
-                                    <span className="text-[8px] font-black bg-slate-200/85 text-slate-600 px-2 py-0.5 rounded uppercase tracking-wider">Your Business Profile (From Settings)</span>
-                                    <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-tight leading-none mt-1.5">
-                                        {settings.companyName || 'No Company Name Set'}
-                                    </h3>
-                                    {settings.companyAddress && (
-                                        <p className="text-[10px] text-slate-500 font-bold leading-normal mt-0.5">{settings.companyAddress}</p>
-                                    )}
-                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold text-slate-500 pt-1">
-                                        <span>Phone: {settings.driverPhone || 'N/A'}</span>
-                                        {settings.secondaryPhone && <span className="border-l border-slate-200 pl-3">Sec: {settings.secondaryPhone}</span>}
-                                        {settings.upiId && <span className="border-l border-slate-200 pl-3">UPI: {settings.upiId}</span>}
-                                    </div>
-                                </div>
-                                <button 
-                                    onClick={handleEditProfile}
-                                    className="inline-flex items-center gap-1 bg-white text-slate-700 border border-slate-200 px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-slate-50 transition-colors shadow-sm shrink-0 self-start sm:self-center"
-                                >
-                                    <Pencil size={11} />
-                                    Edit Settings
-                                </button>
-                            </div>
-
-                            {/* Active Fleet Selector Checklist */}
-                            <div>
-                                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2.5">Choose Vehicles in Your Active Fleet</h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {VEHICLES.map(v => {
-                                        const isActive = activeVehicles.includes(v.id);
-                                        return (
-                                            <button
-                                                key={v.id}
-                                                onClick={() => handleVehicleToggle(v.id)}
-                                                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 active:scale-95 ${
-                                                    isActive 
-                                                        ? 'bg-slate-900 border-slate-900 text-white shadow-sm' 
-                                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                                                }`}
-                                            >
-                                                <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-400' : 'bg-slate-300'}`} />
-                                                {v.name}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                <p className="text-[10px] text-slate-450 font-medium mt-2">Unchecked vehicle types will be completely hidden from the shared customer page and PDF export.</p>
-                            </div>
-
-                            {/* Form Actions */}
-                            <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                                <button 
-                                    onClick={handleDownloadPDF}
-                                    className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all active:scale-[0.98]"
-                                >
-                                    <Download size={12} />
-                                    Download PDF
-                                </button>
-                                <button 
-                                    onClick={handleCopyLink}
-                                    className={`flex items-center gap-1.5 border px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-[0.98] ${
-                                        copyTooltip 
-                                            ? 'bg-slate-800 border-slate-800 text-white' 
-                                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                                    }`}
-                                >
-                                    {copyTooltip ? <Check size={12} /> : <Copy size={12} />}
-                                    {copyTooltip ? 'Copied!' : 'Copy Quote Link'}
-                                </button>
-                                <button 
-                                    onClick={handleWhatsAppShare}
-                                    className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all active:scale-[0.98]"
-                                >
-                                    <Share2 size={12} />
-                                    Share on WhatsApp
-                                </button>
                             </div>
                         </div>
                     )}
                 </div>
+                )}
 
-                {/* OUTSTATION CARD LIST SECTION */}
+
+                {/* LOCAL CITY HOURLY PACKAGES SECTION — First */}
                 <div className="space-y-4 mb-8">
                     <div className="flex items-center justify-between">
                         <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2">
-                            <Car size={18} className="text-slate-900" />
-                            Outstation Rates (Per KM)
+                            <Clock size={18} className="text-slate-900" />
+                            Local City Packages
                         </h2>
                         {!isCustomerView && hasAnyModified && (
                             <button onClick={handleResetRates} className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-slate-700 underline uppercase tracking-wider">
-                                <RotateCcw size={10} /> Reset Default Rates
+                                <RotateCcw size={10} /> Reset Rates
                             </button>
                         )}
                     </div>
 
-                    {filteredVehicles.length === 0 ? (
+                    {filteredLocalVehicles.length === 0 && isCustomerView ? (
                         <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-xs font-bold">
-                            No vehicles selected. Toggle active fleet checkboxes in the editor above to display vehicles.
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {filteredVehicles.map(v => {
-                                const rate = customRates[v.id] || { drop: v.dropRate, round: v.roundRate, bata: v.batta };
-                                return (
-                                    <div key={v.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4.5 space-y-4 relative hover:shadow transition-all">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="font-extrabold text-sm text-slate-850 uppercase tracking-tight leading-none">{v.name}</h3>
-                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-1.5">{v.popularModels}</p>
-                                            </div>
-                                            {!isCustomerView && isRateModified(v.id) && (
-                                                <span className="text-[7px] font-black bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full uppercase tracking-wider">Customized</span>
-                                            )}
-                                        </div>
-
-                                        <div className="h-px bg-slate-100" />
-
-                                        {/* Rate Cards Grid */}
-                                        <div className="grid grid-cols-2 gap-3 text-center">
-                                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl space-y-0.5">
-                                                <span className="text-[8px] font-black text-slate-450 uppercase tracking-wider block">One Way Drop</span>
-                                                {isCustomerView ? (
-                                                    <span className="text-sm font-extrabold text-slate-800">₹{rate.drop}/km</span>
-                                                ) : (
-                                                    <div className="flex items-center justify-center gap-0.5">
-                                                        <span className="text-xs font-bold text-slate-450">₹</span>
-                                                        <input 
-                                                            type="number"
-                                                            value={rate.drop}
-                                                            onChange={(e) => handleRateChange(v.id, 'drop', e.target.value)}
-                                                            className="w-14 bg-transparent border-none text-center p-0 text-sm font-extrabold text-slate-800 outline-none"
-                                                        />
-                                                        <span className="text-[9px] text-slate-450">/km</span>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl space-y-0.5">
-                                                <span className="text-[8px] font-black text-slate-450 uppercase tracking-wider block">Round Trip</span>
-                                                {isCustomerView ? (
-                                                    <span className="text-sm font-extrabold text-slate-800">₹{rate.round}/km</span>
-                                                ) : (
-                                                    <div className="flex items-center justify-center gap-0.5">
-                                                        <span className="text-xs font-bold text-slate-450">₹</span>
-                                                        <input 
-                                                            type="number"
-                                                            value={rate.round}
-                                                            onChange={(e) => handleRateChange(v.id, 'round', e.target.value)}
-                                                            className="w-14 bg-transparent border-none text-center p-0 text-sm font-extrabold text-slate-800 outline-none"
-                                                        />
-                                                        <span className="text-[9px] text-slate-450">/km</span>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl space-y-0.5">
-                                                <span className="text-[8px] font-black text-slate-450 uppercase tracking-wider block">Driver Batta</span>
-                                                {isCustomerView ? (
-                                                    <span className="text-sm font-extrabold text-slate-800">₹{rate.bata}/day</span>
-                                                ) : (
-                                                    <div className="flex items-center justify-center gap-0.5">
-                                                        <span className="text-xs font-bold text-slate-450">₹</span>
-                                                        <input 
-                                                            type="number"
-                                                            value={rate.bata}
-                                                            onChange={(e) => handleRateChange(v.id, 'bata', e.target.value)}
-                                                            className="w-16 bg-transparent border-none text-center p-0 text-sm font-extrabold text-slate-800 outline-none"
-                                                        />
-                                                        <span className="text-[9px] text-slate-450">/day</span>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-center items-center">
-                                                <span className="text-[8px] font-black text-slate-450 uppercase tracking-wider block">Min Distance</span>
-                                                <span className="text-sm font-extrabold text-slate-700 mt-0.5">{v.minKm} KM/Day</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-
-                {/* LOCAL CITY HOURLY PACKAGES SECTION */}
-                <div className="space-y-4 mb-8">
-                    <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2">
-                        <Clock size={18} className="text-slate-900" />
-                        Local City Packages
-                    </h2>
-
-                    {filteredVehicles.length === 0 ? (
-                        <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-xs font-bold">
-                            No vehicles selected. Toggle active fleet checkboxes in the editor above to display hourly packages.
+                            No local packages set up by this operator.
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {filteredVehicles.map(v => {
+                            {filteredLocalVehicles.map(v => {
                                 const t = TARIFFS.vehicles[v.id as keyof typeof TARIFFS.vehicles];
                                 const rate = customRates[v.id] || { pkg4hr: t?.local_4hr_pkg ?? 0, pkg8hr: t?.local_8hr_pkg ?? 0, pkg12hr: t?.local_12hr_pkg ?? 0, extraHr: t?.extra_hr_rate ?? 0 };
                                 return (
-                                    <div key={v.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                                        <div>
-                                            <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-tight">{v.name}</h3>
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{v.popularModels}</p>
+                                    <div key={v.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative">
+                                        <div className="flex items-center gap-3">
+                                            {!isCustomerView && (
+                                                <button
+                                                    onClick={() => handleRemoveLocalVehicle(v.id)}
+                                                    title="Remove vehicle"
+                                                    className="p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-lg shrink-0 transition-colors"
+                                                >
+                                                    <Trash2 size={13} />
+                                                </button>
+                                            )}
+                                            <div>
+                                                <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-tight">{v.name}</h3>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{v.popularModels}</p>
+                                            </div>
                                         </div>
 
                                         <div className="grid grid-cols-4 gap-2 flex-1 max-w-xl">
@@ -697,6 +627,147 @@ const TariffPage = () => {
                                     </div>
                                 );
                             })}
+                            {/* Add vehicle dropdown for Local — only in editor mode */}
+                            {!isCustomerView && availableForLocal.length > 0 && (
+                                <div className="flex items-center gap-2 pt-1">
+                                    <Plus size={14} className="text-slate-400 shrink-0" />
+                                    <select
+                                        defaultValue=""
+                                        onChange={(e) => { handleAddLocalVehicle(e.target.value); e.target.value = ''; }}
+                                        className="flex-1 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 px-3 py-2.5 outline-none focus:border-slate-400 cursor-pointer hover:bg-slate-50 transition-colors"
+                                    >
+                                        <option value="" disabled>+ Add vehicle to Local Packages</option>
+                                        {availableForLocal.map(v => (
+                                            <option key={v.id} value={v.id}>{v.name} — {v.popularModels}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* OUTSTATION CARD LIST SECTION — Second */}
+                <div className="space-y-4 mb-8">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                            <Car size={18} className="text-slate-900" />
+                            Outstation Rates (Per KM)
+                        </h2>
+                    </div>
+
+                    {filteredOutstationVehicles.length === 0 && isCustomerView ? (
+                        <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-xs font-bold">
+                            No outstation rates set up by this operator.
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {filteredOutstationVehicles.map(v => {
+                                const rate = customRates[v.id] || { drop: v.dropRate, round: v.roundRate, bata: v.batta };
+                                return (
+                                    <div key={v.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 space-y-4 relative hover:shadow transition-all">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex items-center gap-2">
+                                                {!isCustomerView && (
+                                                    <button
+                                                        onClick={() => handleRemoveOutstationVehicle(v.id)}
+                                                        title="Remove vehicle"
+                                                        className="p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-lg shrink-0 transition-colors"
+                                                    >
+                                                        <Trash2 size={13} />
+                                                    </button>
+                                                )}
+                                                <div>
+                                                    <h3 className="font-extrabold text-sm text-slate-850 uppercase tracking-tight leading-none">{v.name}</h3>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-1.5">{v.popularModels}</p>
+                                                </div>
+                                            </div>
+                                            {!isCustomerView && isRateModified(v.id) && (
+                                                <span className="text-[7px] font-black bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full uppercase tracking-wider">Customized</span>
+                                            )}
+                                        </div>
+
+                                        <div className="h-px bg-slate-100" />
+
+                                        <div className="grid grid-cols-2 gap-3 text-center">
+                                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl space-y-0.5">
+                                                <span className="text-[8px] font-black text-slate-450 uppercase tracking-wider block">One Way Drop</span>
+                                                {isCustomerView ? (
+                                                    <span className="text-sm font-extrabold text-slate-800">₹{rate.drop}/km</span>
+                                                ) : (
+                                                    <div className="flex items-center justify-center gap-0.5">
+                                                        <span className="text-xs font-bold text-slate-450">₹</span>
+                                                        <input
+                                                            type="number"
+                                                            value={rate.drop}
+                                                            onChange={(e) => handleRateChange(v.id, 'drop', e.target.value)}
+                                                            className="w-14 bg-transparent border-none text-center p-0 text-sm font-extrabold text-slate-800 outline-none"
+                                                        />
+                                                        <span className="text-[9px] text-slate-450">/km</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl space-y-0.5">
+                                                <span className="text-[8px] font-black text-slate-450 uppercase tracking-wider block">Round Trip</span>
+                                                {isCustomerView ? (
+                                                    <span className="text-sm font-extrabold text-slate-800">₹{rate.round}/km</span>
+                                                ) : (
+                                                    <div className="flex items-center justify-center gap-0.5">
+                                                        <span className="text-xs font-bold text-slate-450">₹</span>
+                                                        <input
+                                                            type="number"
+                                                            value={rate.round}
+                                                            onChange={(e) => handleRateChange(v.id, 'round', e.target.value)}
+                                                            className="w-14 bg-transparent border-none text-center p-0 text-sm font-extrabold text-slate-800 outline-none"
+                                                        />
+                                                        <span className="text-[9px] text-slate-450">/km</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl space-y-0.5">
+                                                <span className="text-[8px] font-black text-slate-450 uppercase tracking-wider block">Driver Batta</span>
+                                                {isCustomerView ? (
+                                                    <span className="text-sm font-extrabold text-slate-800">₹{rate.bata}/day</span>
+                                                ) : (
+                                                    <div className="flex items-center justify-center gap-0.5">
+                                                        <span className="text-xs font-bold text-slate-450">₹</span>
+                                                        <input
+                                                            type="number"
+                                                            value={rate.bata}
+                                                            onChange={(e) => handleRateChange(v.id, 'bata', e.target.value)}
+                                                            className="w-16 bg-transparent border-none text-center p-0 text-sm font-extrabold text-slate-800 outline-none"
+                                                        />
+                                                        <span className="text-[9px] text-slate-450">/day</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex flex-col justify-center items-center">
+                                                <span className="text-[8px] font-black text-slate-450 uppercase tracking-wider block">Min Distance</span>
+                                                <span className="text-sm font-extrabold text-slate-700 mt-0.5">{v.minKm} KM/Day</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                    {/* Add vehicle dropdown for Outstation — only in editor mode */}
+                    {!isCustomerView && availableForOutstation.length > 0 && (
+                        <div className="flex items-center gap-2 pt-1">
+                            <Plus size={14} className="text-slate-400 shrink-0" />
+                            <select
+                                defaultValue=""
+                                onChange={(e) => { handleAddOutstationVehicle(e.target.value); e.target.value = ''; }}
+                                className="flex-1 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 px-3 py-2.5 outline-none focus:border-slate-400 cursor-pointer hover:bg-slate-50 transition-colors"
+                            >
+                                <option value="" disabled>+ Add vehicle to Outstation Rates</option>
+                                {availableForOutstation.map(v => (
+                                    <option key={v.id} value={v.id}>{v.name} — {v.popularModels}</option>
+                                ))}
+                            </select>
                         </div>
                     )}
                 </div>
@@ -833,6 +904,46 @@ const TariffPage = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* Editor mode Action Bar — Download, Copy, WhatsApp */}
+                {!isCustomerView && (
+                    <div className="bg-white rounded-2xl shadow-md border border-slate-200/80 p-5 mb-8 flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Share Your Tariff Card</p>
+                            <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                                Business details from{' '}
+                                <button onClick={handleEditProfile} className="text-blue-600 underline hover:text-blue-700 font-bold">Settings / Profile</button>
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <button
+                                onClick={handleDownloadPDF}
+                                className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all active:scale-[0.98] shadow-sm"
+                            >
+                                <Download size={12} />
+                                Download PDF
+                            </button>
+                            <button
+                                onClick={handleCopyLink}
+                                className={`flex items-center gap-1.5 border px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-[0.98] ${
+                                    copyTooltip
+                                        ? 'bg-slate-800 border-slate-800 text-white'
+                                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                                }`}
+                            >
+                                {copyTooltip ? <Check size={12} /> : <Copy size={12} />}
+                                {copyTooltip ? 'Copied!' : 'Copy Link'}
+                            </button>
+                            <button
+                                onClick={handleWhatsAppShare}
+                                className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all active:scale-[0.98] shadow-sm"
+                            >
+                                <Share2 size={12} />
+                                WhatsApp
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Customer View Back Option */}
                 {isCustomerView && (
