@@ -7,7 +7,7 @@ import { downloadTariffPDF } from '../utils/pdf';
 import {
     ArrowRight, Check, ShieldCheck, Clock,
     AlertTriangle, Moon, Car, RotateCcw,
-    Share2, Copy, Phone, MessageSquare, Download, CheckCircle, ArrowLeft, Plus, Trash2
+    Share2, Phone, MessageSquare, Download, CheckCircle, ArrowLeft, Plus, Trash2
 } from 'lucide-react';
 
 // Encode/decode helper functions
@@ -153,7 +153,6 @@ const TariffPage = () => {
         return rates;
     });
 
-    const [copyTooltip, setCopyTooltip] = useState(false);
 
     // Initial load logic
     useEffect(() => {
@@ -355,13 +354,6 @@ const TariffPage = () => {
         return `${window.location.origin}/tariff?s=${encoded}`;
     };
 
-    const handleCopyLink = () => {
-        const url = getShareableUrl();
-        navigator.clipboard.writeText(url).then(() => {
-            setCopyTooltip(true);
-            setTimeout(() => setCopyTooltip(false), 2000);
-        });
-    };
 
     const handleWhatsAppShare = () => {
         const url = getShareableUrl();
