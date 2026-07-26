@@ -89,11 +89,11 @@
             "destination": "/api/sitemap"
         },
         {
-            "source": "/(calculator|taxi-fare-calculator|profile|trips|expenses|admin|dashboard|public|staff)/(.*)",
+            "source": "/(calculator|taxi-fare-calculator|profile|trips|expenses|admin|dashboard|public|staff|tariff)/(.*)",
             "destination": "/index.html"
         },
         {
-            "source": "/(calculator|taxi-fare-calculator|profile|trips|expenses|admin|dashboard|public|staff)",
+            "source": "/(calculator|taxi-fare-calculator|profile|trips|expenses|admin|dashboard|public|staff|tariff)",
             "destination": "/index.html"
         }
     ]

@@ -201,17 +201,31 @@ const TariffPage = () => {
         let outstation = ['hatchback', 'sedan', 'suv'];
 
         if (savedLocalVehicles) {
-            local = JSON.parse(savedLocalVehicles);
+            const parsed = JSON.parse(savedLocalVehicles);
+            if (parsed.length > 0) {
+                local = parsed;
+            } else {
+                // Stale empty array — clear it so defaults are used
+                localStorage.removeItem('tariff_active_local_vehicles');
+            }
         } else if (legacySavedVehicles) {
-            local = JSON.parse(legacySavedVehicles);
+            const parsed = JSON.parse(legacySavedVehicles);
+            if (parsed.length > 0) local = parsed;
         } else if (settings.vehicles && settings.vehicles.length > 0) {
             local = Array.from(new Set(settings.vehicles.map(v => v.id)));
         }
 
         if (savedOutstationVehicles) {
-            outstation = JSON.parse(savedOutstationVehicles);
+            const parsed = JSON.parse(savedOutstationVehicles);
+            if (parsed.length > 0) {
+                outstation = parsed;
+            } else {
+                // Stale empty array — clear it so defaults are used
+                localStorage.removeItem('tariff_active_outstation_vehicles');
+            }
         } else if (legacySavedVehicles) {
-            outstation = JSON.parse(legacySavedVehicles);
+            const parsed = JSON.parse(legacySavedVehicles);
+            if (parsed.length > 0) outstation = parsed;
         } else if (settings.vehicles && settings.vehicles.length > 0) {
             outstation = Array.from(new Set(settings.vehicles.map(v => v.id)));
         }
@@ -471,7 +485,7 @@ const TariffPage = () => {
             </div>
 
             {/* Main Content */}
-            <main className="max-w-4xl mx-auto px-4 -mt-4">
+            <main className={`max-w-4xl mx-auto px-4 ${isCustomerView ? '-mt-4' : 'mt-4'}`}>
 
                 {/* Profile Card / Header Details — Customer View only */}
                 {isCustomerView && (
@@ -541,7 +555,7 @@ const TariffPage = () => {
 
 
                 {/* LOCAL CITY HOURLY PACKAGES SECTION — First */}
-                <div className="space-y-4 mb-8">
+                <div className="space-y-4 mb-8 pt-2">
                     <div className="flex items-center justify-between">
                         <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2">
                             <Clock size={18} className="text-slate-900" />
@@ -587,7 +601,11 @@ const TariffPage = () => {
                                                 ['pkg8hr', '8H / 80K'],
                                                 ['pkg12hr', '12H / 120K']
                                             ] as const).map(([field, label]) => (
-                                                <div key={field} className="bg-slate-50 border border-slate-100 p-1.5 rounded-xl text-center">
+                                                <div key={field} className={`p-1.5 rounded-xl text-center ${
+                                                    isCustomerView
+                                                        ? 'bg-slate-50 border border-slate-100'
+                                                        : 'bg-blue-50 border border-blue-200'
+                                                }`}>
                                                     <span className="text-[8px] font-black text-slate-450 uppercase tracking-wider block">{label}</span>
                                                     {isCustomerView ? (
                                                         <span className="text-xs font-extrabold text-slate-700">
@@ -595,31 +613,35 @@ const TariffPage = () => {
                                                         </span>
                                                     ) : (
                                                         <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                                                            <span className="text-[10px] font-bold text-slate-450">₹</span>
+                                                            <span className="text-[10px] font-bold text-blue-400">₹</span>
                                                             <input
                                                                 type="number"
                                                                 value={rate[field]}
                                                                 onChange={(e) => handleRateChange(v.id, field, e.target.value)}
-                                                                className="w-10 bg-transparent border-none text-center p-0 text-xs font-extrabold text-slate-800 outline-none"
+                                                                className="w-12 bg-transparent border-none text-center p-0 text-sm font-extrabold text-slate-900 outline-none focus:scale-105 transition-transform"
                                                             />
                                                         </div>
                                                     )}
                                                 </div>
                                             ))}
-                                            <div className="bg-slate-50 border border-slate-100 p-1.5 rounded-xl text-center">
+                                            <div className={`p-1.5 rounded-xl text-center ${
+                                                isCustomerView
+                                                    ? 'bg-slate-50 border border-slate-100'
+                                                    : 'bg-blue-50 border border-blue-200'
+                                            }`}>
                                                 <span className="text-[8px] font-black text-slate-450 uppercase tracking-wider block">Extra Hr</span>
                                                 {isCustomerView ? (
                                                     <span className="text-xs font-extrabold text-slate-700">₹{rate.extraHr}/hr</span>
                                                 ) : (
                                                     <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                                                        <span className="text-[10px] font-bold text-slate-450">₹</span>
+                                                        <span className="text-[10px] font-bold text-blue-400">₹</span>
                                                         <input
                                                             type="number"
                                                             value={rate.extraHr}
                                                             onChange={(e) => handleRateChange(v.id, 'extraHr', e.target.value)}
-                                                            className="w-8 bg-transparent border-none text-center p-0 text-xs font-extrabold text-slate-800 outline-none"
+                                                            className="w-8 bg-transparent border-none text-center p-0 text-sm font-extrabold text-slate-900 outline-none focus:scale-105 transition-transform"
                                                         />
-                                                        <span className="text-[9px] text-slate-450">/h</span>
+                                                        <span className="text-[9px] text-blue-400">/h</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -629,18 +651,22 @@ const TariffPage = () => {
                             })}
                             {/* Add vehicle dropdown for Local — only in editor mode */}
                             {!isCustomerView && availableForLocal.length > 0 && (
-                                <div className="flex items-center gap-2 pt-1">
-                                    <Plus size={14} className="text-slate-400 shrink-0" />
+                                <div className="relative mt-1">
                                     <select
-                                        defaultValue=""
-                                        onChange={(e) => { handleAddLocalVehicle(e.target.value); e.target.value = ''; }}
-                                        className="flex-1 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 px-3 py-2.5 outline-none focus:border-slate-400 cursor-pointer hover:bg-slate-50 transition-colors"
+                                        value=""
+                                        onChange={(e) => { handleAddLocalVehicle(e.target.value); }}
+                                        className="w-full appearance-none bg-white border-2 border-dashed border-slate-300 rounded-xl text-xs font-bold text-slate-600 pl-4 pr-10 py-3 outline-none focus:border-blue-400 cursor-pointer hover:border-slate-400 transition-colors"
                                     >
-                                        <option value="" disabled>+ Add vehicle to Local Packages</option>
+                                        <option value="" disabled>+ Add New Vehicle</option>
                                         {availableForLocal.map(v => (
                                             <option key={v.id} value={v.id}>{v.name} — {v.popularModels}</option>
                                         ))}
                                     </select>
+                                    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                                        <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -690,56 +716,62 @@ const TariffPage = () => {
                                         <div className="h-px bg-slate-100" />
 
                                         <div className="grid grid-cols-2 gap-3 text-center">
-                                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl space-y-0.5">
+                                            <div className={`p-2.5 rounded-xl space-y-0.5 ${
+                                                isCustomerView ? 'bg-slate-50 border border-slate-100' : 'bg-blue-50 border border-blue-200'
+                                            }`}>
                                                 <span className="text-[8px] font-black text-slate-450 uppercase tracking-wider block">One Way Drop</span>
                                                 {isCustomerView ? (
                                                     <span className="text-sm font-extrabold text-slate-800">₹{rate.drop}/km</span>
                                                 ) : (
                                                     <div className="flex items-center justify-center gap-0.5">
-                                                        <span className="text-xs font-bold text-slate-450">₹</span>
+                                                        <span className="text-xs font-bold text-blue-400">₹</span>
                                                         <input
                                                             type="number"
                                                             value={rate.drop}
                                                             onChange={(e) => handleRateChange(v.id, 'drop', e.target.value)}
-                                                            className="w-14 bg-transparent border-none text-center p-0 text-sm font-extrabold text-slate-800 outline-none"
+                                                            className="w-14 bg-transparent border-none text-center p-0 text-sm font-extrabold text-slate-900 outline-none"
                                                         />
-                                                        <span className="text-[9px] text-slate-450">/km</span>
+                                                        <span className="text-[9px] text-blue-400">/km</span>
                                                     </div>
                                                 )}
                                             </div>
 
-                                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl space-y-0.5">
+                                            <div className={`p-2.5 rounded-xl space-y-0.5 ${
+                                                isCustomerView ? 'bg-slate-50 border border-slate-100' : 'bg-blue-50 border border-blue-200'
+                                            }`}>
                                                 <span className="text-[8px] font-black text-slate-450 uppercase tracking-wider block">Round Trip</span>
                                                 {isCustomerView ? (
                                                     <span className="text-sm font-extrabold text-slate-800">₹{rate.round}/km</span>
                                                 ) : (
                                                     <div className="flex items-center justify-center gap-0.5">
-                                                        <span className="text-xs font-bold text-slate-450">₹</span>
+                                                        <span className="text-xs font-bold text-blue-400">₹</span>
                                                         <input
                                                             type="number"
                                                             value={rate.round}
                                                             onChange={(e) => handleRateChange(v.id, 'round', e.target.value)}
-                                                            className="w-14 bg-transparent border-none text-center p-0 text-sm font-extrabold text-slate-800 outline-none"
+                                                            className="w-14 bg-transparent border-none text-center p-0 text-sm font-extrabold text-slate-900 outline-none"
                                                         />
-                                                        <span className="text-[9px] text-slate-450">/km</span>
+                                                        <span className="text-[9px] text-blue-400">/km</span>
                                                     </div>
                                                 )}
                                             </div>
 
-                                            <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl space-y-0.5">
+                                            <div className={`p-2.5 rounded-xl space-y-0.5 ${
+                                                isCustomerView ? 'bg-slate-50 border border-slate-100' : 'bg-blue-50 border border-blue-200'
+                                            }`}>
                                                 <span className="text-[8px] font-black text-slate-450 uppercase tracking-wider block">Driver Batta</span>
                                                 {isCustomerView ? (
                                                     <span className="text-sm font-extrabold text-slate-800">₹{rate.bata}/day</span>
                                                 ) : (
                                                     <div className="flex items-center justify-center gap-0.5">
-                                                        <span className="text-xs font-bold text-slate-450">₹</span>
+                                                        <span className="text-xs font-bold text-blue-400">₹</span>
                                                         <input
                                                             type="number"
                                                             value={rate.bata}
                                                             onChange={(e) => handleRateChange(v.id, 'bata', e.target.value)}
-                                                            className="w-16 bg-transparent border-none text-center p-0 text-sm font-extrabold text-slate-800 outline-none"
+                                                            className="w-16 bg-transparent border-none text-center p-0 text-sm font-extrabold text-slate-900 outline-none"
                                                         />
-                                                        <span className="text-[9px] text-slate-450">/day</span>
+                                                        <span className="text-[9px] text-blue-400">/day</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -756,18 +788,22 @@ const TariffPage = () => {
                     )}
                     {/* Add vehicle dropdown for Outstation — only in editor mode */}
                     {!isCustomerView && availableForOutstation.length > 0 && (
-                        <div className="flex items-center gap-2 pt-1">
-                            <Plus size={14} className="text-slate-400 shrink-0" />
+                        <div className="relative mt-1">
                             <select
-                                defaultValue=""
-                                onChange={(e) => { handleAddOutstationVehicle(e.target.value); e.target.value = ''; }}
-                                className="flex-1 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 px-3 py-2.5 outline-none focus:border-slate-400 cursor-pointer hover:bg-slate-50 transition-colors"
+                                value=""
+                                onChange={(e) => { handleAddOutstationVehicle(e.target.value); }}
+                                className="w-full appearance-none bg-white border-2 border-dashed border-slate-300 rounded-xl text-xs font-bold text-slate-600 pl-4 pr-10 py-3 outline-none focus:border-blue-400 cursor-pointer hover:border-slate-400 transition-colors"
                             >
-                                <option value="" disabled>+ Add vehicle to Outstation Rates</option>
+                                <option value="" disabled>+ Add New Vehicle</option>
                                 {availableForOutstation.map(v => (
                                     <option key={v.id} value={v.id}>{v.name} — {v.popularModels}</option>
                                 ))}
                             </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                                <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -922,17 +958,6 @@ const TariffPage = () => {
                             >
                                 <Download size={12} />
                                 Download PDF
-                            </button>
-                            <button
-                                onClick={handleCopyLink}
-                                className={`flex items-center gap-1.5 border px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-[0.98] ${
-                                    copyTooltip
-                                        ? 'bg-slate-800 border-slate-800 text-white'
-                                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                                }`}
-                            >
-                                {copyTooltip ? <Check size={12} /> : <Copy size={12} />}
-                                {copyTooltip ? 'Copied!' : 'Copy Link'}
                             </button>
                             <button
                                 onClick={handleWhatsAppShare}
